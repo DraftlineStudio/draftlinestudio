@@ -1,5 +1,26 @@
+# Dependencies
+node_modules/
+
+# Build output
+wails/frontend/dist/
+wails/build/bin/
+*.exe
+
+# Go
+go.sum
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# .NET (legacy)
 bin/
 obj/
 /packages/
-riderModule.iml
 /_ReSharper.Caches/
