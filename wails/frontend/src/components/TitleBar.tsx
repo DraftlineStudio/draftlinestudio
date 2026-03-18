@@ -5,7 +5,11 @@ import { useAppStore } from '../store/appStore'
 import { WindowMinimise, WindowToggleMaximise, Quit } from '../../wailsjs/runtime/runtime'
 import { avatarColor, hexToRgba } from '../utils/accentColor'
 
-export default function TitleBar() {
+interface TitleBarProps {
+  minimal?: boolean
+}
+
+export default function TitleBar({ minimal = false }: TitleBarProps) {
   const { book, newBook, openBook, saveBook, saveBookAs, openMetadataDialog } = useBookStore()
   const { settings, openSettings } = useAppStore()
   const [dropOpen, setDropOpen] = useState(false)
@@ -97,6 +101,31 @@ export default function TitleBar() {
     </div>,
     document.body
   )
+
+  // Minimal mode for welcome screen - just branding and window controls
+  if (minimal) {
+    return (
+      <div className="titlebar titlebar-minimal">
+        <div className="titlebar-brand">
+          <div className="titlebar-logo" role="img" aria-label="Draftline" />
+        </div>
+
+        <div className="titlebar-spacer" />
+
+        <div className="titlebar-actions">
+          <button className="titlebar-winbtn" onClick={WindowMinimise} title="Minimize">
+            <svg width="10" height="1" viewBox="0 0 10 1"><line x1="0" y1="0.5" x2="10" y2="0.5" stroke="currentColor" strokeWidth="1.5"/></svg>
+          </button>
+          <button className="titlebar-winbtn" onClick={WindowToggleMaximise} title="Maximize">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="0.75" y="0.75" width="8.5" height="8.5" stroke="currentColor" strokeWidth="1.5"/></svg>
+          </button>
+          <button className="titlebar-winbtn close" onClick={Quit} title="Close">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><line x1="1" y1="1" x2="9" y2="9" stroke="currentColor" strokeWidth="1.5"/><line x1="9" y1="1" x2="1" y2="9" stroke="currentColor" strokeWidth="1.5"/></svg>
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="titlebar">

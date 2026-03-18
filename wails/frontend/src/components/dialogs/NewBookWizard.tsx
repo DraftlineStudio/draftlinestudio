@@ -2,7 +2,11 @@ import { useState } from 'react'
 import { useBookStore } from '../../store/bookStore'
 import { useAppStore } from '../../store/appStore'
 
-export default function NewBookWizard() {
+interface NewBookWizardProps {
+  onCreated?: () => void
+}
+
+export default function NewBookWizard({ onCreated }: NewBookWizardProps) {
   const { confirmNewBook, cancelNewBookWizard } = useBookStore()
   const { settings } = useAppStore()
 
@@ -10,8 +14,9 @@ export default function NewBookWizard() {
   const [author, setAuthor] = useState(settings.default_author)
   const [publisher, setPublisher] = useState(settings.default_publisher)
 
-  function handleCreate() {
-    confirmNewBook(title.trim() || 'Untitled', author.trim(), publisher.trim())
+  async function handleCreate() {
+    await confirmNewBook(title.trim() || 'Untitled', author.trim(), publisher.trim())
+    onCreated?.()
   }
 
   function handleKey(e: React.KeyboardEvent) {
