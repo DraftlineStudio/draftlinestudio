@@ -5,6 +5,7 @@ import { extractChanges, assembleFromChanges } from '../utils/diff'
 
 import { NewBook, OpenBookDialog, SaveBook, SaveBookAs, OpenRecentProject, AddRecentProject } from '../../wailsjs/go/main/App'
 import { main } from '../../wailsjs/go/models'
+import { useAppStore } from './appStore'
 
 interface DialogState {
   showMetadata: boolean
@@ -48,6 +49,7 @@ interface BookStore {
   openRecentBook: (path: string) => Promise<void>
   saveBook: () => Promise<void>
   saveBookAs: () => Promise<void>
+  closeProject: () => Promise<void>
 
   // Navigation
   setCurrentChapter: (section: Section, index: number) => void
@@ -268,6 +270,26 @@ export const useBookStore = create<BookStore>((set, get) => ({
     } catch (e) {
       set({ statusMessage: `Save error: ${e}` })
     }
+  },
+
+  closeProject: async () => {
+    const { book, isDirty } = get()
+    if (book && isDirty) {
+      try {
+        await SaveBook(book as any)
+      } catch (e) {
+        console.error('Auto-save before close failed:', e)
+      }
+    }
+    set({
+      book: null,
+      currentSection: 'body',
+      currentIndex: 0,
+      isDirty: false,
+      pendingDiff: null,
+      statusMessage: '',
+    })
+    useAppStore.getState().setShowWelcome(true)
   },
 
   setCurrentChapter: (section, index) => {
