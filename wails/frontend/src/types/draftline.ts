@@ -1,5 +1,19 @@
 export type Section = 'copyright' | 'front_matter' | 'body' | 'back_matter'
 
+export type ProjectType = 'book' | 'universe'
+
+export interface RecentProject {
+  type: ProjectType
+  path: string
+  name: string
+  lastOpened: string  // ISO date string
+  stats: {
+    books?: number
+    chapters: number
+    words: number
+  }
+}
+
 export type CharacterRole = 'protagonist' | 'antagonist' | 'supporting' | 'minor' | 'other'
 
 export interface Character {
