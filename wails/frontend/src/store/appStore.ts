@@ -1,5 +1,8 @@
 import { create } from 'zustand'
-import { LoadSettings, SaveSettings, BrowseForDirectory } from '../../wailsjs/go/main/App'
+import { LoadSettings, SaveSettings, BrowseForDirectory, GetRecentProjects, AddRecentProject, RemoveRecentProject, ClearRecentProjects } from '../../wailsjs/go/main/App'
+import { main } from '../../wailsjs/go/models'
+
+type RecentProject = main.RecentProject
 
 export interface AppSettings {
   // Application
@@ -33,11 +36,20 @@ interface AppStore {
   settings: AppSettings
   showSettings: boolean
   loaded: boolean
+  recentProjects: RecentProject[]
+  showWelcome: boolean
+  showNewUniverse: boolean
   loadSettings: () => Promise<void>
   saveSettings: (patch: Partial<AppSettings>) => Promise<void>
   openSettings: () => void
   closeSettings: () => void
   browseForDirectory: () => Promise<string>
+  loadRecentProjects: () => Promise<void>
+  addRecentProject: (project: RecentProject) => Promise<void>
+  removeRecentProject: (path: string) => Promise<void>
+  clearRecentProjects: () => Promise<void>
+  setShowWelcome: (show: boolean) => void
+  setShowNewUniverse: (show: boolean) => void
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -69,6 +81,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
   settings: DEFAULT_SETTINGS,
   showSettings: false,
   loaded: false,
+  recentProjects: [],
+  showWelcome: true,
+  showNewUniverse: false,
 
   loadSettings: async () => {
     try {
@@ -106,4 +121,46 @@ export const useAppStore = create<AppStore>((set, get) => ({
       return ''
     }
   },
+
+  loadRecentProjects: async () => {
+    try {
+      const projects = await GetRecentProjects()
+      set({ recentProjects: projects || [] })
+    } catch (e) {
+      console.error('Failed to load recent projects:', e)
+    }
+  },
+
+  addRecentProject: async (project: { type: string; path: string; name: string; lastOpened: string; stats: { books?: number; chapters: number; words: number } }) => {
+    try {
+      // Convert to Wails model
+      const wailsProject = main.RecentProject.createFrom(project)
+      await AddRecentProject(wailsProject)
+      await get().loadRecentProjects()
+    } catch (e) {
+      console.error('Failed to add recent project:', e)
+    }
+  },
+
+  removeRecentProject: async (path: string) => {
+    try {
+      await RemoveRecentProject(path)
+      set({ recentProjects: get().recentProjects.filter(p => p.path !== path) })
+    } catch (e) {
+      console.error('Failed to remove recent project:', e)
+    }
+  },
+
+  clearRecentProjects: async () => {
+    try {
+      await ClearRecentProjects()
+      set({ recentProjects: [] })
+    } catch (e) {
+      console.error('Failed to clear recent projects:', e)
+    }
+  },
+
+  setShowWelcome: (show: boolean) => set({ showWelcome: show }),
+
+  setShowNewUniverse: (show: boolean) => set({ showNewUniverse: show }),
 }))
