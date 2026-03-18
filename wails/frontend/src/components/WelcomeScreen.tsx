@@ -53,10 +53,8 @@ export default function WelcomeScreen({ onNewBook, onNewUniverse, onOpenFile, on
     <div className="welcome-screen">
       <div className="welcome-header">
         <div className="welcome-logo">
-          <div className="logo-box">
-            <span className="logo-text">DRAFTLINE</span>
-            <span className="logo-subtitle">Author's Studio</span>
-          </div>
+          <div className="welcome-logo-mark" role="img" aria-label="Draftline" />
+          <span className="logo-subtitle">Author's Studio</span>
         </div>
         <div className="welcome-version">v1.0.0</div>
       </div>
