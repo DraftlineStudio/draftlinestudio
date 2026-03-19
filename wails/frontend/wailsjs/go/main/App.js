@@ -30,6 +30,22 @@ export function GetRecentProjects() {
   return window['go']['main']['App']['GetRecentProjects']();
 }
 
+export function ImportDOCX(arg1) {
+  return window['go']['main']['App']['ImportDOCX'](arg1);
+}
+
+export function ImportDOCXDialog() {
+  return window['go']['main']['App']['ImportDOCXDialog']();
+}
+
+export function ImportEPUB(arg1) {
+  return window['go']['main']['App']['ImportEPUB'](arg1);
+}
+
+export function ImportEPUBDialog() {
+  return window['go']['main']['App']['ImportEPUBDialog']();
+}
+
 export function LoadSettings() {
   return window['go']['main']['App']['LoadSettings']();
 }

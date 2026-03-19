@@ -16,6 +16,14 @@ export function GetCurrentFile():Promise<string>;
 
 export function GetRecentProjects():Promise<Array<main.RecentProject>>;
 
+export function ImportDOCX(arg1:string):Promise<main.ImportResult>;
+
+export function ImportDOCXDialog():Promise<main.ImportResult>;
+
+export function ImportEPUB(arg1:string):Promise<main.ImportResult>;
+
+export function ImportEPUBDialog():Promise<main.ImportResult>;
+
 export function LoadSettings():Promise<main.AppSettings>;
 
 export function NewBook():Promise<main.BookData>;
