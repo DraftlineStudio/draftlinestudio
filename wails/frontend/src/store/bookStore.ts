@@ -3,7 +3,9 @@ import type { BookData, ChapterItem, Character, Metadata, Section, StoryBible } 
 import type { ParagraphDiff, DiffChange } from '../utils/diff'
 import { extractChanges, assembleFromChanges } from '../utils/diff'
 
-import { NewBook, OpenBookDialog, SaveBook, SaveBookAs } from '../../wailsjs/go/main/App'
+import { NewBook, OpenBookDialog, SaveBook, SaveBookAs, OpenRecentProject, AddRecentProject } from '../../wailsjs/go/main/App'
+import { main } from '../../wailsjs/go/models'
+import { useAppStore } from './appStore'
 
 interface DialogState {
   showMetadata: boolean
@@ -44,8 +46,10 @@ interface BookStore {
   // File ops
   newBook: () => Promise<void>
   openBook: () => Promise<void>
+  openRecentBook: (path: string) => Promise<void>
   saveBook: () => Promise<void>
   saveBookAs: () => Promise<void>
+  closeProject: () => Promise<void>
 
   // Navigation
   setCurrentChapter: (section: Section, index: number) => void
@@ -83,6 +87,7 @@ interface BookStore {
   discardAndProceed: () => Promise<void>
   initBook: () => Promise<void>
   confirmNewBook: (title: string, author: string, publisher: string) => Promise<void>
+  loadImportedBook: (book: BookData) => void
   cancelNewBookWizard: () => void
   setDarkMode: (v: boolean) => void
 }
@@ -94,6 +99,20 @@ function getSectionArray(book: BookData, section: Section): ChapterItem[] {
     case 'back_matter': return book.back_matter
     default: return []
   }
+}
+
+function countWords(book: BookData): number {
+  const stripHtml = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  let total = 0
+  for (const ch of [...book.front_matter, ...book.body, ...book.back_matter]) {
+    const text = stripHtml(ch.content)
+    if (text) total += text.split(/\s+/).length
+  }
+  if (book.copyright) {
+    const text = stripHtml(book.copyright)
+    if (text) total += text.split(/\s+/).length
+  }
+  return total
 }
 
 function setSectionArray(book: BookData, section: Section, items: ChapterItem[]): BookData {
@@ -183,6 +202,44 @@ export const useBookStore = create<BookStore>((set, get) => ({
       if (!book?.version) return // cancelled
       const section: Section = book.body.length > 0 ? 'body' : 'front_matter'
       set({ book, currentSection: section, currentIndex: 0, isDirty: false, statusMessage: `Opened: ${book.metadata.title}` })
+      // Add to recent projects
+      if (book.file_path) {
+        const wordCount = countWords(book)
+        const chapterCount = book.front_matter.length + book.body.length + book.back_matter.length
+        await AddRecentProject(main.RecentProject.createFrom({
+          type: 'book',
+          path: book.file_path,
+          name: book.metadata.title || 'Untitled',
+          lastOpened: new Date().toISOString(),
+          stats: { chapters: chapterCount, words: wordCount }
+        }))
+      }
+    } catch (e) {
+      set({ statusMessage: `Error opening file: ${e}` })
+    }
+  },
+
+  openRecentBook: async (path: string) => {
+    const { isDirty } = get()
+    if (isDirty) {
+      set(s => ({ dialogs: { ...s.dialogs, showUnsavedWarning: true, pendingAction: 'open' } }))
+      return
+    }
+    try {
+      const book: BookData = await OpenRecentProject(path)
+      if (!book?.version) return
+      const section: Section = book.body.length > 0 ? 'body' : 'front_matter'
+      set({ book, currentSection: section, currentIndex: 0, isDirty: false, statusMessage: `Opened: ${book.metadata.title}` })
+      // Update recent projects with new timestamp
+      const wordCount = countWords(book)
+      const chapterCount = book.front_matter.length + book.body.length + book.back_matter.length
+      await AddRecentProject(main.RecentProject.createFrom({
+        type: 'book',
+        path: book.file_path || path,
+        name: book.metadata.title || 'Untitled',
+        lastOpened: new Date().toISOString(),
+        stats: { chapters: chapterCount, words: wordCount }
+      }))
     } catch (e) {
       set({ statusMessage: `Error opening file: ${e}` })
     }
@@ -214,6 +271,26 @@ export const useBookStore = create<BookStore>((set, get) => ({
     } catch (e) {
       set({ statusMessage: `Save error: ${e}` })
     }
+  },
+
+  closeProject: async () => {
+    const { book, isDirty } = get()
+    if (book && isDirty) {
+      try {
+        await SaveBook(book as any)
+      } catch (e) {
+        console.error('Auto-save before close failed:', e)
+      }
+    }
+    set({
+      book: null,
+      currentSection: 'body',
+      currentIndex: 0,
+      isDirty: false,
+      pendingDiff: null,
+      statusMessage: '',
+    })
+    useAppStore.getState().setShowWelcome(true)
   },
 
   setCurrentChapter: (section, index) => {
@@ -355,6 +432,13 @@ export const useBookStore = create<BookStore>((set, get) => ({
     } catch (e) {
       set({ statusMessage: `Error: ${e}` })
     }
+  },
+
+  loadImportedBook: (book: BookData) => {
+    set(s => ({ dialogs: { ...s.dialogs, showNewBookWizard: false } }))
+    const section: Section = book.body.length > 0 ? 'body' : book.front_matter.length > 0 ? 'front_matter' : 'back_matter'
+    set({ book, currentSection: section, currentIndex: 0, isDirty: true, statusMessage: `Imported: ${book.metadata.title}` })
+    useAppStore.getState().setShowWelcome(false)
   },
 
   cancelNewBookWizard: () =>

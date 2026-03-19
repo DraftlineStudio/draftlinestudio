@@ -361,6 +361,99 @@ func (a *App) BrowseForDirectory() string {
 	return path
 }
 
+// ── Recent Projects ─────────────────────────────────────────────────────────
+
+type RecentProject struct {
+	Type       string              `json:"type"` // "book" | "universe"
+	Path       string              `json:"path"`
+	Name       string              `json:"name"`
+	LastOpened string              `json:"lastOpened"` // ISO 8601 timestamp
+	Stats      RecentProjectStats  `json:"stats"`
+}
+
+type RecentProjectStats struct {
+	Books    *int `json:"books,omitempty"`
+	Chapters int  `json:"chapters"`
+	Words    int  `json:"words"`
+}
+
+func (a *App) recentProjectsPath() string {
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		configDir = "."
+	}
+	dir := filepath.Join(configDir, "draftline")
+	_ = os.MkdirAll(dir, 0755)
+	return filepath.Join(dir, "recent_projects.json")
+}
+
+// GetRecentProjects returns the list of recently opened projects.
+func (a *App) GetRecentProjects() []RecentProject {
+	data, err := os.ReadFile(a.recentProjectsPath())
+	if err != nil {
+		return []RecentProject{}
+	}
+	var projects []RecentProject
+	if err := json.Unmarshal(data, &projects); err != nil {
+		return []RecentProject{}
+	}
+	return projects
+}
+
+// AddRecentProject adds or updates a project in the recent list.
+func (a *App) AddRecentProject(project RecentProject) error {
+	projects := a.GetRecentProjects()
+
+	// Remove existing entry with same path
+	filtered := make([]RecentProject, 0, len(projects))
+	for _, p := range projects {
+		if p.Path != project.Path {
+			filtered = append(filtered, p)
+		}
+	}
+
+	// Add new project at the front
+	project.LastOpened = time.Now().Format(time.RFC3339)
+	projects = append([]RecentProject{project}, filtered...)
+
+	// Keep only the most recent 20
+	if len(projects) > 20 {
+		projects = projects[:20]
+	}
+
+	data, err := json.MarshalIndent(projects, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(a.recentProjectsPath(), data, 0644)
+}
+
+// RemoveRecentProject removes a project from the recent list by path.
+func (a *App) RemoveRecentProject(path string) error {
+	projects := a.GetRecentProjects()
+	filtered := make([]RecentProject, 0, len(projects))
+	for _, p := range projects {
+		if p.Path != path {
+			filtered = append(filtered, p)
+		}
+	}
+	data, err := json.MarshalIndent(filtered, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(a.recentProjectsPath(), data, 0644)
+}
+
+// ClearRecentProjects removes all projects from the recent list.
+func (a *App) ClearRecentProjects() error {
+	return os.WriteFile(a.recentProjectsPath(), []byte("[]"), 0644)
+}
+
+// OpenRecentProject opens a project from the recent list by path.
+func (a *App) OpenRecentProject(path string) (BookData, error) {
+	return a.openBook(path)
+}
+
 // TestLocalAI makes a quick connectivity check to a local OpenAI-compatible endpoint.
 func (a *App) TestLocalAI(endpoint string) AIRewriteResult {
 	if endpoint == "" {

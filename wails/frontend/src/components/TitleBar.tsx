@@ -5,8 +5,12 @@ import { useAppStore } from '../store/appStore'
 import { WindowMinimise, WindowToggleMaximise, Quit } from '../../wailsjs/runtime/runtime'
 import { avatarColor, hexToRgba } from '../utils/accentColor'
 
-export default function TitleBar() {
-  const { book, newBook, openBook, saveBook, saveBookAs, openMetadataDialog } = useBookStore()
+interface TitleBarProps {
+  minimal?: boolean
+}
+
+export default function TitleBar({ minimal = false }: TitleBarProps) {
+  const { book, newBook, openBook, saveBook, saveBookAs, openMetadataDialog, closeProject } = useBookStore()
   const { settings, openSettings } = useAppStore()
   const [dropOpen, setDropOpen] = useState(false)
   const [dropPos, setDropPos] = useState({ top: 0, left: 0 })
@@ -94,9 +98,44 @@ export default function TitleBar() {
         </svg>
         <span>Book Info…</span>
       </button>
+
+      <div className="titlebar-dropdown-sep" />
+
+      <button className="titlebar-dropdown-item" onClick={() => run(closeProject)} disabled={!book}>
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3">
+          <rect x="1" y="1" width="8" height="11" rx="1.2" />
+          <path d="M6 5l3 3M6 8l3-3" strokeLinecap="round" />
+        </svg>
+        <span>Close Project</span>
+      </button>
     </div>,
     document.body
   )
+
+  // Minimal mode for welcome screen - just branding and window controls
+  if (minimal) {
+    return (
+      <div className="titlebar titlebar-minimal">
+        <div className="titlebar-brand">
+          <div className="titlebar-logo" role="img" aria-label="Draftline" />
+        </div>
+
+        <div className="titlebar-spacer" />
+
+        <div className="titlebar-actions">
+          <button className="titlebar-winbtn" onClick={WindowMinimise} title="Minimize">
+            <svg width="10" height="1" viewBox="0 0 10 1"><line x1="0" y1="0.5" x2="10" y2="0.5" stroke="currentColor" strokeWidth="1.5"/></svg>
+          </button>
+          <button className="titlebar-winbtn" onClick={WindowToggleMaximise} title="Maximize">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="0.75" y="0.75" width="8.5" height="8.5" stroke="currentColor" strokeWidth="1.5"/></svg>
+          </button>
+          <button className="titlebar-winbtn close" onClick={Quit} title="Close">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><line x1="1" y1="1" x2="9" y2="9" stroke="currentColor" strokeWidth="1.5"/><line x1="9" y1="1" x2="1" y2="9" stroke="currentColor" strokeWidth="1.5"/></svg>
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="titlebar">

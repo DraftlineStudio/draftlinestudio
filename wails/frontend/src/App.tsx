@@ -4,6 +4,7 @@ import { useAppStore } from './store/appStore'
 import { applyAccent, clearAccent } from './utils/accentColor'
 import { useAutoTheme } from './hooks/useAutoTheme'
 import ThemeTransitionOverlay from './components/ThemeTransitionOverlay'
+import WelcomeScreen from './components/WelcomeScreen'
 import TitleBar from './components/TitleBar'
 import ChapterPanel from './components/ChapterPanel'
 import EditorPanel from './components/EditorPanel'
@@ -12,21 +13,48 @@ import StatusBar from './components/StatusBar'
 import MetadataDialog from './components/dialogs/MetadataDialog'
 import NewChapterDialog from './components/dialogs/NewChapterDialog'
 import NewBookWizard from './components/dialogs/NewBookWizard'
+import NewUniverseWizard from './components/dialogs/NewUniverseWizard'
 import UnsavedChangesDialog from './components/dialogs/UnsavedChangesDialog'
 import AppSettingsDialog from './components/dialogs/AppSettingsDialog'
 
 export default function App() {
-  const { darkMode, book, newBook, openBook, saveBook, saveBookAs, dialogs, initBook, setDarkMode, toggleLeftPanel, toggleRightPanel, rightPanelOpen } = useBookStore()
-  const { loadSettings, settings, showSettings } = useAppStore()
+  const { darkMode, book, newBook, openBook, openRecentBook, saveBook, saveBookAs, dialogs, initBook, setDarkMode, toggleLeftPanel, toggleRightPanel, rightPanelOpen } = useBookStore()
+  const { loadSettings, settings, showSettings, showWelcome, setShowWelcome, loadRecentProjects, showNewUniverse, setShowNewUniverse } = useAppStore()
   const prevThemeRef = useRef<'light' | 'dark' | null>(null)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [targetTheme, setTargetTheme] = useState<'light' | 'dark'>('dark')
 
-  // Initialise with a blank book on first load + load persisted settings
+  // Initialise on first load + load persisted settings and recent projects
   useEffect(() => {
-    initBook()
     loadSettings()
+    loadRecentProjects()
   }, [])
+
+  // Handle new book from welcome screen
+  const handleNewBook = useCallback(() => {
+    newBook()
+  }, [newBook])
+
+  // Handle new universe from welcome screen
+  const handleNewUniverse = useCallback(() => {
+    setShowNewUniverse(true)
+  }, [setShowNewUniverse])
+
+  // Handle open file from welcome screen
+  const handleOpenFile = useCallback(async () => {
+    await openBook()
+    // If a book was opened, hide welcome screen
+    const currentBook = useBookStore.getState().book
+    if (currentBook?.file_path) {
+      setShowWelcome(false)
+    }
+  }, [openBook, setShowWelcome])
+
+  // Handle open recent from welcome screen
+  const handleOpenRecent = useCallback(async (path: string) => {
+    await openRecentBook(path)
+    setShowWelcome(false)
+  }, [openRecentBook, setShowWelcome])
 
   // Handle theme transition with smooth fade animation and sky overlay
   const handleThemeTransition = useCallback((newTheme: 'light' | 'dark') => {
@@ -98,6 +126,34 @@ export default function App() {
     return () => window.removeEventListener('keydown', handler)
   }, [newBook, openBook, saveBook, saveBookAs, toggleLeftPanel, toggleRightPanel])
 
+  // When book is opened from NewBookWizard, hide welcome screen
+  useEffect(() => {
+    if (book && !showWelcome) return
+    if (book?.file_path || (book && dialogs.showNewBookWizard === false)) {
+      // Book was created/opened, hide welcome
+      setShowWelcome(false)
+    }
+  }, [book, dialogs.showNewBookWizard])
+
+  // Show welcome screen
+  if (showWelcome) {
+    return (
+      <div className="app">
+        <ThemeTransitionOverlay isTransitioning={isTransitioning} targetTheme={targetTheme} />
+        <TitleBar minimal />
+        <WelcomeScreen
+          onNewBook={handleNewBook}
+          onNewUniverse={handleNewUniverse}
+          onOpenFile={handleOpenFile}
+          onOpenRecent={handleOpenRecent}
+        />
+        {dialogs.showNewBookWizard && <NewBookWizard onCreated={() => setShowWelcome(false)} />}
+        {showNewUniverse && <NewUniverseWizard />}
+        {showSettings && <AppSettingsDialog />}
+      </div>
+    )
+  }
+
   return (
     <div className="app">
       <ThemeTransitionOverlay isTransitioning={isTransitioning} targetTheme={targetTheme} />
@@ -121,6 +177,7 @@ export default function App() {
         <NewChapterDialog section={dialogs.newChapterSection} />
       )}
       {dialogs.showNewBookWizard && <NewBookWizard />}
+      {showNewUniverse && <NewUniverseWizard />}
       {dialogs.showUnsavedWarning && <UnsavedChangesDialog />}
       {showSettings && <AppSettingsDialog />}
     </div>
