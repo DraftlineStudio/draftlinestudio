@@ -87,6 +87,7 @@ interface BookStore {
   discardAndProceed: () => Promise<void>
   initBook: () => Promise<void>
   confirmNewBook: (title: string, author: string, publisher: string) => Promise<void>
+  loadImportedBook: (book: BookData) => void
   cancelNewBookWizard: () => void
   setDarkMode: (v: boolean) => void
 }
@@ -431,6 +432,13 @@ export const useBookStore = create<BookStore>((set, get) => ({
     } catch (e) {
       set({ statusMessage: `Error: ${e}` })
     }
+  },
+
+  loadImportedBook: (book: BookData) => {
+    set(s => ({ dialogs: { ...s.dialogs, showNewBookWizard: false } }))
+    const section: Section = book.body.length > 0 ? 'body' : book.front_matter.length > 0 ? 'front_matter' : 'back_matter'
+    set({ book, currentSection: section, currentIndex: 0, isDirty: true, statusMessage: `Imported: ${book.metadata.title}` })
+    useAppStore.getState().setShowWelcome(false)
   },
 
   cancelNewBookWizard: () =>
