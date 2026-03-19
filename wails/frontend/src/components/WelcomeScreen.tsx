@@ -47,7 +47,9 @@ export default function WelcomeScreen({ onNewBook, onNewUniverse, onOpenFile, on
     }
   }, [removeRecentProject])
 
-  const trialDaysRemaining = 147 // TODO: Calculate from actual license data
+  // TODO: Replace with actual license check from backend
+  const licenseType = 'pro' as 'trial' | 'pro' | 'indie'
+  const trialDaysRemaining = 147
 
   return (
     <div className="welcome-screen">
@@ -185,13 +187,24 @@ export default function WelcomeScreen({ onNewBook, onNewUniverse, onOpenFile, on
 
         <div className="welcome-license">
           <div className="license-status">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-              <path d="M7 11V7a5 5 0 0110 0v4" />
-            </svg>
-            <span>Trial: {trialDaysRemaining}d</span>
+            {licenseType === 'trial' ? (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0110 0v4" />
+                </svg>
+                <span>Trial: {trialDaysRemaining}d</span>
+              </>
+            ) : (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                </svg>
+                <span>Studio {licenseType === 'pro' ? 'Pro' : 'Indie'}</span>
+              </>
+            )}
           </div>
-          <button className="license-upgrade">Upgrade</button>
+          {licenseType === 'trial' && <button className="license-upgrade">Upgrade</button>}
         </div>
       </div>
     </div>
