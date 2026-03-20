@@ -33,6 +33,7 @@ export namespace main {
 	    ai_local_model: string;
 	    prose_guide: string;
 	    book_font: string;
+	    editor_font_size: string;
 	    book_font_size: number;
 	    book_line_spacing: string;
 	    book_drop_caps: boolean;
@@ -62,6 +63,7 @@ export namespace main {
 	        this.ai_local_model = source["ai_local_model"];
 	        this.prose_guide = source["prose_guide"];
 	        this.book_font = source["book_font"];
+	        this.editor_font_size = source["editor_font_size"];
 	        this.book_font_size = source["book_font_size"];
 	        this.book_line_spacing = source["book_line_spacing"];
 	        this.book_drop_caps = source["book_drop_caps"];
