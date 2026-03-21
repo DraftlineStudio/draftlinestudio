@@ -110,7 +110,8 @@ type AppSettings struct {
 	ProseGuide      string `json:"prose_guide"`
 	// Book defaults
 	BookFont        string `json:"book_font"`
-	BookFontSize    int    `json:"book_font_size"`
+	EditorFontSize  string `json:"editor_font_size"`  // "small"|"normal"|"large" (12/14/16px)
+	BookFontSize    int    `json:"book_font_size"`    // Export font size in points
 	BookLineSpacing string `json:"book_line_spacing"` // "1.0"|"1.25"|"1.5"|"2.0"
 	BookDropCaps    bool   `json:"book_drop_caps"`
 	BookTrimSize    string `json:"book_trim_size"` // "6x9"|"5.5x8.5"|"5x8"|"7x10"|"A5"
