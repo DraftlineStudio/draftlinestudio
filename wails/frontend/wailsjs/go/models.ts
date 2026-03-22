@@ -132,6 +132,7 @@ export namespace main {
 	}
 	export class ChapterItem {
 	    title: string;
+	    subtitle?: string;
 	    type: string;
 	    content: string;
 	
@@ -142,6 +143,7 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.title = source["title"];
+	        this.subtitle = source["subtitle"];
 	        this.type = source["type"];
 	        this.content = source["content"];
 	    }
