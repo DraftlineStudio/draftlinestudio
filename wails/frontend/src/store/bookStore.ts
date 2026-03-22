@@ -57,6 +57,7 @@ interface BookStore {
   // Content mutations
   updateCurrentContent: (html: string) => void
   updateChapterTitle: (section: Section, index: number, title: string) => void
+  updateChapterSubtitle: (section: Section, index: number, subtitle: string) => void
   addChapter: (section: Section, item: ChapterItem) => void
   deleteChapter: (section: Section, index: number) => void
   moveChapter: (section: Section, from: number, to: number) => void
@@ -315,6 +316,14 @@ export const useBookStore = create<BookStore>((set, get) => ({
     if (!book || section === 'copyright') return
     const items = getSectionArray(book, section)
     const updated = items.map((item, i) => i === index ? { ...item, title } : item)
+    set({ book: setSectionArray(book, section, updated), isDirty: true })
+  },
+
+  updateChapterSubtitle: (section, index, subtitle) => {
+    const { book } = get()
+    if (!book || section === 'copyright') return
+    const items = getSectionArray(book, section)
+    const updated = items.map((item, i) => i === index ? { ...item, subtitle } : item)
     set({ book: setSectionArray(book, section, updated), isDirty: true })
   },
 
