@@ -1054,15 +1054,27 @@ html, body, #root {
 .ProseMirror {
   outline: none;
   min-height: 480px;
-  font-family: 'Merriweather', 'Georgia', serif;
-  font-size: 15.5px;
+  font-family: var(--editor-font, 'Merriweather'), 'Georgia', serif;
+  font-size: var(--editor-font-size, 14px);
   line-height: 1.85;
   color: var(--text-primary);
   caret-color: var(--accent);
 }
 .ProseMirror > * + * { margin-top: 0; }
-.ProseMirror p { margin-bottom: 1.1em; }
+.ProseMirror p {
+  margin-bottom: 0.15em;
+  text-indent: 1.5em;
+}
 .ProseMirror p:first-child { margin-top: 0; }
+/* First paragraph after headings or hr should not be indented */
+.ProseMirror h1 + p,
+.ProseMirror h2 + p,
+.ProseMirror h3 + p,
+.ProseMirror hr + p,
+.ProseMirror blockquote + p,
+.ProseMirror p:first-child {
+  text-indent: 0;
+}
 /* Chapter Title — h1 */
 .ProseMirror h1 {
   font-size: 1.7em;
