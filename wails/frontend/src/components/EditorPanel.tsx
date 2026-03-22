@@ -1,6 +1,9 @@
 import { useCallback, useMemo, useRef, useEffect } from 'react'
 import { useBookStore } from '../store/bookStore'
+import { useAppStore } from '../store/appStore'
 import RichEditor from './editor/RichEditor'
+
+const EDITOR_FONT_SIZES = { small: '12px', normal: '14px', large: '16px' }
 
 function getCurrentContent(book: ReturnType<typeof useBookStore.getState>['book'], section: string, index: number): string {
   if (!book) return ''
@@ -172,6 +175,7 @@ function DiffPanel({ label, name }: { label: string; name: string }) {
 
 export default function EditorPanel() {
   const { book, currentSection, currentIndex, updateCurrentContent, pendingDiff } = useBookStore()
+  const { settings } = useAppStore()
 
   const content = getCurrentContent(book, currentSection, currentIndex)
   const { label, name } = getChapterInfo(book, currentSection, currentIndex)
@@ -181,9 +185,15 @@ export default function EditorPanel() {
     [updateCurrentContent, currentSection, currentIndex],
   )
 
+  // CSS custom properties for editor styling
+  const editorStyle = {
+    '--editor-font': settings.book_font,
+    '--editor-font-size': EDITOR_FONT_SIZES[settings.editor_font_size] || '14px',
+  } as React.CSSProperties
+
   if (!book) {
     return (
-      <div className="editor-panel">
+      <div className="editor-panel" style={editorStyle}>
         <div className="editor-empty-state">
           <div className="editor-empty-logo" />
           <div className="editor-empty-tagline">your manuscript, beautifully composed</div>
@@ -204,7 +214,7 @@ export default function EditorPanel() {
 
   if (pendingDiff) {
     return (
-      <div className="editor-panel">
+      <div className="editor-panel" style={editorStyle}>
         <DiffPanel label={label} name={name} />
       </div>
     )
@@ -213,7 +223,7 @@ export default function EditorPanel() {
   const editorKey = `${currentSection}-${currentIndex}`
 
   return (
-    <div className="editor-panel">
+    <div className="editor-panel" style={editorStyle}>
       <RichEditor
         key={editorKey}
         content={content}
