@@ -49,9 +49,10 @@ type Metadata struct {
 }
 
 type ChapterItem struct {
-	Title   string `json:"title"`
-	Type    string `json:"type"`
-	Content string `json:"content"`
+	Title    string `json:"title"`
+	Subtitle string `json:"subtitle,omitempty"` // Optional chapter subheading
+	Type     string `json:"type"`
+	Content  string `json:"content"`
 }
 
 type BookData struct {
@@ -195,19 +196,22 @@ func (a *App) openBook(path string) (BookData, error) {
 			File  string `json:"file"`
 		} `json:"chapters,omitempty"`
 		FrontMatter []struct {
-			Title string `json:"title"`
-			Type  string `json:"type"`
-			File  string `json:"file"`
+			Title    string `json:"title"`
+			Subtitle string `json:"subtitle,omitempty"`
+			Type     string `json:"type"`
+			File     string `json:"file"`
 		} `json:"front_matter,omitempty"`
 		Body []struct {
-			Title string `json:"title"`
-			Type  string `json:"type"`
-			File  string `json:"file"`
+			Title    string `json:"title"`
+			Subtitle string `json:"subtitle,omitempty"`
+			Type     string `json:"type"`
+			File     string `json:"file"`
 		} `json:"body,omitempty"`
 		BackMatter []struct {
-			Title string `json:"title"`
-			Type  string `json:"type"`
-			File  string `json:"file"`
+			Title    string `json:"title"`
+			Subtitle string `json:"subtitle,omitempty"`
+			Type     string `json:"type"`
+			File     string `json:"file"`
 		} `json:"back_matter,omitempty"`
 	}
 
@@ -245,19 +249,19 @@ func (a *App) openBook(path string) (BookData, error) {
 	for _, item := range raw.FrontMatter {
 		content, _ := readZipEntry(r, item.File)
 		book.FrontMatter = append(book.FrontMatter, ChapterItem{
-			Title: item.Title, Type: item.Type, Content: string(content),
+			Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, Content: string(content),
 		})
 	}
 	for _, item := range raw.Body {
 		content, _ := readZipEntry(r, item.File)
 		book.Body = append(book.Body, ChapterItem{
-			Title: item.Title, Type: item.Type, Content: string(content),
+			Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, Content: string(content),
 		})
 	}
 	for _, item := range raw.BackMatter {
 		content, _ := readZipEntry(r, item.File)
 		book.BackMatter = append(book.BackMatter, ChapterItem{
-			Title: item.Title, Type: item.Type, Content: string(content),
+			Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, Content: string(content),
 		})
 	}
 
@@ -1152,9 +1156,10 @@ func (a *App) writeBook(book BookData, path string) SaveResult {
 	w := zip.NewWriter(&buf)
 
 	type entry struct {
-		Title string `json:"title"`
-		Type  string `json:"type"`
-		File  string `json:"file"`
+		Title    string `json:"title"`
+		Subtitle string `json:"subtitle,omitempty"`
+		Type     string `json:"type"`
+		File     string `json:"file"`
 	}
 	type manifest struct {
 		Version     string   `json:"version"`
@@ -1196,21 +1201,21 @@ func (a *App) writeBook(book BookData, path string) SaveResult {
 		if err := addEntry(file, item.Content); err != nil {
 			return SaveResult{Success: false, Error: err.Error()}
 		}
-		mf.FrontMatter = append(mf.FrontMatter, entry{item.Title, item.Type, file})
+		mf.FrontMatter = append(mf.FrontMatter, entry{Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, File: file})
 	}
 	for i, item := range book.Body {
 		file := fmt.Sprintf("body/%03d.html", i)
 		if err := addEntry(file, item.Content); err != nil {
 			return SaveResult{Success: false, Error: err.Error()}
 		}
-		mf.Body = append(mf.Body, entry{item.Title, item.Type, file})
+		mf.Body = append(mf.Body, entry{Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, File: file})
 	}
 	for i, item := range book.BackMatter {
 		file := fmt.Sprintf("back_matter/%03d.html", i)
 		if err := addEntry(file, item.Content); err != nil {
 			return SaveResult{Success: false, Error: err.Error()}
 		}
-		mf.BackMatter = append(mf.BackMatter, entry{item.Title, item.Type, file})
+		mf.BackMatter = append(mf.BackMatter, entry{Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, File: file})
 	}
 
 	manifestBytes, _ := json.MarshalIndent(mf, "", "  ")
