@@ -70,6 +70,32 @@ export namespace main {
 	        this.book_trim_size = source["book_trim_size"];
 	    }
 	}
+	export class WritingStyleOptions {
+	    metaphors: number;
+	    similes: number;
+	    sensory_detail: number;
+	    internal_thought: number;
+	    dialogue: number;
+	    action: number;
+	    description: number;
+	    pacing: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new WritingStyleOptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.metaphors = source["metaphors"];
+	        this.similes = source["similes"];
+	        this.sensory_detail = source["sensory_detail"];
+	        this.internal_thought = source["internal_thought"];
+	        this.dialogue = source["dialogue"];
+	        this.action = source["action"];
+	        this.description = source["description"];
+	        this.pacing = source["pacing"];
+	    }
+	}
 	export class WritingGoals {
 	    target_word_count: number;
 	    daily_word_goal: number;
@@ -198,6 +224,7 @@ export namespace main {
 	    file_path?: string;
 	    story_bible?: StoryBible;
 	    writing_goals?: WritingGoals;
+	    style_options?: WritingStyleOptions;
 	
 	    static createFrom(source: any = {}) {
 	        return new BookData(source);
@@ -214,6 +241,7 @@ export namespace main {
 	        this.file_path = source["file_path"];
 	        this.story_bible = this.convertValues(source["story_bible"], StoryBible);
 	        this.writing_goals = this.convertValues(source["writing_goals"], WritingGoals);
+	        this.style_options = this.convertValues(source["style_options"], WritingStyleOptions);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -362,6 +390,7 @@ export namespace main {
 	        this.error = source["error"];
 	    }
 	}
+	
 	
 
 }

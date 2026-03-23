@@ -70,8 +70,8 @@ export function RemoveRecentProject(arg1) {
   return window['go']['main']['App']['RemoveRecentProject'](arg1);
 }
 
-export function RewriteText(arg1, arg2) {
-  return window['go']['main']['App']['RewriteText'](arg1, arg2);
+export function RewriteText(arg1, arg2, arg3) {
+  return window['go']['main']['App']['RewriteText'](arg1, arg2, arg3);
 }
 
 export function SaveBook(arg1) {

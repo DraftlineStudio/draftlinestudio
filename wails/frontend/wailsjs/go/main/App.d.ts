@@ -36,7 +36,7 @@ export function OpenRecentProject(arg1:string):Promise<main.BookData>;
 
 export function RemoveRecentProject(arg1:string):Promise<void>;
 
-export function RewriteText(arg1:string,arg2:string):Promise<main.AIRewriteResult>;
+export function RewriteText(arg1:string,arg2:string,arg3:string):Promise<main.AIRewriteResult>;
 
 export function SaveBook(arg1:main.BookData):Promise<main.SaveResult>;
 
