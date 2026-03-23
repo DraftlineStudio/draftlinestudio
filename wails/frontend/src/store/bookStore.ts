@@ -69,6 +69,7 @@ interface BookStore {
   updateCharacter: (char: Character) => void
   deleteCharacter: (id: string) => void
   updateStoryBibleText: (field: 'plot_notes' | 'timeline', text: string) => void
+  updateWritingGoals: (goals: Partial<{ target_word_count: number; daily_word_goal: number; words_today: number; last_writing_date: string }>) => void
 
   // Layout
   leftPanelOpen: boolean
@@ -406,6 +407,13 @@ export const useBookStore = create<BookStore>((set, get) => ({
     if (!book) return
     const bible: StoryBible = book.story_bible ?? { characters: [], plot_notes: '', timeline: '' }
     set({ book: { ...book, story_bible: { ...bible, [field]: text } }, isDirty: true })
+  },
+
+  updateWritingGoals: (goals) => {
+    const { book } = get()
+    if (!book) return
+    const existing = book.writing_goals ?? { target_word_count: 0, daily_word_goal: 0, words_today: 0, last_writing_date: '' }
+    set({ book: { ...book, writing_goals: { ...existing, ...goals } }, isDirty: true })
   },
 
   toggleLeftPanel: () => set(s => ({ leftPanelOpen: !s.leftPanelOpen })),
