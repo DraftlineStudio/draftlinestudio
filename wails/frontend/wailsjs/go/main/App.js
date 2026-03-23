@@ -22,6 +22,10 @@ export function ClearRecentProjects() {
   return window['go']['main']['App']['ClearRecentProjects']();
 }
 
+export function GetAppVersion() {
+  return window['go']['main']['App']['GetAppVersion']();
+}
+
 export function GetCurrentFile() {
   return window['go']['main']['App']['GetCurrentFile']();
 }

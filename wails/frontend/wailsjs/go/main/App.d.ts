@@ -12,6 +12,8 @@ export function CheckClaudeCode():Promise<main.ClaudeCodeStatus>;
 
 export function ClearRecentProjects():Promise<void>;
 
+export function GetAppVersion():Promise<string>;
+
 export function GetCurrentFile():Promise<string>;
 
 export function GetRecentProjects():Promise<Array<main.RecentProject>>;
