@@ -55,15 +55,23 @@ type ChapterItem struct {
 	Content  string `json:"content"`
 }
 
+type WritingGoals struct {
+	TargetWordCount int    `json:"target_word_count"`
+	DailyWordGoal   int    `json:"daily_word_goal"`
+	WordsToday      int    `json:"words_today"`
+	LastWritingDate string `json:"last_writing_date"`
+}
+
 type BookData struct {
-	Version     string        `json:"version"`
-	Metadata    Metadata      `json:"metadata"`
-	Copyright   string        `json:"copyright"`
-	FrontMatter []ChapterItem `json:"front_matter"`
-	Body        []ChapterItem `json:"body"`
-	BackMatter  []ChapterItem `json:"back_matter"`
-	FilePath    string        `json:"file_path,omitempty"`
-	StoryBible  StoryBible    `json:"story_bible,omitempty"`
+	Version      string        `json:"version"`
+	Metadata     Metadata      `json:"metadata"`
+	Copyright    string        `json:"copyright"`
+	FrontMatter  []ChapterItem `json:"front_matter"`
+	Body         []ChapterItem `json:"body"`
+	BackMatter   []ChapterItem `json:"back_matter"`
+	FilePath     string        `json:"file_path,omitempty"`
+	StoryBible   StoryBible    `json:"story_bible,omitempty"`
+	WritingGoals WritingGoals  `json:"writing_goals,omitempty"`
 }
 
 type SaveResult struct {
@@ -213,6 +221,7 @@ func (a *App) openBook(path string) (BookData, error) {
 			Type     string `json:"type"`
 			File     string `json:"file"`
 		} `json:"back_matter,omitempty"`
+		WritingGoals WritingGoals `json:"writing_goals,omitempty"`
 	}
 
 	if err := json.Unmarshal(manifestData, &raw); err != nil {
@@ -220,12 +229,13 @@ func (a *App) openBook(path string) (BookData, error) {
 	}
 
 	book := BookData{
-		Version:     "2.0",
-		Metadata:    raw.Metadata,
-		FilePath:    path,
-		FrontMatter: []ChapterItem{},
-		Body:        []ChapterItem{},
-		BackMatter:  []ChapterItem{},
+		Version:      "2.0",
+		Metadata:     raw.Metadata,
+		FilePath:     path,
+		FrontMatter:  []ChapterItem{},
+		Body:         []ChapterItem{},
+		BackMatter:   []ChapterItem{},
+		WritingGoals: raw.WritingGoals,
 	}
 
 	// v1.0 migration: chapters/ -> body/
@@ -1162,19 +1172,21 @@ func (a *App) writeBook(book BookData, path string) SaveResult {
 		File     string `json:"file"`
 	}
 	type manifest struct {
-		Version     string   `json:"version"`
-		Metadata    Metadata `json:"metadata"`
-		FrontMatter []entry  `json:"front_matter"`
-		Body        []entry  `json:"body"`
-		BackMatter  []entry  `json:"back_matter"`
+		Version      string       `json:"version"`
+		Metadata     Metadata     `json:"metadata"`
+		FrontMatter  []entry      `json:"front_matter"`
+		Body         []entry      `json:"body"`
+		BackMatter   []entry      `json:"back_matter"`
+		WritingGoals WritingGoals `json:"writing_goals,omitempty"`
 	}
 
 	mf := manifest{
-		Version:     "2.0",
-		Metadata:    book.Metadata,
-		FrontMatter: []entry{},
-		Body:        []entry{},
-		BackMatter:  []entry{},
+		Version:      "2.0",
+		Metadata:     book.Metadata,
+		FrontMatter:  []entry{},
+		Body:         []entry{},
+		BackMatter:   []entry{},
+		WritingGoals: book.WritingGoals,
 	}
 
 	addEntry := func(name, content string) error {
