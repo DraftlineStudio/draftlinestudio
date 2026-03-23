@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAppStore } from '../../store/appStore'
 import { useBookStore } from '../../store/bookStore'
-import { TestLocalAI, CheckClaudeCode, SetupClaudeCode, OpenClaudeAuth } from '../../../wailsjs/go/main/App'
+import { TestLocalAI, CheckClaudeCode, SetupClaudeCode, OpenClaudeAuth, GetAppVersion } from '../../../wailsjs/go/main/App'
 import { EventsOn } from '../../../wailsjs/runtime/runtime'
 import type { main } from '../../../wailsjs/go/models'
 
@@ -37,6 +37,11 @@ export default function AppSettingsDialog() {
   const { setDarkMode } = useBookStore()
 
   const [section, setSection] = useState<SettingsSection>('application')
+  const [appVersion, setAppVersion] = useState('')
+
+  useEffect(() => {
+    GetAppVersion().then(setAppVersion).catch(() => {})
+  }, [])
 
   // Application
   const [author, setAuthor]       = useState(settings.default_author)
@@ -68,6 +73,7 @@ export default function AppSettingsDialog() {
 
   // Book
   const [bookFont, setBookFont]               = useState(settings.book_font)
+  const [editorFontSize, setEditorFontSize]   = useState(settings.editor_font_size)
   const [bookFontSize, setBookFontSize]       = useState(settings.book_font_size)
   const [bookLineSpacing, setBookLineSpacing] = useState(settings.book_line_spacing)
   const [bookDropCaps, setBookDropCaps]       = useState(settings.book_drop_caps)
@@ -185,6 +191,7 @@ export default function AppSettingsDialog() {
       ai_local_model: localModel.trim(),
       prose_guide: proseGuide,
       book_font: bookFont,
+      editor_font_size: editorFontSize,
       book_font_size: bookFontSize,
       book_line_spacing: bookLineSpacing,
       book_drop_caps: bookDropCaps,
@@ -566,13 +573,30 @@ export default function AppSettingsDialog() {
 
             {/* ════ BOOK DEFAULTS ════ */}
             {section === 'book' && <>
-              <div className="settings-section-label" style={{ marginTop: 0 }}>Typography</div>
+              <div className="settings-section-label" style={{ marginTop: 0 }}>Editor Display</div>
               <div className="dialog-field">
-                <label className="dialog-label">Default Body Font</label>
+                <label className="dialog-label">Font</label>
                 <select className="dialog-select" value={bookFont} onChange={e => setBookFont(e.target.value)}>
                   {BOOK_FONTS.map(f => <option key={f} value={f}>{f}</option>)}
                 </select>
               </div>
+              <div className="dialog-field">
+                <label className="dialog-label">Text Size</label>
+                <div className="settings-theme-row">
+                  <button className={`settings-theme-btn${editorFontSize === 'small' ? ' active' : ''}`} onClick={() => setEditorFontSize('small')}>
+                    Small (12pt)
+                  </button>
+                  <button className={`settings-theme-btn${editorFontSize === 'normal' ? ' active' : ''}`} onClick={() => setEditorFontSize('normal')}>
+                    Normal (14pt)
+                  </button>
+                  <button className={`settings-theme-btn${editorFontSize === 'large' ? ' active' : ''}`} onClick={() => setEditorFontSize('large')}>
+                    Large (16pt)
+                  </button>
+                </div>
+                <div className="settings-hint">Controls how text appears in the editor. Does not affect exported files.</div>
+              </div>
+
+              <div className="settings-section-label">Export Settings</div>
               <div className="settings-two-col">
                 <div className="dialog-field">
                   <label className="dialog-label">Font Size (pt)</label>
@@ -590,6 +614,13 @@ export default function AppSettingsDialog() {
                 </div>
               </div>
               <div className="dialog-field">
+                <label className="dialog-label">Trim Size</label>
+                <select className="dialog-select" value={bookTrimSize} onChange={e => setBookTrimSize(e.target.value)}>
+                  {TRIM_SIZES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
+                <div className="settings-hint">Used when exporting to PDF for print-ready typesetting.</div>
+              </div>
+              <div className="dialog-field">
                 <label className="dialog-label" style={{ marginBottom: 8 }}>Drop Caps</label>
                 <label className="settings-toggle">
                   <input type="checkbox" checked={bookDropCaps} onChange={e => setBookDropCaps(e.target.checked)} />
@@ -597,23 +628,17 @@ export default function AppSettingsDialog() {
                   <span className="settings-toggle-label">{bookDropCaps ? 'Enabled — first letter of each chapter is enlarged' : 'Disabled'}</span>
                 </label>
               </div>
-
-              <div className="settings-section-label">Page Size</div>
-              <div className="dialog-field">
-                <label className="dialog-label">Trim Size</label>
-                <select className="dialog-select" value={bookTrimSize} onChange={e => setBookTrimSize(e.target.value)}>
-                  {TRIM_SIZES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                </select>
-                <div className="settings-hint">Used when exporting to PDF for print-ready typesetting.</div>
-              </div>
             </>}
 
           </div>
         </div>
 
         <div className="settings-dialog-footer">
-          <button className="dialog-btn" onClick={closeSettings}>Cancel</button>
-          <button className="dialog-btn primary" onClick={handleSave}>Save Settings</button>
+          <span className="settings-version">Draftline v{appVersion}</span>
+          <div className="settings-dialog-buttons">
+            <button className="dialog-btn" onClick={closeSettings}>Cancel</button>
+            <button className="dialog-btn primary" onClick={handleSave}>Save Settings</button>
+          </div>
         </div>
       </div>
     </div>

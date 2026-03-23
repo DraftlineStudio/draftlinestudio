@@ -22,6 +22,10 @@ export function ClearRecentProjects() {
   return window['go']['main']['App']['ClearRecentProjects']();
 }
 
+export function GetAppVersion() {
+  return window['go']['main']['App']['GetAppVersion']();
+}
+
 export function GetCurrentFile() {
   return window['go']['main']['App']['GetCurrentFile']();
 }
@@ -70,8 +74,8 @@ export function RemoveRecentProject(arg1) {
   return window['go']['main']['App']['RemoveRecentProject'](arg1);
 }
 
-export function RewriteText(arg1, arg2) {
-  return window['go']['main']['App']['RewriteText'](arg1, arg2);
+export function RewriteText(arg1, arg2, arg3) {
+  return window['go']['main']['App']['RewriteText'](arg1, arg2, arg3);
 }
 
 export function SaveBook(arg1) {

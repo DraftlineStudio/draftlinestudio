@@ -33,6 +33,7 @@ export namespace main {
 	    ai_local_model: string;
 	    prose_guide: string;
 	    book_font: string;
+	    editor_font_size: string;
 	    book_font_size: number;
 	    book_line_spacing: string;
 	    book_drop_caps: boolean;
@@ -62,10 +63,55 @@ export namespace main {
 	        this.ai_local_model = source["ai_local_model"];
 	        this.prose_guide = source["prose_guide"];
 	        this.book_font = source["book_font"];
+	        this.editor_font_size = source["editor_font_size"];
 	        this.book_font_size = source["book_font_size"];
 	        this.book_line_spacing = source["book_line_spacing"];
 	        this.book_drop_caps = source["book_drop_caps"];
 	        this.book_trim_size = source["book_trim_size"];
+	    }
+	}
+	export class WritingStyleOptions {
+	    metaphors: number;
+	    similes: number;
+	    sensory_detail: number;
+	    internal_thought: number;
+	    dialogue: number;
+	    action: number;
+	    description: number;
+	    pacing: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new WritingStyleOptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.metaphors = source["metaphors"];
+	        this.similes = source["similes"];
+	        this.sensory_detail = source["sensory_detail"];
+	        this.internal_thought = source["internal_thought"];
+	        this.dialogue = source["dialogue"];
+	        this.action = source["action"];
+	        this.description = source["description"];
+	        this.pacing = source["pacing"];
+	    }
+	}
+	export class WritingGoals {
+	    target_word_count: number;
+	    daily_word_goal: number;
+	    words_today: number;
+	    last_writing_date: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new WritingGoals(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.target_word_count = source["target_word_count"];
+	        this.daily_word_goal = source["daily_word_goal"];
+	        this.words_today = source["words_today"];
+	        this.last_writing_date = source["last_writing_date"];
 	    }
 	}
 	export class Character {
@@ -130,6 +176,7 @@ export namespace main {
 	}
 	export class ChapterItem {
 	    title: string;
+	    subtitle?: string;
 	    type: string;
 	    content: string;
 	
@@ -140,6 +187,7 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.title = source["title"];
+	        this.subtitle = source["subtitle"];
 	        this.type = source["type"];
 	        this.content = source["content"];
 	    }
@@ -175,6 +223,8 @@ export namespace main {
 	    back_matter: ChapterItem[];
 	    file_path?: string;
 	    story_bible?: StoryBible;
+	    writing_goals?: WritingGoals;
+	    style_options?: WritingStyleOptions;
 	
 	    static createFrom(source: any = {}) {
 	        return new BookData(source);
@@ -190,6 +240,8 @@ export namespace main {
 	        this.back_matter = this.convertValues(source["back_matter"], ChapterItem);
 	        this.file_path = source["file_path"];
 	        this.story_bible = this.convertValues(source["story_bible"], StoryBible);
+	        this.writing_goals = this.convertValues(source["writing_goals"], WritingGoals);
+	        this.style_options = this.convertValues(source["style_options"], WritingStyleOptions);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -338,6 +390,8 @@ export namespace main {
 	        this.error = source["error"];
 	    }
 	}
+	
+	
 
 }
 

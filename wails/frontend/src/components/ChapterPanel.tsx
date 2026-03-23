@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -18,6 +19,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { useBookStore } from '../store/bookStore'
 import type { Section } from '../types/draftline'
 import { FRONT_MATTER_TYPES, BODY_TYPES, BACK_MATTER_TYPES } from '../types/draftline'
+import ContextMenu, { ContextMenuItem } from './ContextMenu'
 
 function countWords(html: string): number {
   const div = document.createElement('div')
@@ -31,49 +33,187 @@ interface SortableItemProps {
   section: Section
   index: number
   title: string
+  subtitle?: string
   isSelected: boolean
   onClick: () => void
   onDelete: () => void
+  onRename: (title: string) => void
+  onEditSubtitle: (subtitle: string) => void
   canDelete: boolean
 }
 
-function SortableChapterItem({ id, title, isSelected, onClick, onDelete, canDelete }: SortableItemProps) {
+function SortableChapterItem({ id, title, subtitle, isSelected, onClick, onDelete, onRename, onEditSubtitle, canDelete }: SortableItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState(title)
+  const [editingSubtitle, setEditingSubtitle] = useState(false)
+  const [subtitleValue, setSubtitleValue] = useState(subtitle || '')
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [isEditing])
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
   }
 
+  function handleDoubleClick(e: React.MouseEvent) {
+    e.stopPropagation()
+    setEditValue(title)
+    setIsEditing(true)
+  }
+
+  function handleRenameSubmit() {
+    const trimmed = editValue.trim()
+    if (trimmed && trimmed !== title) {
+      onRename(trimmed)
+    }
+    setIsEditing(false)
+  }
+
+  function handleSubtitleSubmit() {
+    onEditSubtitle(subtitleValue.trim())
+    setEditingSubtitle(false)
+  }
+
+  function handleContextMenu(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    setContextMenu({ x: e.clientX, y: e.clientY })
+  }
+
+  function handleDeleteClick(e?: React.MouseEvent) {
+    e?.stopPropagation()
+    setShowDeleteConfirm(true)
+  }
+
+  function confirmDelete() {
+    onDelete()
+    setShowDeleteConfirm(false)
+  }
+
+  const contextMenuItems: ContextMenuItem[] = [
+    {
+      label: 'Rename',
+      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>,
+      onClick: () => { setEditValue(title); setIsEditing(true) },
+    },
+    {
+      label: subtitle ? 'Edit Subtitle' : 'Add Subtitle',
+      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="9" x2="20" y2="9" /><line x1="4" y1="15" x2="14" y2="15" /></svg>,
+      onClick: () => { setSubtitleValue(subtitle || ''); setEditingSubtitle(true) },
+    },
+    {
+      label: 'Delete',
+      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>,
+      onClick: handleDeleteClick,
+      danger: true,
+      disabled: !canDelete,
+    },
+  ]
+
+  if (isEditing) {
+    return (
+      <div ref={setNodeRef} style={style} className={`chapter-item ${isSelected ? 'selected' : ''}`}>
+        <input
+          ref={inputRef}
+          className="chapter-rename-input"
+          value={editValue}
+          onChange={e => setEditValue(e.target.value)}
+          onBlur={handleRenameSubmit}
+          onKeyDown={e => {
+            if (e.key === 'Enter') handleRenameSubmit()
+            if (e.key === 'Escape') setIsEditing(false)
+          }}
+        />
+      </div>
+    )
+  }
+
+  if (editingSubtitle) {
+    return (
+      <div ref={setNodeRef} style={style} className={`chapter-item ${isSelected ? 'selected' : ''}`}>
+        <input
+          className="chapter-rename-input"
+          value={subtitleValue}
+          onChange={e => setSubtitleValue(e.target.value)}
+          onBlur={handleSubtitleSubmit}
+          onKeyDown={e => {
+            if (e.key === 'Enter') handleSubtitleSubmit()
+            if (e.key === 'Escape') setEditingSubtitle(false)
+          }}
+          placeholder="Enter subtitle..."
+          autoFocus
+        />
+      </div>
+    )
+  }
+
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`chapter-item ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''}`}
-      onClick={onClick}
-    >
-      <span className="chapter-item-icon">
-        <svg width="11" height="13" viewBox="0 0 11 13" fill="none" stroke="currentColor" strokeWidth="1.2">
-          <rect x="0.6" y="0.6" width="9.8" height="11.8" rx="1" />
-          <line x1="2.5" y1="4" x2="8.5" y2="4" />
-          <line x1="2.5" y1="6.5" x2="8.5" y2="6.5" />
-          <line x1="2.5" y1="9" x2="6" y2="9" />
-        </svg>
-      </span>
-      <span className="chapter-item-title">{title}</span>
-      {canDelete && (
-        <button
-          className="chapter-item-delete"
-          onClick={(e) => { e.stopPropagation(); onDelete() }}
-          title="Delete"
-        >
-          ×
-        </button>
+    <>
+      <div
+        ref={setNodeRef}
+        style={style}
+        className={`chapter-item ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''} ${subtitle ? 'has-subtitle' : ''}`}
+        onClick={onClick}
+        onDoubleClick={handleDoubleClick}
+        onContextMenu={handleContextMenu}
+      >
+        <span className="chapter-item-icon">
+          <svg width="11" height="13" viewBox="0 0 11 13" fill="none" stroke="currentColor" strokeWidth="1.2">
+            <rect x="0.6" y="0.6" width="9.8" height="11.8" rx="1" />
+            <line x1="2.5" y1="4" x2="8.5" y2="4" />
+            <line x1="2.5" y1="6.5" x2="8.5" y2="6.5" />
+            <line x1="2.5" y1="9" x2="6" y2="9" />
+          </svg>
+        </span>
+        <div className="chapter-item-text">
+          <span className="chapter-item-title">{title}</span>
+          {subtitle && <span className="chapter-item-subtitle">{subtitle}</span>}
+        </div>
+        {canDelete && (
+          <button
+            className="chapter-item-delete"
+            onClick={handleDeleteClick}
+            title="Delete"
+          >
+            ×
+          </button>
+        )}
+        <span className="chapter-item-drag" {...attributes} {...listeners} title="Drag to reorder">
+          ⠿
+        </span>
+      </div>
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenuItems}
+          onClose={() => setContextMenu(null)}
+        />
       )}
-      <span className="chapter-item-drag" {...attributes} {...listeners} title="Drag to reorder">
-        ⠿
-      </span>
-    </div>
+      {showDeleteConfirm && (
+        <div className="dialog-overlay" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="dialog" onClick={e => e.stopPropagation()} style={{ maxWidth: 360 }}>
+            <div className="dialog-title">Delete Chapter?</div>
+            <p style={{ margin: '8px 0 16px', fontSize: 12, color: 'var(--text-secondary)' }}>
+              Are you sure you want to delete "{title}"? This action cannot be undone.
+            </p>
+            <div className="dialog-actions">
+              <button className="dialog-btn" onClick={() => setShowDeleteConfirm(false)}>Cancel</button>
+              <button className="dialog-btn" style={{ background: '#e55', borderColor: '#e55', color: '#fff' }} onClick={confirmDelete}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -84,7 +224,7 @@ interface SectionListProps {
 }
 
 function SectionList({ section, label, types: _types }: SectionListProps) {
-  const { book, currentSection, currentIndex, setCurrentChapter, deleteChapter, moveChapter, openNewChapterDialog } = useBookStore()
+  const { book, currentSection, currentIndex, setCurrentChapter, deleteChapter, moveChapter, openNewChapterDialog, updateChapterTitle, updateChapterSubtitle } = useBookStore()
   if (!book) return null
 
   const items = section === 'front_matter' ? book.front_matter
@@ -125,9 +265,12 @@ function SectionList({ section, label, types: _types }: SectionListProps) {
               section={section}
               index={i}
               title={item.title}
+              subtitle={item.subtitle}
               isSelected={currentSection === section && currentIndex === i}
               onClick={() => setCurrentChapter(section, i)}
               onDelete={() => deleteChapter(section, i)}
+              onRename={(title) => updateChapterTitle(section, i, title)}
+              onEditSubtitle={(subtitle) => updateChapterSubtitle(section, i, subtitle)}
               canDelete={!(section === 'body' && items.length <= 1)}
             />
           ))}

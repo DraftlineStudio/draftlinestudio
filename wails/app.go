@@ -20,6 +20,19 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+// ── App Version ──────────────────────────────────────────────────────────────
+// Format: MAJOR.MINOR.BUILD
+// - MAJOR: Large feature updates (1.x, 2.x, 3.x)
+// - MINOR: Feature chunks within major (x.1, x.2, x.3)
+// - BUILD: Always incrementing 5-digit build number (never resets)
+// Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
+const (
+	AppVersionMajor = 0
+	AppVersionMinor = 8
+	AppVersionBuild = 2313
+	AppVersion      = "0.8.02313"
+)
+
 // App is the main application struct bound to the frontend.
 type App struct {
 	ctx           context.Context
@@ -27,6 +40,11 @@ type App struct {
 	settings      AppSettings
 	cancelMu      sync.Mutex
 	cancelRewrite context.CancelFunc // non-nil while a rewrite is in progress
+}
+
+// GetAppVersion returns the current application version string.
+func (a *App) GetAppVersion() string {
+	return AppVersion
 }
 
 // CancelRewrite aborts any in-progress AI rewrite call.
@@ -49,20 +67,43 @@ type Metadata struct {
 }
 
 type ChapterItem struct {
-	Title   string `json:"title"`
-	Type    string `json:"type"`
-	Content string `json:"content"`
+	Title    string `json:"title"`
+	Subtitle string `json:"subtitle,omitempty"` // Optional chapter subheading
+	Type     string `json:"type"`
+	Content  string `json:"content"`
+}
+
+type WritingGoals struct {
+	TargetWordCount int    `json:"target_word_count"`
+	DailyWordGoal   int    `json:"daily_word_goal"`
+	WordsToday      int    `json:"words_today"`
+	LastWritingDate string `json:"last_writing_date"`
+}
+
+// WritingStyleOptions controls AI behavior for Expand/Smooth modes
+// Each value: 0 = off, 1 = subtle, 2 = moderate, 3 = heavy
+type WritingStyleOptions struct {
+	Metaphors       int `json:"metaphors"`
+	Similes         int `json:"similes"`
+	SensoryDetail   int `json:"sensory_detail"`
+	InternalThought int `json:"internal_thought"`
+	Dialogue        int `json:"dialogue"`
+	Action          int `json:"action"`
+	Description     int `json:"description"`
+	Pacing          int `json:"pacing"`
 }
 
 type BookData struct {
-	Version     string        `json:"version"`
-	Metadata    Metadata      `json:"metadata"`
-	Copyright   string        `json:"copyright"`
-	FrontMatter []ChapterItem `json:"front_matter"`
-	Body        []ChapterItem `json:"body"`
-	BackMatter  []ChapterItem `json:"back_matter"`
-	FilePath    string        `json:"file_path,omitempty"`
-	StoryBible  StoryBible    `json:"story_bible,omitempty"`
+	Version      string              `json:"version"`
+	Metadata     Metadata            `json:"metadata"`
+	Copyright    string              `json:"copyright"`
+	FrontMatter  []ChapterItem       `json:"front_matter"`
+	Body         []ChapterItem       `json:"body"`
+	BackMatter   []ChapterItem       `json:"back_matter"`
+	FilePath     string              `json:"file_path,omitempty"`
+	StoryBible   StoryBible          `json:"story_bible,omitempty"`
+	WritingGoals WritingGoals        `json:"writing_goals,omitempty"`
+	StyleOptions WritingStyleOptions `json:"style_options,omitempty"`
 }
 
 type SaveResult struct {
@@ -90,19 +131,19 @@ type StoryBible struct {
 
 type AppSettings struct {
 	// Application
-	DefaultAuthor       string `json:"default_author"`
-	DefaultPublisher    string `json:"default_publisher"`
-	DefaultCopyright    string `json:"default_copyright"`
-	DefaultSaveDir      string `json:"default_save_dir"`
-	DarkMode            bool   `json:"dark_mode"`
-	ThemeMode           string `json:"theme_mode"`             // "light" | "dark" | "auto"
-	AutoThemeUseManual  bool   `json:"auto_theme_use_manual"`
-	AutoThemeDawn       string `json:"auto_theme_dawn"`        // "HH:MM" format
-	AutoThemeDusk       string `json:"auto_theme_dusk"`        // "HH:MM" format
+	DefaultAuthor      string `json:"default_author"`
+	DefaultPublisher   string `json:"default_publisher"`
+	DefaultCopyright   string `json:"default_copyright"`
+	DefaultSaveDir     string `json:"default_save_dir"`
+	DarkMode           bool   `json:"dark_mode"`
+	ThemeMode          string `json:"theme_mode"` // "light" | "dark" | "auto"
+	AutoThemeUseManual bool   `json:"auto_theme_use_manual"`
+	AutoThemeDawn      string `json:"auto_theme_dawn"` // "HH:MM" format
+	AutoThemeDusk      string `json:"auto_theme_dusk"` // "HH:MM" format
 	// AI
 	AIEnabled       bool   `json:"ai_enabled"`
-	AIMode          string `json:"ai_mode"`           // "claudecode" | "api" | "local"
-	AIProvider      string `json:"ai_provider"`       // "claude" | "openai" | ""
+	AIMode          string `json:"ai_mode"`     // "claudecode" | "api" | "local"
+	AIProvider      string `json:"ai_provider"` // "claude" | "openai" | ""
 	AIAPIKey        string `json:"ai_api_key"`
 	AIModel         string `json:"ai_model"`
 	AILocalEndpoint string `json:"ai_local_endpoint"` // e.g. http://localhost:11434/v1
@@ -110,7 +151,8 @@ type AppSettings struct {
 	ProseGuide      string `json:"prose_guide"`
 	// Book defaults
 	BookFont        string `json:"book_font"`
-	BookFontSize    int    `json:"book_font_size"`
+	EditorFontSize  string `json:"editor_font_size"`  // "small"|"normal"|"large" (12/14/16px)
+	BookFontSize    int    `json:"book_font_size"`    // Export font size in points
 	BookLineSpacing string `json:"book_line_spacing"` // "1.0"|"1.25"|"1.5"|"2.0"
 	BookDropCaps    bool   `json:"book_drop_caps"`
 	BookTrimSize    string `json:"book_trim_size"` // "6x9"|"5.5x8.5"|"5x8"|"7x10"|"A5"
@@ -194,20 +236,25 @@ func (a *App) openBook(path string) (BookData, error) {
 			File  string `json:"file"`
 		} `json:"chapters,omitempty"`
 		FrontMatter []struct {
-			Title string `json:"title"`
-			Type  string `json:"type"`
-			File  string `json:"file"`
+			Title    string `json:"title"`
+			Subtitle string `json:"subtitle,omitempty"`
+			Type     string `json:"type"`
+			File     string `json:"file"`
 		} `json:"front_matter,omitempty"`
 		Body []struct {
-			Title string `json:"title"`
-			Type  string `json:"type"`
-			File  string `json:"file"`
+			Title    string `json:"title"`
+			Subtitle string `json:"subtitle,omitempty"`
+			Type     string `json:"type"`
+			File     string `json:"file"`
 		} `json:"body,omitempty"`
 		BackMatter []struct {
-			Title string `json:"title"`
-			Type  string `json:"type"`
-			File  string `json:"file"`
+			Title    string `json:"title"`
+			Subtitle string `json:"subtitle,omitempty"`
+			Type     string `json:"type"`
+			File     string `json:"file"`
 		} `json:"back_matter,omitempty"`
+		WritingGoals WritingGoals        `json:"writing_goals,omitempty"`
+		StyleOptions WritingStyleOptions `json:"style_options,omitempty"`
 	}
 
 	if err := json.Unmarshal(manifestData, &raw); err != nil {
@@ -215,12 +262,14 @@ func (a *App) openBook(path string) (BookData, error) {
 	}
 
 	book := BookData{
-		Version:     "2.0",
-		Metadata:    raw.Metadata,
-		FilePath:    path,
-		FrontMatter: []ChapterItem{},
-		Body:        []ChapterItem{},
-		BackMatter:  []ChapterItem{},
+		Version:      "2.0",
+		Metadata:     raw.Metadata,
+		FilePath:     path,
+		FrontMatter:  []ChapterItem{},
+		Body:         []ChapterItem{},
+		BackMatter:   []ChapterItem{},
+		WritingGoals: raw.WritingGoals,
+		StyleOptions: raw.StyleOptions,
 	}
 
 	// v1.0 migration: chapters/ -> body/
@@ -244,19 +293,19 @@ func (a *App) openBook(path string) (BookData, error) {
 	for _, item := range raw.FrontMatter {
 		content, _ := readZipEntry(r, item.File)
 		book.FrontMatter = append(book.FrontMatter, ChapterItem{
-			Title: item.Title, Type: item.Type, Content: string(content),
+			Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, Content: string(content),
 		})
 	}
 	for _, item := range raw.Body {
 		content, _ := readZipEntry(r, item.File)
 		book.Body = append(book.Body, ChapterItem{
-			Title: item.Title, Type: item.Type, Content: string(content),
+			Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, Content: string(content),
 		})
 	}
 	for _, item := range raw.BackMatter {
 		content, _ := readZipEntry(r, item.File)
 		book.BackMatter = append(book.BackMatter, ChapterItem{
-			Title: item.Title, Type: item.Type, Content: string(content),
+			Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, Content: string(content),
 		})
 	}
 
@@ -364,11 +413,11 @@ func (a *App) BrowseForDirectory() string {
 // ── Recent Projects ─────────────────────────────────────────────────────────
 
 type RecentProject struct {
-	Type       string              `json:"type"` // "book" | "universe"
-	Path       string              `json:"path"`
-	Name       string              `json:"name"`
-	LastOpened string              `json:"lastOpened"` // ISO 8601 timestamp
-	Stats      RecentProjectStats  `json:"stats"`
+	Type       string             `json:"type"` // "book" | "universe"
+	Path       string             `json:"path"`
+	Name       string             `json:"name"`
+	LastOpened string             `json:"lastOpened"` // ISO 8601 timestamp
+	Stats      RecentProjectStats `json:"stats"`
 }
 
 type RecentProjectStats struct {
@@ -473,8 +522,9 @@ func (a *App) TestLocalAI(endpoint string) AIRewriteResult {
 }
 
 // RewriteText sends the HTML chapter content to the configured AI provider.
-// mode: "line_edit" | "copy_edit" | "dev_edit" | "expand" | "smooth" | "voice_check"
-func (a *App) RewriteText(html string, mode string) AIRewriteResult {
+// mode: "line_edit" | "expand" | "smooth"
+// styleOptionsJson: JSON string of WritingStyleOptions (for expand/smooth modes)
+func (a *App) RewriteText(html string, mode string, styleOptionsJson string) AIRewriteResult {
 	if !a.settings.AIEnabled {
 		return AIRewriteResult{Error: "AI features are disabled — enable them in App Settings"}
 	}
@@ -482,16 +532,23 @@ func (a *App) RewriteText(html string, mode string) AIRewriteResult {
 		mode = "line_edit"
 	}
 
+	// Parse style options if provided
+	var styleOpts *WritingStyleOptions
+	if styleOptionsJson != "" {
+		styleOpts = &WritingStyleOptions{}
+		if err := json.Unmarshal([]byte(styleOptionsJson), styleOpts); err != nil {
+			styleOpts = nil // Ignore invalid JSON, use defaults
+		}
+	}
+
 	// Diff format: for targeted per-paragraph edits, ask the model to return ONLY
 	// changed paragraphs. This cuts output tokens by ~80% for typical chapters.
-	useDiffFormat := mode == "line_edit" || mode == "copy_edit" || mode == "smooth"
+	useDiffFormat := mode == "line_edit" || mode == "smooth"
 
-	system := buildSystemPrompt(mode, a.settings.ProseGuide)
+	system := buildSystemPrompt(mode, a.settings.ProseGuide, styleOpts)
 	var userMsg string
 
 	switch {
-	case mode == "voice_check":
-		userMsg = "Analyse the following chapter for POV, tense, and narrative voice consistency. Return your findings as a brief bulleted list. If there are no issues, respond with \"No issues found.\"\n\n" + html
 	case useDiffFormat:
 		// Append diff-format output instruction
 		system += "\n\nCRITICAL OUTPUT FORMAT: Each input paragraph is prefixed §N§ where N is its 1-based index.\nReturn ONLY paragraphs you change, one per line:\n§N§<p>revised text</p>\nOmit unchanged paragraphs entirely. If nothing needs changing: §NONE§"
@@ -973,55 +1030,38 @@ func (a *App) callLocalAI(system, userMsg string) AIRewriteResult {
 	return AIRewriteResult{Result: strings.TrimSpace(result.Choices[0].Message.Content)}
 }
 
-func buildSystemPrompt(mode, proseGuide string) string {
+func buildSystemPrompt(mode, proseGuide string, styleOpts *WritingStyleOptions) string {
 	styleBlock := ""
 	if proseGuide != "" {
 		styleBlock = "\n\nSTYLE GUIDE — match the rhythm, vocabulary, and voice of these examples:\n---\n" + proseGuide + "\n---"
 	}
 	banned := "BANNED words and phrases: tapestry, testament, navigate, delve, underscore, myriad, realm, crucial, pivotal, journey, beacon, vibrant, game-changer"
 
+	// Build style mixer instructions for expand/smooth modes
+	styleMixerBlock := buildStyleMixerInstructions(styleOpts)
+
 	switch mode {
-	case "copy_edit":
-		return `You are a meticulous copy editor. Correct grammar, punctuation, spelling, and style inconsistencies in the provided HTML text.
-
-Rules:
-- Fix only errors — do NOT rewrite prose or change author's voice
-- Correct subject-verb agreement, tense consistency errors, and punctuation
-- Fix repeated words used awkwardly in the same sentence
-- Preserve paragraph breaks — return one <p> element per original paragraph
-- ` + banned + `
-
-Return ONLY the corrected HTML using <p> tags. No explanations.`
-
-	case "dev_edit":
-		return `You are a developmental editor. Improve pacing and scene structure in the provided HTML text.
-
-Rules:
-- Cut slow, redundant passages — every sentence must earn its place
-- Strengthen scene transitions and cause-and-effect clarity
-- Heighten tension where the pacing drags
-- Preserve all story facts, characters, and dialogue content
-- Write in the same tense and POV as the original
-- Preserve paragraph breaks — return one <p> element per original paragraph
-- ` + banned + styleBlock + `
-
-Return ONLY the rewritten HTML using <p> tags. No explanations.`
-
 	case "expand":
-		return `You are a literary prose writer. Expand and enrich the provided HTML text with sensory detail, atmosphere, and texture.
+		base := `You are a literary prose writer. Expand and enrich the provided HTML text.
 
 Rules:
-- Flesh out thin paragraphs — add physical sensation, setting detail, internal thought
-- Show don't tell: replace summary with scene
 - Match the existing POV depth, tense, and voice exactly
 - Do not introduce new plot events or characters
 - Preserve paragraph breaks — return one <p> element per original paragraph (may be longer)
-- ` + banned + styleBlock + `
+- ` + banned + styleBlock
+
+		if styleMixerBlock != "" {
+			base += "\n\nSTYLE PREFERENCES (follow these carefully):\n" + styleMixerBlock
+		} else {
+			base += "\n- Flesh out thin paragraphs — add physical sensation, setting detail, internal thought\n- Show don't tell: replace summary with scene"
+		}
+
+		return base + `
 
 Return ONLY the rewritten HTML using <p> tags. No explanations.`
 
 	case "smooth":
-		return `You are a line editor focused on flow and rhythm. Smooth the provided HTML text.
+		base := `You are a line editor focused on flow and rhythm. Smooth the provided HTML text.
 
 Rules:
 - Eliminate word repetition within paragraphs (same word used 2+ times nearby)
@@ -1029,23 +1069,15 @@ Rules:
 - Vary sentence openings — avoid starting consecutive sentences the same way
 - Minimal changes — improve flow without changing meaning or voice
 - Preserve paragraph breaks — return one <p> element per original paragraph
-- ` + banned + styleBlock + `
+- ` + banned + styleBlock
+
+		if styleMixerBlock != "" {
+			base += "\n\nSTYLE PREFERENCES (follow these carefully):\n" + styleMixerBlock
+		}
+
+		return base + `
 
 Return ONLY the rewritten HTML using <p> tags. No explanations.`
-
-	case "voice_check":
-		return `You are a developmental editor reviewing for POV, tense, and voice consistency.
-
-Analyse the provided chapter and report:
-- POV violations (head-hopping, unearned omniscience)
-- Tense inconsistencies (unexpected shifts)
-- Narrative voice breaks (narrator suddenly sounds different)
-- Overuse of filter words (saw, heard, felt, noticed)
-
-Format each issue as: • [Type]: description (approximate paragraph or quote)
-If no issues are found, respond with exactly: No issues found.
-
-Do NOT rewrite any text. Return findings only.`
 
 	default: // "line_edit"
 		base := `You are a skilled literary prose editor. Rewrite the provided HTML text, preserving all narrative content, characters, events, and dialogue meaning exactly.
@@ -1070,6 +1102,82 @@ Rewriting rules:
 
 Return ONLY the rewritten HTML using <p> tags. No explanations, no headings, no extra text.`
 	}
+}
+
+// buildStyleMixerInstructions converts WritingStyleOptions to prompt instructions
+func buildStyleMixerInstructions(opts *WritingStyleOptions) string {
+	if opts == nil {
+		return ""
+	}
+
+	intensityWords := []string{"", "subtle", "moderate", "heavy"}
+	var instructions []string
+
+	// Metaphors - CRITICAL: these are major AI tells
+	if opts.Metaphors == 0 {
+		instructions = append(instructions, "- METAPHORS: ABSOLUTELY FORBIDDEN. Never add any new metaphors. Do not write phrases like 'was a [noun]', 'became a [noun]', or any figurative comparisons. Only preserve metaphors that already exist word-for-word in the source text.")
+	} else if opts.Metaphors > 0 && opts.Metaphors <= 3 {
+		instructions = append(instructions, fmt.Sprintf("- Add %s use of metaphors (figurative comparisons)", intensityWords[opts.Metaphors]))
+	}
+
+	// Similes - CRITICAL: these are major AI tells
+	if opts.Similes == 0 {
+		instructions = append(instructions, "- SIMILES: ABSOLUTELY FORBIDDEN. Never add any new similes. Do not write 'like a...', 'as if...', 'as though...', or any like/as comparisons. Only preserve similes that already exist word-for-word in the source text.")
+	} else if opts.Similes > 0 && opts.Similes <= 3 {
+		instructions = append(instructions, fmt.Sprintf("- Add %s use of similes (like/as comparisons)", intensityWords[opts.Similes]))
+	}
+
+	// Sensory Detail
+	if opts.SensoryDetail == 0 {
+		instructions = append(instructions, "- SENSORY DETAILS: Do not add new sensory descriptions. Preserve only what exists in the source.")
+	} else if opts.SensoryDetail > 0 && opts.SensoryDetail <= 3 {
+		instructions = append(instructions, fmt.Sprintf("- Add %s sensory details (sight, sound, smell, touch, taste)", intensityWords[opts.SensoryDetail]))
+	}
+
+	// Internal Thought
+	if opts.InternalThought == 0 {
+		instructions = append(instructions, "- INTERNAL THOUGHT: Do not add character introspection or internal monologue. Preserve only what exists in the source.")
+	} else if opts.InternalThought > 0 && opts.InternalThought <= 3 {
+		instructions = append(instructions, fmt.Sprintf("- Add %s internal thought and character introspection", intensityWords[opts.InternalThought]))
+	}
+
+	// Dialogue
+	if opts.Dialogue == 0 {
+		instructions = append(instructions, "- DIALOGUE: Do not expand or add dialogue. Preserve only what exists in the source.")
+	} else if opts.Dialogue > 0 && opts.Dialogue <= 3 {
+		word := intensityWords[opts.Dialogue]
+		instructions = append(instructions, fmt.Sprintf("- %s%s expansion of dialogue and conversation", strings.ToUpper(word[:1]), word[1:]))
+	}
+
+	// Action
+	if opts.Action == 0 {
+		instructions = append(instructions, "- ACTION: Do not add physical action or movement beats. Preserve only what exists in the source.")
+	} else if opts.Action > 0 && opts.Action <= 3 {
+		instructions = append(instructions, fmt.Sprintf("- Add %s physical action and movement beats", intensityWords[opts.Action]))
+	}
+
+	// Description
+	if opts.Description == 0 {
+		instructions = append(instructions, "- DESCRIPTION: Do not add setting description or atmosphere. Preserve only what exists in the source.")
+	} else if opts.Description > 0 && opts.Description <= 3 {
+		instructions = append(instructions, fmt.Sprintf("- Add %s setting description and atmosphere", intensityWords[opts.Description]))
+	}
+
+	// Pacing
+	if opts.Pacing == 0 {
+		instructions = append(instructions, "- Keep sentence rhythm uniform")
+	} else if opts.Pacing > 0 && opts.Pacing <= 3 {
+		switch opts.Pacing {
+		case 1:
+			instructions = append(instructions, "- Slight variation in sentence rhythm")
+		case 2:
+			instructions = append(instructions, "- Moderate variation in sentence rhythm — mix short and long sentences")
+		case 3:
+			instructions = append(instructions, "- Heavy variation in sentence rhythm — dramatic contrasts between punchy and flowing sentences")
+		}
+	}
+
+	return strings.Join(instructions, "\n")
 }
 
 func (a *App) callClaude(system, userMsg string) AIRewriteResult {
@@ -1151,24 +1259,31 @@ func (a *App) writeBook(book BookData, path string) SaveResult {
 	w := zip.NewWriter(&buf)
 
 	type entry struct {
-		Title string `json:"title"`
-		Type  string `json:"type"`
-		File  string `json:"file"`
+		Title    string `json:"title"`
+		Subtitle string `json:"subtitle,omitempty"`
+		Type     string `json:"type"`
+		File     string `json:"file"`
 	}
 	type manifest struct {
-		Version     string   `json:"version"`
-		Metadata    Metadata `json:"metadata"`
-		FrontMatter []entry  `json:"front_matter"`
-		Body        []entry  `json:"body"`
-		BackMatter  []entry  `json:"back_matter"`
+		Version      string              `json:"version"`
+		AppVersion   string              `json:"app_version"`
+		Metadata     Metadata            `json:"metadata"`
+		FrontMatter  []entry             `json:"front_matter"`
+		Body         []entry             `json:"body"`
+		BackMatter   []entry             `json:"back_matter"`
+		WritingGoals WritingGoals        `json:"writing_goals,omitempty"`
+		StyleOptions WritingStyleOptions `json:"style_options,omitempty"`
 	}
 
 	mf := manifest{
-		Version:     "2.0",
-		Metadata:    book.Metadata,
-		FrontMatter: []entry{},
-		Body:        []entry{},
-		BackMatter:  []entry{},
+		Version:      "2.0",
+		AppVersion:   AppVersion,
+		Metadata:     book.Metadata,
+		FrontMatter:  []entry{},
+		Body:         []entry{},
+		BackMatter:   []entry{},
+		WritingGoals: book.WritingGoals,
+		StyleOptions: book.StyleOptions,
 	}
 
 	addEntry := func(name, content string) error {
@@ -1195,21 +1310,21 @@ func (a *App) writeBook(book BookData, path string) SaveResult {
 		if err := addEntry(file, item.Content); err != nil {
 			return SaveResult{Success: false, Error: err.Error()}
 		}
-		mf.FrontMatter = append(mf.FrontMatter, entry{item.Title, item.Type, file})
+		mf.FrontMatter = append(mf.FrontMatter, entry{Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, File: file})
 	}
 	for i, item := range book.Body {
 		file := fmt.Sprintf("body/%03d.html", i)
 		if err := addEntry(file, item.Content); err != nil {
 			return SaveResult{Success: false, Error: err.Error()}
 		}
-		mf.Body = append(mf.Body, entry{item.Title, item.Type, file})
+		mf.Body = append(mf.Body, entry{Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, File: file})
 	}
 	for i, item := range book.BackMatter {
 		file := fmt.Sprintf("back_matter/%03d.html", i)
 		if err := addEntry(file, item.Content); err != nil {
 			return SaveResult{Success: false, Error: err.Error()}
 		}
-		mf.BackMatter = append(mf.BackMatter, entry{item.Title, item.Type, file})
+		mf.BackMatter = append(mf.BackMatter, entry{Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, File: file})
 	}
 
 	manifestBytes, _ := json.MarshalIndent(mf, "", "  ")

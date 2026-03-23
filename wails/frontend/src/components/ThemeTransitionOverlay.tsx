@@ -68,11 +68,21 @@ export default function ThemeTransitionOverlay({ isTransitioning, targetTheme }:
         setPhase('enter')
       }, 3200)
 
+      // Only clear timers if component unmounts, not when isTransitioning changes
+      // This prevents the race condition where isTransitioning=false clears hideTimer
       return () => {
         clearTimeout(holdTimer)
         clearTimeout(exitTimer)
         clearTimeout(hideTimer)
       }
+    } else {
+      // When isTransitioning becomes false, ensure we clean up
+      // Use a small delay to let any in-flight timers complete
+      const cleanupTimer = setTimeout(() => {
+        setVisible(false)
+        setPhase('enter')
+      }, 300)
+      return () => clearTimeout(cleanupTimer)
     }
   }, [isTransitioning])
 

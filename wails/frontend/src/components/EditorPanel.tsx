@@ -1,6 +1,10 @@
-import { useCallback, useMemo, useRef, useEffect } from 'react'
+import { useCallback, useRef, useEffect } from 'react'
 import { useBookStore } from '../store/bookStore'
+import { useAppStore } from '../store/appStore'
 import RichEditor from './editor/RichEditor'
+
+const EDITOR_FONT_SIZES = { small: '12px', normal: '14px', large: '16px' }
+const CONTENT_UPDATE_DEBOUNCE = 150 // ms - debounce store updates for smoother typing
 
 function getCurrentContent(book: ReturnType<typeof useBookStore.getState>['book'], section: string, index: number): string {
   if (!book) return ''
@@ -11,22 +15,22 @@ function getCurrentContent(book: ReturnType<typeof useBookStore.getState>['book'
   return ''
 }
 
-function getChapterInfo(book: ReturnType<typeof useBookStore.getState>['book'], section: string, index: number): { label: string; name: string } {
-  if (!book) return { label: '', name: '' }
-  if (section === 'copyright') return { label: 'Front Pages', name: 'Copyright Page' }
+function getChapterInfo(book: ReturnType<typeof useBookStore.getState>['book'], section: string, index: number): { label: string; name: string; subtitle: string } {
+  if (!book) return { label: '', name: '', subtitle: '' }
+  if (section === 'copyright') return { label: 'Front Pages', name: 'Copyright Page', subtitle: '' }
   if (section === 'front_matter') {
     const item = book.front_matter[index]
-    return { label: 'Front Matter', name: item?.title || 'Untitled' }
+    return { label: 'Front Matter', name: item?.title || 'Untitled', subtitle: item?.subtitle || '' }
   }
   if (section === 'body') {
     const item = book.body[index]
-    return { label: 'Body', name: item?.title || 'Untitled' }
+    return { label: 'Body', name: item?.title || 'Untitled', subtitle: item?.subtitle || '' }
   }
   if (section === 'back_matter') {
     const item = book.back_matter[index]
-    return { label: 'Back Matter', name: item?.title || 'Untitled' }
+    return { label: 'Back Matter', name: item?.title || 'Untitled', subtitle: item?.subtitle || '' }
   }
-  return { label: '', name: '' }
+  return { label: '', name: '', subtitle: '' }
 }
 
 function DiffPanel({ label, name }: { label: string; name: string }) {
@@ -171,19 +175,67 @@ function DiffPanel({ label, name }: { label: string; name: string }) {
 }
 
 export default function EditorPanel() {
-  const { book, currentSection, currentIndex, updateCurrentContent, pendingDiff } = useBookStore()
+  const { book, currentSection, currentIndex, updateCurrentContent, pendingDiff, updateChapterTitle, updateChapterSubtitle } = useBookStore()
+  const { settings } = useAppStore()
 
   const content = getCurrentContent(book, currentSection, currentIndex)
-  const { label, name } = getChapterInfo(book, currentSection, currentIndex)
+  const { label, name, subtitle } = getChapterInfo(book, currentSection, currentIndex)
+
+  // Callbacks for editing chapter title/subtitle (not available for copyright section)
+  const handleRenameChapter = useCallback(
+    (title: string) => {
+      if (currentSection !== 'copyright') {
+        updateChapterTitle(currentSection as 'front_matter' | 'body' | 'back_matter', currentIndex, title)
+      }
+    },
+    [currentSection, currentIndex, updateChapterTitle],
+  )
+
+  const handleEditSubtitle = useCallback(
+    (newSubtitle: string) => {
+      if (currentSection !== 'copyright') {
+        updateChapterSubtitle(currentSection as 'front_matter' | 'body' | 'back_matter', currentIndex, newSubtitle)
+      }
+    },
+    [currentSection, currentIndex, updateChapterSubtitle],
+  )
+
+  // Debounced content update for smoother typing
+  const updateTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const latestContent = useRef<string>('')
 
   const handleUpdate = useCallback(
-    (html: string) => { updateCurrentContent(html) },
-    [updateCurrentContent, currentSection, currentIndex],
+    (html: string) => {
+      latestContent.current = html
+      if (updateTimer.current) clearTimeout(updateTimer.current)
+      updateTimer.current = setTimeout(() => {
+        updateCurrentContent(latestContent.current)
+      }, CONTENT_UPDATE_DEBOUNCE)
+    },
+    [updateCurrentContent],
   )
+
+  // Flush any pending updates when switching chapters or unmounting
+  useEffect(() => {
+    return () => {
+      if (updateTimer.current) {
+        clearTimeout(updateTimer.current)
+        if (latestContent.current) {
+          updateCurrentContent(latestContent.current)
+        }
+      }
+    }
+  }, [currentSection, currentIndex, updateCurrentContent])
+
+  // CSS custom properties for editor styling
+  const editorStyle = {
+    '--editor-font': settings.book_font,
+    '--editor-font-size': EDITOR_FONT_SIZES[settings.editor_font_size] || '14px',
+  } as React.CSSProperties
 
   if (!book) {
     return (
-      <div className="editor-panel">
+      <div className="editor-panel" style={editorStyle}>
         <div className="editor-empty-state">
           <div className="editor-empty-logo" />
           <div className="editor-empty-tagline">your manuscript, beautifully composed</div>
@@ -204,7 +256,7 @@ export default function EditorPanel() {
 
   if (pendingDiff) {
     return (
-      <div className="editor-panel">
+      <div className="editor-panel" style={editorStyle}>
         <DiffPanel label={label} name={name} />
       </div>
     )
@@ -212,14 +264,20 @@ export default function EditorPanel() {
 
   const editorKey = `${currentSection}-${currentIndex}`
 
+  // Only allow editing for non-copyright sections
+  const canEdit = currentSection !== 'copyright'
+
   return (
-    <div className="editor-panel">
+    <div className="editor-panel" style={editorStyle}>
       <RichEditor
         key={editorKey}
         content={content}
         onUpdate={handleUpdate}
         chapterLabel={label}
         chapterName={name}
+        chapterSubtitle={subtitle}
+        onRenameChapter={canEdit ? handleRenameChapter : undefined}
+        onEditSubtitle={canEdit ? handleEditSubtitle : undefined}
       />
     </div>
   )

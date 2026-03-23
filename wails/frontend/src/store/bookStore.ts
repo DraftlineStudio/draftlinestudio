@@ -1,11 +1,43 @@
 import { create } from 'zustand'
-import type { BookData, ChapterItem, Character, Metadata, Section, StoryBible } from '../types/draftline'
+import type { BookData, ChapterItem, Character, Metadata, Section, StoryBible, WritingStyleOptions } from '../types/draftline'
+import { DEFAULT_STYLE_OPTIONS } from '../types/draftline'
 import type { ParagraphDiff, DiffChange } from '../utils/diff'
 import { extractChanges, assembleFromChanges } from '../utils/diff'
 
 import { NewBook, OpenBookDialog, SaveBook, SaveBookAs, OpenRecentProject, AddRecentProject } from '../../wailsjs/go/main/App'
 import { main } from '../../wailsjs/go/models'
 import { useAppStore } from './appStore'
+
+// Auto-save debounce timer (5 seconds of inactivity)
+let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
+const AUTO_SAVE_DELAY = 5000
+
+function scheduleAutoSave() {
+  if (autoSaveTimer) clearTimeout(autoSaveTimer)
+  autoSaveTimer = setTimeout(async () => {
+    const state = useBookStore.getState()
+    if (state.book && state.isDirty && state.book.file_path) {
+      useBookStore.setState({ isAutoSaving: true })
+      try {
+        const result = await SaveBook(state.book as any)
+        if (result.success) {
+          useBookStore.setState({ isDirty: false, isAutoSaving: false, statusMessage: 'Auto-saved' })
+          // Clear the "Auto-saved" message after 2 seconds
+          setTimeout(() => {
+            const current = useBookStore.getState()
+            if (current.statusMessage === 'Auto-saved') {
+              useBookStore.setState({ statusMessage: '' })
+            }
+          }, 2000)
+        } else {
+          useBookStore.setState({ isAutoSaving: false })
+        }
+      } catch {
+        useBookStore.setState({ isAutoSaving: false })
+      }
+    }
+  }, AUTO_SAVE_DELAY)
+}
 
 interface DialogState {
   showMetadata: boolean
@@ -21,6 +53,7 @@ interface BookStore {
   currentSection: Section
   currentIndex: number
   isDirty: boolean
+  isAutoSaving: boolean
   darkMode: boolean
   dialogs: DialogState
   statusMessage: string
@@ -57,6 +90,7 @@ interface BookStore {
   // Content mutations
   updateCurrentContent: (html: string) => void
   updateChapterTitle: (section: Section, index: number, title: string) => void
+  updateChapterSubtitle: (section: Section, index: number, subtitle: string) => void
   addChapter: (section: Section, item: ChapterItem) => void
   deleteChapter: (section: Section, index: number) => void
   moveChapter: (section: Section, from: number, to: number) => void
@@ -68,6 +102,9 @@ interface BookStore {
   updateCharacter: (char: Character) => void
   deleteCharacter: (id: string) => void
   updateStoryBibleText: (field: 'plot_notes' | 'timeline', text: string) => void
+  updateWritingGoals: (goals: Partial<{ target_word_count: number; daily_word_goal: number; words_today: number; last_writing_date: string }>) => void
+  updateStyleOptions: (options: Partial<WritingStyleOptions>) => void
+  getStyleOptions: () => WritingStyleOptions
 
   // Layout
   leftPanelOpen: boolean
@@ -129,6 +166,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
   currentSection: 'body',
   currentIndex: 0,
   isDirty: false,
+  isAutoSaving: false,
   darkMode: true,
   leftPanelOpen: true,
   rightPanelOpen: true,
@@ -302,12 +340,14 @@ export const useBookStore = create<BookStore>((set, get) => ({
     if (!book) return
     if (currentSection === 'copyright') {
       set({ book: { ...book, copyright: html }, isDirty: true })
+      scheduleAutoSave()
       return
     }
     const items = getSectionArray(book, currentSection)
     if (!items[currentIndex]) return
     const updated = items.map((item, i) => i === currentIndex ? { ...item, content: html } : item)
     set({ book: setSectionArray(book, currentSection, updated), isDirty: true })
+    scheduleAutoSave()
   },
 
   updateChapterTitle: (section, index, title) => {
@@ -316,6 +356,16 @@ export const useBookStore = create<BookStore>((set, get) => ({
     const items = getSectionArray(book, section)
     const updated = items.map((item, i) => i === index ? { ...item, title } : item)
     set({ book: setSectionArray(book, section, updated), isDirty: true })
+    scheduleAutoSave()
+  },
+
+  updateChapterSubtitle: (section, index, subtitle) => {
+    const { book } = get()
+    if (!book || section === 'copyright') return
+    const items = getSectionArray(book, section)
+    const updated = items.map((item, i) => i === index ? { ...item, subtitle } : item)
+    set({ book: setSectionArray(book, section, updated), isDirty: true })
+    scheduleAutoSave()
   },
 
   addChapter: (section, item) => {
@@ -324,6 +374,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
     const items = [...getSectionArray(book, section), item]
     const newBook = setSectionArray(book, section, items)
     set({ book: newBook, currentSection: section, currentIndex: items.length - 1, isDirty: true })
+    scheduleAutoSave()
   },
 
   deleteChapter: (section, index) => {
@@ -341,6 +392,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
       newIndex = currentIndex - 1
     }
     set({ book: newBook, currentSection: newSection, currentIndex: Math.min(newIndex, updated.length - 1), isDirty: true })
+    scheduleAutoSave()
   },
 
   moveChapter: (section, from, to) => {
@@ -357,18 +409,21 @@ export const useBookStore = create<BookStore>((set, get) => ({
       else if (from > currentIndex && to <= currentIndex) newIndex = currentIndex + 1
     }
     set({ book: setSectionArray(book, section, items), currentIndex: newIndex, isDirty: true })
+    scheduleAutoSave()
   },
 
   updateMetadata: (metadata) => {
     const { book } = get()
     if (!book) return
     set({ book: { ...book, metadata: { ...book.metadata, ...metadata } }, isDirty: true })
+    scheduleAutoSave()
   },
 
   updateCopyright: (html) => {
     const { book } = get()
     if (!book) return
     set({ book: { ...book, copyright: html }, isDirty: true })
+    scheduleAutoSave()
   },
 
   addCharacter: (char) => {
@@ -376,6 +431,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
     if (!book) return
     const bible: StoryBible = book.story_bible ?? { characters: [], plot_notes: '', timeline: '' }
     set({ book: { ...book, story_bible: { ...bible, characters: [...bible.characters, char] } }, isDirty: true })
+    scheduleAutoSave()
   },
 
   updateCharacter: (char) => {
@@ -383,6 +439,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
     if (!book) return
     const bible: StoryBible = book.story_bible ?? { characters: [], plot_notes: '', timeline: '' }
     set({ book: { ...book, story_bible: { ...bible, characters: bible.characters.map(c => c.id === char.id ? char : c) } }, isDirty: true })
+    scheduleAutoSave()
   },
 
   deleteCharacter: (id) => {
@@ -390,6 +447,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
     if (!book) return
     const bible: StoryBible = book.story_bible ?? { characters: [], plot_notes: '', timeline: '' }
     set({ book: { ...book, story_bible: { ...bible, characters: bible.characters.filter(c => c.id !== id) } }, isDirty: true })
+    scheduleAutoSave()
   },
 
   updateStoryBibleText: (field, text) => {
@@ -397,6 +455,28 @@ export const useBookStore = create<BookStore>((set, get) => ({
     if (!book) return
     const bible: StoryBible = book.story_bible ?? { characters: [], plot_notes: '', timeline: '' }
     set({ book: { ...book, story_bible: { ...bible, [field]: text } }, isDirty: true })
+    scheduleAutoSave()
+  },
+
+  updateWritingGoals: (goals) => {
+    const { book } = get()
+    if (!book) return
+    const existing = book.writing_goals ?? { target_word_count: 0, daily_word_goal: 0, words_today: 0, last_writing_date: '' }
+    set({ book: { ...book, writing_goals: { ...existing, ...goals } }, isDirty: true })
+    scheduleAutoSave()
+  },
+
+  updateStyleOptions: (options) => {
+    const { book } = get()
+    if (!book) return
+    const existing = book.style_options ?? DEFAULT_STYLE_OPTIONS
+    set({ book: { ...book, style_options: { ...existing, ...options } }, isDirty: true })
+    scheduleAutoSave()
+  },
+
+  getStyleOptions: () => {
+    const { book } = get()
+    return book?.style_options ?? DEFAULT_STYLE_OPTIONS
   },
 
   toggleLeftPanel: () => set(s => ({ leftPanelOpen: !s.leftPanelOpen })),
