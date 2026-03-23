@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useRef, useEffect } from 'react'
+import { useCallback, useRef, useEffect } from 'react'
 import { useBookStore } from '../store/bookStore'
 import { useAppStore } from '../store/appStore'
 import RichEditor from './editor/RichEditor'
 
 const EDITOR_FONT_SIZES = { small: '12px', normal: '14px', large: '16px' }
+const CONTENT_UPDATE_DEBOUNCE = 150 // ms - debounce store updates for smoother typing
 
 function getCurrentContent(book: ReturnType<typeof useBookStore.getState>['book'], section: string, index: number): string {
   if (!book) return ''
@@ -199,10 +200,32 @@ export default function EditorPanel() {
     [currentSection, currentIndex, updateChapterSubtitle],
   )
 
+  // Debounced content update for smoother typing
+  const updateTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const latestContent = useRef<string>('')
+
   const handleUpdate = useCallback(
-    (html: string) => { updateCurrentContent(html) },
-    [updateCurrentContent, currentSection, currentIndex],
+    (html: string) => {
+      latestContent.current = html
+      if (updateTimer.current) clearTimeout(updateTimer.current)
+      updateTimer.current = setTimeout(() => {
+        updateCurrentContent(latestContent.current)
+      }, CONTENT_UPDATE_DEBOUNCE)
+    },
+    [updateCurrentContent],
   )
+
+  // Flush any pending updates when switching chapters or unmounting
+  useEffect(() => {
+    return () => {
+      if (updateTimer.current) {
+        clearTimeout(updateTimer.current)
+        if (latestContent.current) {
+          updateCurrentContent(latestContent.current)
+        }
+      }
+    }
+  }, [currentSection, currentIndex, updateCurrentContent])
 
   // CSS custom properties for editor styling
   const editorStyle = {
