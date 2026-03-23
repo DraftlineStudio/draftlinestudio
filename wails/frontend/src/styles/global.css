@@ -2140,12 +2140,20 @@ html, body, #root {
 
 .settings-dialog-footer {
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
   padding: 12px 20px;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
   background: var(--bg-surface-alt);
+}
+.settings-version {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.settings-dialog-buttons {
+  display: flex;
+  gap: 8px;
 }
 
 /* Section label (used inside content) */
