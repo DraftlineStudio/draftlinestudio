@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { useBookStore } from '../store/bookStore'
-import { analyzeText, getScoreColor, getScoreLabel } from '../services/aiDetection'
+import { analyzeText, getScoreColor, getScoreLabel, type AIDetectionResult } from '../services/aiDetection'
 
 function countWords(html: string): number {
   const div = document.createElement('div')
@@ -30,7 +30,7 @@ function getCurrentContent(book: ReturnType<typeof useBookStore.getState>['book'
 }
 
 export default function StatusBar() {
-  const { book, isDirty, statusMessage, currentSection, currentIndex } = useBookStore()
+  const { book, isDirty, isAutoSaving, statusMessage, currentSection, currentIndex } = useBookStore()
   const words = totalWords(book)
   const filePath = book?.file_path || null
   const fileName = filePath ? filePath.split(/[\\/]/).pop() : null
@@ -38,18 +38,46 @@ export default function StatusBar() {
   // Get current chapter content for AI detection
   const currentContent = getCurrentContent(book, currentSection, currentIndex)
 
-  // Memoize AI analysis to avoid recalculating on every render
-  const aiResult = useMemo(() => {
-    if (!currentContent || currentContent.length < 50) return null
-    return analyzeText(currentContent)
+  // Debounced AI analysis - only run 2 seconds after typing stops
+  const [aiResult, setAiResult] = useState<AIDetectionResult | null>(null)
+  const analysisTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    // Clear any pending analysis
+    if (analysisTimer.current) clearTimeout(analysisTimer.current)
+
+    // Don't analyze if content is too short
+    if (!currentContent || currentContent.length < 100) {
+      setAiResult(null)
+      return
+    }
+
+    // Debounce: wait 2 seconds after typing stops
+    analysisTimer.current = setTimeout(() => {
+      setAiResult(analyzeText(currentContent))
+    }, 2000)
+
+    return () => {
+      if (analysisTimer.current) clearTimeout(analysisTimer.current)
+    }
   }, [currentContent])
 
   return (
     <div className="statusbar">
       <div className="statusbar-left">
-        <span className={`statusbar-dot ${isDirty ? 'dirty' : ''}`} title={isDirty ? 'Unsaved changes' : 'Saved'} />
+        {isAutoSaving ? (
+          <span className="statusbar-autosave" title="Auto-saving...">
+            <svg className="autosave-spinner" width="12" height="12" viewBox="0 0 12 12">
+              <circle cx="6" cy="6" r="5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="20" strokeLinecap="round">
+                <animateTransform attributeName="transform" type="rotate" from="0 6 6" to="360 6 6" dur="0.8s" repeatCount="indefinite" />
+              </circle>
+            </svg>
+          </span>
+        ) : (
+          <span className={`statusbar-dot ${isDirty ? 'dirty' : ''}`} title={isDirty ? 'Unsaved changes' : 'Saved'} />
+        )}
         <span className="statusbar-file">{fileName ? fileName : 'Unsaved'}</span>
-        {statusMessage && <span>{statusMessage}</span>}
+        {statusMessage && <span className="statusbar-message">{statusMessage}</span>}
       </div>
       <div className="statusbar-right">
         {aiResult && (
