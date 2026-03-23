@@ -1,8 +1,9 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { useAppStore } from '../store/appStore'
 import { main } from '../../wailsjs/go/models'
 import ContextMenu, { ContextMenuItem } from './ContextMenu'
 import { BrowserOpenURL } from '../../wailsjs/runtime/runtime'
+import { GetAppVersion } from '../../wailsjs/go/main/App'
 
 type RecentProject = main.RecentProject
 
@@ -23,6 +24,11 @@ export default function WelcomeScreen({ onNewBook, onNewUniverse, onOpenFile, on
   const { settings, openSettings, recentProjects, removeRecentProject, clearRecentProjects } = useAppStore()
   const [hoveredProject, setHoveredProject] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
+  const [appVersion, setAppVersion] = useState<string>('')
+
+  useEffect(() => {
+    GetAppVersion().then(setAppVersion).catch(() => setAppVersion('0.0.00000'))
+  }, [])
 
   const formatRelativeDate = useCallback((isoDate: string) => {
     const date = new Date(isoDate)
@@ -87,7 +93,7 @@ export default function WelcomeScreen({ onNewBook, onNewUniverse, onOpenFile, on
           <div className="welcome-logo-mark" role="img" aria-label="Draftline" />
           <span className="logo-subtitle">Author's Studio</span>
         </div>
-        <div className="welcome-version">v1.0.0</div>
+        <div className="welcome-version">v{appVersion}</div>
       </div>
 
       <div className="welcome-actions">
