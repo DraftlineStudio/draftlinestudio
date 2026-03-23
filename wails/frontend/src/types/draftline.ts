@@ -40,6 +40,30 @@ export interface WritingGoals {
   last_writing_date: string  // ISO date YYYY-MM-DD
 }
 
+// Writing Style Mixer - controls AI behavior for Expand/Smooth modes
+// Each value: 0 = off, 1 = subtle, 2 = moderate, 3 = heavy
+export interface WritingStyleOptions {
+  metaphors: number
+  similes: number
+  sensory_detail: number
+  internal_thought: number
+  dialogue: number
+  action: number
+  description: number
+  pacing: number
+}
+
+export const DEFAULT_STYLE_OPTIONS: WritingStyleOptions = {
+  metaphors: 2,
+  similes: 1,
+  sensory_detail: 2,
+  internal_thought: 2,
+  dialogue: 1,
+  action: 2,
+  description: 2,
+  pacing: 2,
+}
+
 export interface Metadata {
   title: string
   author: string
@@ -66,6 +90,7 @@ export interface BookData {
   file_path?: string
   story_bible?: StoryBible
   writing_goals?: WritingGoals
+  style_options?: WritingStyleOptions
 }
 
 export interface SaveResult {
