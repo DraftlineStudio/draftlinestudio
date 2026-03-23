@@ -14,22 +14,22 @@ function getCurrentContent(book: ReturnType<typeof useBookStore.getState>['book'
   return ''
 }
 
-function getChapterInfo(book: ReturnType<typeof useBookStore.getState>['book'], section: string, index: number): { label: string; name: string } {
-  if (!book) return { label: '', name: '' }
-  if (section === 'copyright') return { label: 'Front Pages', name: 'Copyright Page' }
+function getChapterInfo(book: ReturnType<typeof useBookStore.getState>['book'], section: string, index: number): { label: string; name: string; subtitle: string } {
+  if (!book) return { label: '', name: '', subtitle: '' }
+  if (section === 'copyright') return { label: 'Front Pages', name: 'Copyright Page', subtitle: '' }
   if (section === 'front_matter') {
     const item = book.front_matter[index]
-    return { label: 'Front Matter', name: item?.title || 'Untitled' }
+    return { label: 'Front Matter', name: item?.title || 'Untitled', subtitle: item?.subtitle || '' }
   }
   if (section === 'body') {
     const item = book.body[index]
-    return { label: 'Body', name: item?.title || 'Untitled' }
+    return { label: 'Body', name: item?.title || 'Untitled', subtitle: item?.subtitle || '' }
   }
   if (section === 'back_matter') {
     const item = book.back_matter[index]
-    return { label: 'Back Matter', name: item?.title || 'Untitled' }
+    return { label: 'Back Matter', name: item?.title || 'Untitled', subtitle: item?.subtitle || '' }
   }
-  return { label: '', name: '' }
+  return { label: '', name: '', subtitle: '' }
 }
 
 function DiffPanel({ label, name }: { label: string; name: string }) {
@@ -174,11 +174,30 @@ function DiffPanel({ label, name }: { label: string; name: string }) {
 }
 
 export default function EditorPanel() {
-  const { book, currentSection, currentIndex, updateCurrentContent, pendingDiff } = useBookStore()
+  const { book, currentSection, currentIndex, updateCurrentContent, pendingDiff, updateChapterTitle, updateChapterSubtitle } = useBookStore()
   const { settings } = useAppStore()
 
   const content = getCurrentContent(book, currentSection, currentIndex)
-  const { label, name } = getChapterInfo(book, currentSection, currentIndex)
+  const { label, name, subtitle } = getChapterInfo(book, currentSection, currentIndex)
+
+  // Callbacks for editing chapter title/subtitle (not available for copyright section)
+  const handleRenameChapter = useCallback(
+    (title: string) => {
+      if (currentSection !== 'copyright') {
+        updateChapterTitle(currentSection as 'front_matter' | 'body' | 'back_matter', currentIndex, title)
+      }
+    },
+    [currentSection, currentIndex, updateChapterTitle],
+  )
+
+  const handleEditSubtitle = useCallback(
+    (newSubtitle: string) => {
+      if (currentSection !== 'copyright') {
+        updateChapterSubtitle(currentSection as 'front_matter' | 'body' | 'back_matter', currentIndex, newSubtitle)
+      }
+    },
+    [currentSection, currentIndex, updateChapterSubtitle],
+  )
 
   const handleUpdate = useCallback(
     (html: string) => { updateCurrentContent(html) },
@@ -222,6 +241,9 @@ export default function EditorPanel() {
 
   const editorKey = `${currentSection}-${currentIndex}`
 
+  // Only allow editing for non-copyright sections
+  const canEdit = currentSection !== 'copyright'
+
   return (
     <div className="editor-panel" style={editorStyle}>
       <RichEditor
@@ -230,6 +252,9 @@ export default function EditorPanel() {
         onUpdate={handleUpdate}
         chapterLabel={label}
         chapterName={name}
+        chapterSubtitle={subtitle}
+        onRenameChapter={canEdit ? handleRenameChapter : undefined}
+        onEditSubtitle={canEdit ? handleEditSubtitle : undefined}
       />
     </div>
   )
