@@ -33,6 +33,13 @@ export interface StoryBible {
   timeline: string
 }
 
+export interface WritingGoals {
+  target_word_count: number
+  daily_word_goal: number
+  words_today: number
+  last_writing_date: string  // ISO date YYYY-MM-DD
+}
+
 export interface Metadata {
   title: string
   author: string
@@ -58,6 +65,7 @@ export interface BookData {
   back_matter: ChapterItem[]
   file_path?: string
   story_bible?: StoryBible
+  writing_goals?: WritingGoals
 }
 
 export interface SaveResult {
