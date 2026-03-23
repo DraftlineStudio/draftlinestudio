@@ -1,8 +1,17 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { useAppStore } from '../store/appStore'
 import { main } from '../../wailsjs/go/models'
+import ContextMenu, { ContextMenuItem } from './ContextMenu'
+import { BrowserOpenURL } from '../../wailsjs/runtime/runtime'
+import { GetAppVersion } from '../../wailsjs/go/main/App'
 
 type RecentProject = main.RecentProject
+
+interface ContextMenuState {
+  x: number
+  y: number
+  project: RecentProject
+}
 
 interface WelcomeScreenProps {
   onNewBook: () => void
@@ -14,6 +23,12 @@ interface WelcomeScreenProps {
 export default function WelcomeScreen({ onNewBook, onNewUniverse, onOpenFile, onOpenRecent }: WelcomeScreenProps) {
   const { settings, openSettings, recentProjects, removeRecentProject, clearRecentProjects } = useAppStore()
   const [hoveredProject, setHoveredProject] = useState<string | null>(null)
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
+  const [appVersion, setAppVersion] = useState<string>('')
+
+  useEffect(() => {
+    GetAppVersion().then(setAppVersion).catch(() => setAppVersion('0.0.00000'))
+  }, [])
 
   const formatRelativeDate = useCallback((isoDate: string) => {
     const date = new Date(isoDate)
@@ -41,11 +56,31 @@ export default function WelcomeScreen({ onNewBook, onNewUniverse, onOpenFile, on
 
   const handleContextMenu = useCallback((e: React.MouseEvent, project: RecentProject) => {
     e.preventDefault()
-    // For now, just remove from list. Full context menu can be added later.
-    if (confirm(`Remove "${project.name}" from recent projects?`)) {
-      removeRecentProject(project.path)
-    }
-  }, [removeRecentProject])
+    e.stopPropagation()
+    setContextMenu({ x: e.clientX, y: e.clientY, project })
+  }, [])
+
+  const getContextMenuItems = useCallback((project: RecentProject): ContextMenuItem[] => {
+    const folderPath = project.path.substring(0, project.path.lastIndexOf('\\') || project.path.lastIndexOf('/'))
+    return [
+      {
+        label: 'Open',
+        icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" /></svg>,
+        onClick: () => onOpenRecent(project.path),
+      },
+      {
+        label: 'Show in Folder',
+        icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>,
+        onClick: () => BrowserOpenURL(`file://${folderPath}`),
+      },
+      {
+        label: 'Remove from List',
+        icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>,
+        onClick: () => removeRecentProject(project.path),
+        danger: true,
+      },
+    ]
+  }, [onOpenRecent, removeRecentProject])
 
   // TODO: Replace with actual license check from backend
   const licenseType = 'pro' as 'trial' | 'pro' | 'indie'
@@ -58,7 +93,7 @@ export default function WelcomeScreen({ onNewBook, onNewUniverse, onOpenFile, on
           <div className="welcome-logo-mark" role="img" aria-label="Draftline" />
           <span className="logo-subtitle">Author's Studio</span>
         </div>
-        <div className="welcome-version">v1.0.0</div>
+        <div className="welcome-version">v{appVersion}</div>
       </div>
 
       <div className="welcome-actions">
@@ -207,6 +242,15 @@ export default function WelcomeScreen({ onNewBook, onNewUniverse, onOpenFile, on
           {licenseType === 'trial' && <button className="license-upgrade">Upgrade</button>}
         </div>
       </div>
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={getContextMenuItems(contextMenu.project)}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   )
 }

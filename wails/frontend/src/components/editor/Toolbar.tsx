@@ -11,7 +11,7 @@ export default function Toolbar({ editor }: Props) {
   const ed = editor
 
   const currentFont = ed.getAttributes('textStyle').fontFamily || 'Merriweather'
-  const currentSize = ed.getAttributes('textStyle').fontSize || '16'
+  const currentSize = ed.getAttributes('textStyle').fontSize || '14'
 
   function setFont(font: string) {
     ed.chain().focus().setFontFamily(font).run()

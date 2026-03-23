@@ -26,7 +26,8 @@ export interface AppSettings {
   prose_guide: string
   // Book defaults
   book_font: string
-  book_font_size: number
+  editor_font_size: 'small' | 'normal' | 'large'  // Editor display size: 12/14/16
+  book_font_size: number                           // Export font size in points
   book_line_spacing: string
   book_drop_caps: boolean
   book_trim_size: string
@@ -71,7 +72,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   ai_local_model: '',
   prose_guide: '',
   book_font: 'Merriweather',
-  book_font_size: 12,
+  editor_font_size: 'normal',
+  book_font_size: 14,
   book_line_spacing: '1.5',
   book_drop_caps: false,
   book_trim_size: '6x9',
@@ -94,6 +96,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         ai_provider: (raw.ai_provider as AppSettings['ai_provider']) ?? '',
         ai_mode: (raw.ai_mode as AppSettings['ai_mode']) || 'claudecode',
         theme_mode: (raw.theme_mode as AppSettings['theme_mode']) || (raw.dark_mode ? 'dark' : 'light'),
+        editor_font_size: (raw.editor_font_size as AppSettings['editor_font_size']) || 'normal',
       }
       set({ settings, loaded: true })
     } catch {

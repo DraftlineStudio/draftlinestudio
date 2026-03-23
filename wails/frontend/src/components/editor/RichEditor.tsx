@@ -9,17 +9,40 @@ import Subscript from '@tiptap/extension-subscript'
 import Superscript from '@tiptap/extension-superscript'
 import CharacterCount from '@tiptap/extension-character-count'
 import { FontSize } from '../../extensions/FontSize'
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useState, useRef } from 'react'
 import Toolbar from './Toolbar'
+import ContextMenu, { ContextMenuItem } from '../ContextMenu'
+import { checkWord, getSuggestions, isLoaded as isSpellCheckLoaded } from '../../services/spellCheck'
+
+interface ContextMenuState {
+  x: number
+  y: number
+  // Spell check context
+  misspelledWord?: string
+  wordStart?: number
+  wordEnd?: number
+  suggestions?: string[]
+}
 
 interface Props {
   content: string
   onUpdate: (html: string) => void
   chapterLabel?: string
   chapterName?: string
+  chapterSubtitle?: string
+  onRenameChapter?: (title: string) => void
+  onEditSubtitle?: (subtitle: string) => void
 }
 
-export default function RichEditor({ content, onUpdate, chapterLabel, chapterName }: Props) {
+export default function RichEditor({ content, onUpdate, chapterLabel, chapterName, chapterSubtitle, onRenameChapter, onEditSubtitle }: Props) {
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [editingSubtitle, setEditingSubtitle] = useState(false)
+  const [titleValue, setTitleValue] = useState(chapterName || '')
+  const [subtitleValue, setSubtitleValue] = useState(chapterSubtitle || '')
+  const titleInputRef = useRef<HTMLInputElement>(null)
+  const subtitleInputRef = useRef<HTMLInputElement>(null)
+
   const handleUpdate = useCallback(
     ({ editor }: { editor: ReturnType<typeof useEditor> & { getHTML: () => string } }) => {
       onUpdate(editor.getHTML())
@@ -58,15 +81,233 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
     }
   }, [content, editor])
 
+  // Sync title/subtitle values when chapter changes
+  useEffect(() => {
+    setTitleValue(chapterName || '')
+    setSubtitleValue(chapterSubtitle || '')
+  }, [chapterName, chapterSubtitle])
+
+  // Focus input when editing starts
+  useEffect(() => {
+    if (editingTitle && titleInputRef.current) {
+      titleInputRef.current.focus()
+      titleInputRef.current.select()
+    }
+  }, [editingTitle])
+
+  useEffect(() => {
+    if (editingSubtitle && subtitleInputRef.current) {
+      subtitleInputRef.current.focus()
+      subtitleInputRef.current.select()
+    }
+  }, [editingSubtitle])
+
+  // Handle context menu on editor
+  function handleContextMenu(e: React.MouseEvent) {
+    e.preventDefault()
+
+    const menuState: ContextMenuState = { x: e.clientX, y: e.clientY }
+
+    // Check for misspelled word under cursor
+    if (editor && isSpellCheckLoaded()) {
+      const { from } = editor.state.selection
+      const $pos = editor.state.doc.resolve(from)
+      const textNode = $pos.parent
+
+      if (textNode.isTextblock) {
+        const text = textNode.textContent
+        const nodeStart = $pos.start()
+        const offsetInNode = from - nodeStart
+
+        // Find word boundaries
+        let wordStart = offsetInNode
+        let wordEnd = offsetInNode
+
+        while (wordStart > 0 && /\w/.test(text[wordStart - 1])) wordStart--
+        while (wordEnd < text.length && /\w/.test(text[wordEnd])) wordEnd++
+
+        if (wordStart < wordEnd) {
+          const word = text.substring(wordStart, wordEnd)
+
+          if (word.length >= 2 && !checkWord(word)) {
+            menuState.misspelledWord = word
+            menuState.wordStart = nodeStart + wordStart
+            menuState.wordEnd = nodeStart + wordEnd
+            menuState.suggestions = getSuggestions(word, 5)
+          }
+        }
+      }
+    }
+
+    setContextMenu(menuState)
+  }
+
+  // Context menu actions
+  async function handleCut() {
+    if (!editor) return
+    const { from, to } = editor.state.selection
+    const text = editor.state.doc.textBetween(from, to, '\n')
+    await navigator.clipboard.writeText(text)
+    editor.commands.deleteSelection()
+  }
+
+  async function handleCopy() {
+    if (!editor) return
+    const { from, to } = editor.state.selection
+    const text = editor.state.doc.textBetween(from, to, '\n')
+    await navigator.clipboard.writeText(text)
+  }
+
+  async function handlePaste() {
+    if (!editor) return
+    const text = await navigator.clipboard.readText()
+    editor.commands.insertContent(text)
+  }
+
+  // Title editing
+  function handleTitleClick() {
+    if (onRenameChapter && chapterName) {
+      setTitleValue(chapterName)
+      setEditingTitle(true)
+    }
+  }
+
+  function handleTitleSubmit() {
+    const trimmed = titleValue.trim()
+    if (trimmed && trimmed !== chapterName && onRenameChapter) {
+      onRenameChapter(trimmed)
+    }
+    setEditingTitle(false)
+  }
+
+  // Subtitle editing
+  function handleSubtitleClick() {
+    if (onEditSubtitle) {
+      setSubtitleValue(chapterSubtitle || '')
+      setEditingSubtitle(true)
+    }
+  }
+
+  function handleSubtitleSubmit() {
+    if (onEditSubtitle) {
+      onEditSubtitle(subtitleValue.trim())
+    }
+    setEditingSubtitle(false)
+  }
+
+  const hasSelection = editor && !editor.state.selection.empty
+
+  // Replace misspelled word with suggestion
+  function handleSpellSuggestion(suggestion: string) {
+    if (!editor || !contextMenu?.wordStart || !contextMenu?.wordEnd) return
+    editor
+      .chain()
+      .focus()
+      .setTextSelection({ from: contextMenu.wordStart, to: contextMenu.wordEnd })
+      .insertContent(suggestion)
+      .run()
+  }
+
+  // Build context menu items
+  const contextMenuItems: ContextMenuItem[] = []
+
+  // Add spell suggestions if there's a misspelled word
+  if (contextMenu?.misspelledWord && contextMenu.suggestions && contextMenu.suggestions.length > 0) {
+    contextMenu.suggestions.forEach((suggestion) => {
+      contextMenuItems.push({
+        label: suggestion,
+        icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>,
+        onClick: () => handleSpellSuggestion(suggestion),
+      })
+    })
+    // Add separator
+    contextMenuItems.push({ label: '', onClick: () => {}, separator: true })
+  } else if (contextMenu?.misspelledWord && (!contextMenu.suggestions || contextMenu.suggestions.length === 0)) {
+    // No suggestions available
+    contextMenuItems.push({
+      label: 'No suggestions',
+      onClick: () => {},
+      disabled: true,
+    })
+    contextMenuItems.push({ label: '', onClick: () => {}, separator: true })
+  }
+
+  // Standard edit actions
+  contextMenuItems.push(
+    {
+      label: 'Cut',
+      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>,
+      onClick: handleCut,
+      disabled: !hasSelection,
+    },
+    {
+      label: 'Copy',
+      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>,
+      onClick: handleCopy,
+      disabled: !hasSelection,
+    },
+    {
+      label: 'Paste',
+      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>,
+      onClick: handlePaste,
+    },
+  )
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Toolbar editor={editor} />
-      <div className="editor-scroll">
+      <div className="editor-scroll" onContextMenu={handleContextMenu} data-context-menu>
         <div className="editor-content-wrapper">
           {(chapterLabel || chapterName) && (
             <div className="editor-page-header">
               {chapterLabel && <span className="editor-page-chapter-title">{chapterLabel}</span>}
-              {chapterName && <span className="editor-page-chapter-name">{chapterName}</span>}
+              {chapterName && (
+                editingTitle ? (
+                  <input
+                    ref={titleInputRef}
+                    className="editor-page-chapter-name-input"
+                    value={titleValue}
+                    onChange={e => setTitleValue(e.target.value)}
+                    onBlur={handleTitleSubmit}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') handleTitleSubmit()
+                      if (e.key === 'Escape') setEditingTitle(false)
+                    }}
+                  />
+                ) : (
+                  <span
+                    className="editor-page-chapter-name editable"
+                    onClick={handleTitleClick}
+                    title="Click to edit chapter name"
+                  >
+                    {chapterName}
+                  </span>
+                )
+              )}
+              {(chapterSubtitle || onEditSubtitle) && (
+                editingSubtitle ? (
+                  <input
+                    ref={subtitleInputRef}
+                    className="editor-page-chapter-subtitle-input"
+                    value={subtitleValue}
+                    onChange={e => setSubtitleValue(e.target.value)}
+                    onBlur={handleSubtitleSubmit}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') handleSubtitleSubmit()
+                      if (e.key === 'Escape') setEditingSubtitle(false)
+                    }}
+                    placeholder="Enter subtitle..."
+                  />
+                ) : (
+                  <span
+                    className="editor-page-chapter-subtitle editable"
+                    onClick={handleSubtitleClick}
+                    title={chapterSubtitle ? "Click to edit subtitle" : "Click to add subtitle"}
+                  >
+                    {chapterSubtitle || '+ Add subtitle'}
+                  </span>
+                )
+              )}
             </div>
           )}
           <div className="editor-page-body">
@@ -74,6 +315,14 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
           </div>
         </div>
       </div>
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenuItems}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   )
 }
