@@ -71,9 +71,10 @@ export default function App() {
     }, 900)
 
     // Keep sky animation going a bit longer for the eye candy
+    // Must be longer than 3200ms (hideTimer in ThemeTransitionOverlay)
     setTimeout(() => {
       setIsTransitioning(false)
-    }, 3000)
+    }, 3500)
   }, [])
 
   // Use auto theme hook for automatic dawn/dusk transitions
