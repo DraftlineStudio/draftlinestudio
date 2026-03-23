@@ -44,6 +44,7 @@ export interface Metadata {
 
 export interface ChapterItem {
   title: string
+  subtitle?: string  // Optional chapter subheading
   type: string
   content: string
 }
