@@ -70,6 +70,24 @@ export namespace main {
 	        this.book_trim_size = source["book_trim_size"];
 	    }
 	}
+	export class WritingGoals {
+	    target_word_count: number;
+	    daily_word_goal: number;
+	    words_today: number;
+	    last_writing_date: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new WritingGoals(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.target_word_count = source["target_word_count"];
+	        this.daily_word_goal = source["daily_word_goal"];
+	        this.words_today = source["words_today"];
+	        this.last_writing_date = source["last_writing_date"];
+	    }
+	}
 	export class Character {
 	    id: string;
 	    name: string;
@@ -179,6 +197,7 @@ export namespace main {
 	    back_matter: ChapterItem[];
 	    file_path?: string;
 	    story_bible?: StoryBible;
+	    writing_goals?: WritingGoals;
 	
 	    static createFrom(source: any = {}) {
 	        return new BookData(source);
@@ -194,6 +213,7 @@ export namespace main {
 	        this.back_matter = this.convertValues(source["back_matter"], ChapterItem);
 	        this.file_path = source["file_path"];
 	        this.story_bible = this.convertValues(source["story_bible"], StoryBible);
+	        this.writing_goals = this.convertValues(source["writing_goals"], WritingGoals);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -342,6 +362,7 @@ export namespace main {
 	        this.error = source["error"];
 	    }
 	}
+	
 
 }
 
