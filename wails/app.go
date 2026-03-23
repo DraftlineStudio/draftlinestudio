@@ -20,6 +20,19 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+// ── App Version ──────────────────────────────────────────────────────────────
+// Format: MAJOR.MINOR.BUILD
+// - MAJOR: Large feature updates (1.x, 2.x, 3.x)
+// - MINOR: Feature chunks within major (x.1, x.2, x.3)
+// - BUILD: Always incrementing 5-digit build number (never resets)
+// Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
+const (
+	AppVersionMajor = 0
+	AppVersionMinor = 8
+	AppVersionBuild = 2313
+	AppVersion      = "0.8.02313"
+)
+
 // App is the main application struct bound to the frontend.
 type App struct {
 	ctx           context.Context
@@ -27,6 +40,11 @@ type App struct {
 	settings      AppSettings
 	cancelMu      sync.Mutex
 	cancelRewrite context.CancelFunc // non-nil while a rewrite is in progress
+}
+
+// GetAppVersion returns the current application version string.
+func (a *App) GetAppVersion() string {
+	return AppVersion
 }
 
 // CancelRewrite aborts any in-progress AI rewrite call.
@@ -1248,6 +1266,7 @@ func (a *App) writeBook(book BookData, path string) SaveResult {
 	}
 	type manifest struct {
 		Version      string              `json:"version"`
+		AppVersion   string              `json:"app_version"`
 		Metadata     Metadata            `json:"metadata"`
 		FrontMatter  []entry             `json:"front_matter"`
 		Body         []entry             `json:"body"`
@@ -1258,6 +1277,7 @@ func (a *App) writeBook(book BookData, path string) SaveResult {
 
 	mf := manifest{
 		Version:      "2.0",
+		AppVersion:   AppVersion,
 		Metadata:     book.Metadata,
 		FrontMatter:  []entry{},
 		Body:         []entry{},
