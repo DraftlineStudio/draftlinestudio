@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAppStore } from '../../store/appStore'
 import { useBookStore } from '../../store/bookStore'
-import { TestLocalAI, CheckClaudeCode, SetupClaudeCode, OpenClaudeAuth } from '../../../wailsjs/go/main/App'
+import { TestLocalAI, CheckClaudeCode, SetupClaudeCode, OpenClaudeAuth, GetAppVersion } from '../../../wailsjs/go/main/App'
 import { EventsOn } from '../../../wailsjs/runtime/runtime'
 import type { main } from '../../../wailsjs/go/models'
 
@@ -37,6 +37,11 @@ export default function AppSettingsDialog() {
   const { setDarkMode } = useBookStore()
 
   const [section, setSection] = useState<SettingsSection>('application')
+  const [appVersion, setAppVersion] = useState('')
+
+  useEffect(() => {
+    GetAppVersion().then(setAppVersion).catch(() => {})
+  }, [])
 
   // Application
   const [author, setAuthor]       = useState(settings.default_author)
@@ -629,8 +634,11 @@ export default function AppSettingsDialog() {
         </div>
 
         <div className="settings-dialog-footer">
-          <button className="dialog-btn" onClick={closeSettings}>Cancel</button>
-          <button className="dialog-btn primary" onClick={handleSave}>Save Settings</button>
+          <span className="settings-version">Draftline v{appVersion}</span>
+          <div className="settings-dialog-buttons">
+            <button className="dialog-btn" onClick={closeSettings}>Cancel</button>
+            <button className="dialog-btn primary" onClick={handleSave}>Save Settings</button>
+          </div>
         </div>
       </div>
     </div>
