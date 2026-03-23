@@ -3,22 +3,34 @@ import { useBookStore } from '../store/bookStore'
 import { useAppStore } from '../store/appStore'
 import { RewriteText, CancelRewrite } from '../../wailsjs/go/main/App'
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
-import type { Character, CharacterRole } from '../types/draftline'
+import type { Character, CharacterRole, WritingStyleOptions } from '../types/draftline'
+import { DEFAULT_STYLE_OPTIONS } from '../types/draftline'
 import { analyzeText, getScoreColor, getScoreLabel, type AIDetectionResult } from '../services/aiDetection'
 
 type Tab = 'dashboard' | 'bible' | 'ai'
-type AIMode = 'line_edit' | 'copy_edit' | 'dev_edit' | 'expand' | 'smooth' | 'voice_check'
+type AIMode = 'line_edit' | 'expand' | 'smooth'
 type AIState = 'idle' | 'loading' | 'voice' | 'error'
 type BibleSection = 'characters' | 'plot' | 'timeline'
 
 const AI_MODES: { id: AIMode; label: string; desc: string }[] = [
   { id: 'line_edit', label: 'Line Edit', desc: 'Prose rhythm and sentence variety' },
-  { id: 'copy_edit', label: 'Copy Edit', desc: 'Grammar, punctuation, consistency' },
-  { id: 'dev_edit', label: 'Dev Edit', desc: 'Pacing, transitions, scene structure' },
-  { id: 'expand', label: 'Expand', desc: 'Sensory detail, texture, show vs. tell' },
+  { id: 'expand', label: 'Expand', desc: 'Add detail, texture, show vs. tell' },
   { id: 'smooth', label: 'Smooth', desc: 'Remove repetition, improve flow' },
-  { id: 'voice_check', label: 'Voice Check', desc: 'POV, tense, and narrative consistency' },
 ]
+
+// Style feature definitions for the mixer
+const STYLE_FEATURES: { key: keyof WritingStyleOptions; label: string; desc: string }[] = [
+  { key: 'metaphors', label: 'Metaphors', desc: 'Figurative comparisons' },
+  { key: 'similes', label: 'Similes', desc: '"Like" and "as" comparisons' },
+  { key: 'sensory_detail', label: 'Sensory Detail', desc: 'Sight, sound, smell, touch, taste' },
+  { key: 'internal_thought', label: 'Internal Thought', desc: 'Character introspection' },
+  { key: 'dialogue', label: 'Dialogue', desc: 'Conversation expansion' },
+  { key: 'action', label: 'Action', desc: 'Physical beats, movement' },
+  { key: 'description', label: 'Description', desc: 'Setting and atmosphere' },
+  { key: 'pacing', label: 'Pacing', desc: 'Sentence rhythm variation' },
+]
+
+const INTENSITY_LABELS = ['Off', 'Subtle', 'Moderate', 'Heavy']
 
 function genId(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
@@ -87,10 +99,20 @@ function DashboardTab() {
     return arr[currentIndex]?.content || ''
   }, [book, currentSection, currentIndex])
 
-  // AI Detection analysis
-  const aiResult = useMemo(() => {
-    if (!currentContent || currentContent.length < 100) return null
-    return analyzeText(currentContent)
+  // Debounced AI Detection - only run 2 seconds after content stops changing
+  const [aiResult, setAiResult] = useState<AIDetectionResult | null>(null)
+  const analysisTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (analysisTimer.current) clearTimeout(analysisTimer.current)
+    if (!currentContent || currentContent.length < 100) {
+      setAiResult(null)
+      return
+    }
+    analysisTimer.current = setTimeout(() => {
+      setAiResult(analyzeText(currentContent))
+    }, 2000)
+    return () => { if (analysisTimer.current) clearTimeout(analysisTimer.current) }
   }, [currentContent])
 
   // Calculate metrics
@@ -358,7 +380,7 @@ function DashboardTab() {
               </div>
             )}
             <div className="ai-detection-disclaimer">
-              Heuristic analysis only. For verification, use Pangram or GPTZero.
+              <strong>Estimate only — not a guarantee.</strong> This heuristic analysis may produce false positives or negatives. For authoritative verification, use Pangram or GPTZero. Draftline makes no claims about the accuracy of this score.
             </div>
           </>
         ) : (
@@ -383,19 +405,17 @@ function getTotalWords(book: any): number {
 // ── AI Studio ───────────────────────────────────────────────────────────────
 
 function AiStudioTab() {
-  const { book, currentSection, currentIndex, setPendingDiff } = useBookStore()
+  const { book, currentSection, currentIndex, setPendingDiff, getStyleOptions, updateStyleOptions } = useBookStore()
   const { settings, openSettings } = useAppStore()
 
   const [aiMode, setAiMode] = useState<AIMode>('line_edit')
-  const [bookScope, setBookScope] = useState(false)
   const [aiState, setAiState] = useState<AIState>('idle')
   const [error, setError] = useState('')
-  const [voiceResult, setVoiceResult] = useState('')
-  const [bookFindings, setBookFindings] = useState<{ title: string; findings: string }[]>([])
-  const [showBookModal, setShowBookModal] = useState(false)
-  const [bookProgress, setBookProgress] = useState(0)
   const [showImport, setShowImport] = useState(false)
   const [importText, setImportText] = useState('')
+  const [showStyleMixer, setShowStyleMixer] = useState(false)
+
+  const styleOptions = getStyleOptions()
 
   const aiConfigured = settings.ai_enabled && (
     settings.ai_mode === 'claudecode' ||
@@ -423,22 +443,17 @@ function AiStudioTab() {
   const currentMode = AI_MODES.find(m => m.id === aiMode)!
 
   async function handleRun() {
-    if (aiMode === 'voice_check' && bookScope) {
-      await handleBookVoiceCheck()
-      return
-    }
     const html = getCurrentHTML()
     if (!html || html === '<p></p>') return
     setAiState('loading')
     setError('')
     try {
-      const res = await RewriteText(html, aiMode)
+      // Pass style options for expand/smooth modes
+      const useStyleOptions = aiMode === 'expand' || aiMode === 'smooth'
+      const res = await RewriteText(html, aiMode, useStyleOptions ? JSON.stringify(styleOptions) : '')
       if (res.error) {
         setError(res.error)
         setAiState('error')
-      } else if (aiMode === 'voice_check') {
-        setVoiceResult(res.result)
-        setAiState('voice')
       } else {
         const { diffContent } = await import('../utils/diff')
         const d = diffContent(html, res.result)
@@ -451,23 +466,8 @@ function AiStudioTab() {
     }
   }
 
-  async function handleBookVoiceCheck() {
-    if (!book) return
-    setAiState('loading')
-    setBookFindings([])
-    const results: { title: string; findings: string }[] = []
-    for (let i = 0; i < book.body.length; i++) {
-      setBookProgress(i + 1)
-      try {
-        const res = await RewriteText(book.body[i].content, 'voice_check')
-        results.push({ title: book.body[i].title, findings: res.error || res.result })
-      } catch (e) {
-        results.push({ title: book.body[i].title, findings: 'Error: ' + String(e) })
-      }
-    }
-    setBookFindings(results)
-    setAiState('idle')
-    setShowBookModal(true)
+  function handleStyleChange(key: keyof WritingStyleOptions, value: number) {
+    updateStyleOptions({ [key]: value })
   }
 
   function handleImportCompare() {
@@ -493,11 +493,7 @@ function AiStudioTab() {
   if (aiState === 'loading') {
     return (
       <LoadingPane
-        label={
-          aiMode === 'voice_check' && bookScope
-            ? `Voice check — chapter ${bookProgress} of ${book.body.length}`
-            : `${currentMode.label} · ${getAiLabel()}`
-        }
+        label={`${currentMode.label} · ${getAiLabel()}`}
         onCancel={() => {
           CancelRewrite()
           setAiState('idle')
@@ -515,19 +511,9 @@ function AiStudioTab() {
     )
   }
 
-  if (aiState === 'voice') {
-    return (
-      <div>
-        <div className="ai-result-bar">
-          <span>Voice Analysis — {book.body[currentIndex]?.title ?? 'current chapter'}</span>
-          <button className="ai-link-btn inline" onClick={() => setAiState('idle')}>← Back</button>
-        </div>
-        <div className="voice-findings">{voiceResult}</div>
-      </div>
-    )
-  }
-
   // ── Idle state ──
+  const showMixer = (aiMode === 'expand' || aiMode === 'smooth')
+
   return (
     <>
       {/* Mode selector */}
@@ -546,11 +532,61 @@ function AiStudioTab() {
         ))}
       </div>
 
-      {/* Voice scope */}
-      {aiMode === 'voice_check' && (
-        <div className="ai-scope-row">
-          <button className={`scope-pill${!bookScope ? ' active' : ''}`} onClick={() => setBookScope(false)}>Chapter</button>
-          <button className={`scope-pill${bookScope ? ' active' : ''}`} onClick={() => setBookScope(true)}>Full Book</button>
+      {/* Style Mixer for Expand/Smooth modes */}
+      {showMixer && (
+        <div className="style-mixer-section">
+          <button
+            className="style-mixer-toggle"
+            onClick={() => setShowStyleMixer(!showStyleMixer)}
+          >
+            <span>Style Options</span>
+            <svg
+              className={`style-mixer-chevron${showStyleMixer ? ' open' : ''}`}
+              width="10"
+              height="6"
+              viewBox="0 0 10 6"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M1 1l4 4 4-4" />
+            </svg>
+          </button>
+          {showStyleMixer && (
+            <div className="style-mixer-content">
+              {STYLE_FEATURES.map(feature => (
+                <div key={feature.key} className="style-feature-row">
+                  <div className="style-feature-header">
+                    <span className="style-feature-label">{feature.label}</span>
+                    <span className="style-feature-value">{INTENSITY_LABELS[styleOptions[feature.key]]}</span>
+                  </div>
+                  <div className="style-feature-slider">
+                    <input
+                      type="range"
+                      min="0"
+                      max="3"
+                      value={styleOptions[feature.key]}
+                      onChange={e => handleStyleChange(feature.key, parseInt(e.target.value))}
+                      className="style-slider"
+                    />
+                    <div className="style-slider-marks">
+                      {INTENSITY_LABELS.map((label, i) => (
+                        <span
+                          key={i}
+                          className={`style-slider-mark${styleOptions[feature.key] === i ? ' active' : ''}`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="style-mixer-hint">
+                Customize how the AI enhances your writing. "Off" skips that feature entirely.
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -574,36 +610,16 @@ function AiStudioTab() {
         <div className="ai-actions">
           {aiConfigured ? (
             <button className="ai-run-btn" onClick={handleRun}>
-              {aiMode === 'voice_check' && bookScope ? 'Check All Chapters' : `Run ${currentMode.label}`}
+              Run {currentMode.label}
             </button>
           ) : (
             <button className="ai-run-btn configure" onClick={openSettings}>Configure AI ›</button>
           )}
-          {aiConfigured && aiMode !== 'voice_check' && (
+          {aiConfigured && (
             <button className="ai-link-btn" onClick={() => setShowImport(true)}>
               or compare with imported draft ›
             </button>
           )}
-        </div>
-      )}
-
-      {/* Full book analysis modal */}
-      {showBookModal && (
-        <div className="dialog-overlay">
-          <div className="dialog book-analysis-modal">
-            <div className="dialog-title">Voice Check — Full Manuscript</div>
-            <div className="book-analysis-findings">
-              {bookFindings.map((f, i) => (
-                <div key={i} className="analysis-finding">
-                  <div className="analysis-finding-title">{f.title}</div>
-                  <div className="analysis-finding-text">{f.findings}</div>
-                </div>
-              ))}
-            </div>
-            <div className="dialog-actions">
-              <button className="dialog-btn primary" onClick={() => setShowBookModal(false)}>Close</button>
-            </div>
-          </div>
         </div>
       )}
     </>
