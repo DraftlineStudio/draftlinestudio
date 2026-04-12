@@ -18,7 +18,7 @@ export interface AppSettings {
   // AI
   ai_enabled: boolean
   ai_mode: 'claudecode' | 'api' | 'local'
-  ai_provider: 'claude' | 'openai' | ''
+  ai_provider: 'claude' | 'openai' | 'gemini' | 'grok' | ''
   ai_api_key: string
   ai_model: string
   ai_local_endpoint: string
