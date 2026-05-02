@@ -19,6 +19,17 @@ const OPENAI_MODELS = [
   { value: 'o3',          label: 'o3 (reasoning)' },
 ]
 
+const GEMINI_MODELS = [
+  { value: 'gemini-1.5-pro',   label: 'Gemini 1.5 Pro (recommended)' },
+  { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (faster)' },
+  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (latest)' },
+]
+
+const GROK_MODELS = [
+  { value: 'grok-2',      label: 'Grok 2 (recommended)' },
+  { value: 'grok-beta',   label: 'Grok Beta' },
+]
+
 const BOOK_FONTS = [
   'Merriweather', 'EB Garamond', 'Lora', 'Palatino Linotype', 'Georgia', 'Times New Roman',
 ]
@@ -79,7 +90,11 @@ export default function AppSettingsDialog() {
   const [bookDropCaps, setBookDropCaps]       = useState(settings.book_drop_caps)
   const [bookTrimSize, setBookTrimSize]       = useState(settings.book_trim_size)
 
-  const modelOptions = provider === 'claude' ? CLAUDE_MODELS : provider === 'openai' ? OPENAI_MODELS : []
+  const modelOptions = provider === 'claude' ? CLAUDE_MODELS
+    : provider === 'openai' ? OPENAI_MODELS
+    : provider === 'gemini' ? GEMINI_MODELS
+    : provider === 'grok' ? GROK_MODELS
+    : []
 
   // Check Claude Code status when the AI section is opened or mode switches
   useEffect(() => {
@@ -146,9 +161,15 @@ export default function AppSettingsDialog() {
     try { await OpenClaudeAuth() } catch { /* ignore */ }
   }
 
-  function handleProviderChange(p: 'claude' | 'openai' | '') {
+  function handleProviderChange(p: 'claude' | 'openai' | 'gemini' | 'grok' | '') {
     setProvider(p)
-    setModel(p === 'claude' ? 'claude-sonnet-4-6' : p === 'openai' ? 'gpt-4o' : '')
+    const defaultModels: Record<string, string> = {
+      claude: 'claude-sonnet-4-6',
+      openai: 'gpt-4o',
+      gemini: 'gemini-1.5-pro',
+      grok: 'grok-2',
+    }
+    setModel(defaultModels[p] || '')
   }
 
   function handleModeChange(m: typeof aiMode) {
@@ -486,10 +507,11 @@ export default function AppSettingsDialog() {
                 {aiMode === 'api' && <>
                   <div className="dialog-field">
                     <label className="dialog-label">Provider</label>
-                    <div className="settings-theme-row">
-                      <button className={`settings-theme-btn${provider === '' ? ' active' : ''}`} onClick={() => handleProviderChange('')}>None</button>
-                      <button className={`settings-theme-btn${provider === 'claude' ? ' active' : ''}`} onClick={() => handleProviderChange('claude')}>Claude</button>
-                      <button className={`settings-theme-btn${provider === 'openai' ? ' active' : ''}`} onClick={() => handleProviderChange('openai')}>OpenAI</button>
+                    <div className="settings-provider-row">
+                      <button className={`settings-provider-btn${provider === 'claude' ? ' active' : ''}`} onClick={() => handleProviderChange('claude')}>Claude</button>
+                      <button className={`settings-provider-btn${provider === 'openai' ? ' active' : ''}`} onClick={() => handleProviderChange('openai')}>OpenAI</button>
+                      <button className={`settings-provider-btn${provider === 'gemini' ? ' active' : ''}`} onClick={() => handleProviderChange('gemini')}>Gemini</button>
+                      <button className={`settings-provider-btn${provider === 'grok' ? ' active' : ''}`} onClick={() => handleProviderChange('grok')}>Grok</button>
                     </div>
                   </div>
                   {provider !== '' && <>
