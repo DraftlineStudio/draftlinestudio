@@ -10,7 +10,7 @@ interface TitleBarProps {
 }
 
 export default function TitleBar({ minimal = false }: TitleBarProps) {
-  const { book, newBook, openBook, saveBook, saveBookAs, openMetadataDialog, closeProject } = useBookStore()
+  const { book, newBook, openBook, saveBook, saveBookAs, openMetadataDialog, openExportWizard, closeProject } = useBookStore()
   const { settings, openSettings } = useAppStore()
   const [dropOpen, setDropOpen] = useState(false)
   const [dropPos, setDropPos] = useState({ top: 0, left: 0 })
@@ -97,6 +97,15 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
           <circle cx="6.5" cy="3.5" r="0.6" fill="currentColor" stroke="none" />
         </svg>
         <span>Book Info…</span>
+      </button>
+
+      <button className="titlebar-dropdown-item" onClick={() => run(openExportWizard)} disabled={!book}>
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3">
+          <path d="M2 9.5v2h9v-2" />
+          <path d="M6.5 1v7" />
+          <path d="M3.5 5l3 3 3-3" />
+        </svg>
+        <span>Export…</span>
       </button>
 
       <div className="titlebar-dropdown-sep" />
