@@ -226,9 +226,9 @@ func (a *App) RestoreBackup(number int) SaveResult {
 // Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
 const (
 	AppVersionMajor = 0
-	AppVersionMinor = 11
-	AppVersionBuild = 2321
-	AppVersion      = "0.11.02320" +
+	AppVersionMinor = 12
+	AppVersionBuild = 2322
+	AppVersion      = "0.12.02322" +
 		""
 )
 
