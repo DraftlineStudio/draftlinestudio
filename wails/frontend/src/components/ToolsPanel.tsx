@@ -8,10 +8,9 @@ import type { Character, CharacterRole, WritingStyleOptions, Beat, BeatType, For
 import { DEFAULT_STYLE_OPTIONS } from '../types/draftline'
 import { analyzeText, getScoreColor, getScoreLabel, analyzeAntiPatterns, getAntiPatternColor, type AIDetectionResult, type AntiPatternResult } from '../services/aiDetection'
 
-type Tab = 'dashboard' | 'bible' | 'ai'
+type GlyphSection = 'dashboard' | 'characters' | 'plot' | 'timeline' | 'beats' | 'foreshadow' | 'knowledge' | 'ai' | null
 type AIMode = 'line_edit' | 'expand' | 'smooth' | 'custom'
 type AIState = 'idle' | 'loading' | 'voice' | 'error'
-type BibleSection = 'characters' | 'plot' | 'timeline' | 'beats' | 'foreshadow' | 'knowledge'
 
 const AI_MODES: { id: AIMode; label: string; desc: string }[] = [
   { id: 'line_edit', label: 'Line Edit', desc: 'Prose rhythm and sentence variety' },
@@ -34,6 +33,18 @@ const STYLE_FEATURES: { key: keyof WritingStyleOptions; label: string; desc: str
 
 const INTENSITY_LABELS = ['Off', 'Subtle', 'Moderate', 'Heavy']
 
+// Glyph section configuration
+const SECTION_CONFIG: { id: Exclude<GlyphSection, null>; label: string; tooltip: string }[] = [
+  { id: 'dashboard', label: 'Dashboard', tooltip: 'Writing Dashboard' },
+  { id: 'characters', label: 'Characters', tooltip: 'Character Codex' },
+  { id: 'plot', label: 'Plot', tooltip: 'Plot Notes' },
+  { id: 'timeline', label: 'Timeline', tooltip: 'Story Timeline' },
+  { id: 'beats', label: 'Beats', tooltip: 'Beat Sheet' },
+  { id: 'foreshadow', label: 'Foreshadow', tooltip: 'Foreshadowing Ledger' },
+  { id: 'knowledge', label: 'Knowledge', tooltip: 'Knowledge Matrix' },
+  { id: 'ai', label: 'AI', tooltip: 'AI Studio' },
+]
+
 function genId(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
@@ -45,36 +56,176 @@ function countWords(html: string): number {
   return text.trim().split(/\s+/).filter((w) => w.length > 0).length
 }
 
+// ── Glyph Icons ─────────────────────────────────────────────────────────────
+
+function GlyphIcon({ section }: { section: Exclude<GlyphSection, null> }) {
+  const icons: Record<Exclude<GlyphSection, null>, JSX.Element> = {
+    dashboard: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="7" height="9" rx="1" />
+        <rect x="14" y="3" width="7" height="5" rx="1" />
+        <rect x="14" y="12" width="7" height="9" rx="1" />
+        <rect x="3" y="16" width="7" height="5" rx="1" />
+      </svg>
+    ),
+    characters: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="9" cy="7" r="4" />
+        <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        <path d="M21 21v-2a4 4 0 0 0-3-3.85" />
+      </svg>
+    ),
+    plot: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+        <line x1="16" y1="13" x2="8" y2="13" />
+        <line x1="16" y1="17" x2="8" y2="17" />
+        <polyline points="10 9 9 9 8 9" />
+      </svg>
+    ),
+    timeline: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <polyline points="12 6 12 12 16 14" />
+      </svg>
+    ),
+    beats: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+        <line x1="3" y1="9" x2="21" y2="9" />
+        <line x1="3" y1="15" x2="21" y2="15" />
+        <line x1="9" y1="3" x2="9" y2="21" />
+        <line x1="15" y1="3" x2="15" y2="21" />
+      </svg>
+    ),
+    foreshadow: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+      </svg>
+    ),
+    knowledge: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <path d="M3 9h18" />
+        <path d="M9 21V9" />
+      </svg>
+    ),
+    ai: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
+        <path d="M5 19l.5 1.5L7 21l-1.5.5L5 23l-.5-1.5L3 21l1.5-.5L5 19z" />
+        <path d="M19 16l.5 1.5L21 18l-1.5.5L19 20l-.5-1.5L17 18l1.5-.5L19 16z" />
+      </svg>
+    ),
+  }
+  return icons[section]
+}
+
 // ── Main panel ──────────────────────────────────────────────────────────────
 
 export default function ToolsPanel() {
-  const [activeTab, setActiveTab] = useState<Tab>('dashboard')
-  const { rightPanelOpen, toggleRightPanel } = useBookStore()
-  const { settings } = useAppStore()
+  const [activeSection, setActiveSection] = useState<GlyphSection>(null)
+  const [panelWidth, setPanelWidth] = useState(350)
+  const [isResizing, setIsResizing] = useState(false)
+  const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null)
+  const { settings, saveSettings } = useAppStore()
 
-  // If AI is disabled and user was on AI tab, switch to dashboard
-  const effectiveTab = (!settings.ai_enabled && activeTab === 'ai') ? 'dashboard' : activeTab
+  // Load saved panel width from settings
+  useEffect(() => {
+    if (settings.sidebar_panel_width) {
+      setPanelWidth(settings.sidebar_panel_width)
+    }
+  }, [settings.sidebar_panel_width])
+
+  // Handle resize
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizing(true)
+    resizeRef.current = { startX: e.clientX, startWidth: panelWidth }
+    document.body.style.cursor = 'ew-resize'
+    document.body.style.userSelect = 'none'
+  }
+
+  useEffect(() => {
+    if (!isResizing) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!resizeRef.current) return
+      const delta = resizeRef.current.startX - e.clientX
+      const newWidth = Math.min(500, Math.max(280, resizeRef.current.startWidth + delta))
+      setPanelWidth(newWidth)
+    }
+
+    const handleMouseUp = () => {
+      setIsResizing(false)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      // Save width to settings
+      saveSettings({ sidebar_panel_width: panelWidth })
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isResizing, panelWidth, saveSettings])
+
+  const handleGlyphClick = (section: Exclude<GlyphSection, null>) => {
+    setActiveSection(prev => prev === section ? null : section)
+  }
+
+  const visibleSections = SECTION_CONFIG.filter(s => {
+    if (s.id === 'ai') return settings.show_ai_tab
+    return true
+  })
+
+  const activeSectionConfig = activeSection ? SECTION_CONFIG.find(s => s.id === activeSection) : null
 
   return (
-    <div className={`tools-panel${rightPanelOpen ? '' : ' collapsed'}`}>
-      <div className="tools-panel-inner">
-        <div className="tools-tabs">
-          <button className="panel-collapse-btn" onClick={toggleRightPanel} title="Collapse panel">
-            <svg width="6" height="10" viewBox="0 0 6 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M1 1l4 4-4 4" />
-            </svg>
+    <div className="tools-sidebar">
+      {/* Slide-out panel */}
+      {activeSection && (
+        <div className="slide-panel" style={{ width: panelWidth }}>
+          <div className="resize-handle" onMouseDown={handleResizeStart} />
+          <div className="slide-panel-header">
+            <span className="slide-panel-title">{activeSectionConfig?.tooltip}</span>
+            <button className="slide-panel-close" onClick={() => setActiveSection(null)} title="Close panel">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+          <div className="slide-panel-content">
+            {activeSection === 'dashboard' && <DashboardTab />}
+            {activeSection === 'characters' && <CharactersSection />}
+            {activeSection === 'plot' && <PlotSection />}
+            {activeSection === 'timeline' && <TimelineSection />}
+            {activeSection === 'beats' && <BeatsSection />}
+            {activeSection === 'foreshadow' && <ForeshadowingSection />}
+            {activeSection === 'knowledge' && <KnowledgeSection />}
+            {activeSection === 'ai' && <AiStudioTab />}
+          </div>
+        </div>
+      )}
+
+      {/* Glyph bar */}
+      <div className="glyph-bar">
+        {visibleSections.map(section => (
+          <button
+            key={section.id}
+            className={`glyph-btn${activeSection === section.id ? ' active' : ''}`}
+            onClick={() => handleGlyphClick(section.id)}
+            title={section.tooltip}
+          >
+            <GlyphIcon section={section.id} />
           </button>
-          <button className={`tools-tab${effectiveTab === 'dashboard' ? ' active' : ''}`} onClick={() => setActiveTab('dashboard')}>Dashboard</button>
-          <button className={`tools-tab${effectiveTab === 'bible' ? ' active' : ''}`} onClick={() => setActiveTab('bible')}>Bible</button>
-          {settings.ai_enabled && (
-            <button className={`tools-tab${effectiveTab === 'ai' ? ' active' : ''}`} onClick={() => setActiveTab('ai')}>AI</button>
-          )}
-        </div>
-        <div className="tools-content">
-          {effectiveTab === 'dashboard' && <DashboardTab />}
-          {effectiveTab === 'bible' && <StoryBibleTab />}
-          {effectiveTab === 'ai' && <AiStudioTab />}
-        </div>
+        ))}
       </div>
     </div>
   )
@@ -1015,29 +1166,7 @@ function LoadingPane({ label, onCancel }: { label: string; onCancel: () => void 
   )
 }
 
-// ── Story Bible ──────────────────────────────────────────────────────────────
-
-function StoryBibleTab() {
-  const [section, setSection] = useState<BibleSection>('characters')
-  return (
-    <>
-      <div className="story-bible-subnav">
-        <button className={`bible-nav-btn${section === 'characters' ? ' active' : ''}`} onClick={() => setSection('characters')}>Characters</button>
-        <button className={`bible-nav-btn${section === 'plot' ? ' active' : ''}`} onClick={() => setSection('plot')}>Plot</button>
-        <button className={`bible-nav-btn${section === 'timeline' ? ' active' : ''}`} onClick={() => setSection('timeline')}>Timeline</button>
-        <button className={`bible-nav-btn${section === 'beats' ? ' active' : ''}`} onClick={() => setSection('beats')}>Beats</button>
-        <button className={`bible-nav-btn${section === 'foreshadow' ? ' active' : ''}`} onClick={() => setSection('foreshadow')}>Foreshadow</button>
-        <button className={`bible-nav-btn${section === 'knowledge' ? ' active' : ''}`} onClick={() => setSection('knowledge')}>Knowledge</button>
-      </div>
-      {section === 'characters' && <CharactersSection />}
-      {section === 'plot' && <PlotSection />}
-      {section === 'timeline' && <TimelineSection />}
-      {section === 'beats' && <BeatsSection />}
-      {section === 'foreshadow' && <ForeshadowingSection />}
-      {section === 'knowledge' && <KnowledgeSection />}
-    </>
-  )
-}
+// ── Characters Section ───────────────────────────────────────────────────────
 
 function CharactersSection() {
   const {
