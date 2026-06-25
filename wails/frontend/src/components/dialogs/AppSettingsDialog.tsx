@@ -67,6 +67,7 @@ export default function AppSettingsDialog() {
 
   // AI
   const [aiEnabled, setAiEnabled]         = useState(settings.ai_enabled)
+  const [showAiTab, setShowAiTab]         = useState(settings.show_ai_tab)
   const [aiMode, setAiMode]               = useState(settings.ai_mode)
   const [provider, setProvider]           = useState(settings.ai_provider)
   const [apiKey, setApiKey]               = useState(settings.ai_api_key)
@@ -204,6 +205,7 @@ export default function AppSettingsDialog() {
       auto_theme_dawn: autoThemeDawn,
       auto_theme_dusk: autoThemeDusk,
       ai_enabled: aiEnabled,
+      show_ai_tab: showAiTab,
       ai_mode: aiMode,
       ai_provider: provider,
       ai_api_key: apiKey.trim(),
@@ -383,6 +385,19 @@ export default function AppSettingsDialog() {
               </div>
 
               {aiEnabled && <>
+                <div className="dialog-field" style={{ marginBottom: 12 }}>
+                  <label className="dialog-checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={showAiTab}
+                      onChange={e => setShowAiTab(e.target.checked)}
+                    />
+                    <span>Show AI tab in sidebar</span>
+                  </label>
+                  <p className="settings-hint" style={{ marginTop: 4 }}>
+                    Display the AI Studio icon in the sidebar glyph bar.
+                  </p>
+                </div>
                 <div className="dialog-field">
                   <label className="dialog-label">AI Source</label>
                   <div className="settings-theme-row">
