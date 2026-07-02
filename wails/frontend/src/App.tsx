@@ -165,14 +165,6 @@ export default function App() {
         <ChapterPanel />
         {viewMode === 'codex' ? <CodexPanel /> : <EditorPanel />}
         <ToolsPanel />
-        {!rightPanelOpen && (
-          <button className="panel-rail-right" onClick={toggleRightPanel} title="Open Tools panel (Ctrl+])">
-            <svg width="6" height="10" viewBox="0 0 6 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 1L1 5l4 4" />
-            </svg>
-            <span className="panel-collapsed-label">Tools</span>
-          </button>
-        )}
       </div>
       <StatusBar />
       {dialogs.showMetadata && <MetadataDialog />}
