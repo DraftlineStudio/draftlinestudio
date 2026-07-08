@@ -1,7 +1,7 @@
 {
   "name": "Draftline Studio",
   "private": true,
-  "version": "0.12.02322",
+  "version": "0.12.02328",
   "type": "module",
   "scripts": {
     "dev": "vite",
