@@ -10,18 +10,14 @@ import (
 	"strings"
 	"time"
 
+	"draftline/internal/types"
+
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-// ImportResult holds the result of an import operation
-type ImportResult struct {
-	Success bool     `json:"success"`
-	Book    BookData `json:"book,omitempty"`
-	Error   string   `json:"error,omitempty"`
-}
 
 // ImportEPUBDialog shows file picker for EPUB files and imports the selected file
-func (a *App) ImportEPUBDialog() ImportResult {
+func (a *App) ImportEPUBDialog() types.ImportResult {
 	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title:            "Import EPUB",
 		DefaultDirectory: a.settings.DefaultSaveDir,
@@ -30,42 +26,42 @@ func (a *App) ImportEPUBDialog() ImportResult {
 		},
 	})
 	if err != nil {
-		return ImportResult{Success: false, Error: err.Error()}
+		return types.ImportResult{Success: false, Error: err.Error()}
 	}
 	if path == "" {
-		return ImportResult{Success: false, Error: "cancelled"}
+		return types.ImportResult{Success: false, Error: "cancelled"}
 	}
 	return a.ImportEPUB(path)
 }
 
-// ImportEPUB parses an EPUB file and converts it to BookData
-func (a *App) ImportEPUB(path string) ImportResult {
+// ImportEPUB parses an EPUB file and converts it to types.BookData
+func (a *App) ImportEPUB(path string) types.ImportResult {
 	r, err := zip.OpenReader(path)
 	if err != nil {
-		return ImportResult{Success: false, Error: fmt.Sprintf("Failed to open EPUB: %v", err)}
+		return types.ImportResult{Success: false, Error: fmt.Sprintf("Failed to open EPUB: %v", err)}
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	// Step 1: Find the OPF file via container.xml
 	opfPath, err := findOPFPath(r)
 	if err != nil {
-		return ImportResult{Success: false, Error: err.Error()}
+		return types.ImportResult{Success: false, Error: err.Error()}
 	}
 
 	// Step 2: Parse the OPF file for metadata and spine
 	opfData, err := readEpubEntry(r, opfPath)
 	if err != nil {
-		return ImportResult{Success: false, Error: fmt.Sprintf("Failed to read OPF: %v", err)}
+		return types.ImportResult{Success: false, Error: fmt.Sprintf("Failed to read OPF: %v", err)}
 	}
 
 	opfDir := filepath.Dir(opfPath)
 	metadata, spine, manifest, err := parseOPF(opfData)
 	if err != nil {
-		return ImportResult{Success: false, Error: err.Error()}
+		return types.ImportResult{Success: false, Error: err.Error()}
 	}
 
 	// Step 3: Extract chapters in spine order
-	chapters := []ChapterItem{}
+	var chapters []types.ChapterItem
 	chapterNum := 1
 
 	for _, itemRef := range spine {
@@ -103,7 +99,7 @@ func (a *App) ImportEPUB(path string) ImportResult {
 			title = fmt.Sprintf("Chapter %d", chapterNum)
 		}
 
-		chapters = append(chapters, ChapterItem{
+		chapters = append(chapters, types.ChapterItem{
 			Title:   title,
 			Type:    "Chapter",
 			Content: body,
@@ -112,14 +108,14 @@ func (a *App) ImportEPUB(path string) ImportResult {
 	}
 
 	if len(chapters) == 0 {
-		return ImportResult{Success: false, Error: "No readable chapters found in EPUB"}
+		return types.ImportResult{Success: false, Error: "No readable chapters found in EPUB"}
 	}
 
-	// Build the BookData
+	// Build the types.BookData
 	now := time.Now().Format(time.RFC3339)
-	book := BookData{
+	book := types.BookData{
 		Version: "2.0",
-		Metadata: Metadata{
+		Metadata: types.Metadata{
 			Title:     metadata.Title,
 			Author:    metadata.Creator,
 			Publisher: metadata.Publisher,
@@ -127,10 +123,10 @@ func (a *App) ImportEPUB(path string) ImportResult {
 			Modified:  now,
 		},
 		Copyright:   "",
-		FrontMatter: []ChapterItem{},
+		FrontMatter: []types.ChapterItem{},
 		Body:        chapters,
-		BackMatter:  []ChapterItem{},
-		StoryBible:  StoryBible{Characters: []Character{}},
+		BackMatter:  []types.ChapterItem{},
+		StoryBible:  types.StoryBible{Characters: []types.Character{}},
 	}
 
 	// Use filename as fallback title
@@ -138,7 +134,7 @@ func (a *App) ImportEPUB(path string) ImportResult {
 		book.Metadata.Title = strings.TrimSuffix(filepath.Base(path), ".epub")
 	}
 
-	return ImportResult{Success: true, Book: book}
+	return types.ImportResult{Success: true, Book: book}
 }
 
 // readEpubEntry reads a file from the EPUB ZIP with case-insensitive path matching
@@ -151,8 +147,9 @@ func readEpubEntry(r *zip.ReadCloser, name string) ([]byte, error) {
 			if err != nil {
 				return nil, err
 			}
-			defer rc.Close()
-			return io.ReadAll(rc)
+			data, err := io.ReadAll(rc)
+			_ = rc.Close()
+			return data, err
 		}
 	}
 	return nil, fmt.Errorf("file not found: %s", name)
@@ -245,7 +242,7 @@ func parseOPF(data []byte) (opfMetadata, []opfSpineItem, map[string]opfManifestI
 		}
 	}
 
-	spine := []opfSpineItem{}
+	var spine []opfSpineItem
 	for _, ref := range opf.Spine.ItemRefs {
 		spine = append(spine, opfSpineItem{IDRef: ref.IDRef})
 	}
@@ -320,7 +317,7 @@ func cleanHTML(html string) string {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // ImportDOCXDialog shows file picker for DOCX files and imports the selected file
-func (a *App) ImportDOCXDialog() ImportResult {
+func (a *App) ImportDOCXDialog() types.ImportResult {
 	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title:            "Import Word Document",
 		DefaultDirectory: a.settings.DefaultSaveDir,
@@ -329,21 +326,21 @@ func (a *App) ImportDOCXDialog() ImportResult {
 		},
 	})
 	if err != nil {
-		return ImportResult{Success: false, Error: err.Error()}
+		return types.ImportResult{Success: false, Error: err.Error()}
 	}
 	if path == "" {
-		return ImportResult{Success: false, Error: "cancelled"}
+		return types.ImportResult{Success: false, Error: "cancelled"}
 	}
 	return a.ImportDOCX(path)
 }
 
-// ImportDOCX parses a DOCX file and converts it to BookData
-func (a *App) ImportDOCX(path string) ImportResult {
+// ImportDOCX parses a DOCX file and converts it to types.BookData
+func (a *App) ImportDOCX(path string) types.ImportResult {
 	r, err := zip.OpenReader(path)
 	if err != nil {
-		return ImportResult{Success: false, Error: fmt.Sprintf("Failed to open DOCX: %v", err)}
+		return types.ImportResult{Success: false, Error: fmt.Sprintf("Failed to open DOCX: %v", err)}
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	// Extract metadata from docProps/core.xml
 	meta := extractDOCXMetadata(r)
@@ -351,24 +348,24 @@ func (a *App) ImportDOCX(path string) ImportResult {
 	// Parse document.xml for content
 	docData, err := readDocxEntry(r, "word/document.xml")
 	if err != nil {
-		return ImportResult{Success: false, Error: "Invalid DOCX: missing word/document.xml"}
+		return types.ImportResult{Success: false, Error: "Invalid DOCX: missing word/document.xml"}
 	}
 
 	// Parse the document XML
 	chapters, err := parseDOCXDocument(docData)
 	if err != nil {
-		return ImportResult{Success: false, Error: fmt.Sprintf("Failed to parse document: %v", err)}
+		return types.ImportResult{Success: false, Error: fmt.Sprintf("Failed to parse document: %v", err)}
 	}
 
 	if len(chapters) == 0 {
-		return ImportResult{Success: false, Error: "No content found in document"}
+		return types.ImportResult{Success: false, Error: "No content found in document"}
 	}
 
-	// Build the BookData
+	// Build the types.BookData
 	now := time.Now().Format(time.RFC3339)
-	book := BookData{
+	book := types.BookData{
 		Version: "2.0",
-		Metadata: Metadata{
+		Metadata: types.Metadata{
 			Title:     meta.title,
 			Author:    meta.author,
 			Publisher: "",
@@ -376,10 +373,10 @@ func (a *App) ImportDOCX(path string) ImportResult {
 			Modified:  now,
 		},
 		Copyright:   "",
-		FrontMatter: []ChapterItem{},
+		FrontMatter: []types.ChapterItem{},
 		Body:        chapters,
-		BackMatter:  []ChapterItem{},
-		StoryBible:  StoryBible{Characters: []Character{}},
+		BackMatter:  []types.ChapterItem{},
+		StoryBible:  types.StoryBible{Characters: []types.Character{}},
 	}
 
 	// Use filename as fallback title
@@ -387,7 +384,7 @@ func (a *App) ImportDOCX(path string) ImportResult {
 		book.Metadata.Title = strings.TrimSuffix(filepath.Base(path), ".docx")
 	}
 
-	return ImportResult{Success: true, Book: book}
+	return types.ImportResult{Success: true, Book: book}
 }
 
 // readDocxEntry reads a file from the DOCX ZIP
@@ -398,8 +395,9 @@ func readDocxEntry(r *zip.ReadCloser, name string) ([]byte, error) {
 			if err != nil {
 				return nil, err
 			}
-			defer rc.Close()
-			return io.ReadAll(rc)
+			data, err := io.ReadAll(rc)
+			_ = rc.Close()
+			return data, err
 		}
 	}
 	return nil, fmt.Errorf("file not found: %s", name)
@@ -434,13 +432,9 @@ func extractDOCXMetadata(r *zip.ReadCloser) docxMeta {
 }
 
 // parseDOCXDocument parses word/document.xml and extracts chapters
-func parseDOCXDocument(data []byte) ([]ChapterItem, error) {
+func parseDOCXDocument(data []byte) ([]types.ChapterItem, error) {
 	// DOCX uses the WordprocessingML namespace
 	// Structure: <w:document><w:body><w:p>...</w:p>...</w:body></w:document>
-
-	type TextRun struct {
-		Text string `xml:",chardata"`
-	}
 
 	type RunProps struct {
 		Bold      *struct{} `xml:"b"`
@@ -478,8 +472,8 @@ func parseDOCXDocument(data []byte) ([]ChapterItem, error) {
 	}
 
 	// Group paragraphs into chapters based on heading styles
-	chapters := []ChapterItem{}
-	currentChapter := ChapterItem{Title: "Chapter 1", Type: "Chapter", Content: ""}
+	var chapters []types.ChapterItem
+	currentChapter := types.ChapterItem{Title: "Chapter 1", Type: "Chapter", Content: ""}
 	chapterNum := 1
 	hasContent := false
 
@@ -537,7 +531,7 @@ func parseDOCXDocument(data []byte) ([]ChapterItem, error) {
 			}
 			// Start new chapter
 			chapterNum++
-			currentChapter = ChapterItem{
+			currentChapter = types.ChapterItem{
 				Title:   paraText,
 				Type:    "Chapter",
 				Content: "",
