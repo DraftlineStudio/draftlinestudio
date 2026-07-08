@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useBookStore } from '../../store/bookStore'
 import { useAppStore } from '../../store/appStore'
 import { ImportEPUBDialog, ImportDOCXDialog } from '../../../wailsjs/go/main/App'
+import { countWords } from '../../utils/textUtils'
 
 type WizardStep = 'choose' | 'create' | 'import-preview'
 
@@ -97,11 +98,6 @@ export default function NewBookWizard({ onCreated }: NewBookWizardProps) {
   function handleKey(e: React.KeyboardEvent) {
     if (e.key === 'Enter' && step === 'create') handleCreate()
     if (e.key === 'Escape') cancelNewBookWizard()
-  }
-
-  function countWords(html: string): number {
-    const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
-    return text ? text.split(' ').length : 0
   }
 
   // Step 1: Choose path
