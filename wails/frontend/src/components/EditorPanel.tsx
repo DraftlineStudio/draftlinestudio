@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect } from 'react'
+import { useCallback, useRef, useEffect, useMemo } from 'react'
 import { useBookStore } from '../store/bookStore'
 import { useAppStore } from '../store/appStore'
 import RichEditor from './editor/RichEditor'
@@ -74,7 +74,14 @@ function DiffPanel({ label, name }: { label: string; name: string }) {
   const { diffs, changes, focusedChangeIdx } = pendingDiff
   const total = changes.length
   const acceptedCount = changes.filter(c => c.accepted).length
+  const decidedCount = changes.filter(c => c.decided).length
+  const undecidedCount = total - decidedCount
   const focused = changes[focusedChangeIdx]
+
+  // Determine button labels based on whether some changes are decided
+  const hasDecided = decidedCount > 0
+  const rejectLabel = hasDecided ? `Reject remaining (${undecidedCount})` : 'Reject all'
+  const acceptLabel = hasDecided ? `Accept remaining (${undecidedCount})` : 'Accept all'
 
   // Map "paraIdx-chunkIdx" → changeIdx for O(1) lookup during render
   const chunkChangeMap = useMemo(() => {
@@ -100,22 +107,26 @@ function DiffPanel({ label, name }: { label: string; name: string }) {
 
         {/* Accept / Keep for focused change */}
         <button
-          className={`diff-ctrl-btn${focused && !focused.accepted ? ' active-reject' : ''}`}
+          className={`diff-ctrl-btn${focused?.decided && !focused.accepted ? ' active-reject' : ''}`}
           onClick={() => rejectChange(focusedChangeIdx)}
           title="Keep original (k)"
         >Keep</button>
         <button
-          className={`diff-ctrl-btn${focused && focused.accepted ? ' active-accept' : ''}`}
+          className={`diff-ctrl-btn${focused?.decided && focused.accepted ? ' active-accept' : ''}`}
           onClick={() => acceptChange(focusedChangeIdx)}
           title="Accept suggestion (a)"
         >Accept</button>
 
         <div className="diff-accept-sep" />
 
-        <button className="diff-ctrl-btn secondary" onClick={rejectAllDiff}>Reject all</button>
-        <button className="diff-ctrl-btn secondary" onClick={acceptAllDiff}>Accept all</button>
+        <button className="diff-ctrl-btn secondary" onClick={rejectAllDiff} disabled={undecidedCount === 0}>
+          {rejectLabel}
+        </button>
+        <button className="diff-ctrl-btn secondary" onClick={acceptAllDiff} disabled={undecidedCount === 0}>
+          {acceptLabel}
+        </button>
         <button className="diff-ctrl-btn primary" onClick={applyPendingDiff}>
-          Apply {acceptedCount}/{total}
+          Apply ({acceptedCount} accepted)
         </button>
         <button className="diff-ctrl-btn discard" onClick={clearPendingDiff} title="Discard all changes">✕</button>
       </div>
@@ -147,19 +158,19 @@ function DiffPanel({ label, name }: { label: string; name: string }) {
                   const focusCls = isFocused ? ' focused' : ''
                   const handleClick = () => setFocusedChange(changeIdx)
 
+                  const isDecided = change.decided
+
                   if (chunk.type === 'delete') {
-                    return isAccepted
-                      // AI version: show deletion struck through
+                    // Deletion: show strikethrough (red) if accepted or undecided, plain text if explicitly rejected
+                    return (isAccepted || !isDecided)
                       ? <del key={chunkIdx} data-change={changeIdx} className={`diff-inline-del${focusCls}`} onClick={handleClick}>{chunk.text}</del>
-                      // Original kept: show as plain text
                       : <span key={chunkIdx} data-change={changeIdx} className={`diff-kept${focusCls}`} onClick={handleClick}>{chunk.text}</span>
                   }
 
                   if (chunk.type === 'insert') {
-                    return isAccepted
-                      // AI version: show insertion highlighted
+                    // Insertion: show green if accepted or undecided, hide if explicitly rejected
+                    return (isAccepted || !isDecided)
                       ? <ins key={chunkIdx} data-change={changeIdx} className={`diff-inline-ins${focusCls}`} onClick={handleClick}>{chunk.text}</ins>
-                      // Rejected: insert not shown
                       : null
                   }
 
@@ -201,31 +212,39 @@ export default function EditorPanel() {
   )
 
   // Debounced content update for smoother typing
+  // CRITICAL: We must capture section/index at typing time, not cleanup time
   const updateTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const latestContent = useRef<string>('')
+  const pendingUpdate = useRef<{ section: string; index: number; content: string } | null>(null)
 
   const handleUpdate = useCallback(
     (html: string) => {
-      latestContent.current = html
+      // Capture the current section/index NOW, not when the timer fires
+      pendingUpdate.current = { section: currentSection, index: currentIndex, content: html }
       if (updateTimer.current) clearTimeout(updateTimer.current)
       updateTimer.current = setTimeout(() => {
-        updateCurrentContent(latestContent.current)
+        if (pendingUpdate.current) {
+          const { section, index, content } = pendingUpdate.current
+          // Only update if we're still on the same chapter
+          const state = useBookStore.getState()
+          if (state.currentSection === section && state.currentIndex === index) {
+            updateCurrentContent(content)
+          }
+          pendingUpdate.current = null
+        }
       }, CONTENT_UPDATE_DEBOUNCE)
     },
-    [updateCurrentContent],
+    [currentSection, currentIndex, updateCurrentContent],
   )
 
-  // Flush any pending updates when switching chapters or unmounting
+  // Clear pending updates when switching chapters - DO NOT flush to wrong chapter
   useEffect(() => {
-    return () => {
-      if (updateTimer.current) {
-        clearTimeout(updateTimer.current)
-        if (latestContent.current) {
-          updateCurrentContent(latestContent.current)
-        }
-      }
+    // Reset pending update when chapter changes - the old content belongs to old chapter
+    pendingUpdate.current = null
+    if (updateTimer.current) {
+      clearTimeout(updateTimer.current)
+      updateTimer.current = null
     }
-  }, [currentSection, currentIndex, updateCurrentContent])
+  }, [currentSection, currentIndex])
 
   // CSS custom properties for editor styling
   const editorStyle = {

@@ -12,9 +12,29 @@ export interface ParagraphDiff {
   revisedText: string
 }
 
+/** Decode common HTML entities for comparison. */
+function decodeEntities(text: string): string {
+  return text
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&rsquo;/gi, "'")
+    .replace(/&lsquo;/gi, "'")
+    .replace(/&rdquo;/gi, '"')
+    .replace(/&ldquo;/gi, '"')
+    .replace(/&mdash;/gi, '—')
+    .replace(/&ndash;/gi, '–')
+    .replace(/&hellip;/gi, '…')
+}
+
 /** Split text into word+whitespace tokens. */
 function tokenize(text: string): string[] {
-  return text.match(/\S+|\s+/g) ?? []
+  // Decode entities first for consistent comparison
+  const decoded = decodeEntities(text)
+  return decoded.match(/\S+|\s+/g) ?? []
 }
 
 /** Merge consecutive same-type chunks for cleaner display. */
@@ -72,7 +92,8 @@ export function wordDiff(original: string, revised: string): DiffChunk[] {
 }
 
 function stripTags(html: string): string {
-  return html.replace(/<[^>]*>/g, '')
+  // Remove HTML tags and decode common entities
+  return decodeEntities(html.replace(/<[^>]*>/g, ''))
 }
 
 /** Extract plain-text content of each <p> element from an HTML string. */
@@ -129,6 +150,7 @@ export interface DiffChange {
   startIdx: number  // inclusive chunk index
   endIdx: number    // exclusive chunk index
   accepted: boolean // true = take AI version; false = keep original
+  decided: boolean  // true = user explicitly made a choice
 }
 
 /** Extract all individual change groups from a set of paragraph diffs. */
@@ -141,7 +163,9 @@ export function extractChanges(diffs: ParagraphDiff[]): DiffChange[] {
       if (diff.chunks[i].type !== 'equal') {
         const startIdx = i
         while (i < diff.chunks.length && diff.chunks[i].type !== 'equal') i++
-        changes.push({ paraIdx, startIdx, endIdx: i, accepted: true })
+        // Default to NOT accepted - user must explicitly accept each change
+        // This prevents accidental data loss if AI returns empty/broken content
+        changes.push({ paraIdx, startIdx, endIdx: i, accepted: false, decided: false })
       } else {
         i++
       }

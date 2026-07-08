@@ -25,12 +25,75 @@ export interface Character {
   personality: string
   motivation: string
   notes: string
+  // Auto-detection fields
+  is_auto_detected?: boolean
+  aliases?: string[]
+  mention_count?: number
+  first_chapter?: number
+  chapter_mentions?: Record<number, number>
+  attributes?: Record<string, string>
 }
 
 export interface StoryBible {
   characters: Character[]
   plot_notes: string
   timeline: string
+}
+
+// Beat Sheet - Save the Cat! style story beats
+export type BeatType =
+  | 'opening_image' | 'theme_stated' | 'setup' | 'catalyst'
+  | 'debate' | 'break_into_two' | 'b_story' | 'fun_and_games'
+  | 'midpoint' | 'bad_guys_close_in' | 'all_is_lost' | 'dark_night'
+  | 'break_into_three' | 'finale' | 'final_image' | 'custom'
+
+export interface Beat {
+  id: string
+  chapter_index: number
+  beat_type: BeatType | string
+  description: string
+  notes?: string
+}
+
+export interface BeatSheet {
+  beats: Beat[]
+}
+
+// Foreshadowing Ledger - track plant → reinforce → payoff
+export type ForeshadowingStatus = 'planted' | 'active' | 'resolved'
+
+export interface ForeshadowingItem {
+  id: string
+  name: string
+  description: string
+  plant_chapter: number
+  reinforce_chapters?: number[]  // Optional to match Go omitempty
+  payoff_chapter?: number
+  status: ForeshadowingStatus | string  // string to match Wails bindings
+  notes?: string
+}
+
+export interface ForeshadowingLedger {
+  items: ForeshadowingItem[]
+}
+
+// Knowledge Matrix - track who knows what secrets at each chapter
+export interface SecretInfo {
+  id: string
+  name: string
+  description: string
+}
+
+export interface KnowledgeEntry {
+  secret_id: string
+  character_id: string
+  learns_chapter?: number    // When they definitively learn it
+  suspected_chapter?: number // When they start to suspect
+}
+
+export interface KnowledgeMatrix {
+  secrets: SecretInfo[]
+  entries: KnowledgeEntry[]
 }
 
 export interface WritingGoals {
@@ -91,6 +154,21 @@ export interface BookData {
   story_bible?: StoryBible
   writing_goals?: WritingGoals
   style_options?: WritingStyleOptions
+  is_indexed?: boolean
+  last_indexed?: string
+  beat_sheet?: BeatSheet
+  foreshadowing?: ForeshadowingLedger
+  knowledge_matrix?: KnowledgeMatrix
+}
+
+// Result of character indexing
+export interface IndexResult {
+  success: boolean
+  error?: string
+  characters_found: number
+  new_characters: number
+  updated_characters: number
+  characters?: Character[]
 }
 
 export interface SaveResult {

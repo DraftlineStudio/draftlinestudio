@@ -8,6 +8,7 @@ import WelcomeScreen from './components/WelcomeScreen'
 import TitleBar from './components/TitleBar'
 import ChapterPanel from './components/ChapterPanel'
 import EditorPanel from './components/EditorPanel'
+import CodexPanel from './components/CodexPanel'
 import ToolsPanel from './components/ToolsPanel'
 import StatusBar from './components/StatusBar'
 import MetadataDialog from './components/dialogs/MetadataDialog'
@@ -16,9 +17,10 @@ import NewBookWizard from './components/dialogs/NewBookWizard'
 import NewUniverseWizard from './components/dialogs/NewUniverseWizard'
 import UnsavedChangesDialog from './components/dialogs/UnsavedChangesDialog'
 import AppSettingsDialog from './components/dialogs/AppSettingsDialog'
+import ExportWizard from './components/dialogs/ExportWizard'
 
 export default function App() {
-  const { darkMode, book, newBook, openBook, openRecentBook, saveBook, saveBookAs, dialogs, initBook, setDarkMode, toggleLeftPanel, toggleRightPanel, rightPanelOpen } = useBookStore()
+  const { darkMode, book, newBook, openBook, openRecentBook, saveBook, saveBookAs, dialogs, initBook, setDarkMode, toggleLeftPanel, toggleRightPanel, rightPanelOpen, viewMode } = useBookStore()
   const { loadSettings, settings, showSettings, showWelcome, setShowWelcome, loadRecentProjects, showNewUniverse, setShowNewUniverse } = useAppStore()
   const prevThemeRef = useRef<'light' | 'dark' | null>(null)
   const [isTransitioning, setIsTransitioning] = useState(false)
@@ -161,16 +163,8 @@ export default function App() {
       <TitleBar />
       <div className="main-layout">
         <ChapterPanel />
-        <EditorPanel />
+        {viewMode === 'codex' ? <CodexPanel /> : <EditorPanel />}
         <ToolsPanel />
-        {!rightPanelOpen && (
-          <button className="panel-rail-right" onClick={toggleRightPanel} title="Open Tools panel (Ctrl+])">
-            <svg width="6" height="10" viewBox="0 0 6 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 1L1 5l4 4" />
-            </svg>
-            <span className="panel-collapsed-label">Tools</span>
-          </button>
-        )}
       </div>
       <StatusBar />
       {dialogs.showMetadata && <MetadataDialog />}
@@ -180,6 +174,7 @@ export default function App() {
       {dialogs.showNewBookWizard && <NewBookWizard />}
       {showNewUniverse && <NewUniverseWizard />}
       {dialogs.showUnsavedWarning && <UnsavedChangesDialog />}
+      {dialogs.showExportWizard && <ExportWizard />}
       {showSettings && <AppSettingsDialog />}
     </div>
   )

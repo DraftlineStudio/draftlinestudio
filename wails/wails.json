@@ -9,5 +9,8 @@
   "author": {
     "name": "",
     "email": ""
+  },
+  "info": {
+    "hideSponsorMessage": true
   }
 }
