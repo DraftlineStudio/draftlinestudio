@@ -9,10 +9,14 @@ import Subscript from '@tiptap/extension-subscript'
 import Superscript from '@tiptap/extension-superscript'
 import CharacterCount from '@tiptap/extension-character-count'
 import { FontSize } from '../../extensions/FontSize'
-import { useEffect, useCallback, useState, useRef } from 'react'
+import { CharacterHighlight } from '../../extensions/CharacterHighlight'
+import { useEffect, useCallback, useState, useRef, useMemo } from 'react'
 import Toolbar from './Toolbar'
 import ContextMenu, { ContextMenuItem } from '../ContextMenu'
+import InlinePrompt from './InlinePrompt'
 import { checkWord, getSuggestions, isLoaded as isSpellCheckLoaded } from '../../services/spellCheck'
+import { useBookStore } from '../../store/bookStore'
+import { useAppStore } from '../../store/appStore'
 
 interface ContextMenuState {
   x: number
@@ -40,8 +44,10 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
   const [editingSubtitle, setEditingSubtitle] = useState(false)
   const [titleValue, setTitleValue] = useState(chapterName || '')
   const [subtitleValue, setSubtitleValue] = useState(chapterSubtitle || '')
+  const [showAiDisabledModal, setShowAiDisabledModal] = useState(false)
   const titleInputRef = useRef<HTMLInputElement>(null)
   const subtitleInputRef = useRef<HTMLInputElement>(null)
+  const { settings, openSettings } = useAppStore()
 
   const handleUpdate = useCallback(
     ({ editor }: { editor: ReturnType<typeof useEditor> & { getHTML: () => string } }) => {
@@ -49,6 +55,9 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
     },
     [onUpdate],
   )
+
+  // Get character names for highlighting (reads from store on each check)
+  const getHighlightedCharacterNames = useBookStore(s => s.getHighlightedCharacterNames)
 
   const editor = useEditor({
     extensions: [
@@ -62,6 +71,10 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
       Subscript,
       Superscript,
       CharacterCount,
+      CharacterHighlight.configure({
+        getNames: () => getHighlightedCharacterNames(),
+        highlightClass: 'character-highlight',
+      }),
     ],
     content,
     onUpdate: handleUpdate as any,
@@ -72,6 +85,15 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
     },
   })
 
+  // Expose editor ref to store for selection access
+  const setEditorRef = useBookStore(s => s.setEditorRef)
+  useEffect(() => {
+    if (editor) {
+      setEditorRef(editor as any)
+    }
+    return () => setEditorRef(null)
+  }, [editor, setEditorRef])
+
   // Sync external content changes (chapter switch)
   useEffect(() => {
     if (!editor) return
@@ -80,6 +102,26 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
       editor.commands.setContent(content || '<p></p>', false)
     }
   }, [content, editor])
+
+  // Force decoration recalculation when highlighted character or its aliases change
+  const highlightedCharacterId = useBookStore(s => s.highlightedCharacterId)
+  const characters = useBookStore(s => s.book?.story_bible?.characters)
+
+  // Compute highlighted names from raw store data (avoids infinite loop from function call in selector)
+  const highlightedNames = useMemo(() => {
+    if (!highlightedCharacterId || !characters) return []
+    const char = characters.find(c => c.id === highlightedCharacterId)
+    if (!char) return []
+    const names = [char.name]
+    if (char.aliases) names.push(...char.aliases)
+    return names
+  }, [highlightedCharacterId, characters])
+
+  useEffect(() => {
+    if (!editor) return
+    // Dispatch empty transaction to trigger decoration rebuild
+    editor.view.dispatch(editor.state.tr)
+  }, [editor, highlightedCharacterId, highlightedNames])
 
   // Sync title/subtitle values when chapter changes
   useEffect(() => {
@@ -101,6 +143,65 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
       subtitleInputRef.current.select()
     }
   }, [editingSubtitle])
+
+  // Inline AI prompt state
+  const inlinePrompt = useBookStore(s => s.inlinePrompt)
+  const openInlinePrompt = useBookStore(s => s.openInlinePrompt)
+  const closeInlinePrompt = useBookStore(s => s.closeInlinePrompt)
+
+  // Ctrl+L to open inline prompt (if AI is enabled)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
+        e.preventDefault()
+        if (!editor || inlinePrompt) return
+
+        // Check if AI is enabled
+        if (!settings.ai_enabled) {
+          setShowAiDisabledModal(true)
+          return
+        }
+
+        const { from } = editor.state.selection
+        openInlinePrompt(from)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [editor, inlinePrompt, openInlinePrompt, settings.ai_enabled])
+
+  // Get context around cursor for inline prompt
+  const getInlineContext = useCallback(() => {
+    if (!editor || !inlinePrompt) return { before: '', after: '' }
+
+    const { doc } = editor.state
+    const pos = inlinePrompt.cursorPos
+    const docSize = doc.content.size
+
+    // Get ~500 chars before and ~300 chars after
+    const beforeStart = Math.max(0, pos - 500)
+    const afterEnd = Math.min(docSize, pos + 300)
+
+    const before = doc.textBetween(beforeStart, pos, '\n\n')
+    const after = doc.textBetween(pos, afterEnd, '\n\n')
+
+    return { before, after }
+  }, [editor, inlinePrompt])
+
+  // Handle inserting generated content
+  const handleInlineInsert = useCallback((html: string) => {
+    if (!editor || !inlinePrompt) return
+
+    editor
+      .chain()
+      .focus()
+      .setTextSelection(inlinePrompt.cursorPos)
+      .insertContent(html)
+      .run()
+
+    // Trigger content update
+    onUpdate(editor.getHTML())
+  }, [editor, inlinePrompt, onUpdate])
 
   // Handle context menu on editor
   function handleContextMenu(e: React.MouseEvent) {
@@ -314,6 +415,14 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
             <EditorContent editor={editor} />
           </div>
         </div>
+        {inlinePrompt && (
+          <InlinePrompt
+            onInsert={handleInlineInsert}
+            onCancel={() => editor?.commands.focus()}
+            beforeContext={getInlineContext().before}
+            afterContext={getInlineContext().after}
+          />
+        )}
       </div>
       {contextMenu && (
         <ContextMenu
@@ -322,6 +431,27 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
           items={contextMenuItems}
           onClose={() => setContextMenu(null)}
         />
+      )}
+      {showAiDisabledModal && (
+        <div className="dialog-overlay" onClick={() => setShowAiDisabledModal(false)}>
+          <div className="dialog ai-disabled-dialog" onClick={e => e.stopPropagation()}>
+            <div className="dialog-title">AI Features Disabled</div>
+            <p className="ai-disabled-message">
+              AI features are currently disabled. Enable them in Settings to use inline AI generation, rewriting, and other AI-powered tools.
+            </p>
+            <div className="dialog-actions">
+              <button className="ai-link-btn" onClick={() => setShowAiDisabledModal(false)}>
+                Dismiss
+              </button>
+              <button
+                className="ai-run-btn"
+                onClick={() => { setShowAiDisabledModal(false); openSettings() }}
+              >
+                Open Settings
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

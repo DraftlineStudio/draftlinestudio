@@ -22,6 +22,26 @@ export function ClearRecentProjects() {
   return window['go']['main']['App']['ClearRecentProjects']();
 }
 
+export function ExportDOCX(arg1, arg2) {
+  return window['go']['main']['App']['ExportDOCX'](arg1, arg2);
+}
+
+export function ExportEPUB(arg1, arg2) {
+  return window['go']['main']['App']['ExportEPUB'](arg1, arg2);
+}
+
+export function ExportPDF(arg1, arg2) {
+  return window['go']['main']['App']['ExportPDF'](arg1, arg2);
+}
+
+export function ExportPrintPDF(arg1, arg2) {
+  return window['go']['main']['App']['ExportPrintPDF'](arg1, arg2);
+}
+
+export function GenerateInlineContent(arg1) {
+  return window['go']['main']['App']['GenerateInlineContent'](arg1);
+}
+
 export function GetAppVersion() {
   return window['go']['main']['App']['GetAppVersion']();
 }
@@ -50,6 +70,18 @@ export function ImportEPUBDialog() {
   return window['go']['main']['App']['ImportEPUBDialog']();
 }
 
+export function IndexBook(arg1) {
+  return window['go']['main']['App']['IndexBook'](arg1);
+}
+
+export function IndexChapter(arg1, arg2, arg3) {
+  return window['go']['main']['App']['IndexChapter'](arg1, arg2, arg3);
+}
+
+export function ListBackups() {
+  return window['go']['main']['App']['ListBackups']();
+}
+
 export function LoadSettings() {
   return window['go']['main']['App']['LoadSettings']();
 }
@@ -74,8 +106,16 @@ export function RemoveRecentProject(arg1) {
   return window['go']['main']['App']['RemoveRecentProject'](arg1);
 }
 
+export function RestoreBackup(arg1) {
+  return window['go']['main']['App']['RestoreBackup'](arg1);
+}
+
 export function RewriteText(arg1, arg2, arg3) {
   return window['go']['main']['App']['RewriteText'](arg1, arg2, arg3);
+}
+
+export function RewriteTextCustom(arg1, arg2) {
+  return window['go']['main']['App']['RewriteTextCustom'](arg1, arg2);
 }
 
 export function SaveBook(arg1) {

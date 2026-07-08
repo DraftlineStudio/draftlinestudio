@@ -18,7 +18,7 @@ export interface AppSettings {
   // AI
   ai_enabled: boolean
   ai_mode: 'claudecode' | 'api' | 'local'
-  ai_provider: 'claude' | 'openai' | ''
+  ai_provider: 'claude' | 'openai' | 'gemini' | 'grok' | ''
   ai_api_key: string
   ai_model: string
   ai_local_endpoint: string
@@ -31,6 +31,9 @@ export interface AppSettings {
   book_line_spacing: string
   book_drop_caps: boolean
   book_trim_size: string
+  // Sidebar
+  show_ai_tab: boolean
+  sidebar_panel_width: number
 }
 
 interface AppStore {
@@ -77,6 +80,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   book_line_spacing: '1.5',
   book_drop_caps: false,
   book_trim_size: '6x9',
+  show_ai_tab: false,
+  sidebar_panel_width: 350,
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({

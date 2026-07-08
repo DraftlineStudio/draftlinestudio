@@ -12,6 +12,16 @@ export function CheckClaudeCode():Promise<main.ClaudeCodeStatus>;
 
 export function ClearRecentProjects():Promise<void>;
 
+export function ExportDOCX(arg1:main.BookData,arg2:main.ExportOptions):Promise<main.ExportResult>;
+
+export function ExportEPUB(arg1:main.BookData,arg2:main.ExportOptions):Promise<main.ExportResult>;
+
+export function ExportPDF(arg1:main.BookData,arg2:main.PDFOptions):Promise<main.ExportResult>;
+
+export function ExportPrintPDF(arg1:main.BookData,arg2:main.PrintPDFOptions):Promise<main.ExportResult>;
+
+export function GenerateInlineContent(arg1:main.InlineGenerateRequest):Promise<main.AIRewriteResult>;
+
 export function GetAppVersion():Promise<string>;
 
 export function GetCurrentFile():Promise<string>;
@@ -26,6 +36,12 @@ export function ImportEPUB(arg1:string):Promise<main.ImportResult>;
 
 export function ImportEPUBDialog():Promise<main.ImportResult>;
 
+export function IndexBook(arg1:main.BookData):Promise<main.IndexResult>;
+
+export function IndexChapter(arg1:main.BookData,arg2:string,arg3:number):Promise<main.IndexResult>;
+
+export function ListBackups():Promise<Array<main.BackupInfo>>;
+
 export function LoadSettings():Promise<main.AppSettings>;
 
 export function NewBook():Promise<main.BookData>;
@@ -38,7 +54,11 @@ export function OpenRecentProject(arg1:string):Promise<main.BookData>;
 
 export function RemoveRecentProject(arg1:string):Promise<void>;
 
+export function RestoreBackup(arg1:number):Promise<main.SaveResult>;
+
 export function RewriteText(arg1:string,arg2:string,arg3:string):Promise<main.AIRewriteResult>;
+
+export function RewriteTextCustom(arg1:string,arg2:string):Promise<main.AIRewriteResult>;
 
 export function SaveBook(arg1:main.BookData):Promise<main.SaveResult>;
 

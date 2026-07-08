@@ -380,3 +380,185 @@ export function getScoreLabel(score: number): string {
   if (score <= 80) return 'AI Patterns'
   return 'Likely AI'
 }
+
+// =============================================================================
+// AI ANTI-PATTERN CHECKER
+// Detects specific prose patterns that AI writing tends to overuse.
+// Based on patterns identified in long-form AI-assisted fiction writing.
+// =============================================================================
+
+export interface PatternMatch {
+  pattern: string       // Internal name
+  displayName: string   // Human-readable name
+  count: number         // Number of matches in this chapter
+  limitPerChapter: number
+  limitPerBook: number
+  severity: 'warning' | 'error'  // warning = approaching limit, error = over limit
+}
+
+export interface AntiPatternResult {
+  patterns: PatternMatch[]      // All detected patterns
+  overLimit: PatternMatch[]     // Patterns exceeding per-chapter limit
+  totalIssues: number           // Count of over-limit patterns
+}
+
+// Anti-pattern definitions based on common AI writing habits
+const AI_ANTI_PATTERNS: {
+  pattern: RegExp
+  name: string
+  displayName: string
+  limitPerChapter: number
+  limitPerBook: number
+}[] = [
+  {
+    pattern: /\btook\s+a\s+half[- ]?step\s+(back|forward|closer|away)/gi,
+    name: 'half_step',
+    displayName: '"Half-step" movement',
+    limitPerChapter: 1,
+    limitPerBook: 3,
+  },
+  {
+    pattern: /\b(closed|shut)\s+(her|his|their|my)\s+eyes?\b/gi,
+    name: 'eyes_closed',
+    displayName: '"Eyes closed" repetition',
+    limitPerChapter: 1,
+    limitPerBook: 4,
+  },
+  {
+    pattern: /\b(clenched|balled)\s+(her|his|their|my)\s+(fist|fists|hands?)\b/gi,
+    name: 'fist_clench',
+    displayName: 'Fist clenching',
+    limitPerChapter: 1,
+    limitPerBook: 3,
+  },
+  {
+    pattern: /\b(nails|fingers?)\s+(dug|digging|bit|biting)\s+into\s+(her|his|their|my)?\s*(palms?|skin|flesh)/gi,
+    name: 'nails_dig',
+    displayName: 'Nails digging into palms',
+    limitPerChapter: 1,
+    limitPerBook: 2,
+  },
+  {
+    pattern: /\b(to\s+return\s+to\s+the\s+topic|getting\s+back\s+to|returning\s+to\s+what|but\s+I\s+digress)/gi,
+    name: 'meta_transition',
+    displayName: 'Meta-transitions',
+    limitPerChapter: 0,
+    limitPerBook: 1,
+  },
+  {
+    pattern: /\.\s*(is|was)\s+what\s+it\s+(came|all\s+came|boiled)\s+down\s+to\.?$/gim,
+    name: 'weak_ending',
+    displayName: 'Weakening endings',
+    limitPerChapter: 0,
+    limitPerBook: 1,
+  },
+  {
+    pattern: /\b(it\s+was\s+a\s+feeling|a\s+sensation|something)\s+(he|she|they|I)\s+couldn'?t\s+(quite\s+)?(name|describe|explain|put\s+into\s+words)/gi,
+    name: 'abstract_filler',
+    displayName: 'Abstract filler',
+    limitPerChapter: 1,
+    limitPerBook: 3,
+  },
+  {
+    pattern: /\beyes\s+widened\b/gi,
+    name: 'eyes_widened',
+    displayName: '"Eyes widened"',
+    limitPerChapter: 1,
+    limitPerBook: 3,
+  },
+  {
+    pattern: /\bheart\s+(raced|pounded|hammered|thundered|beat\s+faster)\b/gi,
+    name: 'heart_racing',
+    displayName: 'Heart racing',
+    limitPerChapter: 1,
+    limitPerBook: 4,
+  },
+  {
+    pattern: /\b(let\s+out|released|exhaled)\s+a\s+breath\s+(he|she|they|I)\s+didn'?t\s+(know|realize)/gi,
+    name: 'breath_didnt_know',
+    displayName: '"Breath didn\'t know holding"',
+    limitPerChapter: 0,
+    limitPerBook: 2,
+  },
+  {
+    pattern: /\ba\s+(small|faint|slight|ghost\s+of\s+a)\s+smile\b/gi,
+    name: 'small_smile',
+    displayName: '"A small smile"',
+    limitPerChapter: 1,
+    limitPerBook: 4,
+  },
+  {
+    pattern: /\bnodded\s+slowly\b/gi,
+    name: 'nodded_slowly',
+    displayName: '"Nodded slowly"',
+    limitPerChapter: 1,
+    limitPerBook: 3,
+  },
+  {
+    pattern: /\bthe\s+weight\s+of\s+(the\s+)?(world|everything|it\s+all|the\s+situation)/gi,
+    name: 'weight_of',
+    displayName: '"Weight of the world"',
+    limitPerChapter: 1,
+    limitPerBook: 2,
+  },
+  {
+    pattern: /\b(a\s+wave|waves?)\s+of\s+(emotion|relief|exhaustion|grief|sadness|anger)\b/gi,
+    name: 'wave_of',
+    displayName: '"Wave of emotion"',
+    limitPerChapter: 1,
+    limitPerBook: 3,
+  },
+  {
+    pattern: /\btime\s+seemed\s+to\s+(stop|slow|stand\s+still|freeze)\b/gi,
+    name: 'time_stopped',
+    displayName: '"Time seemed to stop"',
+    limitPerChapter: 0,
+    limitPerBook: 2,
+  },
+]
+
+/**
+ * Analyze text for specific AI anti-patterns
+ * Returns matches with per-chapter limit checking
+ */
+export function analyzeAntiPatterns(html: string): AntiPatternResult {
+  const text = htmlToText(html)
+  const patterns: PatternMatch[] = []
+  const overLimit: PatternMatch[] = []
+
+  for (const patternDef of AI_ANTI_PATTERNS) {
+    // Reset lastIndex for global regex
+    patternDef.pattern.lastIndex = 0
+    const matches = text.match(patternDef.pattern) || []
+    const count = matches.length
+
+    if (count > 0) {
+      const isOverLimit = count > patternDef.limitPerChapter
+      const match: PatternMatch = {
+        pattern: patternDef.name,
+        displayName: patternDef.displayName,
+        count,
+        limitPerChapter: patternDef.limitPerChapter,
+        limitPerBook: patternDef.limitPerBook,
+        severity: isOverLimit ? 'error' : 'warning',
+      }
+      patterns.push(match)
+      if (isOverLimit) {
+        overLimit.push(match)
+      }
+    }
+  }
+
+  return {
+    patterns,
+    overLimit,
+    totalIssues: overLimit.length,
+  }
+}
+
+/**
+ * Get severity color for anti-pattern display
+ */
+export function getAntiPatternColor(severity: 'warning' | 'error'): string {
+  return severity === 'error' ? '#ef4444' : '#facc15'
+}

@@ -1,10 +1,10 @@
 import { create } from 'zustand'
-import type { BookData, ChapterItem, Character, Metadata, Section, StoryBible, WritingStyleOptions } from '../types/draftline'
+import type { BookData, ChapterItem, Character, Metadata, Section, StoryBible, WritingStyleOptions, Beat, BeatSheet, ForeshadowingItem, ForeshadowingLedger, SecretInfo, KnowledgeEntry, KnowledgeMatrix } from '../types/draftline'
 import { DEFAULT_STYLE_OPTIONS } from '../types/draftline'
 import type { ParagraphDiff, DiffChange } from '../utils/diff'
 import { extractChanges, assembleFromChanges } from '../utils/diff'
 
-import { NewBook, OpenBookDialog, SaveBook, SaveBookAs, OpenRecentProject, AddRecentProject } from '../../wailsjs/go/main/App'
+import { NewBook, OpenBookDialog, SaveBook, SaveBookAs, OpenRecentProject, AddRecentProject, IndexBook } from '../../wailsjs/go/main/App'
 import { main } from '../../wailsjs/go/models'
 import { useAppStore } from './appStore'
 
@@ -46,6 +46,18 @@ interface DialogState {
   showUnsavedWarning: boolean
   pendingAction: 'new' | 'open' | null
   showNewBookWizard: boolean
+  showExportWizard: boolean
+}
+
+// Editor instance type (minimal interface for selection access)
+interface EditorInstance {
+  state: {
+    selection: { from: number; to: number; empty: boolean }
+    doc: { textBetween: (from: number, to: number, separator: string) => string }
+  }
+  getHTML: () => string
+  view: { state: { selection: { from: number; to: number } } }
+  commands: { setTextSelection: (range: { from: number; to: number }) => boolean }
 }
 
 interface BookStore {
@@ -57,6 +69,21 @@ interface BookStore {
   darkMode: boolean
   dialogs: DialogState
   statusMessage: string
+  viewMode: 'editor' | 'codex'
+  setViewMode: (mode: 'editor' | 'codex') => void
+
+  // Editor reference for selection access
+  editorRef: EditorInstance | null
+  setEditorRef: (editor: EditorInstance | null) => void
+  getEditorSelection: () => { html: string; text: string; from: number; to: number } | null
+
+  // Inline AI prompt (Ctrl+L)
+  inlinePrompt: {
+    active: boolean
+    cursorPos: number  // Position in document where prompt was triggered
+  } | null
+  openInlinePrompt: (cursorPos: number) => void
+  closeInlinePrompt: () => void
 
   // Inline AI diff (per-change word-level tracking)
   pendingDiff: {
@@ -97,14 +124,41 @@ interface BookStore {
   updateMetadata: (metadata: Partial<Metadata>) => void
   updateCopyright: (html: string) => void
 
-  // Story bible
+  // Story bible & Indexing
   addCharacter: (char: Character) => void
   updateCharacter: (char: Character) => void
   deleteCharacter: (id: string) => void
+  deleteAutoDetectedCharacters: () => void
+  mergeCharacters: (primaryId: string, mergeIds: string[]) => void
+
+  // Character highlighting
+  highlightedCharacterId: string | null
+  setHighlightedCharacter: (id: string | null) => void
+  getHighlightedCharacterNames: () => string[]
   updateStoryBibleText: (field: 'plot_notes' | 'timeline', text: string) => void
+
+  // Beat Sheet
+  addBeat: (beat: Beat) => void
+  updateBeat: (beat: Beat) => void
+  deleteBeat: (id: string) => void
+
+  // Foreshadowing Ledger
+  addForeshadowingItem: (item: ForeshadowingItem) => void
+  updateForeshadowingItem: (item: ForeshadowingItem) => void
+  deleteForeshadowingItem: (id: string) => void
+
+  // Knowledge Matrix
+  addSecret: (secret: SecretInfo) => void
+  updateSecret: (secret: SecretInfo) => void
+  deleteSecret: (id: string) => void
+  setKnowledgeEntry: (entry: KnowledgeEntry) => void
+  removeKnowledgeEntry: (secretId: string, characterId: string) => void
+
   updateWritingGoals: (goals: Partial<{ target_word_count: number; daily_word_goal: number; words_today: number; last_writing_date: string }>) => void
   updateStyleOptions: (options: Partial<WritingStyleOptions>) => void
   getStyleOptions: () => WritingStyleOptions
+  indexBook: () => Promise<void>
+  isIndexing: boolean
 
   // Layout
   leftPanelOpen: boolean
@@ -118,6 +172,8 @@ interface BookStore {
   closeMetadataDialog: () => void
   openNewChapterDialog: (section: Section) => void
   closeNewChapterDialog: () => void
+  openExportWizard: () => void
+  closeExportWizard: () => void
   setStatusMessage: (msg: string) => void
   closeUnsavedWarning: () => void
   saveAndProceed: () => Promise<void>
@@ -161,18 +217,56 @@ function setSectionArray(book: BookData, section: Section, items: ChapterItem[])
   }
 }
 
+// Compute global chapter index for character mention lookup
+export function getGlobalChapterIndex(book: BookData | null, section: Section, index: number): number {
+  if (!book || section === 'copyright') return -1
+  if (section === 'front_matter') return index
+  if (section === 'body') return book.front_matter.length + index
+  if (section === 'back_matter') return book.front_matter.length + book.body.length + index
+  return -1
+}
+
 export const useBookStore = create<BookStore>((set, get) => ({
   book: null,
   currentSection: 'body',
   currentIndex: 0,
   isDirty: false,
   isAutoSaving: false,
+  isIndexing: false,
   darkMode: true,
   leftPanelOpen: true,
   rightPanelOpen: true,
-  dialogs: { showMetadata: false, showNewChapter: false, newChapterSection: null, showUnsavedWarning: false, pendingAction: null, showNewBookWizard: false },
+  dialogs: { showMetadata: false, showNewChapter: false, newChapterSection: null, showUnsavedWarning: false, pendingAction: null, showNewBookWizard: false, showExportWizard: false },
   statusMessage: 'Ready',
   pendingDiff: null,
+  viewMode: 'editor',
+  setViewMode: (mode) => set({ viewMode: mode }),
+
+  // Editor reference for selection access
+  editorRef: null,
+  setEditorRef: (editor) => set({ editorRef: editor }),
+  getEditorSelection: () => {
+    const { editorRef } = get()
+    if (!editorRef) return null
+    const { selection } = editorRef.state
+    if (selection.empty) return null
+    const { from, to } = selection
+    // Get text content
+    const text = editorRef.state.doc.textBetween(from, to, '\n')
+    // Get HTML - for now we'll use the text, the diff system handles HTML later
+    return { html: text, text, from, to }
+  },
+
+  // Inline AI prompt
+  inlinePrompt: null,
+
+  openInlinePrompt: (cursorPos) => {
+    set({ inlinePrompt: { active: true, cursorPos } })
+  },
+
+  closeInlinePrompt: () => {
+    set({ inlinePrompt: null })
+  },
 
   setPendingDiff: ({ diffs, originalHtml }) => {
     const changes = extractChanges(diffs)
@@ -181,14 +275,44 @@ export const useBookStore = create<BookStore>((set, get) => ({
 
   acceptChange: (idx) => set(s => {
     if (!s.pendingDiff) return {}
-    const changes = s.pendingDiff.changes.map((c, i) => i === idx ? { ...c, accepted: true } : c)
-    return { pendingDiff: { ...s.pendingDiff, changes, focusedChangeIdx: idx } }
+    const changes = s.pendingDiff.changes.map((c, i) => i === idx ? { ...c, accepted: true, decided: true } : c)
+    // Advance to next undecided change, or next change if all decided
+    let nextIdx = idx
+    const undecidedAfter = changes.findIndex((c, i) => i > idx && !c.decided)
+    if (undecidedAfter !== -1) {
+      nextIdx = undecidedAfter
+    } else {
+      // All after are decided, try to find undecided before
+      const undecidedBefore = changes.findIndex(c => !c.decided)
+      if (undecidedBefore !== -1) {
+        nextIdx = undecidedBefore
+      } else {
+        // All decided, move to next or stay at end
+        nextIdx = Math.min(idx + 1, changes.length - 1)
+      }
+    }
+    return { pendingDiff: { ...s.pendingDiff, changes, focusedChangeIdx: nextIdx } }
   }),
 
   rejectChange: (idx) => set(s => {
     if (!s.pendingDiff) return {}
-    const changes = s.pendingDiff.changes.map((c, i) => i === idx ? { ...c, accepted: false } : c)
-    return { pendingDiff: { ...s.pendingDiff, changes, focusedChangeIdx: idx } }
+    const changes = s.pendingDiff.changes.map((c, i) => i === idx ? { ...c, accepted: false, decided: true } : c)
+    // Advance to next undecided change, or next change if all decided
+    let nextIdx = idx
+    const undecidedAfter = changes.findIndex((c, i) => i > idx && !c.decided)
+    if (undecidedAfter !== -1) {
+      nextIdx = undecidedAfter
+    } else {
+      // All after are decided, try to find undecided before
+      const undecidedBefore = changes.findIndex(c => !c.decided)
+      if (undecidedBefore !== -1) {
+        nextIdx = undecidedBefore
+      } else {
+        // All decided, move to next or stay at end
+        nextIdx = Math.min(idx + 1, changes.length - 1)
+      }
+    }
+    return { pendingDiff: { ...s.pendingDiff, changes, focusedChangeIdx: nextIdx } }
   }),
 
   setFocusedChange: (idx) => set(s => s.pendingDiff
@@ -204,11 +328,15 @@ export const useBookStore = create<BookStore>((set, get) => ({
     : {}),
 
   acceptAllDiff: () => set(s => s.pendingDiff
-    ? { pendingDiff: { ...s.pendingDiff, changes: s.pendingDiff.changes.map(c => ({ ...c, accepted: true })) } }
+    ? { pendingDiff: { ...s.pendingDiff, changes: s.pendingDiff.changes.map(c =>
+        c.decided ? c : { ...c, accepted: true, decided: true }
+      ) } }
     : {}),
 
   rejectAllDiff: () => set(s => s.pendingDiff
-    ? { pendingDiff: { ...s.pendingDiff, changes: s.pendingDiff.changes.map(c => ({ ...c, accepted: false })) } }
+    ? { pendingDiff: { ...s.pendingDiff, changes: s.pendingDiff.changes.map(c =>
+        c.decided ? c : { ...c, accepted: false, decided: true }
+      ) } }
     : {}),
 
   applyPendingDiff: () => {
@@ -230,7 +358,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
   },
 
   openBook: async () => {
-    const { isDirty } = get()
+    const { isDirty, indexBook } = get()
     if (isDirty) {
       set(s => ({ dialogs: { ...s.dialogs, showUnsavedWarning: true, pendingAction: 'open' } }))
       return
@@ -252,13 +380,17 @@ export const useBookStore = create<BookStore>((set, get) => ({
           stats: { chapters: chapterCount, words: wordCount }
         }))
       }
+      // Auto-index if not already indexed
+      if (!book.is_indexed) {
+        setTimeout(() => indexBook(), 500) // Small delay for UI to settle
+      }
     } catch (e) {
       set({ statusMessage: `Error opening file: ${e}` })
     }
   },
 
   openRecentBook: async (path: string) => {
-    const { isDirty } = get()
+    const { isDirty, indexBook } = get()
     if (isDirty) {
       set(s => ({ dialogs: { ...s.dialogs, showUnsavedWarning: true, pendingAction: 'open' } }))
       return
@@ -278,6 +410,10 @@ export const useBookStore = create<BookStore>((set, get) => ({
         lastOpened: new Date().toISOString(),
         stats: { chapters: chapterCount, words: wordCount }
       }))
+      // Auto-index if not already indexed
+      if (!book.is_indexed) {
+        setTimeout(() => indexBook(), 500)
+      }
     } catch (e) {
       set({ statusMessage: `Error opening file: ${e}` })
     }
@@ -450,11 +586,226 @@ export const useBookStore = create<BookStore>((set, get) => ({
     scheduleAutoSave()
   },
 
+  deleteAutoDetectedCharacters: () => {
+    const { book } = get()
+    if (!book) return
+    const bible: StoryBible = book.story_bible ?? { characters: [], plot_notes: '', timeline: '' }
+    const filtered = bible.characters.filter(c => !c.is_auto_detected)
+    set({ book: { ...book, story_bible: { ...bible, characters: filtered } }, isDirty: true })
+    scheduleAutoSave()
+  },
+
+  mergeCharacters: (primaryId, mergeIds) => {
+    const { book } = get()
+    if (!book) return
+    const bible: StoryBible = book.story_bible ?? { characters: [], plot_notes: '', timeline: '' }
+
+    const primary = bible.characters.find(c => c.id === primaryId)
+    if (!primary) return
+
+    const toMerge = bible.characters.filter(c => mergeIds.includes(c.id))
+    if (toMerge.length === 0) return
+
+    // Combine data from merged characters into primary
+    const mergedAliases = new Set<string>(primary.aliases || [])
+    let totalMentions = primary.mention_count || 0
+    let firstChapter = primary.first_chapter
+    const mergedChapterMentions: Record<number, number> = { ...(primary.chapter_mentions || {}) }
+    const mergedAttributes: Record<string, string> = { ...(primary.attributes || {}) }
+
+    for (const char of toMerge) {
+      // Add name as alias
+      mergedAliases.add(char.name)
+      // Add their aliases too
+      if (char.aliases) {
+        char.aliases.forEach(a => mergedAliases.add(a))
+      }
+      // Sum mentions
+      totalMentions += char.mention_count || 0
+      // Track earliest chapter
+      if (char.first_chapter !== undefined) {
+        if (firstChapter === undefined || char.first_chapter < firstChapter) {
+          firstChapter = char.first_chapter
+        }
+      }
+      // Merge chapter mentions
+      if (char.chapter_mentions) {
+        for (const [ch, count] of Object.entries(char.chapter_mentions)) {
+          const chNum = Number(ch)
+          mergedChapterMentions[chNum] = (mergedChapterMentions[chNum] || 0) + count
+        }
+      }
+      // Merge attributes (don't overwrite existing)
+      if (char.attributes) {
+        for (const [key, val] of Object.entries(char.attributes)) {
+          if (!mergedAttributes[key]) {
+            mergedAttributes[key] = val
+          }
+        }
+      }
+      // Append notes
+      if (char.notes && char.notes.trim()) {
+        primary.notes = primary.notes
+          ? `${primary.notes}\n\n[From ${char.name}]: ${char.notes}`
+          : `[From ${char.name}]: ${char.notes}`
+      }
+    }
+
+    // Remove primary's own name from aliases
+    mergedAliases.delete(primary.name)
+
+    // Update primary character
+    const updatedPrimary: Character = {
+      ...primary,
+      aliases: Array.from(mergedAliases),
+      mention_count: totalMentions,
+      first_chapter: firstChapter,
+      chapter_mentions: mergedChapterMentions,
+      attributes: mergedAttributes,
+    }
+
+    // Remove merged characters, update primary
+    const newCharacters = bible.characters
+      .filter(c => !mergeIds.includes(c.id))
+      .map(c => c.id === primaryId ? updatedPrimary : c)
+
+    set({
+      book: { ...book, story_bible: { ...bible, characters: newCharacters } },
+      isDirty: true,
+    })
+    scheduleAutoSave()
+  },
+
+  // Character highlighting
+  highlightedCharacterId: null,
+
+  setHighlightedCharacter: (id) => {
+    set({ highlightedCharacterId: id })
+  },
+
+  getHighlightedCharacterNames: () => {
+    const { book, highlightedCharacterId } = get()
+    if (!highlightedCharacterId || !book?.story_bible?.characters) return []
+
+    const char = book.story_bible.characters.find(c => c.id === highlightedCharacterId)
+    if (!char) return []
+
+    // Return primary name + all aliases
+    const names = [char.name]
+    if (char.aliases) {
+      names.push(...char.aliases)
+    }
+    return names
+  },
+
   updateStoryBibleText: (field, text) => {
     const { book } = get()
     if (!book) return
     const bible: StoryBible = book.story_bible ?? { characters: [], plot_notes: '', timeline: '' }
     set({ book: { ...book, story_bible: { ...bible, [field]: text } }, isDirty: true })
+    scheduleAutoSave()
+  },
+
+  // Beat Sheet CRUD
+  addBeat: (beat) => {
+    const { book } = get()
+    if (!book) return
+    const beatSheet: BeatSheet = book.beat_sheet ?? { beats: [] }
+    set({ book: { ...book, beat_sheet: { ...beatSheet, beats: [...beatSheet.beats, beat] } }, isDirty: true })
+    scheduleAutoSave()
+  },
+
+  updateBeat: (beat) => {
+    const { book } = get()
+    if (!book) return
+    const beatSheet: BeatSheet = book.beat_sheet ?? { beats: [] }
+    set({ book: { ...book, beat_sheet: { ...beatSheet, beats: beatSheet.beats.map(b => b.id === beat.id ? beat : b) } }, isDirty: true })
+    scheduleAutoSave()
+  },
+
+  deleteBeat: (id) => {
+    const { book } = get()
+    if (!book) return
+    const beatSheet: BeatSheet = book.beat_sheet ?? { beats: [] }
+    set({ book: { ...book, beat_sheet: { ...beatSheet, beats: beatSheet.beats.filter(b => b.id !== id) } }, isDirty: true })
+    scheduleAutoSave()
+  },
+
+  // Foreshadowing Ledger CRUD
+  addForeshadowingItem: (item) => {
+    const { book } = get()
+    if (!book) return
+    const ledger: ForeshadowingLedger = book.foreshadowing ?? { items: [] }
+    set({ book: { ...book, foreshadowing: { ...ledger, items: [...ledger.items, item] } }, isDirty: true })
+    scheduleAutoSave()
+  },
+
+  updateForeshadowingItem: (item) => {
+    const { book } = get()
+    if (!book) return
+    const ledger: ForeshadowingLedger = book.foreshadowing ?? { items: [] }
+    set({ book: { ...book, foreshadowing: { ...ledger, items: ledger.items.map(i => i.id === item.id ? item : i) } }, isDirty: true })
+    scheduleAutoSave()
+  },
+
+  deleteForeshadowingItem: (id) => {
+    const { book } = get()
+    if (!book) return
+    const ledger: ForeshadowingLedger = book.foreshadowing ?? { items: [] }
+    set({ book: { ...book, foreshadowing: { ...ledger, items: ledger.items.filter(i => i.id !== id) } }, isDirty: true })
+    scheduleAutoSave()
+  },
+
+  // Knowledge Matrix CRUD
+  addSecret: (secret) => {
+    const { book } = get()
+    if (!book) return
+    const matrix: KnowledgeMatrix = book.knowledge_matrix ?? { secrets: [], entries: [] }
+    set({ book: { ...book, knowledge_matrix: { ...matrix, secrets: [...matrix.secrets, secret] } }, isDirty: true })
+    scheduleAutoSave()
+  },
+
+  updateSecret: (secret) => {
+    const { book } = get()
+    if (!book) return
+    const matrix: KnowledgeMatrix = book.knowledge_matrix ?? { secrets: [], entries: [] }
+    set({ book: { ...book, knowledge_matrix: { ...matrix, secrets: matrix.secrets.map(s => s.id === secret.id ? secret : s) } }, isDirty: true })
+    scheduleAutoSave()
+  },
+
+  deleteSecret: (id) => {
+    const { book } = get()
+    if (!book) return
+    const matrix: KnowledgeMatrix = book.knowledge_matrix ?? { secrets: [], entries: [] }
+    // Also remove all entries for this secret
+    set({ book: { ...book, knowledge_matrix: {
+      secrets: matrix.secrets.filter(s => s.id !== id),
+      entries: matrix.entries.filter(e => e.secret_id !== id)
+    } }, isDirty: true })
+    scheduleAutoSave()
+  },
+
+  setKnowledgeEntry: (entry) => {
+    const { book } = get()
+    if (!book) return
+    const matrix: KnowledgeMatrix = book.knowledge_matrix ?? { secrets: [], entries: [] }
+    // Find existing entry or add new
+    const existing = matrix.entries.find(e => e.secret_id === entry.secret_id && e.character_id === entry.character_id)
+    const newEntries = existing
+      ? matrix.entries.map(e => (e.secret_id === entry.secret_id && e.character_id === entry.character_id) ? entry : e)
+      : [...matrix.entries, entry]
+    set({ book: { ...book, knowledge_matrix: { ...matrix, entries: newEntries } }, isDirty: true })
+    scheduleAutoSave()
+  },
+
+  removeKnowledgeEntry: (secretId, characterId) => {
+    const { book } = get()
+    if (!book) return
+    const matrix: KnowledgeMatrix = book.knowledge_matrix ?? { secrets: [], entries: [] }
+    set({ book: { ...book, knowledge_matrix: {
+      ...matrix,
+      entries: matrix.entries.filter(e => !(e.secret_id === secretId && e.character_id === characterId))
+    } }, isDirty: true })
     scheduleAutoSave()
   },
 
@@ -479,6 +830,40 @@ export const useBookStore = create<BookStore>((set, get) => ({
     return book?.style_options ?? DEFAULT_STYLE_OPTIONS
   },
 
+  indexBook: async () => {
+    const { book } = get()
+    if (!book) return
+
+    set({ isIndexing: true, statusMessage: 'Indexing characters...' })
+    try {
+      const result = await IndexBook(book as any)
+      if (result.success && result.characters) {
+        // Update book with indexed characters
+        set(s => ({
+          book: s.book ? {
+            ...s.book,
+            story_bible: {
+              ...s.book.story_bible,
+              characters: result.characters || [],
+              plot_notes: s.book.story_bible?.plot_notes || '',
+              timeline: s.book.story_bible?.timeline || '',
+            },
+            is_indexed: true,
+            last_indexed: new Date().toISOString(),
+          } : null,
+          isIndexing: false,
+          isDirty: true,
+          statusMessage: `Found ${result.new_characters} new characters, updated ${result.updated_characters}`,
+        }))
+        scheduleAutoSave()
+      } else {
+        set({ isIndexing: false, statusMessage: result.error || 'Indexing failed' })
+      }
+    } catch (e) {
+      set({ isIndexing: false, statusMessage: `Indexing error: ${e}` })
+    }
+  },
+
   toggleLeftPanel: () => set(s => ({ leftPanelOpen: !s.leftPanelOpen })),
   toggleRightPanel: () => set(s => ({ rightPanelOpen: !s.rightPanelOpen })),
   toggleDarkMode: () => set(s => ({ darkMode: !s.darkMode })),
@@ -486,6 +871,8 @@ export const useBookStore = create<BookStore>((set, get) => ({
   closeMetadataDialog: () => set(s => ({ dialogs: { ...s.dialogs, showMetadata: false } })),
   openNewChapterDialog: (section) => set(s => ({ dialogs: { ...s.dialogs, showNewChapter: true, newChapterSection: section } })),
   closeNewChapterDialog: () => set(s => ({ dialogs: { ...s.dialogs, showNewChapter: false, newChapterSection: null } })),
+  openExportWizard: () => set(s => ({ dialogs: { ...s.dialogs, showExportWizard: true } })),
+  closeExportWizard: () => set(s => ({ dialogs: { ...s.dialogs, showExportWizard: false } })),
   setStatusMessage: (msg) => set({ statusMessage: msg }),
 
   closeUnsavedWarning: () =>
