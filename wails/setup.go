@@ -17,6 +17,9 @@ import (
 
 	goruntime "runtime"
 
+	"draftline/internal/platform"
+	"draftline/internal/types"
+
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -149,7 +152,7 @@ func resolveClaudeBin() string {
 //
 // Progress is streamed to the frontend via "setup:progress" events.
 // The function blocks until setup is complete (or fails).
-func (a *App) SetupClaudeCode() ClaudeCodeStatus {
+func (a *App) SetupClaudeCode() types.ClaudeCodeStatus {
 	emit := func(msg string) {
 		runtime.EventsEmit(a.ctx, "setup:progress", msg)
 	}
@@ -161,7 +164,7 @@ func (a *App) SetupClaudeCode() ClaudeCodeStatus {
 		emit("Downloading Node.js " + nodeVersion + " — this is a one-time 28 MB download…")
 		if err := downloadAndExtractNode(emit); err != nil {
 			emit("error:Node.js installation failed: " + err.Error())
-			return ClaudeCodeStatus{Error: "Node.js install failed: " + err.Error()}
+			return types.ClaudeCodeStatus{Error: "Node.js install failed: " + err.Error()}
 		}
 		npmPath = bundledNpmBin()
 		emit("node:done")
@@ -176,7 +179,7 @@ func (a *App) SetupClaudeCode() ClaudeCodeStatus {
 		emit("Installing Claude Code CLI — this takes about a minute…")
 		if err := runNpmInstall(npmPath); err != nil {
 			emit("error:Claude Code installation failed: " + err.Error())
-			return ClaudeCodeStatus{Error: "Claude Code install failed: " + err.Error()}
+			return types.ClaudeCodeStatus{Error: "Claude Code install failed: " + err.Error()}
 		}
 		emit("claude:done")
 	} else {
@@ -198,7 +201,7 @@ func runNpmInstall(npmPath string) error {
 	cmd.Env = append(os.Environ(),
 		"PATH="+nodeInstallBinDir()+string(os.PathListSeparator)+os.Getenv("PATH"),
 	)
-	hideWindow(cmd)
+	platform.HideWindow(cmd)
 	var buf bytes.Buffer
 	cmd.Stdout = &buf
 	cmd.Stderr = &buf
@@ -238,7 +241,7 @@ func downloadAndExtractNode(emit func(string)) error {
 	if err != nil {
 		return fmt.Errorf("download failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != 200 {
 		return fmt.Errorf("download failed: HTTP %d", resp.StatusCode)
 	}
@@ -279,12 +282,12 @@ func extractNodeZip(data []byte, dest string) error {
 		}
 		out, err := os.Create(target)
 		if err != nil {
-			rc.Close()
+			_ = rc.Close()
 			return err
 		}
 		_, cpErr := io.Copy(out, rc)
-		out.Close()
-		rc.Close()
+		_ = out.Close()
+		_ = rc.Close()
 		if cpErr != nil {
 			return cpErr
 		}
@@ -298,7 +301,7 @@ func extractNodeTarGz(data []byte, dest string) error {
 	if err != nil {
 		return err
 	}
-	defer gr.Close()
+	defer func() { _ = gr.Close() }()
 	tr := tar.NewReader(gr)
 	for {
 		hdr, err := tr.Next()
@@ -328,7 +331,7 @@ func extractNodeTarGz(data []byte, dest string) error {
 				return err
 			}
 			_, cpErr := io.Copy(f, tr)
-			f.Close()
+			_ = f.Close()
 			if cpErr != nil {
 				return cpErr
 			}

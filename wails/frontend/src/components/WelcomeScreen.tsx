@@ -1,11 +1,11 @@
 import { useCallback, useState, useEffect } from 'react'
 import { useAppStore } from '../store/appStore'
-import { main } from '../../wailsjs/go/models'
+import { types } from '../../wailsjs/go/models'
 import ContextMenu, { ContextMenuItem } from './ContextMenu'
 import { BrowserOpenURL } from '../../wailsjs/runtime/runtime'
 import { GetAppVersion } from '../../wailsjs/go/main/App'
 
-type RecentProject = main.RecentProject
+type RecentProject = types.RecentProject
 
 interface ContextMenuState {
   x: number

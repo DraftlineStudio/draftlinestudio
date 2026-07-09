@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 import { LoadSettings, SaveSettings, BrowseForDirectory, GetRecentProjects, AddRecentProject, RemoveRecentProject, ClearRecentProjects } from '../../wailsjs/go/main/App'
-import { main } from '../../wailsjs/go/models'
+import { types } from '../../wailsjs/go/models'
 
-type RecentProject = main.RecentProject
+type RecentProject = types.RecentProject
 
 export interface AppSettings {
   // Application
@@ -142,7 +142,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   addRecentProject: async (project: { type: string; path: string; name: string; lastOpened: string; stats: { books?: number; chapters: number; words: number } }) => {
     try {
       // Convert to Wails model
-      const wailsProject = main.RecentProject.createFrom(project)
+      const wailsProject = types.RecentProject.createFrom(project)
       await AddRecentProject(wailsProject)
       await get().loadRecentProjects()
     } catch (e) {
