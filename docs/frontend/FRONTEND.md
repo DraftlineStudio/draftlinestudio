@@ -11,7 +11,7 @@ frontend/src/
 ├── components/
 │   ├── EditorPanel.tsx         # Rich editor container + diff view
 │   ├── ChapterPanel.tsx        # Chapter list sidebar
-│   ├── ToolsPanel.tsx          # Dashboard, AI Studio, Story Bible
+│   ├── ToolsPanel.tsx          # Slim router (~121 lines)
 │   ├── TitleBar.tsx            # Custom window title bar
 │   ├── StatusBar.tsx           # Bottom status bar
 │   ├── WelcomeScreen.tsx       # Start screen
@@ -21,6 +21,18 @@ frontend/src/
 │   │   ├── RichEditor.tsx      # TipTap editor wrapper
 │   │   ├── Toolbar.tsx         # Formatting toolbar
 │   │   └── InlinePrompt.tsx    # Ctrl+L prompt UI
+│   ├── tools/                  # ToolsPanel feature modules
+│   │   ├── constants.ts        # SECTION_CONFIG, AI_MODES, BEAT_TYPES
+│   │   ├── types.ts            # GlyphSection, AIMode, AIState
+│   │   ├── GlyphIcon.tsx       # Glyph bar icons
+│   │   ├── Dashboard/
+│   │   │   └── index.tsx       # Word counts, goals, session stats
+│   │   ├── AIStudio/
+│   │   │   └── index.tsx       # AI modes, style mixer, streaming
+│   │   ├── StoryBible/
+│   │   │   └── index.tsx       # Characters, plot notes, timeline
+│   │   └── PlotWalker/
+│   │       └── index.tsx       # Beats, foreshadowing, knowledge matrix
 │   └── dialogs/
 │       ├── AppSettingsDialog.tsx
 │       ├── ExportWizard.tsx
@@ -76,11 +88,14 @@ Contains:
 - Chapter type indicators
 
 ### ToolsPanel.tsx
-Tabbed sidebar with:
-- **Dashboard** - Word counts, writing goals, session stats
-- **AI Studio** - Rewrite modes, style mixer
-- **Bible** - Characters, plot notes, timeline
-- **Structure** - Beat sheet, foreshadowing, knowledge matrix
+Slim router (~121 lines) that displays feature modules based on active glyph selection.
+
+### tools/ Feature Modules
+Each feature is isolated in its own folder:
+- **Dashboard/** - Word counts, writing goals, session stats, AI detection
+- **AIStudio/** - Rewrite modes, style mixer, streaming output, setup guidance
+- **StoryBible/** - Characters (with merge/highlight), plot notes, timeline
+- **PlotWalker/** - Beat sheet, foreshadowing ledger, knowledge matrix, issues
 
 ## State Management
 

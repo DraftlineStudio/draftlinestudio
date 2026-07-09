@@ -2,6 +2,18 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.12.02330] - 2026-07-08
+
+### Added
+- Added project documentation.
+
+### Changed
+- Split the tools panel, book store, and settings dialog into smaller modules.
+
+### Fixed
+- Fixed code quality warnings.
+- Updated Go and npm dependencies for security fixes.
+
 ## [0.12.02325] - 2026-07-08
 
 ### Added
