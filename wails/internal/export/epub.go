@@ -60,8 +60,8 @@ func EPUB(path string, book types.BookData, options types.ExportOptions) types.E
 	}
 
 	// Collect chapters to include
-	var chapters []types.ChapterItem
-	var chapterIDs []string
+	chapters := make([]types.ChapterItem, 0)
+	chapterIDs := make([]string, 0)
 
 	if options.IncludeCopyright && book.Copyright != "" {
 		chapters = append(chapters, types.ChapterItem{Title: "Copyright", Type: "Copyright", Content: book.Copyright})
