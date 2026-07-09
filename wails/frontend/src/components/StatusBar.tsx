@@ -1,16 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useBookStore } from '../store/bookStore'
 import { analyzeText, getScoreColor, getScoreLabel, type AIDetectionResult } from '../services/aiDetection'
-import { countWords, countBookWords } from '../utils/textUtils'
-
-function getCurrentContent(book: ReturnType<typeof useBookStore.getState>['book'], section: string, index: number): string {
-  if (!book) return ''
-  if (section === 'copyright') return book.copyright || ''
-  if (section === 'front_matter') return book.front_matter[index]?.content || ''
-  if (section === 'body') return book.body[index]?.content || ''
-  if (section === 'back_matter') return book.back_matter[index]?.content || ''
-  return ''
-}
+import { countBookWords, getCurrentContent } from '../utils/textUtils'
 
 export default function StatusBar() {
   const { book, isDirty, isAutoSaving, statusMessage, currentSection, currentIndex } = useBookStore()

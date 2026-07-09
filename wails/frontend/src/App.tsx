@@ -20,7 +20,7 @@ import AppSettingsDialog from './components/dialogs/AppSettingsDialog'
 import ExportWizard from './components/dialogs/ExportWizard'
 
 export default function App() {
-  const { darkMode, book, newBook, openBook, openRecentBook, saveBook, saveBookAs, dialogs, initBook, setDarkMode, toggleLeftPanel, toggleRightPanel, rightPanelOpen, viewMode } = useBookStore()
+  const { book, newBook, openBook, openRecentBook, saveBook, saveBookAs, dialogs, initBook, setDarkMode, toggleLeftPanel, toggleRightPanel, viewMode } = useBookStore()
   const { loadSettings, settings, showSettings, showWelcome, setShowWelcome, loadRecentProjects, showNewUniverse, setShowNewUniverse } = useAppStore()
   const prevThemeRef = useRef<'light' | 'dark' | null>(null)
   const [isTransitioning, setIsTransitioning] = useState(false)
@@ -132,7 +132,7 @@ export default function App() {
   // When book is opened from NewBookWizard, hide welcome screen
   useEffect(() => {
     if (book && !showWelcome) return
-    if (book?.file_path || (book && dialogs.showNewBookWizard === false)) {
+    if (book && (book.file_path || !dialogs.showNewBookWizard)) {
       // Book was created/opened, hide welcome
       setShowWelcome(false)
     }

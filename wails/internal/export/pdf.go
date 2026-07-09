@@ -170,11 +170,11 @@ func (p *pdfWriter) build() []byte {
 	buf.WriteString("%PDF-1.4\n")
 
 	numPages := len(p.pageContents)
-	var pageObjIDs []int
+	pageObjIDs := make([]int, numPages)
 	nextObjID := 5
 
 	for i := 0; i < numPages; i++ {
-		pageObjIDs = append(pageObjIDs, nextObjID)
+		pageObjIDs[i] = nextObjID
 		nextObjID += 2
 	}
 

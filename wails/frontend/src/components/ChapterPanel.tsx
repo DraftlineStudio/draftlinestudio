@@ -13,7 +13,6 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
   useSortable,
-  arrayMove as _arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useBookStore } from '../store/bookStore'
@@ -275,7 +274,7 @@ function SectionList({ section, label, types: _types }: SectionListProps) {
 }
 
 export default function ChapterPanel() {
-  const { book, currentSection, currentIndex, setCurrentChapter, leftPanelOpen, toggleLeftPanel } = useBookStore()
+  const { book, currentSection, setCurrentChapter, leftPanelOpen, toggleLeftPanel } = useBookStore()
 
   const allContent = book ? [
     book.copyright,

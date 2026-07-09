@@ -147,7 +147,6 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
   // Inline AI prompt state
   const inlinePrompt = useBookStore(s => s.inlinePrompt)
   const openInlinePrompt = useBookStore(s => s.openInlinePrompt)
-  const closeInlinePrompt = useBookStore(s => s.closeInlinePrompt)
 
   // Ctrl+L to open inline prompt (if AI is enabled)
   useEffect(() => {
