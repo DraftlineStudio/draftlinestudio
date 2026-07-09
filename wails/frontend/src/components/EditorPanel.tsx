@@ -1,19 +1,11 @@
 import { useCallback, useRef, useEffect, useMemo } from 'react'
 import { useBookStore } from '../store/bookStore'
 import { useAppStore } from '../store/appStore'
+import { getCurrentContent } from '../utils/textUtils'
 import RichEditor from './editor/RichEditor'
 
 const EDITOR_FONT_SIZES = { small: '12px', normal: '14px', large: '16px' }
 const CONTENT_UPDATE_DEBOUNCE = 150 // ms - debounce store updates for smoother typing
-
-function getCurrentContent(book: ReturnType<typeof useBookStore.getState>['book'], section: string, index: number): string {
-  if (!book) return ''
-  if (section === 'copyright') return book.copyright || ''
-  if (section === 'front_matter') return book.front_matter[index]?.content || ''
-  if (section === 'body') return book.body[index]?.content || ''
-  if (section === 'back_matter') return book.back_matter[index]?.content || ''
-  return ''
-}
 
 function getChapterInfo(book: ReturnType<typeof useBookStore.getState>['book'], section: string, index: number): { label: string; name: string; subtitle: string } {
   if (!book) return { label: '', name: '', subtitle: '' }

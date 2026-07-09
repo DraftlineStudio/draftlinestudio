@@ -74,3 +74,15 @@ export function estimateReadingTime(html: string, wordsPerMinute = 200): number 
   const words = countWords(html)
   return Math.ceil(words / wordsPerMinute)
 }
+
+/**
+ * Get content for a specific section and index in a book
+ */
+export function getCurrentContent(book: BookData | null, section: string, index: number): string {
+  if (!book) return ''
+  if (section === 'copyright') return book.copyright || ''
+  if (section === 'front_matter') return book.front_matter[index]?.content || ''
+  if (section === 'body') return book.body[index]?.content || ''
+  if (section === 'back_matter') return book.back_matter[index]?.content || ''
+  return ''
+}

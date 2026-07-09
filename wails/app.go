@@ -460,32 +460,7 @@ func (a *App) RewriteText(html string, mode string, styleOptionsJson string) typ
 		userMsg = "Rewrite the following, returning only the rewritten HTML paragraphs:\n\n" + html
 	}
 
-	var res types.AIRewriteResult
-	switch a.settings.AIMode {
-	case "claudecode":
-		res = a.callClaudeCode(system, userMsg)
-	case "local":
-		if a.settings.AILocalEndpoint == "" {
-			return types.AIRewriteResult{Error: "no local endpoint configured — set it in App Settings"}
-		}
-		res = a.callLocalAI(system, userMsg)
-	default: // "api"
-		if a.settings.AIProvider == "" || a.settings.AIAPIKey == "" {
-			return types.AIRewriteResult{Error: "no API provider configured — add your key in App Settings"}
-		}
-		switch a.settings.AIProvider {
-		case "claude":
-			res = a.callClaude(system, userMsg)
-		case "openai":
-			res = a.callOpenAI(system, userMsg)
-		case "gemini":
-			res = a.callGemini(system, userMsg)
-		case "grok":
-			res = a.callGrok(system, userMsg)
-		default:
-			return types.AIRewriteResult{Error: "unknown provider: " + a.settings.AIProvider}
-		}
-	}
+	res := a.dispatchAI(system, userMsg)
 
 	// If the model returned diff format, reconstruct full HTML before handing back.
 	if res.Error == "" && useDiffFormat {
@@ -637,33 +612,7 @@ CRITICAL: Return ONLY the new prose content as HTML paragraphs. Do not include a
 
 	userMsg := strings.Join(contextParts, "\n\n")
 
-	var res types.AIRewriteResult
-	switch a.settings.AIMode {
-	case "claudecode":
-		res = a.callClaudeCode(system, userMsg)
-	case "local":
-		if a.settings.AILocalEndpoint == "" {
-			return types.AIRewriteResult{Error: "no local endpoint configured — set it in App Settings"}
-		}
-		res = a.callLocalAI(system, userMsg)
-	default: // "api"
-		if a.settings.AIProvider == "" || a.settings.AIAPIKey == "" {
-			return types.AIRewriteResult{Error: "no API provider configured — add your key in App Settings"}
-		}
-		switch a.settings.AIProvider {
-		case "claude":
-			res = a.callClaude(system, userMsg)
-		case "openai":
-			res = a.callOpenAI(system, userMsg)
-		case "gemini":
-			res = a.callGemini(system, userMsg)
-		case "grok":
-			res = a.callGrok(system, userMsg)
-		default:
-			return types.AIRewriteResult{Error: "unknown provider: " + a.settings.AIProvider}
-		}
-	}
-	return res
+	return a.dispatchAI(system, userMsg)
 }
 
 // CheckClaudeCode checks whether the claude CLI is installed and authenticated.
@@ -828,26 +777,66 @@ func (a *App) streamAnthropic(ctx context.Context, apiKey, model, system, userMs
 	return strings.TrimSpace(sb.String()), nil
 }
 
+// dispatchAI routes the AI request to the appropriate provider based on settings.
+// This is the central dispatch point for all AI modes (claudecode, local, api).
+func (a *App) dispatchAI(system, userMsg string) types.AIRewriteResult {
+	switch a.settings.AIMode {
+	case "claudecode":
+		return a.callClaudeCode(system, userMsg)
+	case "local":
+		if a.settings.AILocalEndpoint == "" {
+			return types.AIRewriteResult{Error: "no local endpoint configured — set it in App Settings"}
+		}
+		return a.callLocalAI(system, userMsg)
+	default: // "api"
+		if a.settings.AIProvider == "" || a.settings.AIAPIKey == "" {
+			return types.AIRewriteResult{Error: "no API provider configured — add your key in App Settings"}
+		}
+		switch a.settings.AIProvider {
+		case "claude":
+			return a.callClaude(system, userMsg)
+		case "openai":
+			return a.callOpenAI(system, userMsg)
+		case "gemini":
+			return a.callGemini(system, userMsg)
+		case "grok":
+			return a.callGrok(system, userMsg)
+		default:
+			return types.AIRewriteResult{Error: "unknown provider: " + a.settings.AIProvider}
+		}
+	}
+}
+
+// setupAIContext creates a 180-second timeout context, registers the cancel function
+// for potential abort requests, and returns the resolved model name plus a cleanup
+// function that must be deferred by the caller.
+func (a *App) setupAIContext(defaultModel string) (model string, ctx context.Context, cleanup func()) {
+	model = a.settings.AIModel
+	if model == "" {
+		model = defaultModel
+	}
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(a.ctx, 180*time.Second)
+	a.cancelMu.Lock()
+	a.cancelRewrite = cancel
+	a.cancelMu.Unlock()
+	cleanup = func() {
+		cancel()
+		a.cancelMu.Lock()
+		a.cancelRewrite = nil
+		a.cancelMu.Unlock()
+	}
+	return
+}
+
 // callClaudeCode handles the "claudecode" AI mode. If the credentials file
 // contains a direct API key it calls the Anthropic API with streaming directly —
 // faster and more reliable than the CLI subprocess. Falls back to the CLI when
 // only OAuth credentials are present.
 func (a *App) callClaudeCode(system, userMsg string) types.AIRewriteResult {
 	if apiKey := readClaudeAPIKey(); apiKey != "" {
-		model := a.settings.AIModel
-		if model == "" {
-			model = "claude-sonnet-4-6"
-		}
-		ctx, cancel := context.WithTimeout(a.ctx, 180*time.Second)
-		a.cancelMu.Lock()
-		a.cancelRewrite = cancel
-		a.cancelMu.Unlock()
-		defer func() {
-			cancel()
-			a.cancelMu.Lock()
-			a.cancelRewrite = nil
-			a.cancelMu.Unlock()
-		}()
+		model, ctx, cleanup := a.setupAIContext("claude-sonnet-4-6")
+		defer cleanup()
 		runtime.EventsEmit(a.ctx, "ai:log", "Connecting to Anthropic API…")
 		result, err := a.streamAnthropic(ctx, apiKey, model, system, userMsg)
 		if err != nil {
@@ -865,20 +854,8 @@ func (a *App) callClaudeCodeCLI(system, userMsg string) types.AIRewriteResult {
 	if path == "" {
 		return types.AIRewriteResult{Error: "Claude Code is not installed — open Settings › AI Studio to set it up"}
 	}
-	model := a.settings.AIModel
-	if model == "" {
-		model = "claude-sonnet-4-6"
-	}
-	ctx, cancel := context.WithTimeout(a.ctx, 180*time.Second)
-	a.cancelMu.Lock()
-	a.cancelRewrite = cancel
-	a.cancelMu.Unlock()
-	defer func() {
-		cancel()
-		a.cancelMu.Lock()
-		a.cancelRewrite = nil
-		a.cancelMu.Unlock()
-	}()
+	model, ctx, cleanup := a.setupAIContext("claude-sonnet-4-6")
+	defer cleanup()
 
 	// Create an isolated home directory: real credentials so auth works, but no
 	// MCP server config. MCP servers are started between init and the first API
@@ -1052,20 +1029,8 @@ func (a *App) callLocalAI(system, userMsg string) types.AIRewriteResult {
 }
 
 func (a *App) callClaude(system, userMsg string) types.AIRewriteResult {
-	model := a.settings.AIModel
-	if model == "" {
-		model = "claude-sonnet-4-6"
-	}
-	ctx, cancel := context.WithTimeout(a.ctx, 180*time.Second)
-	a.cancelMu.Lock()
-	a.cancelRewrite = cancel
-	a.cancelMu.Unlock()
-	defer func() {
-		cancel()
-		a.cancelMu.Lock()
-		a.cancelRewrite = nil
-		a.cancelMu.Unlock()
-	}()
+	model, ctx, cleanup := a.setupAIContext("claude-sonnet-4-6")
+	defer cleanup()
 	runtime.EventsEmit(a.ctx, "ai:log", "Connecting to Claude API…")
 	result, err := a.streamAnthropic(ctx, a.settings.AIAPIKey, model, system, userMsg)
 	if err != nil {

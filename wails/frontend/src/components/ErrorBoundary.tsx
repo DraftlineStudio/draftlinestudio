@@ -26,7 +26,7 @@ export default class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error }
   }
 
-  componentDidCatch(error: Error, errorInfo: { componentStack: string }) {
+  componentDidCatch(error: Error, _errorInfo: { componentStack: string }) {
     // Log only - do NOT setState here to avoid infinite loops
     console.error(`[${this.props.name || 'ErrorBoundary'}]`, error.message)
   }

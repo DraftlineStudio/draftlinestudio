@@ -5,7 +5,7 @@ All notable changes to Draftline will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.02330]
 
 ### Added
 - Comprehensive documentation structure in `/docs`
@@ -14,6 +14,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Reorganized documentation into topic-based folders
 - Moved legacy docs to `/docs/deprecated`
+- **Major refactor**: `ToolsPanel.tsx` split from 2,131 lines to 121 lines (94% reduction)
+  - Extracted `tools/constants.ts` - shared configuration
+  - Extracted `tools/types.ts` - shared type definitions
+  - Extracted `tools/GlyphIcon.tsx` - icon component
+  - Extracted `tools/Dashboard/` - word counts, goals, session stats
+  - Extracted `tools/AIStudio/` - AI modes, style mixer, streaming
+  - Extracted `tools/StoryBible/` - characters, plot notes, timeline
+  - Extracted `tools/PlotWalker/` - beats, foreshadowing, knowledge matrix
+- **Store refactor**: `bookStore.ts` split into domain-specific stores
+  - Extracted `editorStore.ts` - editor ref, selection, inline prompt, diff/review
+  - Extracted `storyBibleStore.ts` - characters CRUD, merging, highlighting
+  - Extracted `plotStore.ts` - beats, foreshadowing, knowledge matrix
+  - `bookStore.ts` now delegates to specialized stores (947 → 713 lines)
+- **Dialog refactor**: `AppSettingsDialog.tsx` split from 683 lines to modular components
+  - Extracted `settings/constants.ts` - model options, fonts, trim sizes
+  - Extracted `settings/types.ts` - TypeScript interfaces
+  - Extracted `settings/ApplicationSection.tsx` - identity, theme, save location
+  - Extracted `settings/AIStudioSection.tsx` - Claude Code, API keys, local model
+  - Extracted `settings/BookSection.tsx` - editor display, export settings
 
 ### Fixed
 - All Qodana code quality issues resolved (0 remaining)

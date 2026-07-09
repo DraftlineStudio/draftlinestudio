@@ -289,7 +289,6 @@ export default function ExportWizard() {
 
   // Step 2: Options
   if (step === 'options' && format) {
-    const isPDF = format === 'pdf' || format === 'print-pdf'
     const isPrint = format === 'print-pdf'
 
     return (
