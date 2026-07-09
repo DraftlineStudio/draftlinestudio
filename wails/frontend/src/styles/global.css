@@ -1400,6 +1400,7 @@ html, body, #root {
   flex-direction: row;
   flex-shrink: 0;
   position: relative;
+  height: 100%;
 }
 
 .glyph-bar {
@@ -1444,6 +1445,7 @@ html, body, #root {
   border-left: 1px solid var(--border);
   overflow: hidden;
   position: relative;
+  height: 100%;
 }
 
 .resize-handle {
@@ -1503,6 +1505,19 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+/* Issues section needs full height without padding */
+.slide-panel-content:has(.issues-section) {
+  padding: 0;
+  overflow: hidden;
+}
+
+.issues-section {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
 
 /* Legacy classes for backwards compatibility */
@@ -2009,6 +2024,52 @@ html, body, #root {
   font-weight: 500;
 }
 .statusbar-words { color: var(--text-section); }
+
+/* PlotWalker Status Indicator */
+.statusbar-plotwalker {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  background: var(--bg-secondary);
+  border-radius: 3px;
+  margin-right: 8px;
+  font-size: 10px;
+  color: var(--text-muted);
+  transition: all 0.2s;
+}
+
+.statusbar-plotwalker.analyzing {
+  color: var(--app-accent-text);
+  background: var(--app-accent-dim);
+}
+
+.statusbar-plotwalker svg {
+  opacity: 0.7;
+}
+
+.statusbar-plotwalker.analyzing svg {
+  opacity: 1;
+}
+
+.plotwalker-spinner {
+  color: var(--app-accent-text);
+}
+
+.plotwalker-issues {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 14px;
+  padding: 0 4px;
+  font-size: 9px;
+  font-weight: 600;
+  background: #f59e0b;
+  color: #fff;
+  border-radius: 7px;
+  margin-left: 2px;
+}
 
 /* AI Score Indicator */
 .statusbar-ai-score {
@@ -3242,6 +3303,48 @@ html, body, #root {
   padding: 16px 0;
   text-align: center;
   line-height: 1.5;
+}
+
+/* Error boundary fallback */
+.error-boundary-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  text-align: center;
+  gap: 8px;
+}
+.error-boundary-fallback .error-icon {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+.error-boundary-fallback .error-message {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+.error-boundary-fallback .error-details {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0;
+  max-width: 250px;
+  word-break: break-word;
+}
+.error-boundary-fallback .error-retry {
+  margin-top: 12px;
+  padding: 6px 16px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.error-boundary-fallback .error-retry:hover {
+  background: var(--bg-active);
+  border-color: var(--border-strong);
 }
 
 /* ===== STORY BIBLE ===== */
@@ -5582,4 +5685,396 @@ html, body, #root {
   color: var(--text-secondary);
   line-height: 1.6;
   margin: 12px 0 20px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PLOTTREE VISUALIZATION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.plot-tree {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.plot-tree-filters {
+  display: flex;
+  gap: 4px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface-alt);
+  flex-wrap: wrap;
+}
+
+.plot-tree-filter {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-family: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.plot-tree-filter:hover {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.plot-tree-filter.active {
+  color: var(--app-accent-text);
+  background: var(--app-accent-dim);
+  border-color: var(--app-accent);
+}
+
+.plot-tree-filter-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 10px;
+  font-weight: 600;
+  background: #f59e0b;
+  color: #fff;
+  border-radius: 8px;
+}
+
+.plot-tree-filter-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  font-size: 9px;
+  font-weight: 500;
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  border-radius: 7px;
+}
+
+.plot-tree-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  font-size: 10px;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  gap: 8px;
+}
+
+.plot-tree-analyzing {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--app-accent-text);
+}
+
+.plot-tree-spinner {
+  color: var(--app-accent-text);
+}
+
+.plot-tree-last {
+  opacity: 0.8;
+}
+
+.plot-tree-analyze-btn {
+  padding: 3px 10px;
+  font-size: 10px;
+  font-family: inherit;
+  font-weight: 500;
+  background: var(--app-accent);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+
+.plot-tree-analyze-btn:hover:not(:disabled) {
+  background: var(--app-accent-hover);
+}
+
+.plot-tree-analyze-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.plot-tree-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 0;
+}
+
+.plot-tree-node-container {
+  user-select: none;
+}
+
+.plot-tree-node {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: background 0.12s;
+  min-height: 26px;
+}
+
+.plot-tree-node:hover {
+  background: var(--bg-hover);
+}
+
+.plot-tree-node.severity-error {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.plot-tree-node.severity-error:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.plot-tree-node.severity-warning {
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.plot-tree-node.severity-warning:hover {
+  background: rgba(245, 158, 11, 0.15);
+}
+
+.plot-tree-chevron {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  transition: transform 0.15s;
+}
+
+.plot-tree-chevron.expanded {
+  transform: rotate(90deg);
+}
+
+.plot-tree-spacer {
+  width: 12px;
+  flex-shrink: 0;
+}
+
+.plot-tree-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.plot-tree-label {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plot-tree-node:hover .plot-tree-label {
+  color: var(--text-primary);
+}
+
+.plot-tree-chapter {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--text-muted);
+  background: var(--bg-surface-alt);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.plot-tree-children {
+  /* Children have indent from node padding-left */
+}
+
+/* Empty state */
+.plot-tree-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  text-align: center;
+  min-height: 200px;
+}
+
+.plot-tree-empty-icon {
+  color: var(--text-muted);
+  opacity: 0.4;
+  margin-bottom: 16px;
+}
+
+.plot-tree-empty-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0 0 8px;
+}
+
+.plot-tree-empty-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0;
+  max-width: 200px;
+  line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ISSUES PANEL SECTION
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.issues-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.issues-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+
+.issues-panel-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.issues-panel-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--app-accent);
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+
+.issues-panel-count.warning {
+  background: #f59e0b;
+}
+
+.issues-panel-count.error {
+  background: #ef4444;
+}
+
+.issue-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: var(--bg-surface-alt);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.issue-card:hover {
+  border-color: var(--border);
+  background: var(--bg-hover);
+}
+
+.issue-card.severity-error {
+  border-left: 3px solid #ef4444;
+}
+
+.issue-card.severity-warning {
+  border-left: 3px solid #f59e0b;
+}
+
+.issue-card.severity-info {
+  border-left: 3px solid #6366f1;
+}
+
+.issue-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.issue-card-icon {
+  flex-shrink: 0;
+}
+
+.issue-card-icon.error { color: #ef4444; }
+.issue-card-icon.warning { color: #f59e0b; }
+.issue-card-icon.info { color: #6366f1; }
+
+.issue-card-message {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.issue-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.issue-card-chapter {
+  background: var(--bg-surface);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.issue-card-type {
+  text-transform: capitalize;
+}
+
+.issue-card-dismiss {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.issue-card:hover .issue-card-dismiss {
+  opacity: 0.7;
+}
+
+.issue-card-dismiss:hover {
+  opacity: 1;
+  color: var(--text-secondary);
+}
+
+.issues-panel-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.issues-panel-empty svg {
+  opacity: 0.5;
+}
+
+.issues-panel-empty-text {
+  font-size: 12px;
 }

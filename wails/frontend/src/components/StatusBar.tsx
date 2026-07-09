@@ -1,24 +1,7 @@
-import { useMemo, useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useBookStore } from '../store/bookStore'
 import { analyzeText, getScoreColor, getScoreLabel, type AIDetectionResult } from '../services/aiDetection'
-
-function countWords(html: string): number {
-  const div = document.createElement('div')
-  div.innerHTML = html
-  const text = div.textContent || div.innerText || ''
-  return text.trim().split(/\s+/).filter((w) => w.length > 0).length
-}
-
-function totalWords(book: ReturnType<typeof useBookStore.getState>['book']): number {
-  if (!book) return 0
-  const allContent = [
-    book.copyright,
-    ...book.front_matter.map((c) => c.content),
-    ...book.body.map((c) => c.content),
-    ...book.back_matter.map((c) => c.content),
-  ]
-  return allContent.reduce((sum, html) => sum + countWords(html || ''), 0)
-}
+import { countWords, countBookWords } from '../utils/textUtils'
 
 function getCurrentContent(book: ReturnType<typeof useBookStore.getState>['book'], section: string, index: number): string {
   if (!book) return ''
@@ -31,7 +14,7 @@ function getCurrentContent(book: ReturnType<typeof useBookStore.getState>['book'
 
 export default function StatusBar() {
   const { book, isDirty, isAutoSaving, statusMessage, currentSection, currentIndex } = useBookStore()
-  const words = totalWords(book)
+  const words = book ? countBookWords(book) : 0
   const filePath = book?.file_path || null
   const fileName = filePath ? filePath.split(/[\\/]/).pop() : null
 

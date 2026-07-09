@@ -20,13 +20,7 @@ import { useBookStore } from '../store/bookStore'
 import type { Section } from '../types/draftline'
 import { FRONT_MATTER_TYPES, BODY_TYPES, BACK_MATTER_TYPES } from '../types/draftline'
 import ContextMenu, { ContextMenuItem } from './ContextMenu'
-
-function countWords(html: string): number {
-  const div = document.createElement('div')
-  div.innerHTML = html
-  const text = div.textContent || div.innerText || ''
-  return text.trim().split(/\s+/).filter((w) => w.length > 0).length
-}
+import { countWords } from '../utils/textUtils'
 
 interface SortableItemProps {
   id: string

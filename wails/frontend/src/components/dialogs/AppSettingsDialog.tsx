@@ -3,7 +3,7 @@ import { useAppStore } from '../../store/appStore'
 import { useBookStore } from '../../store/bookStore'
 import { TestLocalAI, CheckClaudeCode, SetupClaudeCode, OpenClaudeAuth, GetAppVersion } from '../../../wailsjs/go/main/App'
 import { EventsOn } from '../../../wailsjs/runtime/runtime'
-import type { main } from '../../../wailsjs/go/models'
+import type { types } from '../../../wailsjs/go/models'
 
 type SettingsSection = 'application' | 'ai' | 'book'
 
@@ -78,7 +78,7 @@ export default function AppSettingsDialog() {
   const [showKey, setShowKey]             = useState(false)
   const [testStatus, setTestStatus]       = useState<'idle' | 'testing' | 'ok' | 'error'>('idle')
   const [testMsg, setTestMsg]             = useState('')
-  const [ccStatus, setCcStatus]           = useState<main.ClaudeCodeStatus | null>(null)
+  const [ccStatus, setCcStatus]           = useState<types.ClaudeCodeStatus | null>(null)
   const [ccChecking, setCcChecking]       = useState(false)
   const [ccSetupStep, setCcSetupStep]     = useState<'idle'|'running'|'auth'|'auth-waiting'|'done'|'error'>('idle')
   const [ccSetupLog, setCcSetupLog]       = useState<string[]>([])

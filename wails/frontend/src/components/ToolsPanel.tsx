@@ -2,127 +2,18 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useBookStore, getGlobalChapterIndex } from '../store/bookStore'
 import { useAppStore } from '../store/appStore'
 import { RewriteText, RewriteTextCustom, CancelRewrite, CheckClaudeCode } from '../../wailsjs/go/main/App'
-import type { main } from '../../wailsjs/go/models'
+import type { types } from '../../wailsjs/go/models'
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 import type { Character, CharacterRole, WritingStyleOptions, Beat, BeatType, ForeshadowingItem, ForeshadowingStatus, SecretInfo, KnowledgeEntry } from '../types/draftline'
 import { DEFAULT_STYLE_OPTIONS } from '../types/draftline'
 import { analyzeText, getScoreColor, getScoreLabel, analyzeAntiPatterns, getAntiPatternColor, type AIDetectionResult, type AntiPatternResult } from '../services/aiDetection'
+import { countWords, countBookWords } from '../utils/textUtils'
 
-type GlyphSection = 'dashboard' | 'characters' | 'plot' | 'timeline' | 'beats' | 'foreshadow' | 'knowledge' | 'ai' | null
-type AIMode = 'line_edit' | 'expand' | 'smooth' | 'custom'
-type AIState = 'idle' | 'loading' | 'voice' | 'error'
-
-const AI_MODES: { id: AIMode; label: string; desc: string }[] = [
-  { id: 'line_edit', label: 'Line Edit', desc: 'Prose rhythm and sentence variety' },
-  { id: 'expand', label: 'Expand', desc: 'Add detail, texture, show vs. tell' },
-  { id: 'smooth', label: 'Smooth', desc: 'Remove repetition, improve flow' },
-  { id: 'custom', label: 'Custom', desc: 'Use @ai prompts in your text' },
-]
-
-// Style feature definitions for the mixer
-const STYLE_FEATURES: { key: keyof WritingStyleOptions; label: string; desc: string }[] = [
-  { key: 'metaphors', label: 'Metaphors', desc: 'Figurative comparisons' },
-  { key: 'similes', label: 'Similes', desc: '"Like" and "as" comparisons' },
-  { key: 'sensory_detail', label: 'Sensory Detail', desc: 'Sight, sound, smell, touch, taste' },
-  { key: 'internal_thought', label: 'Internal Thought', desc: 'Character introspection' },
-  { key: 'dialogue', label: 'Dialogue', desc: 'Conversation expansion' },
-  { key: 'action', label: 'Action', desc: 'Physical beats, movement' },
-  { key: 'description', label: 'Description', desc: 'Setting and atmosphere' },
-  { key: 'pacing', label: 'Pacing', desc: 'Sentence rhythm variation' },
-]
-
-const INTENSITY_LABELS = ['Off', 'Subtle', 'Moderate', 'Heavy']
-
-// Glyph section configuration
-const SECTION_CONFIG: { id: Exclude<GlyphSection, null>; label: string; tooltip: string }[] = [
-  { id: 'dashboard', label: 'Dashboard', tooltip: 'Writing Dashboard' },
-  { id: 'characters', label: 'Characters', tooltip: 'Character Codex' },
-  { id: 'plot', label: 'Plot', tooltip: 'Plot Notes' },
-  { id: 'timeline', label: 'Timeline', tooltip: 'Story Timeline' },
-  { id: 'beats', label: 'Beats', tooltip: 'Beat Sheet' },
-  { id: 'foreshadow', label: 'Foreshadow', tooltip: 'Foreshadowing Ledger' },
-  { id: 'knowledge', label: 'Knowledge', tooltip: 'Knowledge Matrix' },
-  { id: 'ai', label: 'AI', tooltip: 'AI Studio' },
-]
-
-function genId(): string {
-  return Math.random().toString(36).slice(2) + Date.now().toString(36)
-}
-
-function countWords(html: string): number {
-  const div = document.createElement('div')
-  div.innerHTML = html
-  const text = div.textContent || div.innerText || ''
-  return text.trim().split(/\s+/).filter((w) => w.length > 0).length
-}
-
-// ── Glyph Icons ─────────────────────────────────────────────────────────────
-
-function GlyphIcon({ section }: { section: Exclude<GlyphSection, null> }) {
-  const icons: Record<Exclude<GlyphSection, null>, JSX.Element> = {
-    dashboard: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="7" height="9" rx="1" />
-        <rect x="14" y="3" width="7" height="5" rx="1" />
-        <rect x="14" y="12" width="7" height="9" rx="1" />
-        <rect x="3" y="16" width="7" height="5" rx="1" />
-      </svg>
-    ),
-    characters: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="9" cy="7" r="4" />
-        <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
-        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-        <path d="M21 21v-2a4 4 0 0 0-3-3.85" />
-      </svg>
-    ),
-    plot: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-        <polyline points="14 2 14 8 20 8" />
-        <line x1="16" y1="13" x2="8" y2="13" />
-        <line x1="16" y1="17" x2="8" y2="17" />
-        <polyline points="10 9 9 9 8 9" />
-      </svg>
-    ),
-    timeline: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10" />
-        <polyline points="12 6 12 12 16 14" />
-      </svg>
-    ),
-    beats: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-        <line x1="3" y1="9" x2="21" y2="9" />
-        <line x1="3" y1="15" x2="21" y2="15" />
-        <line x1="9" y1="3" x2="9" y2="21" />
-        <line x1="15" y1="3" x2="15" y2="21" />
-      </svg>
-    ),
-    foreshadow: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-      </svg>
-    ),
-    knowledge: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2" />
-        <path d="M3 9h18" />
-        <path d="M9 21V9" />
-      </svg>
-    ),
-    ai: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
-        <path d="M5 19l.5 1.5L7 21l-1.5.5L5 23l-.5-1.5L3 21l1.5-.5L5 19z" />
-        <path d="M19 16l.5 1.5L21 18l-1.5.5L19 20l-.5-1.5L17 18l1.5-.5L19 16z" />
-      </svg>
-    ),
-  }
-  return icons[section]
-}
+// Extracted types, constants, and components
+import type { GlyphSection, AIMode, AIState } from './tools/types'
+import { genId } from './tools/types'
+import { AI_MODES, STYLE_FEATURES, INTENSITY_LABELS, SECTION_CONFIG, BEAT_TYPES } from './tools/constants'
+import GlyphIcon from './tools/GlyphIcon'
 
 // ── Main panel ──────────────────────────────────────────────────────────────
 
@@ -209,6 +100,7 @@ export default function ToolsPanel() {
             {activeSection === 'beats' && <BeatsSection />}
             {activeSection === 'foreshadow' && <ForeshadowingSection />}
             {activeSection === 'knowledge' && <KnowledgeSection />}
+            {activeSection === 'issues' && <IssuesSection />}
             {activeSection === 'ai' && <AiStudioTab />}
           </div>
         </div>
@@ -238,7 +130,7 @@ function DashboardTab() {
   const [sessionStart] = useState(() => Date.now())
   const [sessionStartWords] = useState(() => {
     if (!book) return 0
-    return getTotalWords(book)
+    return countBookWords(book)
   })
   const [editingTarget, setEditingTarget] = useState(false)
   const [editingDaily, setEditingDaily] = useState(false)
@@ -278,7 +170,7 @@ function DashboardTab() {
   }, [currentContent])
 
   // Calculate metrics
-  const totalWords = getTotalWords(book)
+  const totalWords = countBookWords(book)
   const targetWords = book.writing_goals?.target_word_count || 0
   const dailyGoal = book.writing_goals?.daily_word_goal || 0
   const todayWords = book.writing_goals?.words_today || 0
@@ -586,15 +478,6 @@ function DashboardTab() {
   )
 }
 
-function getTotalWords(book: any): number {
-  let total = 0
-  total += countWords(book.copyright || '')
-  for (const ch of book.front_matter || []) total += countWords(ch.content || '')
-  for (const ch of book.body || []) total += countWords(ch.content || '')
-  for (const ch of book.back_matter || []) total += countWords(ch.content || '')
-  return total
-}
-
 // ── AI Studio ───────────────────────────────────────────────────────────────
 
 function AiStudioTab() {
@@ -608,7 +491,7 @@ function AiStudioTab() {
   const [importText, setImportText] = useState('')
   const [showStyleMixer, setShowStyleMixer] = useState(false)
   const [customPrompt, setCustomPrompt] = useState('')
-  const [ccStatus, setCcStatus] = useState<main.ClaudeCodeStatus | null>(null)
+  const [ccStatus, setCcStatus] = useState<types.ClaudeCodeStatus | null>(null)
   const [ccChecking, setCcChecking] = useState(false)
 
   const styleOptions = getStyleOptions()
@@ -966,7 +849,7 @@ function AiStudioTab() {
 // ── AI Setup Guidance ────────────────────────────────────────────────────────
 
 interface AiSetupGuidanceProps {
-  ccStatus: main.ClaudeCodeStatus | null
+  ccStatus: types.ClaudeCodeStatus | null
   ccChecking: boolean
   settings: { ai_mode: string; ai_provider: string; ai_api_key: string; ai_local_endpoint: string }
   onOpenSettings: () => void
@@ -1594,25 +1477,6 @@ function TimelineSection() {
 
 // ── Beat Sheet ───────────────────────────────────────────────────────────────
 
-const BEAT_TYPES: { value: BeatType | string; label: string }[] = [
-  { value: 'opening_image', label: 'Opening Image' },
-  { value: 'theme_stated', label: 'Theme Stated' },
-  { value: 'setup', label: 'Setup' },
-  { value: 'catalyst', label: 'Catalyst' },
-  { value: 'debate', label: 'Debate' },
-  { value: 'break_into_two', label: 'Break into Two' },
-  { value: 'b_story', label: 'B Story' },
-  { value: 'fun_and_games', label: 'Fun & Games' },
-  { value: 'midpoint', label: 'Midpoint' },
-  { value: 'bad_guys_close_in', label: 'Bad Guys Close In' },
-  { value: 'all_is_lost', label: 'All Is Lost' },
-  { value: 'dark_night', label: 'Dark Night' },
-  { value: 'break_into_three', label: 'Break into Three' },
-  { value: 'finale', label: 'Finale' },
-  { value: 'final_image', label: 'Final Image' },
-  { value: 'custom', label: 'Custom' },
-]
-
 function BeatsSection() {
   const { book, addBeat, updateBeat, deleteBeat, currentSection, currentIndex } = useBookStore()
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -2074,6 +1938,27 @@ function KnowledgeSection() {
       {secrets.length === 0 && !addingSecret && (
         <div className="tool-empty-state" style={{ marginTop: 12 }}>No secrets/info items yet.</div>
       )}
+    </div>
+  )
+}
+
+// ── Issues / Story Analysis ─────────────────────────────────────────────────
+
+function IssuesSection() {
+  const { book } = useBookStore()
+
+  if (!book) {
+    return <div className="tool-empty-state">Open a project to see analysis.</div>
+  }
+
+  return (
+    <div className="issues-section">
+      <div className="tool-empty-state">
+        <p>Story analysis coming soon.</p>
+        <p style={{ fontSize: '11px', opacity: 0.7, marginTop: '8px' }}>
+          This panel will provide continuity checking and story structure analysis.
+        </p>
+      </div>
     </div>
   )
 }

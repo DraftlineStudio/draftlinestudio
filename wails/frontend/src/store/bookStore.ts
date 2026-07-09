@@ -3,9 +3,10 @@ import type { BookData, ChapterItem, Character, Metadata, Section, StoryBible, W
 import { DEFAULT_STYLE_OPTIONS } from '../types/draftline'
 import type { ParagraphDiff, DiffChange } from '../utils/diff'
 import { extractChanges, assembleFromChanges } from '../utils/diff'
+import { countBookWords } from '../utils/textUtils'
 
 import { NewBook, OpenBookDialog, SaveBook, SaveBookAs, OpenRecentProject, AddRecentProject, IndexBook } from '../../wailsjs/go/main/App'
-import { main } from '../../wailsjs/go/models'
+import { types } from '../../wailsjs/go/models'
 import { useAppStore } from './appStore'
 
 // Auto-save debounce timer (5 seconds of inactivity)
@@ -194,20 +195,6 @@ function getSectionArray(book: BookData, section: Section): ChapterItem[] {
   }
 }
 
-function countWords(book: BookData): number {
-  const stripHtml = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
-  let total = 0
-  for (const ch of [...book.front_matter, ...book.body, ...book.back_matter]) {
-    const text = stripHtml(ch.content)
-    if (text) total += text.split(/\s+/).length
-  }
-  if (book.copyright) {
-    const text = stripHtml(book.copyright)
-    if (text) total += text.split(/\s+/).length
-  }
-  return total
-}
-
 function setSectionArray(book: BookData, section: Section, items: ChapterItem[]): BookData {
   switch (section) {
     case 'front_matter': return { ...book, front_matter: items }
@@ -370,9 +357,9 @@ export const useBookStore = create<BookStore>((set, get) => ({
       set({ book, currentSection: section, currentIndex: 0, isDirty: false, statusMessage: `Opened: ${book.metadata.title}` })
       // Add to recent projects
       if (book.file_path) {
-        const wordCount = countWords(book)
+        const wordCount = countBookWords(book)
         const chapterCount = book.front_matter.length + book.body.length + book.back_matter.length
-        await AddRecentProject(main.RecentProject.createFrom({
+        await AddRecentProject(types.RecentProject.createFrom({
           type: 'book',
           path: book.file_path,
           name: book.metadata.title || 'Untitled',
@@ -401,9 +388,9 @@ export const useBookStore = create<BookStore>((set, get) => ({
       const section: Section = book.body.length > 0 ? 'body' : 'front_matter'
       set({ book, currentSection: section, currentIndex: 0, isDirty: false, statusMessage: `Opened: ${book.metadata.title}` })
       // Update recent projects with new timestamp
-      const wordCount = countWords(book)
+      const wordCount = countBookWords(book)
       const chapterCount = book.front_matter.length + book.body.length + book.back_matter.length
-      await AddRecentProject(main.RecentProject.createFrom({
+      await AddRecentProject(types.RecentProject.createFrom({
         type: 'book',
         path: book.file_path || path,
         name: book.metadata.title || 'Untitled',
