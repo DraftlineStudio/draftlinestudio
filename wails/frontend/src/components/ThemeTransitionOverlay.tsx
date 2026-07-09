@@ -35,7 +35,7 @@ export default function ThemeTransitionOverlay({ isTransitioning, targetTheme }:
       y: Math.random() * 100,
       size: Math.random() * 2 + 1,
       delay: Math.random() * 0.5,
-      duration: Math.random() * 1 + 0.5
+      duration: Math.random() + 0.5
     }))
   }, [])
 
