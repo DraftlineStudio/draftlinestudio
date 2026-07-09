@@ -236,7 +236,6 @@ function calculateSentenceVariety(sentences: string[]): number {
  * Check for AI transition patterns
  */
 function calculateTransitionPatterns(text: string): { score: number; flags: string[] } {
-  const lowerText = text.toLowerCase()
   const wordCount = getWords(text).length
   const flags: string[] = []
 
