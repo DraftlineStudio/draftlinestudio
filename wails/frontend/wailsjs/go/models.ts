@@ -14,6 +14,136 @@ export namespace types {
 	        this.error = source["error"];
 	    }
 	}
+	export class SeparatedPairRecord {
+	    mention_id_1: string;
+	    mention_id_2: string;
+	    reason?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SeparatedPairRecord(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mention_id_1 = source["mention_id_1"];
+	        this.mention_id_2 = source["mention_id_2"];
+	        this.reason = source["reason"];
+	    }
+	}
+	export class EntityRecord {
+	    id: string;
+	    canonical: string;
+	    aliases: string[];
+	    mention_ids: string[];
+	    confidence: number;
+	    titles: string[];
+	    character_id?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new EntityRecord(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.canonical = source["canonical"];
+	        this.aliases = source["aliases"];
+	        this.mention_ids = source["mention_ids"];
+	        this.confidence = source["confidence"];
+	        this.titles = source["titles"];
+	        this.character_id = source["character_id"];
+	    }
+	}
+	export class MentionRecord {
+	    id: string;
+	    text: string;
+	    sentence_id: string;
+	    chapter: number;
+	    char_offset: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new MentionRecord(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.text = source["text"];
+	        this.sentence_id = source["sentence_id"];
+	        this.chapter = source["chapter"];
+	        this.char_offset = source["char_offset"];
+	    }
+	}
+	export class EntityData {
+	    mentions?: MentionRecord[];
+	    entities?: EntityRecord[];
+	    separated_pairs?: SeparatedPairRecord[];
+	    last_resolved?: string;
+	    version?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new EntityData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mentions = this.convertValues(source["mentions"], MentionRecord);
+	        this.entities = this.convertValues(source["entities"], EntityRecord);
+	        this.separated_pairs = this.convertValues(source["separated_pairs"], SeparatedPairRecord);
+	        this.last_resolved = source["last_resolved"];
+	        this.version = source["version"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class AnalysisData {
+	    entity_resolution?: EntityData;
+	    version?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new AnalysisData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.entity_resolution = this.convertValues(source["entity_resolution"], EntityData);
+	        this.version = source["version"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class AppSettings {
 	    default_author: string;
 	    default_publisher: string;
@@ -432,6 +562,7 @@ export namespace types {
 	    beat_sheet?: BeatSheet;
 	    foreshadowing?: ForeshadowingLedger;
 	    knowledge_matrix?: KnowledgeMatrix;
+	    analysis?: AnalysisData;
 	
 	    static createFrom(source: any = {}) {
 	        return new BookData(source);
@@ -454,6 +585,7 @@ export namespace types {
 	        this.beat_sheet = this.convertValues(source["beat_sheet"], BeatSheet);
 	        this.foreshadowing = this.convertValues(source["foreshadowing"], ForeshadowingLedger);
 	        this.knowledge_matrix = this.convertValues(source["knowledge_matrix"], KnowledgeMatrix);
+	        this.analysis = this.convertValues(source["analysis"], AnalysisData);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -496,6 +628,8 @@ export namespace types {
 	        this.error = source["error"];
 	    }
 	}
+	
+	
 	export class ExportOptions {
 	    includeCopyright: boolean;
 	    includeFrontMatter: boolean;
@@ -624,6 +758,7 @@ export namespace types {
 	        this.chapter_title = source["chapter_title"];
 	    }
 	}
+	
 	
 	
 	
@@ -783,6 +918,43 @@ export namespace types {
 	    }
 	}
 	
+	
+	export class SplitEntityResult {
+	    success: boolean;
+	    error?: string;
+	    book?: BookData;
+	    characters?: Character[];
+	
+	    static createFrom(source: any = {}) {
+	        return new SplitEntityResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.error = source["error"];
+	        this.book = this.convertValues(source["book"], BookData);
+	        this.characters = this.convertValues(source["characters"], Character);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	
 	
 

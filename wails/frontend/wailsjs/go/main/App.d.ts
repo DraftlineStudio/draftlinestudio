@@ -38,6 +38,8 @@ export function ImportEPUBDialog():Promise<types.ImportResult>;
 
 export function IndexBook(arg1:types.BookData):Promise<types.IndexResult>;
 
+export function IndexBookWithEntityResolution(arg1:types.BookData):Promise<types.IndexResult>;
+
 export function IndexChapter(arg1:types.BookData,arg2:string,arg3:number):Promise<types.IndexResult>;
 
 export function ListBackups():Promise<Array<types.BackupInfo>>;
@@ -67,5 +69,7 @@ export function SaveBookAs(arg1:types.BookData):Promise<types.SaveResult>;
 export function SaveSettings(arg1:types.AppSettings):Promise<void>;
 
 export function SetupClaudeCode():Promise<types.ClaudeCodeStatus>;
+
+export function SplitEntity(arg1:types.BookData,arg2:string,arg3:Array<string>,arg4:string):Promise<types.SplitEntityResult>;
 
 export function TestLocalAI(arg1:string):Promise<types.AIRewriteResult>;

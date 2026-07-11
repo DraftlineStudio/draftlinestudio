@@ -74,6 +74,10 @@ export function IndexBook(arg1) {
   return window['go']['main']['App']['IndexBook'](arg1);
 }
 
+export function IndexBookWithEntityResolution(arg1) {
+  return window['go']['main']['App']['IndexBookWithEntityResolution'](arg1);
+}
+
 export function IndexChapter(arg1, arg2, arg3) {
   return window['go']['main']['App']['IndexChapter'](arg1, arg2, arg3);
 }
@@ -132,6 +136,10 @@ export function SaveSettings(arg1) {
 
 export function SetupClaudeCode() {
   return window['go']['main']['App']['SetupClaudeCode']();
+}
+
+export function SplitEntity(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['SplitEntity'](arg1, arg2, arg3, arg4);
 }
 
 export function TestLocalAI(arg1) {
