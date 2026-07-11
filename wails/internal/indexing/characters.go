@@ -24,29 +24,32 @@ func DetectCharacterNames(text string) map[string]int {
 	// QUOTE-AWARE DIALOGUE PATTERNS
 	// These are the most reliable indicators of character names in fiction
 
+	// Multi-word name pattern: captures "Carlos" or "Carlos Ruiz" or "Carlos Ruiz Martinez"
+	multiWordName := `([A-Z][a-z]{2,}(?:\s+[A-Z][a-z]{2,}){0,2})`
+
 	// Pattern 1: Speaker AFTER closing quote: '," said John' or '." John said'
-	// Matches: "Hello," said John. | "Hello." John replied.
-	afterQuote := regexp.MustCompile(`[,.]"\s*(?i:` + DialogueVerbs + `)\s+([A-Z][a-z]{2,})\b`)
-	afterQuote2 := regexp.MustCompile(`[,.]"\s*([A-Z][a-z]{2,})\s+(?i:` + DialogueVerbs + `)`)
+	// Matches: "Hello," said John. | "Hello." John replied. | "Hello," said Carlos Ruiz.
+	afterQuote := regexp.MustCompile(`[,.]"\s*(?i:` + DialogueVerbs + `)\s+` + multiWordName + `\b`)
+	afterQuote2 := regexp.MustCompile(`[,.]"\s*` + multiWordName + `\s+(?i:` + DialogueVerbs + `)`)
 
 	// Pattern 2: Speaker BEFORE opening quote: 'John said, "' or 'John said "'
-	// Matches: John said, "Hello" | John replied "Hi"
-	beforeQuote := regexp.MustCompile(`\b([A-Z][a-z]{2,})\s+(?i:` + DialogueVerbs + `)\s*,?\s*"`)
+	// Matches: John said, "Hello" | John replied "Hi" | Carlos Ruiz said, "Hello"
+	beforeQuote := regexp.MustCompile(`\b` + multiWordName + `\s+(?i:` + DialogueVerbs + `)\s*,?\s*"`)
 
-	// Pattern 3: Title + Name (Mr. Smith, Dr. Jones, Captain Kirk)
-	// These are very reliable indicators
-	afterTitle := regexp.MustCompile(`\b(Mr|Mrs|Ms|Miss|Dr|Prof|Professor|Captain|Colonel|General|Lieutenant|Sergeant|Officer|Detective|Agent|Lord|Lady|Sir|Dame|King|Queen|Prince|Princess|Senator|Governor|Mayor|Chief|Father|Mother|Sister|Brother|Uncle|Aunt)\.?\s+([A-Z][a-z]{2,})\b`)
+	// Pattern 3: Title + Name (Mr. Smith, Dr. Jones, Captain Kirk, Detective Carlos Ruiz)
+	// These are very reliable indicators - captures multi-word names after title
+	afterTitle := regexp.MustCompile(`\b(Mr|Mrs|Ms|Miss|Dr|Prof|Professor|Captain|Colonel|General|Lieutenant|Sergeant|Officer|Detective|Agent|Lord|Lady|Sir|Dame|King|Queen|Prince|Princess|Senator|Governor|Mayor|Chief|Father|Mother|Sister|Brother|Uncle|Aunt)\.?\s+` + multiWordName + `\b`)
 
 	// Find speakers after closing quotes
 	for _, match := range afterQuote.FindAllStringSubmatch(text, -1) {
 		name := match[1]
-		if !CommonWords[name] && !LooksLikeCommonWord(name) {
+		if !IsCommonWord(name) && !LooksLikeCommonWord(name) {
 			mentions[name] += 3
 		}
 	}
 	for _, match := range afterQuote2.FindAllStringSubmatch(text, -1) {
 		name := match[1]
-		if !CommonWords[name] && !LooksLikeCommonWord(name) {
+		if !IsCommonWord(name) && !LooksLikeCommonWord(name) {
 			mentions[name] += 3
 		}
 	}
@@ -54,7 +57,7 @@ func DetectCharacterNames(text string) map[string]int {
 	// Find speakers before opening quotes
 	for _, match := range beforeQuote.FindAllStringSubmatch(text, -1) {
 		name := match[1]
-		if !CommonWords[name] && !LooksLikeCommonWord(name) {
+		if !IsCommonWord(name) && !LooksLikeCommonWord(name) {
 			mentions[name] += 3
 		}
 	}

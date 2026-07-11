@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"draftline/internal/entityresolution"
 	"draftline/internal/types"
 )
 
@@ -66,14 +67,13 @@ func Book(book types.BookData) types.IndexResult {
 		}
 	}
 
-	// Filter: only keep names with 3+ mentions (likely real characters)
+	// Include all detected names, even single mentions.
+	// The UI can filter/highlight based on mention count if needed.
 	newChars := 0
 	updatedChars := 0
 
 	for name, count := range allNames {
-		if count < 3 {
-			continue // Skip names with too few mentions
-		}
+		// Include all names - previously filtered to 3+ which missed single-mention characters
 
 		nameLower := strings.ToLower(name)
 
@@ -159,9 +159,7 @@ func Chapter(book types.BookData, section string, chapterIndex int) types.IndexR
 
 	newChars := 0
 	for name, count := range names {
-		if count < 2 {
-			continue
-		}
+		// Include all mentions - previously filtered to 2+ which missed single-mention characters
 
 		nameLower := strings.ToLower(name)
 		if existing, found := existingChars[nameLower]; found {
@@ -197,4 +195,214 @@ func Chapter(book types.BookData, section string, chapterIndex int) types.IndexR
 		NewCharacters:   newChars,
 		Characters:      book.StoryBible.Characters,
 	}
+}
+
+// BookWithEntityResolution performs full book indexing with entity resolution.
+// This is the enhanced version that clusters name variations together.
+// It updates both the StoryBible (for backward compat) and Analysis.EntityResolution.
+func BookWithEntityResolution(book *types.BookData) types.IndexResult {
+	// Initialize structures
+	if book.StoryBible.Characters == nil {
+		book.StoryBible.Characters = []types.Character{}
+	}
+	if book.Analysis.EntityResolution == nil {
+		book.Analysis.EntityResolution = &types.EntityData{Version: 1}
+	}
+
+	// Collect all mentions across chapters
+	var allMentions []entityresolution.Mention
+
+	sections := []struct {
+		name  string
+		items []types.ChapterItem
+	}{
+		{"front_matter", book.FrontMatter},
+		{"body", book.Body},
+		{"back_matter", book.BackMatter},
+	}
+
+	chapterIndex := 0
+	fullText := ""
+	for _, section := range sections {
+		for _, chapter := range section.items {
+			text := StripHTML(chapter.Content)
+			fullText += " " + text
+
+			// Detect mentions with position information
+			mentions := DetectMentions(text, chapterIndex, 0)
+			allMentions = append(allMentions, mentions...)
+
+			chapterIndex++
+		}
+	}
+
+	// Load existing separated pairs from storage
+	resolver := entityresolution.NewResolver()
+	if book.Analysis.EntityResolution != nil {
+		for _, pair := range book.Analysis.EntityResolution.SeparatedPairs {
+			resolver.SeparatedPairs = append(resolver.SeparatedPairs, entityresolution.SeparatedPair{
+				MentionID1: pair.MentionID1,
+				MentionID2: pair.MentionID2,
+				Reason:     pair.Reason,
+			})
+		}
+	}
+
+	// Run entity resolution
+	result := resolver.ResolveEntities(allMentions)
+
+	// Include all detected entities, including single-mention ones.
+	// The UI can filter/highlight based on mention count if needed.
+	// Previously filtered to 3+ mentions which caused single-mention characters to be missed.
+	filteredEntities := result.Entities
+
+	// Preserve manually created (non-auto-detected) characters
+	preservedChars := make([]types.Character, 0)
+	for _, char := range book.StoryBible.Characters {
+		if !char.IsAutoDetected {
+			preservedChars = append(preservedChars, char)
+		}
+	}
+
+	// Convert entities to characters for backward compat
+	newCharacters := ConvertEntitiesToCharacters(filteredEntities, allMentions)
+
+	// Merge: add preserved chars, then new auto-detected chars
+	// Check for duplicates by name
+	charNames := make(map[string]bool)
+	for _, char := range preservedChars {
+		charNames[strings.ToLower(char.Name)] = true
+	}
+
+	for _, char := range newCharacters {
+		if !charNames[strings.ToLower(char.Name)] {
+			// Try to extract attributes
+			char.Attributes = ExtractAttributes(fullText, char.Name)
+			preservedChars = append(preservedChars, char)
+			charNames[strings.ToLower(char.Name)] = true
+		}
+	}
+
+	book.StoryBible.Characters = preservedChars
+
+	// Store entity resolution data
+	book.Analysis.EntityResolution = &types.EntityData{
+		Mentions:       ConvertMentionsToRecords(allMentions),
+		Entities:       ConvertEntitiesToRecords(filteredEntities),
+		SeparatedPairs: ConvertSeparatedPairsToRecords(result.SeparatedPairs),
+		LastResolved:   time.Now().Format(time.RFC3339),
+		Version:        1,
+	}
+
+	return types.IndexResult{
+		Success:           true,
+		CharactersFound:   len(allMentions),
+		NewCharacters:     len(newCharacters),
+		UpdatedCharacters: 0,
+		Characters:        book.StoryBible.Characters,
+	}
+}
+
+// SplitCharacterEntity splits an entity into two, moving specified mentions
+// to a new entity. This is used when auto-merging incorrectly combined two
+// different people (e.g., two characters both called "Ruiz").
+func SplitCharacterEntity(book *types.BookData, entityID string, mentionIDs []string, newCanonical string) error {
+	if book.Analysis.EntityResolution == nil {
+		return fmt.Errorf("no entity resolution data found")
+	}
+
+	// Convert stored records back to entityresolution types
+	entities := make([]entityresolution.Entity, len(book.Analysis.EntityResolution.Entities))
+	for i, e := range book.Analysis.EntityResolution.Entities {
+		entities[i] = entityresolution.Entity{
+			ID:         e.ID,
+			Canonical:  e.Canonical,
+			Aliases:    e.Aliases,
+			MentionIDs: e.MentionIDs,
+			Confidence: e.Confidence,
+			Titles:     e.Titles,
+		}
+	}
+
+	// Create resolver with existing separated pairs
+	resolver := entityresolution.NewResolver()
+	for _, pair := range book.Analysis.EntityResolution.SeparatedPairs {
+		resolver.SeparatedPairs = append(resolver.SeparatedPairs, entityresolution.SeparatedPair{
+			MentionID1: pair.MentionID1,
+			MentionID2: pair.MentionID2,
+			Reason:     pair.Reason,
+		})
+	}
+
+	// Perform the split
+	newEntities, err := resolver.SplitEntity(entities, entityID, mentionIDs)
+	if err != nil {
+		return err
+	}
+
+	// Set the canonical name for the new entity
+	if newCanonical != "" {
+		for i := range newEntities {
+			// The new entity is the one with our mentionIDs
+			hasMention := false
+			for _, mid := range newEntities[i].MentionIDs {
+				for _, targetID := range mentionIDs {
+					if mid == targetID {
+						hasMention = true
+						break
+					}
+				}
+				if hasMention {
+					break
+				}
+			}
+			if hasMention && newEntities[i].ID != entityID {
+				newEntities[i].Canonical = newCanonical
+				break
+			}
+		}
+	}
+
+	// Update stored data
+	book.Analysis.EntityResolution.Entities = ConvertEntitiesToRecords(newEntities)
+	book.Analysis.EntityResolution.SeparatedPairs = ConvertSeparatedPairsToRecords(resolver.SeparatedPairs)
+	book.Analysis.EntityResolution.LastResolved = time.Now().Format(time.RFC3339)
+
+	// Rebuild characters from entities
+	mentions := make([]entityresolution.Mention, len(book.Analysis.EntityResolution.Mentions))
+	for i, m := range book.Analysis.EntityResolution.Mentions {
+		mentions[i] = entityresolution.Mention{
+			ID:         m.ID,
+			Text:       m.Text,
+			SentenceID: m.SentenceID,
+			Chapter:    m.Chapter,
+			CharOffset: m.CharOffset,
+		}
+	}
+
+	// Preserve manually created characters
+	preservedChars := make([]types.Character, 0)
+	for _, char := range book.StoryBible.Characters {
+		if !char.IsAutoDetected {
+			preservedChars = append(preservedChars, char)
+		}
+	}
+
+	// Convert entities to characters
+	newCharacters := ConvertEntitiesToCharacters(newEntities, mentions)
+
+	// Merge
+	charNames := make(map[string]bool)
+	for _, char := range preservedChars {
+		charNames[strings.ToLower(char.Name)] = true
+	}
+	for _, char := range newCharacters {
+		if !charNames[strings.ToLower(char.Name)] {
+			preservedChars = append(preservedChars, char)
+		}
+	}
+
+	book.StoryBible.Characters = preservedChars
+
+	return nil
 }
