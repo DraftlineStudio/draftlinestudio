@@ -37,6 +37,14 @@ type IndexResult struct {
 	Characters        []Character `json:"characters,omitempty"`
 }
 
+// SplitEntityResult contains the result of splitting an entity.
+type SplitEntityResult struct {
+	Success    bool        `json:"success"`
+	Error      string      `json:"error,omitempty"`
+	Book       BookData    `json:"book,omitempty"`
+	Characters []Character `json:"characters,omitempty"`
+}
+
 // BackupInfo contains metadata about a backup file.
 type BackupInfo struct {
 	Number   int    `json:"number"`

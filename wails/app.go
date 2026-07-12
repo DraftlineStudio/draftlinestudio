@@ -71,6 +71,7 @@ func (a *App) CancelRewrite() {
 // Thin wrappers around indexing package. See internal/indexing/ for implementation.
 
 // IndexBook scans all chapters and extracts/updates character information.
+// This is the legacy method that doesn't use entity resolution clustering.
 func (a *App) IndexBook(book types.BookData) types.IndexResult {
 	return indexing.Book(book)
 }
@@ -78,6 +79,31 @@ func (a *App) IndexBook(book types.BookData) types.IndexResult {
 // IndexChapter scans a single chapter for character mentions (incremental update).
 func (a *App) IndexChapter(book types.BookData, section string, chapterIndex int) types.IndexResult {
 	return indexing.Chapter(book, section, chapterIndex)
+}
+
+// IndexBookWithEntityResolution scans all chapters and clusters name variations.
+// This is the enhanced version that groups "Ruiz", "Officer Ruiz", "Carlos Ruiz"
+// into a single entity. Returns the updated book data with entities populated.
+func (a *App) IndexBookWithEntityResolution(book types.BookData) types.IndexResult {
+	return indexing.BookWithEntityResolution(&book)
+}
+
+// SplitEntity separates mentions from an entity into a new entity.
+// Use this when auto-merging incorrectly combined two different people.
+// Example: "Ruiz" (the cop) and "Ruiz" (the sister) got merged, call this to split.
+func (a *App) SplitEntity(book types.BookData, entityID string, mentionIDs []string, newCanonical string) types.SplitEntityResult {
+	err := indexing.SplitCharacterEntity(&book, entityID, mentionIDs, newCanonical)
+	if err != nil {
+		return types.SplitEntityResult{
+			Success: false,
+			Error:   err.Error(),
+		}
+	}
+	return types.SplitEntityResult{
+		Success:    true,
+		Book:       book,
+		Characters: book.StoryBible.Characters,
+	}
 }
 
 func NewApp() *App {
