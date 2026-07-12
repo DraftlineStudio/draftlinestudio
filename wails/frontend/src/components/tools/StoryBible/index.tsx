@@ -232,9 +232,12 @@ function CharacterCard({ char, onEdit, onDelete, mergeMode, selected, onToggleSe
     setHighlightedCharacter(isHighlighted ? null : char.id)
   }
 
+  // Mark low-mention characters as potential false positives
+  const isLowMention = char.is_auto_detected && (char.mention_count ?? 0) < 3
+
   return (
     <div
-      className={`character-card${char.is_auto_detected ? ' auto-detected' : ''}${mergeMode ? ' merge-mode' : ''}${selected ? ' selected' : ''}${isHighlighted ? ' highlighting' : ''}`}
+      className={`character-card${char.is_auto_detected ? ' auto-detected' : ''}${isLowMention ? ' low-mention' : ''}${mergeMode ? ' merge-mode' : ''}${selected ? ' selected' : ''}${isHighlighted ? ' highlighting' : ''}`}
       onClick={handleClick}
     >
       <div className="character-card-header">
@@ -285,12 +288,27 @@ function CharacterCard({ char, onEdit, onDelete, mergeMode, selected, onToggleSe
         </div>
       )}
 
-      {/* Auto-detected attributes */}
+      {/* Aliases - show prominently even when collapsed */}
+      {char.aliases && char.aliases.length > 0 && (
+        <div className="character-aliases-preview">
+          <span className="aliases-label">aka:</span>
+          {char.aliases.slice(0, 3).map((alias, i) => (
+            <span key={alias} className="alias-tag">{alias}</span>
+          ))}
+          {char.aliases.length > 3 && (
+            <span className="alias-more">+{char.aliases.length - 3} more</span>
+          )}
+        </div>
+      )}
+
+      {/* Auto-detected attributes - show ALL attributes, not just specific ones */}
       {char.attributes && Object.keys(char.attributes).length > 0 && (
         <div className="character-attributes">
-          {char.attributes.eye_color && <span className="char-attr">Eyes: {char.attributes.eye_color}</span>}
-          {char.attributes.hair_color && <span className="char-attr">Hair: {char.attributes.hair_color}</span>}
-          {char.attributes.age && <span className="char-attr">Age: {char.attributes.age}</span>}
+          {Object.entries(char.attributes).map(([key, val]) => (
+            <span key={key} className="char-attr">
+              {key.replace(/_/g, ' ')}: {val}
+            </span>
+          ))}
         </div>
       )}
 
