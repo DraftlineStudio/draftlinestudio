@@ -96,6 +96,48 @@ export interface KnowledgeMatrix {
   entries: KnowledgeEntry[]
 }
 
+// Entity Resolution - clusters name mentions into unified entities
+export interface MentionRecord {
+  id: string
+  text: string        // Raw text as it appears
+  sentence_id: string // ID of containing sentence
+  chapter: number     // Chapter index
+  char_offset: number // Character offset in chapter
+}
+
+export interface EntityRecord {
+  id: string
+  canonical: string   // Best display name
+  aliases: string[]   // All name variations
+  mention_ids: string[] // IDs of all mentions
+  confidence: number  // Merge confidence (0-1)
+  titles: string[]    // Honorifics/titles seen
+  character_id?: string // Link to Character record
+}
+
+export interface SeparatedPairRecord {
+  mention_id_1: string
+  mention_id_2: string
+  reason?: string
+}
+
+export interface EntityData {
+  mentions?: MentionRecord[]
+  entities?: EntityRecord[]
+  separated_pairs?: SeparatedPairRecord[]
+  last_resolved?: string
+  version?: number
+}
+
+// Future-proof container for analysis results
+export interface AnalysisData {
+  entity_resolution?: EntityData
+  // Future analysis types:
+  // plot_analysis?: PlotAnalysisData
+  // theme_analysis?: ThemeAnalysisData
+  version?: number
+}
+
 export interface WritingGoals {
   target_word_count: number
   daily_word_goal: number
@@ -159,6 +201,8 @@ export interface BookData {
   beat_sheet?: BeatSheet
   foreshadowing?: ForeshadowingLedger
   knowledge_matrix?: KnowledgeMatrix
+  // Entity resolution and other analysis results
+  analysis?: AnalysisData
 }
 
 // Result of character indexing
@@ -168,6 +212,14 @@ export interface IndexResult {
   characters_found: number
   new_characters: number
   updated_characters: number
+  characters?: Character[]
+}
+
+// Result of splitting an entity
+export interface SplitEntityResult {
+  success: boolean
+  error?: string
+  book?: BookData
   characters?: Character[]
 }
 
