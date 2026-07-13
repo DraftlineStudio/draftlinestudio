@@ -3472,6 +3472,56 @@ html, body, #root {
   opacity: 0.7;
   cursor: help;
 }
+
+/* Low-mention characters (potential false positives) */
+.character-card.low-mention {
+  border-left-color: #E5C07B; /* Yellow/amber warning color */
+  opacity: 0.85;
+}
+.character-card.low-mention::after {
+  content: '?';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 9px;
+  font-weight: bold;
+  color: #E5C07B;
+  background: rgba(229, 192, 123, 0.15);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+}
+.character-card { position: relative; } /* Ensure ::after positioning works */
+
+/* Aliases preview (visible in collapsed state) */
+.character-aliases-preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 3px 0;
+  font-size: 10px;
+}
+.aliases-label {
+  color: var(--text-muted);
+  font-style: italic;
+}
+.alias-tag {
+  background: var(--accent-dim);
+  color: var(--app-accent-text);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 9px;
+}
+.alias-more {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 9px;
+}
 .character-badges {
   display: flex;
   align-items: center;
@@ -5456,6 +5506,28 @@ html, body, #root {
 }
 .codex-card.auto-detected {
   border-left: 3px solid var(--app-accent);
+}
+.codex-card.low-mention {
+  border-left-color: #E5C07B;
+  opacity: 0.85;
+  position: relative;
+}
+.codex-card.low-mention::after {
+  content: '?';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 10px;
+  font-weight: bold;
+  color: #E5C07B;
+  background: rgba(229, 192, 123, 0.15);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
 }
 .codex-card.merge-mode {
   cursor: pointer;
