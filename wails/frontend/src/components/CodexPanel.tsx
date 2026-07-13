@@ -268,6 +268,9 @@ function CodexCharacterCard({ char, onEdit, onDelete, getChapterName, mergeMode,
 }) {
   const [expanded, setExpanded] = useState(false)
 
+  // Mark low-mention characters as potential false positives
+  const isLowMention = char.is_auto_detected && (char.mention_count ?? 0) < 3
+
   const handleClick = () => {
     if (mergeMode && onToggleSelect) {
       onToggleSelect()
@@ -278,7 +281,7 @@ function CodexCharacterCard({ char, onEdit, onDelete, getChapterName, mergeMode,
 
   return (
     <div
-      className={`codex-card${char.is_auto_detected ? ' auto-detected' : ''}${mergeMode ? ' merge-mode' : ''}${selected ? ' selected' : ''}`}
+      className={`codex-card${char.is_auto_detected ? ' auto-detected' : ''}${isLowMention ? ' low-mention' : ''}${mergeMode ? ' merge-mode' : ''}${selected ? ' selected' : ''}`}
       onClick={handleClick}
     >
       {/* Merge checkbox */}
@@ -302,6 +305,19 @@ function CodexCharacterCard({ char, onEdit, onDelete, getChapterName, mergeMode,
           )}
           {char.first_chapter !== undefined && (
             <span className="codex-stat">First: {getChapterName(char.first_chapter)}</span>
+          )}
+        </div>
+      )}
+
+      {/* Aliases preview (visible when collapsed) */}
+      {char.aliases && char.aliases.length > 0 && (
+        <div className="character-aliases-preview">
+          <span className="aliases-label">aka:</span>
+          {char.aliases.slice(0, 3).map((alias) => (
+            <span key={alias} className="alias-tag">{alias}</span>
+          ))}
+          {char.aliases.length > 3 && (
+            <span className="alias-more">+{char.aliases.length - 3} more</span>
           )}
         </div>
       )}
