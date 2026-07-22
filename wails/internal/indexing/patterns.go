@@ -5,9 +5,12 @@ import "strings"
 
 // commonWordsLower contains words to exclude from character detection (all lowercase for case-insensitive matching).
 var commonWordsLower = map[string]bool{
-	// Short words (1-2 chars) - filtered by regex but kept for safety
+	// Short words (1-2 chars)
 	"a": true, "i": true, "an": true, "he": true, "it": true, "we": true, "or": true,
 	"so": true, "no": true, "if": true, "my": true, "me": true, "us": true, "up": true,
+	"at": true, "as": true, "is": true, "in": true, "on": true, "of": true, "to": true,
+	"by": true, "be": true, "am": true, "do": true, "go": true, "ah": true, "oh": true,
+	"are": true, "been": true, "does": true, "said": true, "saying": true,
 	// Pronouns and determiners (3+ chars)
 	"the": true, "she": true, "you": true, "his": true, "her": true, "its": true,
 	"our": true, "they": true, "your": true, "this": true, "that": true, "him": true,
@@ -54,6 +57,14 @@ var commonWordsLower = map[string]bool{
 	"and": true, "but": true, "for": true, "nor": true, "yet": true, "not": true,
 	"all": true, "any": true, "out": true, "now": true, "new": true, "old": true,
 	"upon": true, "with": true, "from": true, "over": true, "under": true, "along": true,
+	"behind": true, "beside": true, "besides": true, "beneath": true, "above": true,
+	"below": true, "beyond": true, "across": true, "toward": true, "towards": true,
+	"near": true, "nearby": true, "despite": true, "unless": true, "instead": true,
+	"further": true, "moreover": true, "nevertheless": true, "nonetheless": true,
+	"elsewhere": true, "anyway": true, "anyhow": true, "whoever": true,
+	"whenever": true, "wherever": true, "whatever": true, "whichever": true,
+	// Sentence-lead adjectives that glue onto names ("poor" already listed)
+	"dear": true, "sweet": true, "silly": true, "brave": true,
 	// Adverbs and time words
 	"there": true, "here": true, "then": true, "just": true, "only": true, "even": true,
 	"still": true, "already": true, "very": true, "really": true, "quite": true, "rather": true,
@@ -185,9 +196,6 @@ var CommonWordSuffixes = []string{
 	"wise",  // manner: otherwise, likewise
 }
 
-// DialogueVerbs contains verbs used for dialogue attribution.
-const DialogueVerbs = `said|asked|replied|answered|whispered|shouted|yelled|muttered|exclaimed|cried|called|screamed|murmured|snapped|growled|laughed|sighed|groaned|demanded|insisted|suggested|agreed|admitted|explained|continued|added|interrupted|announced|declared|observed|remarked|noted|commented|wondered|mused|thought|began|finished|concluded`
-
 // FalsePositiveContextWords are words that, when following a name, suggest it's NOT a character.
 // For example: "Hubbard Street" → Street suggests Hubbard is a place name, not a person.
 // "General Tso's Chicken" → Chicken suggests this is a food reference.
@@ -204,10 +212,18 @@ var FalsePositiveContextWords = map[string]bool{
 	"chicken": true, "beef": true, "pork": true, "shrimp": true, "fish": true,
 	"rice": true, "noodles": true, "sauce": true, "soup": true, "salad": true,
 	"sandwich": true, "burger": true, "pizza": true, "steak": true, "lobster": true,
-	// Brand/company indicators
+	// Brand/company/institution indicators
 	"company": true, "corporation": true, "incorporated": true, "inc": true,
 	"limited": true, "ltd": true, "industries": true, "enterprises": true,
 	"foundation": true, "institute": true, "association": true, "organization": true,
+	"department": true, "departments": true, "bureau": true, "division": true,
+	"precinct": true, "headquarters": true, "agency": true, "ministry": true,
+	"council": true, "committee": true, "unit": true, "squad": true,
+	"academy": true, "corps": true, "patrol": true, "office": true, "offices": true,
+	"facility": true, "laboratory": true,
+	// Floor/location designations
+	"level": true, "levels": true, "floor": true, "floors": true, "deck": true,
+	"wing": true, "sector": true, "basement": true, "sublevel": true,
 	// Geographic features
 	"mountain": true, "river": true, "lake": true, "ocean": true, "sea": true,
 	"valley": true, "canyon": true, "forest": true, "island": true, "peninsula": true,

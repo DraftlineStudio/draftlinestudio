@@ -42,19 +42,3 @@ type ResolvedEntities struct {
 	MentionMap     map[string]int  `json:"-"` // mentionID -> entityIndex (computed, not stored)
 }
 
-// MergeCandidate represents a potential merge between two name clusters.
-type MergeCandidate struct {
-	ClusterA   int     // Index of first cluster
-	ClusterB   int     // Index of second cluster
-	Confidence float64 // Confidence score for this merge
-	Reason     string  // Why we're merging (e.g., "subset", "nickname", "levenshtein")
-}
-
-// Cluster is an intermediate structure used during resolution.
-type Cluster struct {
-	Mentions       []*Mention // All mentions in this cluster
-	HeadVariants   []string   // All normalized head variants seen
-	FullVariants   []string   // All full name variants (with all tokens)
-	Titles         []string   // All titles seen
-	Representative *Mention   // Best mention to represent this cluster
-}
