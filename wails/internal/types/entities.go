@@ -9,6 +9,9 @@ type EntityData struct {
 	Entities []EntityRecord `json:"entities,omitempty"`
 	// SeparatedPairs stores mention pairs that should not be merged
 	SeparatedPairs []SeparatedPairRecord `json:"separated_pairs,omitempty"`
+	// MergeRules stores user-confirmed "same person" name pairs, re-applied
+	// on every re-index
+	MergeRules []MergeRule `json:"merge_rules,omitempty"`
 	// LastResolved is the timestamp of the last entity resolution run
 	LastResolved string `json:"last_resolved,omitempty"`
 	// Version tracks schema version for future migrations
@@ -44,16 +47,25 @@ type SeparatedPairRecord struct {
 	Reason     string `json:"reason,omitempty"`
 }
 
+// MergeRule declares that two name forms refer to the same person.
+// Name-based (not ID-based) so it survives re-indexing after text edits.
+type MergeRule struct {
+	Name1 string `json:"name_1"`
+	Name2 string `json:"name_2"`
+}
+
 // AnalysisData is a future-proof container for various analysis results.
 // This allows adding new analysis types without changing the BookData schema.
 type AnalysisData struct {
 	// EntityResolution stores character/entity clustering results
 	EntityResolution *EntityData `json:"entity_resolution,omitempty"`
 
+	// Relationships stores character interaction and relationship data
+	Relationships *RelationshipData `json:"relationships,omitempty"`
+
 	// Future analysis types can be added here:
 	// PlotAnalysis     *PlotAnalysisData    `json:"plot_analysis,omitempty"`
 	// ThemeAnalysis    *ThemeAnalysisData   `json:"theme_analysis,omitempty"`
-	// DialogueAnalysis *DialogueAnalysisData `json:"dialogue_analysis,omitempty"`
 	// PacingAnalysis   *PacingAnalysisData  `json:"pacing_analysis,omitempty"`
 
 	// Version tracks schema version for migrations
