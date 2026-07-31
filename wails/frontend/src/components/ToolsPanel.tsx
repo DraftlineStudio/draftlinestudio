@@ -9,8 +9,9 @@ import { SECTION_CONFIG } from './tools/constants'
 import GlyphIcon from './tools/GlyphIcon'
 import DashboardTab from './tools/Dashboard'
 import AiStudioTab from './tools/AIStudio'
-import { CharactersSection, PlotSection, TimelineSection } from './tools/StoryBible'
+import { PlotSection, TimelineSection } from './tools/StoryBible'
 import { BeatsSection, ForeshadowingSection, KnowledgeSection, IssuesSection } from './tools/PlotWalker'
+import CastQuickRef from './tools/CastQuickRef'
 
 // ── Main panel ──────────────────────────────────────────────────────────────
 
@@ -91,7 +92,7 @@ export default function ToolsPanel() {
           </div>
           <div className="slide-panel-content">
             {activeSection === 'dashboard' && <DashboardTab />}
-            {activeSection === 'characters' && <CharactersSection />}
+            {activeSection === 'characters' && <CastQuickRef />}
             {activeSection === 'plot' && <PlotSection />}
             {activeSection === 'timeline' && <TimelineSection />}
             {activeSection === 'beats' && <BeatsSection />}
