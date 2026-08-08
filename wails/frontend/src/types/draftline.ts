@@ -121,17 +121,143 @@ export interface SeparatedPairRecord {
   reason?: string
 }
 
+// User-confirmed "same person" name pair, re-applied on every re-index
+export interface MergeRule {
+  name_1: string
+  name_2: string
+}
+
 export interface EntityData {
   mentions?: MentionRecord[]
   entities?: EntityRecord[]
   separated_pairs?: SeparatedPairRecord[]
+  merge_rules?: MergeRule[]
   last_resolved?: string
   version?: number
+}
+
+// ── Relationship Analysis Types ─────────────────────────────────────────────
+
+// SceneRecord represents a detected scene or paragraph boundary
+export interface SceneRecord {
+  id: string
+  chapter_index: number
+  start_offset: number
+  end_offset: number
+  scene_type: 'paragraph' | 'scene_break' | 'chapter' | string
+  character_ids: string[]
+}
+
+// InteractionRecord represents a detected interaction between characters
+export interface InteractionRecord {
+  id: string
+  participants: string[]
+  chapter_index: number
+  scene_id?: string
+  sentence_id?: string
+  interaction_type: 'dialogue' | 'co_occurrence' | 'reference' | string
+  directed_from?: string
+  directed_to?: string
+  confidence: number
+  text_snippet?: string
+}
+
+// RelationshipRecord represents an aggregated relationship between two characters
+export interface RelationshipRecord {
+  id: string
+  character1_id: string
+  character2_id: string
+  first_chapter: number
+  last_chapter: number
+  interaction_count: number
+  strength: number  // 0-1
+  chapter_history: number[]
+  interaction_ids?: string[]
+  type_breakdown: Record<string, number>
+}
+
+// CharacterEvent represents a significant plot point tied to characters
+export interface CharacterEvent {
+  id: string
+  character_ids: string[]
+  chapter_index: number
+  event_type: 'introduction' | 'meeting' | 'conflict' | 'resolution' | 'death' | 'custom' | string
+  description: string
+  is_auto_detected: boolean
+}
+
+// RelationshipData stores all relationship and interaction analysis
+export interface RelationshipData {
+  scenes?: SceneRecord[]
+  interactions?: InteractionRecord[]
+  relationships?: RelationshipRecord[]
+  events?: CharacterEvent[]
+  last_analyzed?: string
+  version?: number
+}
+
+// Result of relationship analysis
+export interface RelationshipAnalysisResult {
+  success: boolean
+  error?: string
+  book?: BookData
+  scenes_detected: number
+  interactions_found: number
+  relationships_built: number
+}
+
+// Character timeline event for UI display
+export interface CharacterTimelineEvent {
+  chapter: number
+  event_type: 'mention' | 'dialogue' | 'interaction' | 'event' | string
+  description: string
+  related_chars?: string[]
+}
+
+// Result of getting a character timeline
+export interface CharacterTimelineResult {
+  success: boolean
+  error?: string
+  character_id: string
+  events: CharacterTimelineEvent[]
+}
+
+// ── Visualization Types for D3.js ─────────────────────────────────────────────
+
+// Node for force-directed graph
+export interface CharacterNode {
+  id: string
+  name: string
+  role: CharacterRole | string
+  mentionCount: number
+  firstChapter: number
+  x?: number
+  y?: number
+  fx?: number | null  // Fixed position for pinned nodes
+  fy?: number | null
+}
+
+// Edge for force-directed graph
+export interface RelationshipEdge {
+  source: string | CharacterNode
+  target: string | CharacterNode
+  strength: number
+  interactionCount: number
+  firstChapter: number
+  lastChapter: number
+  typeBreakdown: Record<string, number>
+}
+
+// Graph data for D3 visualization
+export interface RelationshipGraphData {
+  nodes: CharacterNode[]
+  edges: RelationshipEdge[]
 }
 
 // Future-proof container for analysis results
 export interface AnalysisData {
   entity_resolution?: EntityData
+  relationships?: RelationshipData
   // Future analysis types:
   // plot_analysis?: PlotAnalysisData
   // theme_analysis?: ThemeAnalysisData
@@ -211,8 +337,9 @@ export interface IndexResult {
   error?: string
   characters_found: number
   new_characters: number
-  updated_characters: number
   characters?: Character[]
+  // Updated book with characters and entity resolution data populated
+  book: BookData
 }
 
 // Result of splitting an entity
