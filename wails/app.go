@@ -70,14 +70,133 @@ func (a *App) CancelRewrite() {
 // ── Character Indexing ────────────────────────────────────────────────────────
 // Thin wrappers around indexing package. See internal/indexing/ for implementation.
 
-// IndexBook scans all chapters and extracts/updates character information.
+// IndexBook runs the two-phase character pipeline: mention extraction over
+// every chapter, then entity resolution ("Ruiz", "Officer Ruiz", "Carlos Ruiz"
+// become one entity). The result includes the updated book with characters
+// and entity data populated.
 func (a *App) IndexBook(book types.BookData) types.IndexResult {
-	return indexing.Book(book)
+	return indexing.IndexBook(&book)
 }
 
-// IndexChapter scans a single chapter for character mentions (incremental update).
-func (a *App) IndexChapter(book types.BookData, section string, chapterIndex int) types.IndexResult {
-	return indexing.Chapter(book, section, chapterIndex)
+// SplitEntity separates mentions from an entity into a new entity.
+// Use this when auto-merging incorrectly combined two different people.
+// Example: "Ruiz" (the cop) and "Ruiz" (the sister) got merged, call this to split.
+func (a *App) SplitEntity(book types.BookData, entityID string, mentionIDs []string, newCanonical string) types.SplitEntityResult {
+	err := indexing.SplitCharacterEntity(&book, entityID, mentionIDs, newCanonical)
+	if err != nil {
+		return types.SplitEntityResult{
+			Success: false,
+			Error:   err.Error(),
+		}
+	}
+	return types.SplitEntityResult{
+		Success:    true,
+		Book:       book,
+		Characters: book.StoryBible.Characters,
+	}
+}
+
+// MergeEntities merges two or more detected characters into one. The first
+// ID is the primary; canonical overrides the display name if non-empty.
+// The merge is remembered by name and re-applied on every re-index.
+func (a *App) MergeEntities(book types.BookData, entityIDs []string, canonical string) types.SplitEntityResult {
+	err := indexing.MergeCharacterEntities(&book, entityIDs, canonical)
+	if err != nil {
+		return types.SplitEntityResult{
+			Success: false,
+			Error:   err.Error(),
+		}
+	}
+	return types.SplitEntityResult{
+		Success:    true,
+		Book:       book,
+		Characters: book.StoryBible.Characters,
+	}
+}
+
+// ── Relationship Analysis ─────────────────────────────────────────────────────
+// Analyzes character interactions and builds relationship graphs.
+
+// AnalyzeRelationships detects character interactions and builds relationship data.
+// This should be called after entity resolution has been run.
+func (a *App) AnalyzeRelationships(book types.BookData) types.RelationshipAnalysisResult {
+	analyzer := indexing.NewRelationshipAnalyzer()
+	relData, err := analyzer.AnalyzeBook(book)
+	if err != nil {
+		return types.RelationshipAnalysisResult{
+			Success: false,
+			Error:   err.Error(),
+		}
+	}
+
+	// Attach to book
+	book.Analysis.Relationships = relData
+
+	return types.RelationshipAnalysisResult{
+		Success:            true,
+		Book:               book,
+		ScenesDetected:     len(relData.Scenes),
+		InteractionsFound:  len(relData.Interactions),
+		RelationshipsBuilt: len(relData.Relationships),
+	}
+}
+
+// GetCharacterRelationships returns all relationships for a specific character.
+func (a *App) GetCharacterRelationships(book types.BookData, characterID string) []types.RelationshipRecord {
+	if book.Analysis.Relationships == nil {
+		return []types.RelationshipRecord{}
+	}
+	return indexing.GetCharacterRelationships(characterID, book.Analysis.Relationships.Relationships)
+}
+
+// GetCharacterTimeline returns a timeline of events for a character.
+func (a *App) GetCharacterTimeline(book types.BookData, characterID string) types.CharacterTimelineResult {
+	if book.Analysis.EntityResolution == nil {
+		return types.CharacterTimelineResult{
+			Success: false,
+			Error:   "No analysis data available",
+		}
+	}
+
+	timeline := indexing.GetCharacterTimeline(characterID, book, book.Analysis.Relationships)
+	return types.CharacterTimelineResult{
+		Success:     true,
+		CharacterID: characterID,
+		Events:      timeline,
+	}
+}
+
+// AddCharacterEvent adds a user-defined event to the relationship data.
+func (a *App) AddCharacterEvent(book types.BookData, event types.CharacterEvent) types.BookData {
+	if book.Analysis.Relationships == nil {
+		book.Analysis.Relationships = &types.RelationshipData{}
+	}
+
+	// Generate ID if not provided
+	if event.ID == "" {
+		event.ID = fmt.Sprintf("evt-%d", time.Now().UnixNano())
+	}
+	event.IsAutoDetected = false
+
+	book.Analysis.Relationships.Events = append(book.Analysis.Relationships.Events, event)
+	return book
+}
+
+// DeleteCharacterEvent removes an event from the relationship data.
+func (a *App) DeleteCharacterEvent(book types.BookData, eventID string) types.BookData {
+	if book.Analysis.Relationships == nil {
+		return book
+	}
+
+	events := book.Analysis.Relationships.Events
+	filtered := make([]types.CharacterEvent, 0, len(events))
+	for _, evt := range events {
+		if evt.ID != eventID {
+			filtered = append(filtered, evt)
+		}
+	}
+	book.Analysis.Relationships.Events = filtered
+	return book
 }
 
 func NewApp() *App {
