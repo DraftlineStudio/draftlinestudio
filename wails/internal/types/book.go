@@ -57,4 +57,7 @@ type BookData struct {
 	BeatSheet           BeatSheet           `json:"beat_sheet,omitempty"`
 	ForeshadowingLedger ForeshadowingLedger `json:"foreshadowing,omitempty"`
 	KnowledgeMatrix     KnowledgeMatrix     `json:"knowledge_matrix,omitempty"`
+	// Analysis contains entity resolution and other analysis results.
+	// This is a future-proof container that can be extended without schema changes.
+	Analysis AnalysisData `json:"analysis,omitempty"`
 }

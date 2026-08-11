@@ -14,6 +14,298 @@ export namespace types {
 	        this.error = source["error"];
 	    }
 	}
+	export class CharacterEvent {
+	    id: string;
+	    character_ids: string[];
+	    chapter_index: number;
+	    event_type: string;
+	    description: string;
+	    is_auto_detected: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new CharacterEvent(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.character_ids = source["character_ids"];
+	        this.chapter_index = source["chapter_index"];
+	        this.event_type = source["event_type"];
+	        this.description = source["description"];
+	        this.is_auto_detected = source["is_auto_detected"];
+	    }
+	}
+	export class RelationshipRecord {
+	    id: string;
+	    character1_id: string;
+	    character2_id: string;
+	    first_chapter: number;
+	    last_chapter: number;
+	    interaction_count: number;
+	    strength: number;
+	    chapter_history: number[];
+	    interaction_ids?: string[];
+	    type_breakdown: Record<string, number>;
+	
+	    static createFrom(source: any = {}) {
+	        return new RelationshipRecord(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.character1_id = source["character1_id"];
+	        this.character2_id = source["character2_id"];
+	        this.first_chapter = source["first_chapter"];
+	        this.last_chapter = source["last_chapter"];
+	        this.interaction_count = source["interaction_count"];
+	        this.strength = source["strength"];
+	        this.chapter_history = source["chapter_history"];
+	        this.interaction_ids = source["interaction_ids"];
+	        this.type_breakdown = source["type_breakdown"];
+	    }
+	}
+	export class InteractionRecord {
+	    id: string;
+	    participants: string[];
+	    chapter_index: number;
+	    scene_id?: string;
+	    sentence_id?: string;
+	    interaction_type: string;
+	    directed_from?: string;
+	    directed_to?: string;
+	    confidence: number;
+	    text_snippet?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new InteractionRecord(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.participants = source["participants"];
+	        this.chapter_index = source["chapter_index"];
+	        this.scene_id = source["scene_id"];
+	        this.sentence_id = source["sentence_id"];
+	        this.interaction_type = source["interaction_type"];
+	        this.directed_from = source["directed_from"];
+	        this.directed_to = source["directed_to"];
+	        this.confidence = source["confidence"];
+	        this.text_snippet = source["text_snippet"];
+	    }
+	}
+	export class SceneRecord {
+	    id: string;
+	    chapter_index: number;
+	    start_offset: number;
+	    end_offset: number;
+	    scene_type: string;
+	    character_ids: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new SceneRecord(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.chapter_index = source["chapter_index"];
+	        this.start_offset = source["start_offset"];
+	        this.end_offset = source["end_offset"];
+	        this.scene_type = source["scene_type"];
+	        this.character_ids = source["character_ids"];
+	    }
+	}
+	export class RelationshipData {
+	    scenes?: SceneRecord[];
+	    interactions?: InteractionRecord[];
+	    relationships?: RelationshipRecord[];
+	    events?: CharacterEvent[];
+	    last_analyzed?: string;
+	    version?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new RelationshipData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.scenes = this.convertValues(source["scenes"], SceneRecord);
+	        this.interactions = this.convertValues(source["interactions"], InteractionRecord);
+	        this.relationships = this.convertValues(source["relationships"], RelationshipRecord);
+	        this.events = this.convertValues(source["events"], CharacterEvent);
+	        this.last_analyzed = source["last_analyzed"];
+	        this.version = source["version"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class MergeRule {
+	    name_1: string;
+	    name_2: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new MergeRule(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name_1 = source["name_1"];
+	        this.name_2 = source["name_2"];
+	    }
+	}
+	export class SeparatedPairRecord {
+	    mention_id_1: string;
+	    mention_id_2: string;
+	    reason?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SeparatedPairRecord(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mention_id_1 = source["mention_id_1"];
+	        this.mention_id_2 = source["mention_id_2"];
+	        this.reason = source["reason"];
+	    }
+	}
+	export class EntityRecord {
+	    id: string;
+	    canonical: string;
+	    aliases: string[];
+	    mention_ids: string[];
+	    confidence: number;
+	    titles: string[];
+	    character_id?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new EntityRecord(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.canonical = source["canonical"];
+	        this.aliases = source["aliases"];
+	        this.mention_ids = source["mention_ids"];
+	        this.confidence = source["confidence"];
+	        this.titles = source["titles"];
+	        this.character_id = source["character_id"];
+	    }
+	}
+	export class MentionRecord {
+	    id: string;
+	    text: string;
+	    sentence_id: string;
+	    chapter: number;
+	    char_offset: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new MentionRecord(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.text = source["text"];
+	        this.sentence_id = source["sentence_id"];
+	        this.chapter = source["chapter"];
+	        this.char_offset = source["char_offset"];
+	    }
+	}
+	export class EntityData {
+	    mentions?: MentionRecord[];
+	    entities?: EntityRecord[];
+	    separated_pairs?: SeparatedPairRecord[];
+	    merge_rules?: MergeRule[];
+	    last_resolved?: string;
+	    version?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new EntityData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mentions = this.convertValues(source["mentions"], MentionRecord);
+	        this.entities = this.convertValues(source["entities"], EntityRecord);
+	        this.separated_pairs = this.convertValues(source["separated_pairs"], SeparatedPairRecord);
+	        this.merge_rules = this.convertValues(source["merge_rules"], MergeRule);
+	        this.last_resolved = source["last_resolved"];
+	        this.version = source["version"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class AnalysisData {
+	    entity_resolution?: EntityData;
+	    relationships?: RelationshipData;
+	    version?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new AnalysisData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.entity_resolution = this.convertValues(source["entity_resolution"], EntityData);
+	        this.relationships = this.convertValues(source["relationships"], RelationshipData);
+	        this.version = source["version"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class AppSettings {
 	    default_author: string;
 	    default_publisher: string;
@@ -432,6 +724,7 @@ export namespace types {
 	    beat_sheet?: BeatSheet;
 	    foreshadowing?: ForeshadowingLedger;
 	    knowledge_matrix?: KnowledgeMatrix;
+	    analysis?: AnalysisData;
 	
 	    static createFrom(source: any = {}) {
 	        return new BookData(source);
@@ -454,6 +747,7 @@ export namespace types {
 	        this.beat_sheet = this.convertValues(source["beat_sheet"], BeatSheet);
 	        this.foreshadowing = this.convertValues(source["foreshadowing"], ForeshadowingLedger);
 	        this.knowledge_matrix = this.convertValues(source["knowledge_matrix"], KnowledgeMatrix);
+	        this.analysis = this.convertValues(source["analysis"], AnalysisData);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -476,6 +770,61 @@ export namespace types {
 	}
 	
 	
+	
+	export class CharacterTimelineEvent {
+	    chapter: number;
+	    event_type: string;
+	    description: string;
+	    related_chars?: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new CharacterTimelineEvent(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.chapter = source["chapter"];
+	        this.event_type = source["event_type"];
+	        this.description = source["description"];
+	        this.related_chars = source["related_chars"];
+	    }
+	}
+	export class CharacterTimelineResult {
+	    success: boolean;
+	    error?: string;
+	    character_id: string;
+	    events: CharacterTimelineEvent[];
+	
+	    static createFrom(source: any = {}) {
+	        return new CharacterTimelineResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.error = source["error"];
+	        this.character_id = source["character_id"];
+	        this.events = this.convertValues(source["events"], CharacterTimelineEvent);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ClaudeCodeStatus {
 	    installed: boolean;
 	    authenticated: boolean;
@@ -496,6 +845,8 @@ export namespace types {
 	        this.error = source["error"];
 	    }
 	}
+	
+	
 	export class ExportOptions {
 	    includeCopyright: boolean;
 	    includeFrontMatter: boolean;
@@ -569,8 +920,8 @@ export namespace types {
 	    error?: string;
 	    characters_found: number;
 	    new_characters: number;
-	    updated_characters: number;
 	    characters?: Character[];
+	    book: BookData;
 	
 	    static createFrom(source: any = {}) {
 	        return new IndexResult(source);
@@ -582,8 +933,8 @@ export namespace types {
 	        this.error = source["error"];
 	        this.characters_found = source["characters_found"];
 	        this.new_characters = source["new_characters"];
-	        this.updated_characters = source["updated_characters"];
 	        this.characters = this.convertValues(source["characters"], Character);
+	        this.book = this.convertValues(source["book"], BookData);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -624,6 +975,9 @@ export namespace types {
 	        this.chapter_title = source["chapter_title"];
 	    }
 	}
+	
+	
+	
 	
 	
 	
@@ -766,6 +1120,48 @@ export namespace types {
 		}
 	}
 	
+	export class RelationshipAnalysisResult {
+	    success: boolean;
+	    error?: string;
+	    book?: BookData;
+	    scenes_detected: number;
+	    interactions_found: number;
+	    relationships_built: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new RelationshipAnalysisResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.error = source["error"];
+	        this.book = this.convertValues(source["book"], BookData);
+	        this.scenes_detected = source["scenes_detected"];
+	        this.interactions_found = source["interactions_found"];
+	        this.relationships_built = source["relationships_built"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
 	export class SaveResult {
 	    success: boolean;
 	    file_path: string;
@@ -783,6 +1179,44 @@ export namespace types {
 	    }
 	}
 	
+	
+	
+	export class SplitEntityResult {
+	    success: boolean;
+	    error?: string;
+	    book?: BookData;
+	    characters?: Character[];
+	
+	    static createFrom(source: any = {}) {
+	        return new SplitEntityResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.error = source["error"];
+	        this.book = this.convertValues(source["book"], BookData);
+	        this.characters = this.convertValues(source["characters"], Character);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	
 	
 

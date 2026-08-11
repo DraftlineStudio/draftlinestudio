@@ -5,196 +5,144 @@ import (
 	"strings"
 	"time"
 
+	"draftline/internal/entityresolution"
 	"draftline/internal/types"
 )
 
-// Book scans all chapters and extracts/updates character information.
-func Book(book types.BookData) types.IndexResult {
+// AllChapters returns every chapter in global index order: front matter,
+// body, then back matter. Mention extraction and relationship analysis MUST
+// both use this enumeration so chapter indexes agree across the pipeline.
+func AllChapters(book *types.BookData) []types.ChapterItem {
+	all := make([]types.ChapterItem, 0, len(book.FrontMatter)+len(book.Body)+len(book.BackMatter))
+	all = append(all, book.FrontMatter...)
+	all = append(all, book.Body...)
+	all = append(all, book.BackMatter...)
+	return all
+}
+
+// IndexBook runs the two-phase character pipeline on the whole book:
+// Phase 1 extracts mention spans from every chapter, Phase 2 resolves them
+// into entities. The StoryBible characters and Analysis.EntityResolution are
+// rebuilt; manually created characters are preserved.
+func IndexBook(book *types.BookData) types.IndexResult {
 	if book.StoryBible.Characters == nil {
 		book.StoryBible.Characters = []types.Character{}
 	}
+	if book.Analysis.EntityResolution == nil {
+		book.Analysis.EntityResolution = &types.EntityData{Version: 1}
+	}
 
-	// Build a map of existing characters by name (case-insensitive)
-	existingChars := make(map[string]*types.Character)
+	// Phase 1: mention extraction over stripped text, with book-wide
+	// corroboration (a name attested in one chapter validates its
+	// sentence-initial uses in another).
+	var fullText strings.Builder
+	chapterTexts := []string{}
+	for _, chapter := range AllChapters(book) {
+		text := StripHTML(chapter.Content)
+		fullText.WriteString(" ")
+		fullText.WriteString(text)
+		chapterTexts = append(chapterTexts, text)
+	}
+	allMentions := ExtractBookMentions(chapterTexts)
+
+	// Phase 2: entity resolution, honoring manual splits from prior runs.
+	resolver := entityresolution.NewResolver()
+	for _, pair := range book.Analysis.EntityResolution.SeparatedPairs {
+		resolver.SeparatedPairs = append(resolver.SeparatedPairs, entityresolution.SeparatedPair{
+			MentionID1: pair.MentionID1,
+			MentionID2: pair.MentionID2,
+			Reason:     pair.Reason,
+		})
+	}
+	result := resolver.ResolveEntities(allMentions)
+
+	// Re-apply user-confirmed "same person" merges from prior sessions.
+	mergeRules := book.Analysis.EntityResolution.MergeRules
+	entityRecords := applyMergeRules(ConvertEntitiesToRecords(result.Entities), mergeRules)
+
+	book.Analysis.EntityResolution = &types.EntityData{
+		Mentions:       ConvertMentionsToRecords(allMentions),
+		Entities:       entityRecords,
+		SeparatedPairs: ConvertSeparatedPairsToRecords(result.SeparatedPairs),
+		MergeRules:     mergeRules,
+		LastResolved:   time.Now().Format(time.RFC3339),
+		Version:        1,
+	}
+
+	// Rebuild StoryBible characters (manual ones preserved), then assign
+	// attributes from a single scan of the full text.
+	rebuildCharactersFromEntities(book)
+	attrsByName := ExtractAllAttributes(fullText.String())
+	newCount := 0
 	for i := range book.StoryBible.Characters {
 		char := &book.StoryBible.Characters[i]
-		existingChars[strings.ToLower(char.Name)] = char
-		// Also index aliases
-		for _, alias := range char.Aliases {
-			existingChars[strings.ToLower(alias)] = char
+		if char.IsAutoDetected {
+			char.Attributes = LookupAttributes(attrsByName, char.Name, char.Aliases)
+			newCount++
 		}
 	}
 
-	// Aggregate all detected names across all chapters
-	allNames := make(map[string]int)                // name -> total mentions
-	chapterMentions := make(map[string]map[int]int) // name -> (chapter -> count)
-	firstChapter := make(map[string]int)            // name -> first chapter seen
-	fullText := ""                                  // For attribute extraction
-
-	// Process all sections
-	sections := []struct {
-		name  string
-		items []types.ChapterItem
-	}{
-		{"front_matter", book.FrontMatter},
-		{"body", book.Body},
-		{"back_matter", book.BackMatter},
-	}
-
-	chapterIndex := 0
-	for _, section := range sections {
-		for _, chapter := range section.items {
-			text := StripHTML(chapter.Content)
-			fullText += " " + text
-			names := DetectCharacterNames(text)
-
-			for name, count := range names {
-				allNames[name] += count
-
-				// Track chapter mentions
-				if chapterMentions[name] == nil {
-					chapterMentions[name] = make(map[int]int)
-				}
-				chapterMentions[name][chapterIndex] += count
-
-				// Track first chapter
-				if _, exists := firstChapter[name]; !exists {
-					firstChapter[name] = chapterIndex
-				}
-			}
-			chapterIndex++
-		}
-	}
-
-	// Filter: only keep names with 3+ mentions (likely real characters)
-	newChars := 0
-	updatedChars := 0
-
-	for name, count := range allNames {
-		if count < 3 {
-			continue // Skip names with too few mentions
-		}
-
-		nameLower := strings.ToLower(name)
-
-		if existing, found := existingChars[nameLower]; found {
-			// Update existing character
-			existing.MentionCount = count
-			existing.ChapterMentions = chapterMentions[name]
-			if existing.FirstChapter == 0 {
-				existing.FirstChapter = firstChapter[name]
-			}
-			// Try to extract more attributes
-			newAttrs := ExtractAttributes(fullText, name)
-			if existing.Attributes == nil {
-				existing.Attributes = make(map[string]string)
-			}
-			for k, v := range newAttrs {
-				if existing.Attributes[k] == "" {
-					existing.Attributes[k] = v
-				}
-			}
-			updatedChars++
-		} else {
-			// Create new character
-			newChar := types.Character{
-				ID:              fmt.Sprintf("char-%d", time.Now().UnixNano()),
-				Name:            name,
-				Role:            "minor", // Default role
-				IsAutoDetected:  true,
-				MentionCount:    count,
-				FirstChapter:    firstChapter[name],
-				ChapterMentions: chapterMentions[name],
-				Attributes:      ExtractAttributes(fullText, name),
-			}
-			book.StoryBible.Characters = append(book.StoryBible.Characters, newChar)
-			existingChars[nameLower] = &newChar
-			newChars++
-		}
-	}
-
-	return types.IndexResult{
-		Success:           true,
-		CharactersFound:   len(allNames),
-		NewCharacters:     newChars,
-		UpdatedCharacters: updatedChars,
-		Characters:        book.StoryBible.Characters,
-	}
-}
-
-// Chapter scans a single chapter for character mentions (incremental update).
-func Chapter(book types.BookData, section string, chapterIndex int) types.IndexResult {
-	var content string
-	switch section {
-	case "front_matter":
-		if chapterIndex < len(book.FrontMatter) {
-			content = book.FrontMatter[chapterIndex].Content
-		}
-	case "body":
-		if chapterIndex < len(book.Body) {
-			content = book.Body[chapterIndex].Content
-		}
-	case "back_matter":
-		if chapterIndex < len(book.BackMatter) {
-			content = book.BackMatter[chapterIndex].Content
-		}
-	}
-
-	if content == "" {
-		return types.IndexResult{Success: true, CharactersFound: 0}
-	}
-
-	text := StripHTML(content)
-	names := DetectCharacterNames(text)
-
-	// Build existing character map
-	existingChars := make(map[string]*types.Character)
-	for i := range book.StoryBible.Characters {
-		char := &book.StoryBible.Characters[i]
-		existingChars[strings.ToLower(char.Name)] = char
-		for _, alias := range char.Aliases {
-			existingChars[strings.ToLower(alias)] = char
-		}
-	}
-
-	newChars := 0
-	for name, count := range names {
-		if count < 2 {
-			continue
-		}
-
-		nameLower := strings.ToLower(name)
-		if existing, found := existingChars[nameLower]; found {
-			// Update mention count for this chapter
-			if existing.ChapterMentions == nil {
-				existing.ChapterMentions = make(map[int]int)
-			}
-			existing.ChapterMentions[chapterIndex] = count
-			existing.MentionCount = 0
-			for _, c := range existing.ChapterMentions {
-				existing.MentionCount += c
-			}
-		} else {
-			// New character found
-			newChar := types.Character{
-				ID:              fmt.Sprintf("char-%d", time.Now().UnixNano()),
-				Name:            name,
-				Role:            "minor",
-				IsAutoDetected:  true,
-				MentionCount:    count,
-				FirstChapter:    chapterIndex,
-				ChapterMentions: map[int]int{chapterIndex: count},
-				Attributes:      ExtractAttributes(text, name),
-			}
-			book.StoryBible.Characters = append(book.StoryBible.Characters, newChar)
-			newChars++
-		}
-	}
+	book.IsIndexed = true
+	book.LastIndexed = time.Now().Format(time.RFC3339)
 
 	return types.IndexResult{
 		Success:         true,
-		CharactersFound: len(names),
-		NewCharacters:   newChars,
+		CharactersFound: len(entityRecords),
+		NewCharacters:   newCount,
 		Characters:      book.StoryBible.Characters,
+		Book:            *book,
 	}
+}
+
+// SplitCharacterEntity splits an entity into two, moving specified mentions
+// to a new entity. This is used when auto-merging incorrectly combined two
+// different people (e.g., two characters both called "Ruiz").
+func SplitCharacterEntity(book *types.BookData, entityID string, mentionIDs []string, newCanonical string) error {
+	if book.Analysis.EntityResolution == nil {
+		return fmt.Errorf("no entity resolution data found")
+	}
+
+	entities := recordsToEntities(book.Analysis.EntityResolution.Entities)
+
+	resolver := entityresolution.NewResolver()
+	for _, pair := range book.Analysis.EntityResolution.SeparatedPairs {
+		resolver.SeparatedPairs = append(resolver.SeparatedPairs, entityresolution.SeparatedPair{
+			MentionID1: pair.MentionID1,
+			MentionID2: pair.MentionID2,
+			Reason:     pair.Reason,
+		})
+	}
+
+	newEntities, err := resolver.SplitEntity(entities, entityID, mentionIDs)
+	if err != nil {
+		return err
+	}
+
+	// Name the new entity: explicit name if given, otherwise the text of its
+	// first mention.
+	mentionText := make(map[string]string)
+	for _, m := range book.Analysis.EntityResolution.Mentions {
+		mentionText[m.ID] = m.Text
+	}
+	for i := range newEntities {
+		if newEntities[i].Canonical != "" {
+			continue
+		}
+		if newCanonical != "" {
+			newEntities[i].Canonical = newCanonical
+		} else if len(newEntities[i].MentionIDs) > 0 {
+			newEntities[i].Canonical = mentionText[newEntities[i].MentionIDs[0]]
+		}
+	}
+
+	book.Analysis.EntityResolution.Entities = ConvertEntitiesToRecords(newEntities)
+	book.Analysis.EntityResolution.SeparatedPairs = ConvertSeparatedPairsToRecords(resolver.SeparatedPairs)
+	book.Analysis.EntityResolution.LastResolved = time.Now().Format(time.RFC3339)
+
+	rebuildCharactersFromEntities(book)
+
+	// Relationship data references the pre-split entity — stale now.
+	book.Analysis.Relationships = nil
+
+	return nil
 }

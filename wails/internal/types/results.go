@@ -29,12 +29,21 @@ type AIRewriteResult struct {
 
 // IndexResult contains the results of character indexing.
 type IndexResult struct {
-	Success           bool        `json:"success"`
-	Error             string      `json:"error,omitempty"`
-	CharactersFound   int         `json:"characters_found"`
-	NewCharacters     int         `json:"new_characters"`
-	UpdatedCharacters int         `json:"updated_characters"`
-	Characters        []Character `json:"characters,omitempty"`
+	Success         bool        `json:"success"`
+	Error           string      `json:"error,omitempty"`
+	CharactersFound int         `json:"characters_found"`
+	NewCharacters   int         `json:"new_characters"`
+	Characters      []Character `json:"characters,omitempty"`
+	// Book is the updated book (characters + entity resolution data).
+	Book BookData `json:"book"`
+}
+
+// SplitEntityResult contains the result of splitting an entity.
+type SplitEntityResult struct {
+	Success    bool        `json:"success"`
+	Error      string      `json:"error,omitempty"`
+	Book       BookData    `json:"book,omitempty"`
+	Characters []Character `json:"characters,omitempty"`
 }
 
 // BackupInfo contains metadata about a backup file.

@@ -460,7 +460,7 @@ export function KnowledgeSection() {
           </table>
           {characters.length > 5 && (
             <p className="settings-hint" style={{ marginTop: 8 }}>
-              Showing first 5 characters. Full matrix available in Codex view.
+              Showing first 5 characters.
             </p>
           )}
         </div>

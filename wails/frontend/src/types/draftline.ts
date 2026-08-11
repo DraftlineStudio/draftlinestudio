@@ -96,6 +96,174 @@ export interface KnowledgeMatrix {
   entries: KnowledgeEntry[]
 }
 
+// Entity Resolution - clusters name mentions into unified entities
+export interface MentionRecord {
+  id: string
+  text: string        // Raw text as it appears
+  sentence_id: string // ID of containing sentence
+  chapter: number     // Chapter index
+  char_offset: number // Character offset in chapter
+}
+
+export interface EntityRecord {
+  id: string
+  canonical: string   // Best display name
+  aliases: string[]   // All name variations
+  mention_ids: string[] // IDs of all mentions
+  confidence: number  // Merge confidence (0-1)
+  titles: string[]    // Honorifics/titles seen
+  character_id?: string // Link to Character record
+}
+
+export interface SeparatedPairRecord {
+  mention_id_1: string
+  mention_id_2: string
+  reason?: string
+}
+
+// User-confirmed "same person" name pair, re-applied on every re-index
+export interface MergeRule {
+  name_1: string
+  name_2: string
+}
+
+export interface EntityData {
+  mentions?: MentionRecord[]
+  entities?: EntityRecord[]
+  separated_pairs?: SeparatedPairRecord[]
+  merge_rules?: MergeRule[]
+  last_resolved?: string
+  version?: number
+}
+
+// ── Relationship Analysis Types ─────────────────────────────────────────────
+
+// SceneRecord represents a detected scene or paragraph boundary
+export interface SceneRecord {
+  id: string
+  chapter_index: number
+  start_offset: number
+  end_offset: number
+  scene_type: 'paragraph' | 'scene_break' | 'chapter' | string
+  character_ids: string[]
+}
+
+// InteractionRecord represents a detected interaction between characters
+export interface InteractionRecord {
+  id: string
+  participants: string[]
+  chapter_index: number
+  scene_id?: string
+  sentence_id?: string
+  interaction_type: 'dialogue' | 'co_occurrence' | 'reference' | string
+  directed_from?: string
+  directed_to?: string
+  confidence: number
+  text_snippet?: string
+}
+
+// RelationshipRecord represents an aggregated relationship between two characters
+export interface RelationshipRecord {
+  id: string
+  character1_id: string
+  character2_id: string
+  first_chapter: number
+  last_chapter: number
+  interaction_count: number
+  strength: number  // 0-1
+  chapter_history: number[]
+  interaction_ids?: string[]
+  type_breakdown: Record<string, number>
+}
+
+// CharacterEvent represents a significant plot point tied to characters
+export interface CharacterEvent {
+  id: string
+  character_ids: string[]
+  chapter_index: number
+  event_type: 'introduction' | 'meeting' | 'conflict' | 'resolution' | 'death' | 'custom' | string
+  description: string
+  is_auto_detected: boolean
+}
+
+// RelationshipData stores all relationship and interaction analysis
+export interface RelationshipData {
+  scenes?: SceneRecord[]
+  interactions?: InteractionRecord[]
+  relationships?: RelationshipRecord[]
+  events?: CharacterEvent[]
+  last_analyzed?: string
+  version?: number
+}
+
+// Result of relationship analysis
+export interface RelationshipAnalysisResult {
+  success: boolean
+  error?: string
+  book?: BookData
+  scenes_detected: number
+  interactions_found: number
+  relationships_built: number
+}
+
+// Character timeline event for UI display
+export interface CharacterTimelineEvent {
+  chapter: number
+  event_type: 'mention' | 'dialogue' | 'interaction' | 'event' | string
+  description: string
+  related_chars?: string[]
+}
+
+// Result of getting a character timeline
+export interface CharacterTimelineResult {
+  success: boolean
+  error?: string
+  character_id: string
+  events: CharacterTimelineEvent[]
+}
+
+// ── Visualization Types for D3.js ─────────────────────────────────────────────
+
+// Node for force-directed graph
+export interface CharacterNode {
+  id: string
+  name: string
+  role: CharacterRole | string
+  mentionCount: number
+  firstChapter: number
+  x?: number
+  y?: number
+  fx?: number | null  // Fixed position for pinned nodes
+  fy?: number | null
+}
+
+// Edge for force-directed graph
+export interface RelationshipEdge {
+  source: string | CharacterNode
+  target: string | CharacterNode
+  strength: number
+  interactionCount: number
+  firstChapter: number
+  lastChapter: number
+  typeBreakdown: Record<string, number>
+}
+
+// Graph data for D3 visualization
+export interface RelationshipGraphData {
+  nodes: CharacterNode[]
+  edges: RelationshipEdge[]
+}
+
+// Future-proof container for analysis results
+export interface AnalysisData {
+  entity_resolution?: EntityData
+  relationships?: RelationshipData
+  // Future analysis types:
+  // plot_analysis?: PlotAnalysisData
+  // theme_analysis?: ThemeAnalysisData
+  version?: number
+}
+
 export interface WritingGoals {
   target_word_count: number
   daily_word_goal: number
@@ -159,6 +327,8 @@ export interface BookData {
   beat_sheet?: BeatSheet
   foreshadowing?: ForeshadowingLedger
   knowledge_matrix?: KnowledgeMatrix
+  // Entity resolution and other analysis results
+  analysis?: AnalysisData
 }
 
 // Result of character indexing
@@ -167,7 +337,16 @@ export interface IndexResult {
   error?: string
   characters_found: number
   new_characters: number
-  updated_characters: number
+  characters?: Character[]
+  // Updated book with characters and entity resolution data populated
+  book: BookData
+}
+
+// Result of splitting an entity
+export interface SplitEntityResult {
+  success: boolean
+  error?: string
+  book?: BookData
   characters?: Character[]
 }
 

@@ -1,0 +1,241 @@
+package entityresolution
+
+import "strings"
+
+// DefaultNicknames maps common nicknames to their canonical forms.
+// Both directions are included for bidirectional matching.
+// All entries are lowercase.
+var DefaultNicknames = map[string][]string{
+	// Male names
+	"william":   {"will", "bill", "billy", "willy", "liam"},
+	"will":      {"william", "bill", "billy"},
+	"bill":      {"william", "will", "billy"},
+	"billy":     {"william", "will", "bill"},
+	"robert":    {"rob", "bob", "bobby", "robbie", "bert"},
+	"rob":       {"robert", "bob", "bobby", "robbie"},
+	"bob":       {"robert", "rob", "bobby"},
+	"bobby":     {"robert", "rob", "bob"},
+	"richard":   {"rick", "dick", "rich", "richie", "ricky"},
+	"rick":      {"richard", "dick", "rich", "ricky"},
+	"dick":      {"richard", "rick"},
+	"james":     {"jim", "jimmy", "jamie"},
+	"jim":       {"james", "jimmy", "jamie"},
+	"jimmy":     {"james", "jim", "jamie"},
+	"john":      {"johnny", "jack", "jon"},
+	"johnny":    {"john", "jack"},
+	"jack":      {"john", "johnny"},
+	"michael":   {"mike", "mikey", "mick", "mickey"},
+	"mike":      {"michael", "mikey", "mick"},
+	"david":     {"dave", "davey", "davy"},
+	"dave":      {"david", "davey"},
+	"joseph":    {"joe", "joey", "jo"},
+	"joe":       {"joseph", "joey"},
+	"thomas":    {"tom", "tommy", "thom"},
+	"tom":       {"thomas", "tommy"},
+	"tommy":     {"thomas", "tom"},
+	"charles":   {"charlie", "chuck", "chas"},
+	"charlie":   {"charles", "chuck"},
+	"chuck":     {"charles", "charlie"},
+	"christopher": {"chris", "topher", "kit"},
+	"chris":     {"christopher", "christine", "christina"},
+	"daniel":    {"dan", "danny"},
+	"dan":       {"daniel", "danny"},
+	"danny":     {"daniel", "dan"},
+	"matthew":   {"matt", "matty"},
+	"matt":      {"matthew", "matty"},
+	"anthony":   {"tony", "ant"},
+	"tony":      {"anthony"},
+	"edward":    {"ed", "eddie", "ted", "teddy", "ned"},
+	"ed":        {"edward", "eddie", "edgar", "edmund"},
+	"eddie":     {"edward", "ed", "edgar"},
+	"ted":       {"edward", "theodore", "teddy"},
+	"theodore":  {"ted", "teddy", "theo"},
+	"benjamin":  {"ben", "benny", "benji"},
+	"ben":       {"benjamin", "benny", "benedict"},
+	"alexander": {"alex", "alec", "xander", "sandy"},
+	"alex":      {"alexander", "alexis", "alexandra"},
+	"nicholas":  {"nick", "nicky"},
+	"nick":      {"nicholas", "nicky"},
+	"samuel":    {"sam", "sammy"},
+	"sam":       {"samuel", "samantha", "sammy"},
+	"patrick":   {"pat", "paddy", "rick"},
+	"pat":       {"patrick", "patricia"},
+	"peter":     {"pete", "petey"},
+	"pete":      {"peter"},
+	"gregory":   {"greg", "gregg"},
+	"greg":      {"gregory"},
+	"andrew":    {"andy", "drew"},
+	"andy":      {"andrew", "andrea"},
+	"drew":      {"andrew"},
+	"phillip":   {"phil", "pip"},
+	"phil":      {"phillip", "philip"},
+	"stephen":   {"steve", "stevie"},
+	"steve":     {"stephen", "steven", "stevie"},
+	"steven":    {"steve", "stevie"},
+	"timothy":   {"tim", "timmy"},
+	"tim":       {"timothy", "timmy"},
+	"lawrence":  {"larry", "laurie"},
+	"larry":     {"lawrence"},
+	"gerald":    {"jerry", "gerry"},
+	"jerry":     {"gerald", "jerome", "jeremiah"},
+	"raymond":   {"ray"},
+	"ray":       {"raymond"},
+	"henry":     {"hank", "harry", "hal"},
+	"hank":      {"henry"},
+	"harry":     {"henry", "harold", "harrison"},
+	"harold":    {"harry", "hal"},
+	"walter":    {"walt", "wally"},
+	"walt":      {"walter"},
+	"albert":    {"al", "bert", "bertie"},
+	"al":        {"albert", "alan", "alfred", "alvin"},
+	"arthur":    {"art", "artie"},
+	"art":       {"arthur"},
+	"eugene":    {"gene"},
+	"gene":      {"eugene"},
+	"leonard":   {"leo", "lenny", "len"},
+	"leo":       {"leonard", "leon"},
+	"francis":   {"frank", "fran"},
+	"frank":     {"francis", "franklin"},
+	"louis":     {"lou", "louie"},
+	"lou":       {"louis"},
+	"vincent":   {"vince", "vinny", "vin"},
+	"vince":     {"vincent", "vinny"},
+	"victor":    {"vic"},
+	"vic":       {"victor"},
+	"frederick": {"fred", "freddy", "rick"},
+	"fred":      {"frederick", "alfred", "freddy"},
+	"douglas":   {"doug"},
+	"doug":      {"douglas"},
+	"kenneth":   {"ken", "kenny"},
+	"ken":       {"kenneth", "kenny"},
+	"nathan":    {"nate"},
+	"nate":      {"nathan", "nathaniel"},
+	"nathaniel": {"nate", "nat"},
+	"zachary":   {"zach", "zack"},
+	"zach":      {"zachary"},
+	"jacob":     {"jake", "jack"},
+	"jake":      {"jacob"},
+	"joshua":    {"josh"},
+	"josh":      {"joshua"},
+	"jonathan":  {"jon", "johnny", "john"},
+	"jon":       {"jonathan", "john"},
+
+	// Female names
+	"elizabeth": {"liz", "lizzy", "beth", "betty", "eliza", "ellie", "lisa"},
+	"liz":       {"elizabeth", "lizzy"},
+	"lizzy":     {"elizabeth", "liz"},
+	"beth":      {"elizabeth", "bethany"},
+	"betty":     {"elizabeth"},
+	"margaret":  {"maggie", "meg", "marge", "peggy", "marg"},
+	"maggie":    {"margaret"},
+	"meg":       {"margaret", "megan"},
+	"peggy":     {"margaret"},
+	"jennifer":  {"jen", "jenny", "jenn"},
+	"jen":       {"jennifer", "jenny"},
+	"jenny":     {"jennifer", "jen"},
+	"jessica":   {"jess", "jessie"},
+	"jess":      {"jessica", "jesse", "jessie"},
+	"jessie":    {"jessica", "jess", "jesse"},
+	"patricia":  {"pat", "patty", "trish", "tricia"},
+	"patty":     {"patricia"},
+	"trish":     {"patricia", "tricia"},
+	"katherine": {"kate", "kathy", "katie", "kat", "kit"},
+	"kate":      {"katherine", "kathy", "katelyn"},
+	"kathy":     {"katherine", "kathleen"},
+	"katie":     {"katherine", "kate"},
+	"catherine": {"cathy", "cat", "kate"},
+	"cathy":     {"catherine", "cathleen"},
+	"rebecca":   {"becca", "becky"},
+	"becca":     {"rebecca"},
+	"becky":     {"rebecca"},
+	"samantha":  {"sam", "sammie", "sammy"},
+	"sammie":    {"samantha", "sam"},
+	"alexandra": {"alex", "sandra", "lexi"},
+	"sandra":    {"sandy", "alexandra"},
+	"sandy":     {"sandra", "alexander", "alexandra"},
+	"victoria":  {"vicky", "vicki", "tori"},
+	"vicky":     {"victoria"},
+	"tori":      {"victoria"},
+	"christina": {"chris", "tina", "chrissie"},
+	"tina":      {"christina", "martina"},
+	"christine": {"chris", "chrissy", "tina"},
+	"stephanie": {"steph", "stevie"},
+	"steph":     {"stephanie"},
+	"deborah":   {"deb", "debbie"},
+	"deb":       {"deborah", "debra"},
+	"debbie":    {"deborah", "debra"},
+	"dorothy":   {"dot", "dotty", "dottie"},
+	"dot":       {"dorothy"},
+	"susan":     {"sue", "susie", "suzy"},
+	"sue":       {"susan", "suzanne"},
+	"susie":     {"susan", "suzanne"},
+	"nancy":     {"nan", "nana"},
+	"abigail":   {"abby", "gail"},
+	"abby":      {"abigail"},
+	"caroline":  {"carrie", "carol"},
+	"carrie":    {"caroline", "carol"},
+	"carol":     {"caroline", "carrie", "carolina"},
+	"evelyn":    {"eve", "evie"},
+	"eve":       {"evelyn", "eva"},
+	"evie":      {"evelyn", "eva"},
+	"emily":     {"em", "emmy"},
+	"emma":      {"em", "emmy"},
+	"isabella":  {"bella", "izzy", "isa"},
+	"bella":     {"isabella", "arabella"},
+	"izzy":      {"isabella", "isaiah", "isadora"},
+	"madeline":  {"maddie", "maddy"},
+	"madison":   {"maddie", "maddy"},
+	"maddie":    {"madeline", "madison"},
+	"olivia":    {"liv", "livvy"},
+	"liv":       {"olivia"},
+	"sophia":    {"sophie"},
+	"sophie":    {"sophia"},
+	"veronica":  {"ronnie", "roni"},
+	"allison":   {"allie", "ally"},
+	"allie":     {"allison", "allison"},
+	"anastasia": {"ana", "stacy"},
+	"ana":       {"anastasia", "anna", "anne"},
+	"anna":      {"anne", "ann", "ana"},
+	"anne":      {"anna", "ann", "annie"},
+	"annie":     {"anne", "ann", "anna"},
+}
+
+// IsNickname checks if name1 could be a nickname for name2 (or vice versa).
+// Returns true if they are potential nickname matches.
+func IsNickname(name1, name2 string) bool {
+	n1 := strings.ToLower(name1)
+	n2 := strings.ToLower(name2)
+
+	if n1 == n2 {
+		return true
+	}
+
+	// Check if n1 is a nickname for n2
+	if nicks, ok := DefaultNicknames[n1]; ok {
+		for _, nick := range nicks {
+			if nick == n2 {
+				return true
+			}
+		}
+	}
+
+	// Check if n2 is a nickname for n1
+	if nicks, ok := DefaultNicknames[n2]; ok {
+		for _, nick := range nicks {
+			if nick == n1 {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// GetNicknames returns all known nicknames for a given name.
+func GetNicknames(name string) []string {
+	n := strings.ToLower(name)
+	if nicks, ok := DefaultNicknames[n]; ok {
+		return nicks
+	}
+	return nil
+}
