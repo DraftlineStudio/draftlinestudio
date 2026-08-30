@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.14.02348] - 2026-08-30
+
+### Fixed
+- Custom dictionary entries now cover possessive forms automatically.
+
 ## [0.14.02347] - 2026-08-30
 
 ### Added

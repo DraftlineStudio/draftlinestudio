@@ -16,7 +16,7 @@ import { useEffect, useCallback, useState, useRef, useMemo } from 'react'
 import Toolbar from './Toolbar'
 import ContextMenu, { ContextMenuItem } from '../ContextMenu'
 import InlinePrompt from './InlinePrompt'
-import { checkWord, getImmediateSuggestions, getSuggestions, isLoaded as isSpellCheckLoaded, setCustomWords, setSpellCheckEnabled } from '../../services/spellCheck'
+import { checkWord, getDictionaryRoot, getImmediateSuggestions, getSuggestions, isLoaded as isSpellCheckLoaded, normalizeCustomDictionary, setCustomWords, setSpellCheckEnabled } from '../../services/spellCheck'
 import { analyzeGrammar, setGrammarCheckEnabled, type GrammarIssue } from '../../services/grammarCheck'
 import { useBookStore } from '../../store/bookStore'
 import { useEditorStore } from '../../store/editorStore'
@@ -56,10 +56,17 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
   const { settings, openSettings, saveSettings } = useAppStore()
 
   useEffect(() => {
-    setCustomWords(settings.custom_dictionary)
+    const normalizedDictionary = normalizeCustomDictionary(settings.custom_dictionary)
+    setCustomWords(normalizedDictionary)
+    if (
+      normalizedDictionary.length !== settings.custom_dictionary.length
+      || normalizedDictionary.some((word, index) => word !== settings.custom_dictionary[index])
+    ) {
+      void saveSettings({ custom_dictionary: normalizedDictionary })
+    }
     setSpellCheckEnabled(settings.spell_check_enabled)
     setGrammarCheckEnabled(settings.grammar_check_enabled)
-  }, [settings.custom_dictionary, settings.spell_check_enabled, settings.grammar_check_enabled])
+  }, [settings.custom_dictionary, settings.spell_check_enabled, settings.grammar_check_enabled, saveSettings])
 
   const handleUpdate = useCallback(
     ({ editor }: { editor: ReturnType<typeof useEditor> & { getHTML: () => string } }) => {
@@ -383,15 +390,15 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
   }
 
   async function handleAddToDictionary(word: string) {
-    const normalized = word.trim()
+    const normalized = getDictionaryRoot(word.trim())
     if (!normalized) return
-    const alreadyAdded = settings.custom_dictionary.some(
-      existing => existing.toLocaleLowerCase() === normalized.toLocaleLowerCase(),
+    const currentDictionary = normalizeCustomDictionary(settings.custom_dictionary)
+    const alreadyAdded = currentDictionary.some(existing =>
+      existing.toLocaleLowerCase() === normalized.toLocaleLowerCase(),
     )
     if (alreadyAdded) return
 
-    const customDictionary = [...settings.custom_dictionary, normalized]
-      .sort((left, right) => left.localeCompare(right))
+    const customDictionary = normalizeCustomDictionary([...currentDictionary, normalized])
     setCustomWords(customDictionary)
     await saveSettings({ custom_dictionary: customDictionary })
   }
@@ -416,7 +423,7 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
       contextMenuItems.push({ label: 'No suggestions', onClick: () => {}, disabled: true })
     }
     contextMenuItems.push({
-      label: `Add “${contextMenu.misspelledWord}” to dictionary`,
+      label: `Add “${getDictionaryRoot(contextMenu.misspelledWord)}” to dictionary`,
       onClick: () => handleAddToDictionary(contextMenu.misspelledWord!),
     })
     contextMenuItems.push({ label: '', onClick: () => {}, separator: true })
