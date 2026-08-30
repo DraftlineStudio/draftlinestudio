@@ -29,9 +29,9 @@ The design's demo auto-ranks characters into tiers by mention volume. Detection 
 
 The lane cells use hard-coded dark-tuned empties (`rgba(255,255,255,0.03/0.05/0.07)`), matching the design (authored dark-only). In the light theme these near-white overlays are almost invisible against white panels. Needs a `--chars-cell-empty` custom property defined per theme in `global.css`. Cosmetic; the view is functional in light theme.
 
-## 6. In-editor sidebar (explicitly out of scope)
+## 6. In-editor sidebar — ~~out of scope~~ RESOLVED (0.16.02413)
 
-`components/tools/CastQuickRef.tsx`, `ToolsPanel.tsx`, and `tools/constants.ts` still say "Cast" and still use `cast.css`. Deliberately untouched — the sidebar is the next redesign. When it lands, `cast.css` (398 lines, now mostly dead) can be deleted after moving the handful of classes CastQuickRef uses.
+The sidebar was redesigned per "Editor Sidebar Options" design 2a (chapter-first + inline detail): `CharacterQuickRef.tsx` replaced `CastQuickRef.tsx`, the glyph label reads "Characters", and `cast.css` and the whole `components/cast/` directory are deleted. "Jump to first mention" is chapter-level, same as the codex (see gap 2).
 
 ## 7. Internal identifiers keep the old name
 

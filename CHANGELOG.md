@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02413] - 2026-08-30
+
+### Changed
+- Redesigned the character sidebar to show characters in the current chapter first.
+
 ## [0.16.02412] - 2026-08-30
 
 ### Fixed
