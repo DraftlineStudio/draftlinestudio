@@ -19,6 +19,13 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02420] - 2026-08-30
+
+### Added
+- `docs/frontend/AI-STUDIO-GAPS.md` — what the AI sidebar redesign shows but was deliberately deferred: Pass Strength (needs backend intensity support), per-provider API keys (the single key slot limits the switcher to one API row), and per-route model memory
+
+---
+
 ## [0.16.02419] - 2026-08-30
 
 ### Changed
