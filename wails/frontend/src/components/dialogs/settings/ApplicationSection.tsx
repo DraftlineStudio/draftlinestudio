@@ -106,6 +106,8 @@ export default function ApplicationSection({
           {!autoThemeUseManual && (
             <div className="settings-hint" style={{ marginTop: 8 }}>
               Sunrise and sunset times are fetched automatically when the app starts.
+              This sends your device's IP address to ipwho.is to estimate your location,
+              and the derived coordinates to sunrise-sunset.org.
             </div>
           )}
         </div>

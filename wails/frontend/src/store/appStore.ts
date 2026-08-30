@@ -69,7 +69,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   default_save_dir: '',
   dark_mode: true,
   theme_mode: 'dark',
-  auto_theme_use_manual: false,
+  auto_theme_use_manual: true,
   auto_theme_dawn: '06:30',
   auto_theme_dusk: '19:00',
   custom_dictionary: [],
