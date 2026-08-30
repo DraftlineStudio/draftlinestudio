@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.15.02375] - 2026-08-30
+
+### Fixed
+- Fixed the Uniform Sentence Structure flag in AI detection.
+
 ## [0.15.02374] - 2026-08-30
 
 ### Added
