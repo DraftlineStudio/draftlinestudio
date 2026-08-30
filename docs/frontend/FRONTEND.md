@@ -44,10 +44,15 @@ frontend/src/
 │   └── appStore.ts             # App settings state
 ├── services/
 │   ├── spellCheck.ts           # Spell checking service
+│   ├── grammarCheck.ts         # Local grammar and style rules
 │   └── aiDetection.ts          # AI content detection
 ├── extensions/
 │   ├── FontSize.ts             # TipTap font size extension
-│   └── CharacterHighlight.ts   # Character name highlighting
+│   ├── CharacterHighlight.ts   # Character name highlighting
+│   ├── SpellCheck.ts           # Persistent spelling decorations
+│   └── GrammarCheck.ts         # Grammar/style decorations
+├── features/
+│   └── registry.ts             # Bundled feature/plugin metadata
 ├── utils/
 │   ├── diff.ts                 # Word-level diff algorithm
 │   ├── textUtils.ts            # HTML/text utilities
@@ -88,7 +93,7 @@ Contains:
 - Chapter type indicators
 
 ### ToolsPanel.tsx
-Slim router (~121 lines) that displays feature modules based on active glyph selection.
+Slim router that displays feature modules based on active glyph selection and the persisted plugin feature flags.
 
 ### tools/ Feature Modules
 Each feature is isolated in its own folder:
@@ -96,6 +101,12 @@ Each feature is isolated in its own folder:
 - **AIStudio/** - Rewrite modes, style mixer, streaming output, setup guidance
 - **StoryBible/** - Characters (with merge/highlight), plot notes, timeline
 - **PlotWalker/** - Beat sheet, foreshadowing ledger, knowledge matrix, issues
+
+### Writing diagnostics and plugins
+
+Spelling and grammar are independent bundled features managed from **Settings > Plugins**. Spelling checks remain local; broad typo suggestions run in a web worker to avoid blocking editor input. Grammar checks use deterministic local rules and distinguish grammar diagnostics from optional style guidance.
+
+The bundled feature catalog lives in `features/registry.ts`. The registry separates feature identity and metadata from its persisted setting key, providing the foundation for a future community-plugin catalog.
 
 ## State Management
 
