@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useBookStore } from './store/bookStore'
 import { useAppStore } from './store/appStore'
 import { applyAccent, clearAccent } from './utils/accentColor'
@@ -20,7 +21,21 @@ import AppSettingsDialog from './components/dialogs/AppSettingsDialog'
 import ExportWizard from './components/dialogs/ExportWizard'
 
 export default function App() {
-  const { book, newBook, openBook, openRecentBook, saveBook, saveBookAs, dialogs, initBook, setDarkMode, toggleLeftPanel, toggleRightPanel, viewMode, setViewMode } = useBookStore()
+  const { book, newBook, openBook, openRecentBook, saveBook, saveBookAs, dialogs, initBook, setDarkMode, toggleLeftPanel, toggleRightPanel, viewMode, setViewMode } = useBookStore(useShallow(s => ({
+    book: s.book,
+    newBook: s.newBook,
+    openBook: s.openBook,
+    openRecentBook: s.openRecentBook,
+    saveBook: s.saveBook,
+    saveBookAs: s.saveBookAs,
+    dialogs: s.dialogs,
+    initBook: s.initBook,
+    setDarkMode: s.setDarkMode,
+    toggleLeftPanel: s.toggleLeftPanel,
+    toggleRightPanel: s.toggleRightPanel,
+    viewMode: s.viewMode,
+    setViewMode: s.setViewMode,
+  })))
   const { loadSettings, settings, showSettings, showWelcome, setShowWelcome, loadRecentProjects, showNewUniverse, setShowNewUniverse } = useAppStore()
   const prevThemeRef = useRef<'light' | 'dark' | null>(null)
   const [isTransitioning, setIsTransitioning] = useState(false)

@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.15.02387] - 2026-08-30
+
+### Changed
+- Reduced unnecessary re-renders in the editor and status bar.
+
 ## [0.15.02386] - 2026-08-30
 
 ### Changed
