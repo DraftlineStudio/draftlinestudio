@@ -1,4 +1,5 @@
 import { useCallback, useRef, useEffect, useMemo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useBookStore } from '../store/bookStore'
 import { useEditorStore } from '../store/editorStore'
 import { useAppStore } from '../store/appStore'
@@ -40,7 +41,17 @@ function DiffPanel({ label, name }: { label: string; name: string }) {
     rejectAllDiff,
     applyPendingDiff,
     clearPendingDiff,
-  } = useBookStore()
+  } = useBookStore(useShallow(s => ({
+    acceptChange: s.acceptChange,
+    rejectChange: s.rejectChange,
+    setFocusedChange: s.setFocusedChange,
+    prevChange: s.prevChange,
+    nextChange: s.nextChange,
+    acceptAllDiff: s.acceptAllDiff,
+    rejectAllDiff: s.rejectAllDiff,
+    applyPendingDiff: s.applyPendingDiff,
+    clearPendingDiff: s.clearPendingDiff,
+  })))
 
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -181,7 +192,14 @@ function DiffPanel({ label, name }: { label: string; name: string }) {
 }
 
 export default function EditorPanel() {
-  const { book, currentSection, currentIndex, updateCurrentContent, updateChapterTitle, updateChapterSubtitle } = useBookStore()
+  const { book, currentSection, currentIndex, updateCurrentContent, updateChapterTitle, updateChapterSubtitle } = useBookStore(useShallow(s => ({
+    book: s.book,
+    currentSection: s.currentSection,
+    currentIndex: s.currentIndex,
+    updateCurrentContent: s.updateCurrentContent,
+    updateChapterTitle: s.updateChapterTitle,
+    updateChapterSubtitle: s.updateChapterSubtitle,
+  })))
   const pendingDiff = useEditorStore(s => s.pendingDiff)
   const { settings } = useAppStore()
 

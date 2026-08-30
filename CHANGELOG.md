@@ -19,6 +19,14 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.15.02387] - 2026-08-30
+
+### Changed
+- `App.tsx`, `EditorPanel.tsx`, and `StatusBar.tsx` now subscribe to `useBookStore` through narrow `useShallow` selectors instead of bare `useBookStore()` calls, so they only re-render when a field they actually read changes
+- Purely mechanical performance change — no behavior differences
+
+---
+
 ## [0.15.02386] - 2026-08-30
 
 ### Changed

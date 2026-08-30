@@ -1,10 +1,18 @@
 import { useState, useEffect, useRef } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useBookStore } from '../store/bookStore'
 import { analyzeText, getScoreColor, getScoreLabel, type AIDetectionResult } from '../services/aiDetection'
 import { countBookWords, getCurrentContent } from '../utils/textUtils'
 
 export default function StatusBar() {
-  const { book, isDirty, isAutoSaving, statusMessage, currentSection, currentIndex } = useBookStore()
+  const { book, isDirty, isAutoSaving, statusMessage, currentSection, currentIndex } = useBookStore(useShallow(s => ({
+    book: s.book,
+    isDirty: s.isDirty,
+    isAutoSaving: s.isAutoSaving,
+    statusMessage: s.statusMessage,
+    currentSection: s.currentSection,
+    currentIndex: s.currentIndex,
+  })))
   const words = book ? countBookWords(book) : 0
   const filePath = book?.file_path || null
   const fileName = filePath ? filePath.split(/[\\/]/).pop() : null
