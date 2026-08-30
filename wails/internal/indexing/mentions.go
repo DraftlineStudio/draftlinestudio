@@ -531,11 +531,14 @@ func buildMention(text string, run []wordSpan, chapter, seq int, runInitial bool
 
 	c := mentionCandidate{
 		mention: entityresolution.Mention{
-			ID:         fmt.Sprintf("m-%d-%d", chapter, seq),
-			Text:       text[spanStart:last.baseEnd],
-			SentenceID: fmt.Sprintf("ch%d-s%d", chapter, run[0].sentence),
-			Chapter:    chapter,
-			CharOffset: spanStart,
+			ID:                   fmt.Sprintf("m-%d-%d", chapter, seq),
+			Text:                 text[spanStart:last.baseEnd],
+			SentenceID:           fmt.Sprintf("ch%d-s%d", chapter, run[0].sentence),
+			Chapter:              chapter,
+			CharOffset:           spanStart,
+			PersonEvidence:       nlpPerson,
+			NonPersonEvidence:    nlpNonPerson,
+			StrongPersonEvidence: strongPerson,
 		},
 		nlpPerson:    nlpPerson,
 		nlpNonPerson: nlpNonPerson,

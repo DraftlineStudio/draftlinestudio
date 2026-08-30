@@ -70,6 +70,7 @@ const EMPTY_CELL = 'rgba(255,255,255,0.03)'
 
 type SortMode = 'first' | 'mentions-desc' | 'mentions-asc'
 type ViewMode = 'grid' | 'heat'
+type StatusFilter = 'accepted' | 'review' | 'all'
 
 export default function CharactersView() {
   const {
@@ -83,6 +84,7 @@ export default function CharactersView() {
   const savedLane: ViewMode = settings.characters_lane_view === 'heat' ? 'heat' : 'grid'
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('accepted')
   const [sortMode, setSortMode] = useState<SortMode>(savedLane === 'heat' ? 'mentions-desc' : 'first')
   const [laneView, setLaneView] = useState<ViewMode>(savedLane)
   const [mergeFrom, setMergeFrom] = useState<string | null>(null)
@@ -103,6 +105,7 @@ export default function CharactersView() {
   }, [setViewMode])
 
   const characters = book?.story_bible?.characters ?? []
+  const reviewCount = characters.filter(c => c.detection_status === 'review').length
   const relationships = book?.analysis?.relationships?.relationships ?? []
   const events = book?.analysis?.relationships?.events ?? []
   const entityIds = useMemo(
@@ -118,11 +121,14 @@ export default function CharactersView() {
 
   const sorted = useMemo(() => {
     const q = query.trim().toLowerCase()
+    const byStatus = characters.filter(c =>
+      statusFilter === 'all' ||
+      (statusFilter === 'review' ? c.detection_status === 'review' : c.detection_status !== 'review'))
     const list = q
-      ? characters.filter(c =>
+      ? byStatus.filter(c =>
           c.name.toLowerCase().includes(q) ||
           (c.aliases || []).some(a => a.toLowerCase().includes(q)))
-      : [...characters]
+      : [...byStatus]
     const byMentions = (a: Character, b: Character) => (b.mention_count || 0) - (a.mention_count || 0)
     if (sortMode === 'first') {
       list.sort((a, b) =>
@@ -134,12 +140,12 @@ export default function CharactersView() {
       list.sort(byMentions)
     }
     return list
-  }, [characters, query, sortMode])
+  }, [characters, query, sortMode, statusFilter])
 
   // The pane always shows someone when characters exist (matches the design).
   useEffect(() => {
     if (!selectedId && sorted.length > 0) setSelectedId(sorted[0].id)
-    else if (selectedId && !charMap.has(selectedId)) setSelectedId(sorted[0]?.id ?? null)
+    else if (selectedId && !sorted.some(c => c.id === selectedId)) setSelectedId(sorted[0]?.id ?? null)
   }, [selectedId, sorted, charMap])
 
   const selected = selectedId ? charMap.get(selectedId) ?? null : null
@@ -195,7 +201,7 @@ export default function CharactersView() {
       <header className="chars-header">
         <span className="chars-heading">Characters</span>
         <span className="chars-count">
-          {characters.length} characters{relationships.length ? ` · ${relationships.length} relationships` : ''}
+          {characters.length - reviewCount} characters{reviewCount ? ` · ${reviewCount} need review` : ''}{relationships.length ? ` · ${relationships.length} relationships` : ''}
         </span>
         <div className="chars-header-actions">
           <button className="tool-card-btn" onClick={detect} disabled={busy}>
@@ -229,6 +235,11 @@ export default function CharactersView() {
             >
               <option value="grid">Grid view</option>
               <option value="heat">Heatmap view</option>
+            </select>
+            <select className="dialog-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value as StatusFilter)}>
+              <option value="accepted">Characters</option>
+              <option value="review">Needs review ({reviewCount})</option>
+              <option value="all">All candidates</option>
             </select>
             {mergeFrom ? (
               <div className="chars-merge-banner">
@@ -309,6 +320,7 @@ export default function CharactersView() {
                       <div className="chars-name-cell">
                         <span className="chars-dot" style={{ background: color }} />
                         <span className="chars-name">{c.name}</span>
+                        {c.detection_status === 'review' && <span className="chars-review-badge" title="Detection is uncertain; verify this story entity">REVIEW</span>}
                         <span className="chars-mentions">{c.mention_count || ''}</span>
                       </div>
                       {laneView === 'heat' && (
@@ -399,6 +411,7 @@ export default function CharactersView() {
                 entityBacked={entityIds.has(selected.id)}
                 onSelect={setSelectedId}
                 onEdit={() => setEditing(true)}
+                onConfirm={() => updateCharacter({ ...selected, detection_status: 'accepted' })}
                 onSplit={() => setSplitting(true)}
                 onMerge={() => { setMergeFrom(selected.id); setMergeWith(null) }}
                 onDelete={() => { deleteCharacter(selected.id); setSelectedId(null) }}
@@ -414,7 +427,7 @@ export default function CharactersView() {
 
 // ── Detail pane ──────────────────────────────────────────────────────────────
 
-function DetailPane({ book, char, charMap, relationships, events, entityBacked, onSelect, onEdit, onSplit, onMerge, onDelete, onJump }: {
+function DetailPane({ book, char, charMap, relationships, events, entityBacked, onSelect, onEdit, onConfirm, onSplit, onMerge, onDelete, onJump }: {
   book: BookData
   char: Character
   charMap: Map<string, Character>
@@ -423,6 +436,7 @@ function DetailPane({ book, char, charMap, relationships, events, entityBacked, 
   entityBacked: boolean
   onSelect: (id: string) => void
   onEdit: () => void
+  onConfirm: () => void
   onSplit: () => void
   onMerge: () => void
   onDelete: () => void
@@ -493,6 +507,13 @@ function DetailPane({ book, char, charMap, relationships, events, entityBacked, 
         {chapterCount > 0 && <> · {chapterCount} chapter{chapterCount === 1 ? '' : 's'}</>}
         {char.mention_count ? <> · {char.mention_count} mentions</> : null}
       </div>
+
+      {char.detection_status === 'review' && (
+        <div className="chars-review-callout">
+          <span>Draftline is not certain this is a participating character.</span>
+          <button className="ai-link-btn" onClick={onConfirm}>Confirm character</button>
+        </div>
+      )}
 
       {char.description && <div className="chars-pane-meta">{char.description}</div>}
 

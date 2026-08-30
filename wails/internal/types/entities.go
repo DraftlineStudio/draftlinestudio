@@ -20,21 +20,27 @@ type EntityData struct {
 
 // MentionRecord is the stored form of a name mention.
 type MentionRecord struct {
-	ID         string `json:"id"`
-	Text       string `json:"text"`        // Raw text as it appears
-	SentenceID string `json:"sentence_id"` // ID of containing sentence
-	Chapter    int    `json:"chapter"`     // Chapter index
-	CharOffset int    `json:"char_offset"` // Character offset in chapter
+	ID                   string `json:"id"`
+	Text                 string `json:"text"`        // Raw text as it appears
+	SentenceID           string `json:"sentence_id"` // ID of containing sentence
+	Chapter              int    `json:"chapter"`     // Chapter index
+	CharOffset           int    `json:"char_offset"` // Character offset in chapter
+	PersonEvidence       bool   `json:"person_evidence,omitempty"`
+	NonPersonEvidence    bool   `json:"non_person_evidence,omitempty"`
+	StrongPersonEvidence bool   `json:"strong_person_evidence,omitempty"`
 }
 
 // EntityRecord is the stored form of a resolved entity.
 type EntityRecord struct {
-	ID         string   `json:"id"`
-	Canonical  string   `json:"canonical"`   // Best display name
-	Aliases    []string `json:"aliases"`     // All name variations
-	MentionIDs []string `json:"mention_ids"` // IDs of all mentions
-	Confidence float64  `json:"confidence"`  // Merge confidence
-	Titles     []string `json:"titles"`      // Honorifics/titles seen
+	ID              string   `json:"id"`
+	Canonical       string   `json:"canonical"`   // Best display name
+	Aliases         []string `json:"aliases"`     // All name variations
+	MentionIDs      []string `json:"mention_ids"` // IDs of all mentions
+	Confidence      float64  `json:"confidence"`  // Merge confidence
+	Titles          []string `json:"titles"`      // Honorifics/titles seen
+	Kind            string   `json:"kind,omitempty"`
+	DetectionStatus string   `json:"detection_status,omitempty"`
+	DetectionScore  float64  `json:"detection_score,omitempty"`
 
 	// Link to Character record (if user has created one)
 	CharacterID string `json:"character_id,omitempty"`

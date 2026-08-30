@@ -35,6 +35,7 @@ var commonWordsLower = map[string]bool{
 	"ask": true, "asked": true, "tell": true, "told": true, "call": true, "called": true,
 	"try": true, "tried": true, "leave": true, "left": true, "keep": true, "kept": true,
 	"begin": true, "began": true, "start": true, "started": true, "run": true, "ran": true,
+	"roll": true, "rolled": true,
 	"show": true, "showed": true, "hear": true, "heard": true, "play": true, "played": true,
 	"move": true, "moved": true, "live": true, "lived": true, "believe": true, "believed": true,
 	"hold": true, "held": true, "bring": true, "brought": true, "happen": true, "happened": true,

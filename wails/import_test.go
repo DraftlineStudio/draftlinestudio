@@ -103,8 +103,18 @@ func TestSplitImportedChaptersUsesInternalHeadings(t *testing.T) {
 
 func TestClassifyImportedNonStorySection(t *testing.T) {
 	for _, title := range []string{"Copyright", "ACKNOWLEDGMENTS", "Table of Contents", "Glossary"} {
-		if got := classifyImportedSection(title); got == "Chapter" {
+		if got := classifyImportedSection(title, ""); got == "Chapter" {
 			t.Fatalf("%q should not be classified as story prose", title)
 		}
+	}
+}
+
+func TestParseXHTMLPrefersVisibleSectionHeading(t *testing.T) {
+	title, body := parseXHTMLContent(`<html><head><title>Book Title</title></head><body><h2>ACKNOWLEDGMENTS</h2><p>Thanks.</p></body></html>`)
+	if title != "ACKNOWLEDGMENTS" {
+		t.Fatalf("visible heading should win over repeated EPUB title, got %q", title)
+	}
+	if got := classifyImportedSection(title, body); got != "acknowledgments" {
+		t.Fatalf("wrong semantic section type: %q", got)
 	}
 }
