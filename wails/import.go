@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"encoding/xml"
 	"fmt"
+	"html"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
-
 
 // ImportEPUBDialog shows file picker for EPUB files and imports the selected file
 func (a *App) ImportEPUBDialog() types.ImportResult {
@@ -103,12 +103,15 @@ func (a *App) ImportEPUB(path string) types.ImportResult {
 			title = fmt.Sprintf("Chapter %d", chapterNum)
 		}
 
-		chapters = append(chapters, types.ChapterItem{
-			Title:   title,
-			Type:    "Chapter",
-			Content: body,
-		})
-		chapterNum++
+		parts := splitImportedChapters(title, body)
+		for _, part := range parts {
+			if strings.TrimSpace(part.Title) == "" {
+				part.Title = fmt.Sprintf("Chapter %d", chapterNum)
+			}
+			part.Type = classifyImportedSection(part.Title)
+			chapters = append(chapters, part)
+			chapterNum++
+		}
 	}
 
 	if len(chapters) == 0 {
@@ -283,6 +286,50 @@ func parseXHTMLContent(xhtml string) (title string, body string) {
 	body = cleanHTML(body)
 
 	return title, body
+}
+
+var importedHeadingRe = regexp.MustCompile(`(?is)<h[1-3]\b[^>]*>.*?</h[1-3]>`)
+
+// splitImportedChapters handles EPUBs that store many chapters in one spine
+// document. A file with zero or one heading remains one section; two or more
+// headings become independent chapter items for accurate Codex heatmaps.
+func splitImportedChapters(fallbackTitle, body string) []types.ChapterItem {
+	matches := importedHeadingRe.FindAllStringIndex(body, -1)
+	if len(matches) < 2 {
+		return []types.ChapterItem{{Title: fallbackTitle, Content: body}}
+	}
+
+	parts := make([]types.ChapterItem, 0, len(matches)+1)
+	if prefix := strings.TrimSpace(body[:matches[0][0]]); plainImportedText(prefix) != "" {
+		parts = append(parts, types.ChapterItem{Title: fallbackTitle, Content: cleanHTML(prefix)})
+	}
+	for i, match := range matches {
+		end := len(body)
+		if i+1 < len(matches) {
+			end = matches[i+1][0]
+		}
+		headingHTML := body[match[0]:match[1]]
+		title := plainImportedText(headingHTML)
+		parts = append(parts, types.ChapterItem{Title: title, Content: cleanHTML(body[match[0]:end])})
+	}
+	return parts
+}
+
+func plainImportedText(fragment string) string {
+	withoutTags := regexp.MustCompile(`<[^>]*>`).ReplaceAllString(fragment, "")
+	return strings.TrimSpace(html.UnescapeString(withoutTags))
+}
+
+func classifyImportedSection(title string) string {
+	normalized := strings.ToLower(strings.TrimSpace(title))
+	switch normalized {
+	case "cover", "title page", "copyright", "dedication", "epigraph",
+		"contents", "table of contents", "acknowledgments", "acknowledgements",
+		"about the author", "also by", "glossary", "index", "colophon":
+		return normalized
+	default:
+		return "Chapter"
+	}
 }
 
 // cleanHTML normalizes HTML content for the editor
@@ -560,4 +607,3 @@ func parseDOCXDocument(data []byte) ([]types.ChapterItem, error) {
 
 	return chapters, nil
 }
-

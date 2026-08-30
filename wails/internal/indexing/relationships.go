@@ -45,7 +45,10 @@ func (ra *RelationshipAnalyzer) AnalyzeBook(book types.BookData) (*types.Relatio
 	allInteractions := []types.InteractionRecord{}
 
 	for chIdx, chapter := range AllChapters(&book) {
-		chapterText := StripHTML(chapter.Content)
+		chapterText := ""
+		if ShouldAnalyzeChapter(chapter) {
+			chapterText = StripHTMLForAnalysis(chapter.Content)
+		}
 
 		// Detect scenes/paragraphs in this chapter
 		scenes := DetectScenes(chapterText, chIdx)

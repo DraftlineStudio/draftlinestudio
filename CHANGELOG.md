@@ -19,6 +19,18 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02406] - 2026-08-30
+
+### Fixed
+- Character and relationship analysis now excludes chapter headings, navigation, scripts, styles, and known non-story sections such as covers, contents, copyright, acknowledgments, glossaries, and indexes
+- EPUB files that package many chapters inside one spine document are now split at internal H1-H3 boundaries, restoring real chapter-level heatmaps, appearances, relationship timing, and navigation
+- Imported non-story sections retain a semantic type so future re-detection does not turn editors, publishers, glossary terms, or contents entries into cast members
+
+### Tests
+- Added regression coverage for heading-derived aliases, acknowledgment-page names, non-story classification, and multi-chapter EPUB spine files
+
+---
+
 ## [0.16.02405] - 2026-08-30
 
 ### Fixed
