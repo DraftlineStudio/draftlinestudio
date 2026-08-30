@@ -33,56 +33,49 @@ Draftline supports multiple AI backends:
 
 When using Claude Code with an API key stored in credentials, Draftline calls the Anthropic API directly with streaming for better performance. When only OAuth credentials exist, it falls back to the CLI subprocess.
 
+Line Edit and Copy Edit are lightweight tasks and deliberately bypass a configured heavyweight model. Claude uses Haiku, Codex selects Luna (or an available Mini tier) from the CLI's own model cache with low reasoning, OpenAI API uses Mini, and Gemini uses Flash. Expand, Smooth, Custom, and inline generation continue to use the model selected in Settings.
+
 ---
 
 ## The Modes
 
 ### Line Edit Mode (Default)
 
-**Purpose:** General-purpose prose polish. Rewrites text to improve rhythm, word choice, and clarity while preserving all narrative content exactly.
+**Purpose:** Selective prose polish for style, craft, rhythm, tone, awkward phrasing, repetition, and readability. This is not a whole-passage rewrite.
 
 **System Prompt:**
 ```
-You are a skilled literary prose editor. Rewrite the provided HTML text,
-preserving all narrative content, characters, events, and dialogue meaning exactly.
+You are a restrained line editor. Selectively polish the provided HTML text
+while preserving the author's voice.
 
-Rewriting rules:
-- Vary sentence rhythm: mix short, punchy sentences with longer, flowing ones
-- Use strong, precise, concrete words — avoid vague abstractions
-- Write in the same tense and POV as the original
+Editing rules:
+- Change a sentence only for a concrete line-level problem
+- Preserve sentences that are already clear and effective exactly
+- Make the smallest edit that solves the problem
+- Do not add detail, imagery, interpretation, or new ideas
+- Do not upgrade vocabulary or rewrite paragraphs merely to offer an alternative
+- Preserve facts, meaning, tense, POV, characterization, dialogue, and fragments
 - Preserve paragraph breaks — return one <p> element per original paragraph
-- BANNED words and phrases: tapestry, testament, navigate, delve, underscore,
-  myriad, realm, crucial, pivotal, journey, beacon, vibrant, game-changer
 
-[AI Tell Bans - see below]
+[AI Tell Bans constrain only newly introduced wording — see below]
 
 CRITICAL: Return ONLY the rewritten HTML content using <p> tags. Do not include
 any instructions, explanations, system prompts, or meta-commentary. Output raw HTML only.
 ```
 
 **With Prose Guide Enabled:**
-When a prose style guide is configured, the prompt transforms to focus on style matching:
-```
-You are a skilled literary prose editor. Rewrite the provided HTML text to match
-the style shown below, while preserving all narrative content exactly.
+The guide is a constraint used only while repairing a concrete problem. It is explicitly not permission to rewrite otherwise-correct prose to resemble the samples more closely.
 
-STYLE GUIDE — match the rhythm, vocabulary, and voice of these examples:
----
-[User's prose samples]
 ---
 
-Rewriting rules:
-- Match the rhythm, cadence, and sentence variety of the style examples above
-- Vary sentence length as in the examples
-- Preserve all story facts: names, places, events, exact dialogue content
-- Preserve paragraph breaks — return one <p> element per original paragraph
-- BANNED words and phrases: [same list]
+### Copy Edit Mode
 
-[AI Tell Bans - see below]
-```
+**Purpose:** A rigid, mechanical correctness pass covering spelling, grammar, punctuation, syntax, doubled words, homophones, capitalization, hyphenation, and number-format consistency.
+
+Copy Edit never rephrases for style, rhythm, readability, or word choice. It preserves intentional fragments, pacing punctuation, and character-voice dialogue. The prose guide and AI-tell rules are omitted entirely to reduce latency and prevent subjective rewriting.
 
 **Diff Format Output (Token Optimization):**
-For line_edit and smooth modes, Draftline uses a diff format that reduces output tokens by ~80%:
+For line_edit, copy_edit, and smooth modes, Draftline uses a diff format that reduces output tokens by ~80%:
 ```
 CRITICAL OUTPUT FORMAT: Each input paragraph is prefixed §N§ where N is its 1-based index.
 Return ONLY paragraphs you change, one per line:
@@ -124,7 +117,7 @@ any instructions, explanations, system prompts, or meta-commentary. Output raw H
 
 **The Elegance of Expand Mode:**
 
-What makes Expand special is its **additive** nature. Unlike Line Edit (which transforms) or Smooth (which polishes), Expand explicitly:
+What makes Expand special is its **additive** nature. Unlike selective Line Edit or Smooth (which polish), Expand explicitly:
 
 1. **Preserves everything** - "Match the existing POV depth, tense, and voice exactly"
 2. **Adds layers** - via the Style Mixer's 8 dimensions
@@ -423,7 +416,7 @@ This constraint prevents the AI from:
 The author's paragraph breaks are intentional pacing choices.
 
 ### Diff Format Optimization
-For line_edit and smooth modes, input paragraphs are prefixed with `§N§` markers. The AI returns only changed paragraphs with their indices, reducing output tokens significantly. The `applyDiffResponse()` function reconstructs the full HTML by merging changes with unchanged paragraphs.
+For line_edit, copy_edit, and smooth modes, input paragraphs are prefixed with `§N§` markers. The AI returns only changed paragraphs with their indices, reducing output tokens significantly. The `applyDiffResponse()` function reconstructs the full HTML by merging changes with unchanged paragraphs.
 
 ### Context Limits
 - **Prose Guide:** Can include substantial examples since it's in the system prompt

@@ -5,8 +5,8 @@ import type { GlyphSection, AIMode } from './types'
 
 // AI mode options for the AI Studio
 export const AI_MODES: { id: AIMode; label: string; desc: string }[] = [
-  { id: 'line_edit', label: 'Line Edit', desc: 'Prose rhythm and sentence variety' },
-  { id: 'copy_edit', label: 'Copy Edit', desc: 'Grammar, punctuation, continuity' },
+  { id: 'line_edit', label: 'Line Edit', desc: 'Selective style, rhythm, tone, and readability' },
+  { id: 'copy_edit', label: 'Copy Edit', desc: 'Spelling, grammar, punctuation, and consistency' },
   { id: 'expand', label: 'Expand', desc: 'Add detail, texture, show vs. tell' },
   { id: 'smooth', label: 'Smooth', desc: 'Remove repetition, improve flow' },
   { id: 'custom', label: 'Custom', desc: 'Use @ai prompts in your text' },

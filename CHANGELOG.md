@@ -19,6 +19,22 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02422] - 2026-08-30
+
+### Changed
+- Line Edit is now a restrained, selective prose pass: it changes only sentences with a concrete phrasing, repetition, syntax, readability, or rhythm problem and explicitly preserves effective prose instead of rewriting for variety
+- Copy Edit is now strictly mechanical—spelling, grammar, punctuation, syntax, capitalization, hyphenation, and number-format consistency—and no longer receives the prose guide or attempts continuity/style changes
+- Line Edit and Copy Edit automatically use lightweight models while Expand, Smooth, Custom, and inline generation retain the configured full model: Claude Haiku, Codex Luna/available Mini at low reasoning, OpenAI Mini, and Gemini Flash
+- AI Studio mode descriptions now state the narrower responsibilities of Line Edit and Copy Edit
+
+### Performance
+- Codex lightweight passes reuse its local model-availability cache, run ephemerally, and avoid maximum reasoning; Claude CLI lightweight passes use low effort and skip session persistence
+
+### Tests
+- Added prompt-restraint, mechanical-copy-edit, lightweight-routing, provider-model, and Codex fast-tier regression coverage
+
+---
+
 ## [0.16.02421] - 2026-08-30
 
 ### Fixed
