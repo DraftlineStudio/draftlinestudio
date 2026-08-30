@@ -59,7 +59,7 @@ export const SpellCheck = Extension.create({
 
 function buildDecorations(doc: ProseMirrorNode): DecorationSet {
   const decorations: Decoration[] = []
-  const wordPattern = /[A-Za-z]+(?:['’][A-Za-z]+)*/g
+  const wordPattern = /[A-Za-z]+(?:['’‘ʼ＇][A-Za-z]+)*/g
 
   doc.descendants((node, pos) => {
     if (!node.isText) return

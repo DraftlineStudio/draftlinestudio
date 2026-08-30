@@ -18,11 +18,12 @@ import Toolbar from './Toolbar'
 import ChapterFindReplaceBar from './ChapterFindReplaceBar'
 import ContextMenu, { ContextMenuItem } from '../ContextMenu'
 import InlinePrompt from './InlinePrompt'
-import { checkWord, getDictionaryRoot, getImmediateSuggestions, getSuggestions, isLoaded as isSpellCheckLoaded, normalizeCustomDictionary, setCustomWords, setSpellCheckEnabled } from '../../services/spellCheck'
+import { checkWord, getDictionaryRoot, getImmediateSuggestions, getSuggestions, isLoaded as isSpellCheckLoaded, normalizeCustomDictionary, setCustomWords, setIgnoredWords, setSpellCheckEnabled } from '../../services/spellCheck'
 import { analyzeGrammar, setGrammarCheckEnabled, type GrammarIssue } from '../../services/grammarCheck'
 import { useBookStore } from '../../store/bookStore'
 import { useEditorStore } from '../../store/editorStore'
 import { useAppStore } from '../../store/appStore'
+import { isConfirmedCharacter } from '../../utils/characterStatus'
 
 interface ContextMenuState {
   x: number
@@ -132,6 +133,14 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
   // Force decoration recalculation when highlighted character or its aliases change
   const highlightedCharacterId = useBookStore(s => s.highlightedCharacterId)
   const characters = useBookStore(s => s.book?.story_bible?.characters)
+
+  const confirmedCharacterNames = useMemo(() => (characters ?? [])
+    .filter(isConfirmedCharacter)
+    .flatMap(character => [character.name, ...(character.aliases ?? [])]), [characters])
+
+  useEffect(() => {
+    setIgnoredWords(confirmedCharacterNames)
+  }, [confirmedCharacterNames])
 
   // Compute highlighted names from raw store data (avoids infinite loop from function call in selector)
   const highlightedNames = useMemo(() => {
@@ -266,7 +275,7 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
           let wordStart = offsetInNode
           let wordEnd = offsetInNode
 
-          const isWordCharacter = (character: string) => /[A-Za-z0-9'’]/.test(character)
+          const isWordCharacter = (character: string) => /[A-Za-z0-9'’‘ʼ＇]/.test(character)
           while (wordStart > 0 && isWordCharacter(text[wordStart - 1])) wordStart--
           while (wordEnd < text.length && isWordCharacter(text[wordEnd])) wordEnd++
 

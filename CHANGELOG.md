@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02416] - 2026-08-30
+
+### Fixed
+- Contractions with curly apostrophes are no longer marked as misspelled.
+- Character names are no longer marked as misspelled.
+
 ## [0.16.02415] - 2026-08-30
 
 ### Added
