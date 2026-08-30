@@ -2,6 +2,26 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02415] - 2026-08-30
+
+### Added
+- Added Codex setup and ChatGPT sign-in to Settings.
+
+## [0.16.02414] - 2026-08-30
+
+### Added
+- Added OpenAI Codex as an AI provider for ChatGPT accounts.
+
+## [0.16.02413] - 2026-08-30
+
+### Changed
+- Redesigned the character sidebar to show characters in the current chapter first.
+
+## [0.16.02412] - 2026-08-30
+
+### Fixed
+- Aligned the tools sidebar header with the rest of the toolbar.
+
 ## [0.16.02411] - 2026-08-30
 
 ### Fixed
