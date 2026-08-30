@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02396] - 2026-08-30
+
+### Added
+- Added role selection to each row in Heatmap view.
+
 ## [0.16.02395] - 2026-08-30
 
 ### Added
