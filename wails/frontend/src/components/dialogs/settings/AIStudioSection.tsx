@@ -17,6 +17,8 @@ export default function AIStudioSection({
   proseGuide, setProseGuide,
   ccStatus, ccChecking, ccSetupStep, ccSetupLog,
   onCheckCC, onSetup, onOpenAuth,
+  cxStatus, cxChecking, cxSetupStep, cxSetupLog,
+  onCheckCx, onSetupCx, onOpenCxAuth,
   testStatus, testMsg, onTestLocal,
 }: AIStudioSectionProps) {
   const [showKey, setShowKey] = useState(false)
@@ -35,6 +37,8 @@ export default function AIStudioSection({
   function handleModeChange(m: typeof aiMode) {
     setAiMode(m)
     if (m === 'claudecode' && !model) setModel('claude-sonnet-4-6')
+    // Codex: no default model — the CLI's own current default is used.
+    if (m === 'codex' && model.startsWith('claude')) setModel('')
   }
 
   return (
@@ -55,6 +59,9 @@ export default function AIStudioSection({
             <button className={`settings-theme-btn${aiMode === 'claudecode' ? ' active' : ''}`} onClick={() => handleModeChange('claudecode')}>
               Claude Code
             </button>
+            <button className={`settings-theme-btn${aiMode === 'codex' ? ' active' : ''}`} onClick={() => handleModeChange('codex')}>
+              Codex
+            </button>
             <button className={`settings-theme-btn${aiMode === 'api' ? ' active' : ''}`} onClick={() => handleModeChange('api')}>
               API Key
             </button>
@@ -66,7 +73,8 @@ export default function AIStudioSection({
 
         {/* Claude Code */}
         {aiMode === 'claudecode' && (
-          <ClaudeCodeSection
+          <CLISetupSection
+            flavor="claude"
             ccStatus={ccStatus}
             ccChecking={ccChecking}
             ccSetupStep={ccSetupStep}
@@ -74,6 +82,22 @@ export default function AIStudioSection({
             onCheckCC={onCheckCC}
             onSetup={onSetup}
             onOpenAuth={onOpenAuth}
+            model={model}
+            setModel={setModel}
+          />
+        )}
+
+        {/* Codex (ChatGPT account) */}
+        {aiMode === 'codex' && (
+          <CLISetupSection
+            flavor="codex"
+            ccStatus={cxStatus}
+            ccChecking={cxChecking}
+            ccSetupStep={cxSetupStep}
+            ccSetupLog={cxSetupLog}
+            onCheckCC={onCheckCx}
+            onSetup={onSetupCx}
+            onOpenAuth={onOpenCxAuth}
             model={model}
             setModel={setModel}
           />
@@ -188,8 +212,31 @@ export default function AIStudioSection({
   )
 }
 
-// Claude Code setup sub-section
-interface ClaudeCodeSectionProps {
+// CLI-account setup sub-section, shared by Claude Code (Claude.ai accounts)
+// and Codex (ChatGPT accounts) — identical lifecycle, different wording.
+const CLI_FLAVORS = {
+  claude: {
+    title: 'Claude Code',
+    desc: 'Uses your Claude.ai account — no separate API key needed. AI rewrites are charged to your Claude subscription.',
+    installStep: 'Install runtime & Claude Code CLI',
+    signinStep: 'Sign in with your Claude account',
+    signinHint: 'Click below to sign in with your Claude.ai account. A browser window will open — complete the login, then come back here.',
+    signinBtn: 'Sign in with Claude.ai…',
+    setupBtn: 'Set up Claude Code automatically',
+  },
+  codex: {
+    title: 'Codex',
+    desc: 'Uses your ChatGPT account (Plus, Pro, or Team) through the OpenAI Codex CLI — no separate API key needed.',
+    installStep: 'Install runtime & Codex CLI',
+    signinStep: 'Sign in with your ChatGPT account',
+    signinHint: 'Click below to sign in with your ChatGPT account. A browser window will open — complete the login, then come back here.',
+    signinBtn: 'Sign in with ChatGPT…',
+    setupBtn: 'Set up Codex automatically',
+  },
+} as const
+
+interface CLISetupSectionProps {
+  flavor: keyof typeof CLI_FLAVORS
   ccStatus: AIStudioSectionProps['ccStatus']
   ccChecking: boolean
   ccSetupStep: AIStudioSectionProps['ccSetupStep']
@@ -201,16 +248,18 @@ interface ClaudeCodeSectionProps {
   setModel: (v: string) => void
 }
 
-function ClaudeCodeSection({
+function CLISetupSection({
+  flavor,
   ccStatus, ccChecking, ccSetupStep, ccSetupLog,
   onCheckCC, onSetup, onOpenAuth,
   model, setModel,
-}: ClaudeCodeSectionProps) {
+}: CLISetupSectionProps) {
+  const f = CLI_FLAVORS[flavor]
   return (
     <>
       <div className="settings-cc-card">
         <div className="settings-cc-header">
-          <span className="settings-cc-title">Claude Code</span>
+          <span className="settings-cc-title">{f.title}</span>
           {ccChecking && <span className="settings-cc-badge checking">Checking…</span>}
           {!ccChecking && ccStatus?.installed && ccStatus.authenticated && ccSetupStep !== 'running' && (
             <span className="settings-cc-badge ok">✓ Ready — {ccStatus.version}</span>
@@ -230,10 +279,7 @@ function ClaudeCodeSection({
             </svg>
           </button>
         </div>
-        <p className="settings-cc-desc">
-          Uses your Claude.ai account — no separate API key needed.
-          AI rewrites are charged to your Claude subscription.
-        </p>
+        <p className="settings-cc-desc">{f.desc}</p>
 
         {/* Setup wizard (not installed or setup in progress) */}
         {ccSetupStep !== 'done' && !(ccStatus?.installed && ccStatus.authenticated) && (
@@ -244,13 +290,13 @@ function ClaudeCodeSection({
                 <span className="settings-cc-step-icon">
                   {ccStatus?.installed ? '✓' : ccSetupStep === 'running' ? '⟳' : '○'}
                 </span>
-                <span>Install runtime &amp; Claude Code CLI</span>
+                <span>{f.installStep}</span>
               </div>
               <div className={`settings-cc-step ${ccStatus?.authenticated ? 'done' : (ccSetupStep === 'auth' || ccSetupStep === 'auth-waiting') ? 'active' : ''}`}>
                 <span className="settings-cc-step-icon">
                   {ccStatus?.authenticated ? '✓' : (ccSetupStep === 'auth' || ccSetupStep === 'auth-waiting') ? '⟳' : '○'}
                 </span>
-                <span>Sign in with your Claude account</span>
+                <span>{f.signinStep}</span>
               </div>
             </div>
 
@@ -264,7 +310,7 @@ function ClaudeCodeSection({
             {/* Actions */}
             {ccSetupStep === 'idle' && (
               <button className="dialog-btn primary" style={{ marginTop: 12 }} onClick={onSetup}>
-                Set up Claude Code automatically
+                {f.setupBtn}
               </button>
             )}
             {ccSetupStep === 'running' && (
@@ -275,10 +321,10 @@ function ClaudeCodeSection({
             {ccSetupStep === 'auth' && (
               <div style={{ marginTop: 12 }}>
                 <p className="settings-hint" style={{ marginBottom: 8 }}>
-                  Click below to sign in with your Claude.ai account. A browser window will open — complete the login, then come back here.
+                  {f.signinHint}
                 </p>
                 <button className="dialog-btn primary" onClick={onOpenAuth}>
-                  Sign in with Claude.ai…
+                  {f.signinBtn}
                 </button>
               </div>
             )}
@@ -302,12 +348,24 @@ function ClaudeCodeSection({
       </div>
 
       {(ccStatus?.installed && ccStatus.authenticated) && (
-        <div className="dialog-field" style={{ marginTop: 12 }}>
-          <label className="dialog-label">Model</label>
-          <select className="dialog-select" value={model || 'claude-sonnet-4-6'} onChange={e => setModel(e.target.value)}>
-            {CLAUDE_MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-          </select>
-        </div>
+        flavor === 'claude' ? (
+          <div className="dialog-field" style={{ marginTop: 12 }}>
+            <label className="dialog-label">Model</label>
+            <select className="dialog-select" value={model || 'claude-sonnet-4-6'} onChange={e => setModel(e.target.value)}>
+              {CLAUDE_MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+            </select>
+          </div>
+        ) : (
+          <div className="dialog-field" style={{ marginTop: 12 }}>
+            <label className="dialog-label">Model override (optional)</label>
+            <input
+              className="dialog-input"
+              value={model}
+              onChange={e => setModel(e.target.value)}
+              placeholder="Leave blank to use the Codex CLI's default model"
+            />
+          </div>
+        )
       )}
     </>
   )

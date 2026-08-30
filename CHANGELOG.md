@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02411] - 2026-08-30
+
+### Fixed
+- The character sidebar now only shows confirmed characters.
+- Relationships with unconfirmed characters are now hidden.
+
 ## [0.16.02410] - 2026-08-30
 
 ### Changed
