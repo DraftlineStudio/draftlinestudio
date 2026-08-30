@@ -1,7 +1,7 @@
 // ToolsPanel - Main sidebar with section routing
 
 import { useState, useEffect, useRef } from 'react'
-import { useAppStore } from '../store/appStore'
+import { useAppStore, type AppSettings } from '../store/appStore'
 
 // Extracted types, constants, and components
 import type { GlyphSection } from './tools/types'
@@ -12,6 +12,16 @@ import AiStudioTab from './tools/AIStudio'
 import { PlotSection, TimelineSection } from './tools/StoryBible'
 import { BeatsSection, ForeshadowingSection, KnowledgeSection, IssuesSection } from './tools/PlotWalker'
 import CastQuickRef from './tools/CastQuickRef'
+
+function isSectionEnabled(section: Exclude<GlyphSection, null>, settings: AppSettings): boolean {
+  if (section === 'ai') return settings.ai_enabled
+  if (section === 'characters') return settings.cast_enabled
+  if (section === 'plot' || section === 'timeline') return settings.story_bible_enabled
+  if (section === 'beats' || section === 'foreshadow' || section === 'knowledge' || section === 'issues') {
+    return settings.plot_walker_enabled
+  }
+  return true
+}
 
 // ── Main panel ──────────────────────────────────────────────────────────────
 
@@ -28,6 +38,18 @@ export default function ToolsPanel() {
       setPanelWidth(settings.sidebar_panel_width)
     }
   }, [settings.sidebar_panel_width])
+
+  useEffect(() => {
+    if (activeSection && !isSectionEnabled(activeSection, settings)) {
+      setActiveSection(null)
+    }
+  }, [
+    activeSection,
+    settings.ai_enabled,
+    settings.cast_enabled,
+    settings.story_bible_enabled,
+    settings.plot_walker_enabled,
+  ])
 
   // Handle resize
   const handleResizeStart = (e: React.MouseEvent) => {
@@ -68,10 +90,7 @@ export default function ToolsPanel() {
     setActiveSection(prev => prev === section ? null : section)
   }
 
-  const visibleSections = SECTION_CONFIG.filter(s => {
-    if (s.id === 'ai') return settings.show_ai_tab
-    return true
-  })
+  const visibleSections = SECTION_CONFIG.filter(section => isSectionEnabled(section.id, settings))
 
   const activeSectionConfig = activeSection ? SECTION_CONFIG.find(s => s.id === activeSection) : null
 

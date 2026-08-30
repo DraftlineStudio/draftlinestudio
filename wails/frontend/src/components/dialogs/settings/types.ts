@@ -2,7 +2,7 @@
 
 import type { types } from '../../../../wailsjs/go/models'
 
-export type SettingsSection = 'application' | 'ai' | 'book'
+export type SettingsSection = 'application' | 'plugins' | 'ai' | 'book'
 
 export type AIMode = 'claudecode' | 'api' | 'local'
 export type AIProvider = 'claude' | 'openai' | 'gemini' | 'grok' | ''
@@ -35,8 +35,6 @@ export interface ApplicationSectionProps {
 export interface AIStudioSectionProps {
   aiEnabled: boolean
   setAiEnabled: (v: boolean) => void
-  showAiTab: boolean
-  setShowAiTab: (v: boolean) => void
   aiMode: AIMode
   setAiMode: (v: AIMode) => void
   provider: AIProvider

@@ -8,7 +8,7 @@ AI features are **fully implemented** but controlled via settings:
 
 | Setting | Location | Effect |
 |---------|----------|--------|
-| `ai_enabled` | Settings > AI | Master toggle for all AI features |
+| `ai_enabled` | Settings > Plugins | Master toggle for all AI features |
 | `ai_mode` | Settings > AI | Provider selection (claudecode/api/local) |
 | `ai_provider` | Settings > AI | Which API to use (claude/openai/gemini/grok) |
 
@@ -84,7 +84,7 @@ Go: buildSystemPrompt()
        |
        v
 Go: callProvider()
-    - Claude Code CLI subprocess, OR
+    - Dedicated Claude Code CLI subprocess, OR
     - Direct API call (Anthropic/OpenAI/etc)
        |
        v
@@ -96,6 +96,12 @@ Frontend: Accumulate result, show diff
        v
 User: Accept/reject changes
 ```
+
+### Claude Code process isolation
+
+Claude Code requests run outside the Wails host in a dedicated child process. This keeps generation work from blocking the editor and isolates CLI failures from the main application flow.
+
+On Windows, Draftline resolves the installed Claude Code package and prefers its native `bin/claude.exe`. Older releases are launched through `node.exe` and the package's `cli.js` entry point. The `claude.cmd` shim is only a last-resort fallback; bypassing it prevents paths containing spaces from producing `not recognized as an internal or external command` errors.
 
 ## Token Optimization
 
@@ -121,3 +127,5 @@ AI calls can fail for various reasons:
 - Context length exceeded
 
 All errors are captured and shown to the user with actionable messages.
+
+For Claude Code command-resolution errors, open **Settings > AI Studio** and run the setup/status check. Draftline reports the detected CLI version and authentication state there.

@@ -15,6 +15,12 @@ export interface AppSettings {
   auto_theme_use_manual: boolean
   auto_theme_dawn: string
   auto_theme_dusk: string
+  custom_dictionary: string[]
+  spell_check_enabled: boolean
+  grammar_check_enabled: boolean
+  cast_enabled: boolean
+  story_bible_enabled: boolean
+  plot_walker_enabled: boolean
   // AI
   ai_enabled: boolean
   ai_mode: 'claudecode' | 'api' | 'local'
@@ -32,7 +38,6 @@ export interface AppSettings {
   book_drop_caps: boolean
   book_trim_size: string
   // Sidebar
-  show_ai_tab: boolean
   sidebar_panel_width: number
 }
 
@@ -66,7 +71,13 @@ const DEFAULT_SETTINGS: AppSettings = {
   auto_theme_use_manual: false,
   auto_theme_dawn: '06:30',
   auto_theme_dusk: '19:00',
-  ai_enabled: true,
+  custom_dictionary: [],
+  spell_check_enabled: true,
+  grammar_check_enabled: true,
+  cast_enabled: true,
+  story_bible_enabled: true,
+  plot_walker_enabled: true,
+  ai_enabled: false,
   ai_mode: 'claudecode',
   ai_provider: '',
   ai_api_key: '',
@@ -80,7 +91,6 @@ const DEFAULT_SETTINGS: AppSettings = {
   book_line_spacing: '1.5',
   book_drop_caps: false,
   book_trim_size: '6x9',
-  show_ai_tab: false,
   sidebar_panel_width: 350,
 }
 
@@ -102,6 +112,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         ai_mode: (raw.ai_mode as AppSettings['ai_mode']) || 'claudecode',
         theme_mode: (raw.theme_mode as AppSettings['theme_mode']) || (raw.dark_mode ? 'dark' : 'light'),
         editor_font_size: (raw.editor_font_size as AppSettings['editor_font_size']) || 'normal',
+        custom_dictionary: (raw as unknown as Partial<AppSettings>).custom_dictionary ?? [],
       }
       set({ settings, loaded: true })
     } catch {

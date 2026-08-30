@@ -10,13 +10,18 @@ Configures a command to run without a visible console window.
 **Windows** (`hidewindow_windows.go`):
 ```go
 func HideWindow(cmd *exec.Cmd) {
-    cmd.SysProcAttr = &syscall.SysProcAttr{
-        HideWindow:    true,
-        CreationFlags: 0x08000000, // CREATE_NO_WINDOW
+    if cmd.SysProcAttr == nil {
+        cmd.SysProcAttr = &syscall.SysProcAttr{}
     }
+    cmd.SysProcAttr.HideWindow = true
+    cmd.SysProcAttr.CreationFlags |= 0x08000000
 }
 ```
-Prevents black console windows from flashing when spawning external processes like the Claude CLI.
+Prevents black console windows from flashing when spawning external processes like the Claude CLI while preserving process attributes configured by the batch-command helper.
+
+### BatchCommand(ctx, path, args...)
+
+On Windows, `BatchCommand` constructs the required `cmd.exe /S /C` command line for the rare case where a `.cmd` or `.bat` shim must be used. Claude Code normally bypasses this path by launching its native executable or JavaScript entry point directly, which avoids command parsing failures when installation paths contain spaces.
 
 **macOS/Linux** (`hidewindow_other.go`):
 ```go

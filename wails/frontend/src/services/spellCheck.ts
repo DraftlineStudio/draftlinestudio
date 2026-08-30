@@ -2,6 +2,36 @@ import Typo from 'typo-js'
 
 let dictionary: Typo | null = null
 let loadingPromise: Promise<void> | null = null
+let enabled = true
+const changeListeners = new Set<() => void>()
+const customWords = new Set<string>()
+const checkCache = new Map<string, boolean>()
+const suggestionCache = new Map<string, Promise<string[]>>()
+const pendingSuggestionRequests = new Map<number, (suggestions: string[]) => void>()
+let suggestionWorker: Worker | null = null
+let nextSuggestionRequestId = 1
+const commonCorrections: Record<string, string[]> = {
+  hte: ['the'],
+  teh: ['the'],
+  th: ['the'],
+  ot: ['to'],
+}
+
+function cleanWord(word: string): string {
+  return word.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, '')
+}
+
+function notifyChanged(): void {
+  changeListeners.forEach(listener => listener())
+}
+
+function matchCase(candidate: string, source: string): string {
+  if (source === source.toLocaleUpperCase()) return candidate.toLocaleUpperCase()
+  if (source[0] === source[0]?.toLocaleUpperCase()) {
+    return candidate[0].toLocaleUpperCase() + candidate.slice(1)
+  }
+  return candidate
+}
 
 export async function loadDictionary(): Promise<void> {
   if (dictionary) return
@@ -23,6 +53,9 @@ export async function loadDictionary(): Promise<void> {
       const dicData = await dicResponse.text()
 
       dictionary = new Typo('en_US', affData, dicData)
+      checkCache.clear()
+      suggestionCache.clear()
+      notifyChanged()
       console.log('Spell check dictionary loaded')
     } catch (err) {
       console.warn('Failed to initialize spell checker:', err)
@@ -36,20 +69,122 @@ export function isLoaded(): boolean {
   return dictionary !== null
 }
 
-export function checkWord(word: string): boolean {
-  if (!dictionary) return true // Assume correct if no dictionary
-  // Strip punctuation from edges
-  const cleanWord = word.replace(/^[^\w]+|[^\w]+$/g, '')
-  if (!cleanWord || cleanWord.length < 2) return true
-  return dictionary.check(cleanWord)
+export function setSpellCheckEnabled(next: boolean): void {
+  if (enabled === next) return
+  enabled = next
+  checkCache.clear()
+  notifyChanged()
 }
 
-export function getSuggestions(word: string, limit = 5): string[] {
+export function onDictionaryChanged(listener: () => void): () => void {
+  changeListeners.add(listener)
+  return () => changeListeners.delete(listener)
+}
+
+export function setCustomWords(words: string[]): void {
+  const next = new Set(words.map(cleanWord).filter(Boolean).map(word => word.toLocaleLowerCase()))
+  if (next.size === customWords.size && [...next].every(word => customWords.has(word))) return
+
+  customWords.clear()
+  next.forEach(word => customWords.add(word))
+  checkCache.clear()
+  suggestionCache.clear()
+  notifyChanged()
+}
+
+export function checkWord(word: string): boolean {
+  if (!enabled || !dictionary) return true // Assume correct if disabled or no dictionary
+  const cleaned = cleanWord(word)
+  if (!cleaned || cleaned.length < 2) return true
+  if (/^\d+(?:st|nd|rd|th)$/i.test(cleaned)) return true
+
+  const key = cleaned.toLocaleLowerCase()
+  if (customWords.has(key)) return true
+  const cached = checkCache.get(key)
+  if (cached !== undefined) return cached
+
+  const correct = dictionary.check(cleaned)
+  checkCache.set(key, correct)
+  return correct
+}
+
+export function getImmediateSuggestions(word: string, limit = 5): string[] {
   if (!dictionary) return []
-  const cleanWord = word.replace(/^[^\w]+|[^\w]+$/g, '')
-  if (!cleanWord) return []
-  const suggestions = dictionary.suggest(cleanWord)
-  return suggestions.slice(0, limit)
+  const cleaned = cleanWord(word)
+  if (!cleaned) return []
+  const key = cleaned.toLocaleLowerCase()
+  const ranked = new Set<string>()
+  const addIfCorrect = (candidate: string) => {
+    if (candidate && candidate !== key && dictionary?.check(candidate)) ranked.add(candidate)
+  }
+
+  commonCorrections[key]?.forEach(addIfCorrect)
+  if (key.startsWith('e') && key.length > 2) addIfCorrect(key.slice(1))
+
+  for (let index = 0; index < key.length - 1; index++) {
+    const candidate = key.slice(0, index)
+      + key[index + 1]
+      + key[index]
+      + key.slice(index + 2)
+    addIfCorrect(candidate)
+  }
+
+  return [...ranked].slice(0, limit).map(suggestion => matchCase(suggestion, cleaned))
+}
+
+function getSuggestionWorker(): Worker | null {
+  if (suggestionWorker) return suggestionWorker
+  if (typeof Worker === 'undefined') return null
+
+  try {
+    suggestionWorker = new Worker(
+      new URL('../workers/spellSuggestions.worker.ts', import.meta.url),
+      { type: 'module' },
+    )
+    suggestionWorker.onmessage = (event: MessageEvent<{ id: number; suggestions: string[] }>) => {
+      const resolve = pendingSuggestionRequests.get(event.data.id)
+      if (!resolve) return
+      pendingSuggestionRequests.delete(event.data.id)
+      resolve(event.data.suggestions)
+    }
+    suggestionWorker.onerror = () => {
+      pendingSuggestionRequests.forEach(resolve => resolve([]))
+      pendingSuggestionRequests.clear()
+      suggestionWorker?.terminate()
+      suggestionWorker = null
+    }
+    return suggestionWorker
+  } catch {
+    suggestionWorker = null
+    return null
+  }
+}
+
+function requestWorkerSuggestions(word: string, limit: number): Promise<string[]> {
+  const worker = getSuggestionWorker()
+  if (!worker) return Promise.resolve([])
+
+  return new Promise(resolve => {
+    const id = nextSuggestionRequestId++
+    pendingSuggestionRequests.set(id, resolve)
+    worker.postMessage({ id, word, limit })
+  })
+}
+
+export async function getSuggestions(word: string, limit = 5): Promise<string[]> {
+  const cleaned = cleanWord(word)
+  if (!cleaned) return []
+  const key = cleaned.toLocaleLowerCase()
+  let broadSuggestions = suggestionCache.get(key)
+  if (!broadSuggestions) {
+    broadSuggestions = requestWorkerSuggestions(key, limit)
+    suggestionCache.set(key, broadSuggestions)
+  }
+
+  const immediate = getImmediateSuggestions(cleaned, limit)
+  const broad = await broadSuggestions
+  const ranked = new Set([...immediate, ...broad.map(suggestion => matchCase(suggestion, cleaned))])
+  return [...ranked].slice(0, limit)
 }
 
 // Get the word at the current cursor position in a contenteditable

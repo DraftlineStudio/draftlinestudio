@@ -6,7 +6,6 @@ import { useState } from 'react'
 
 export default function AIStudioSection({
   aiEnabled, setAiEnabled,
-  showAiTab, setShowAiTab,
   aiMode, setAiMode,
   provider, setProvider,
   apiKey, setApiKey,
@@ -48,19 +47,6 @@ export default function AIStudioSection({
       </div>
 
       {aiEnabled && <>
-        <div className="dialog-field" style={{ marginBottom: 12 }}>
-          <label className="dialog-checkbox-label">
-            <input
-              type="checkbox"
-              checked={showAiTab}
-              onChange={e => setShowAiTab(e.target.checked)}
-            />
-            <span>Show AI tab in sidebar</span>
-          </label>
-          <p className="settings-hint" style={{ marginTop: 4 }}>
-            Display the AI Studio icon in the sidebar glyph bar.
-          </p>
-        </div>
         <div className="dialog-field">
           <label className="dialog-label">AI Source</label>
           <div className="settings-theme-row">

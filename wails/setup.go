@@ -92,30 +92,42 @@ func resolveNpmBin() string {
 }
 
 // cmdExec wraps exec.CommandContext so that on Windows, .cmd and .bat files
-// are invoked through cmd.exe, which correctly handles paths that contain spaces.
+// are run through cmd.exe /S /C with a hand-built command line — both plain
+// exec and the naive /C form split the script path at spaces once other quoted
+// arguments are present.
 func cmdExec(ctx context.Context, path string, args ...string) *exec.Cmd {
 	if goruntime.GOOS == "windows" {
 		lp := strings.ToLower(path)
 		if strings.HasSuffix(lp, ".cmd") || strings.HasSuffix(lp, ".bat") {
-			return exec.CommandContext(ctx, "cmd.exe", append([]string{"/C", path}, args...)...)
+			return platform.BatchCommand(ctx, path, args...)
 		}
 	}
 	return exec.CommandContext(ctx, path, args...)
 }
 
-// claudeExec builds an exec.Cmd to run Claude Code. On Windows it calls node.exe
-// + cli.js directly, completely bypassing cmd.exe and its argument-quoting quirks.
+// claudeExec builds an exec.Cmd to run Claude Code. On Windows it bypasses the
+// claude.cmd shim entirely: claude-code 2.x ships a native bin/claude.exe, and
+// 1.x shipped cli.js for node — either avoids cmd.exe quoting quirks.
 // On macOS/Linux the shell script is directly executable so cmdExec is used as-is.
 func claudeExec(ctx context.Context, claudePath string, args ...string) *exec.Cmd {
 	if goruntime.GOOS != "windows" {
 		return cmdExec(ctx, claudePath, args...)
 	}
 
-	// npm puts cli.js in node_modules/@anthropic-ai/claude-code/ inside the global prefix dir.
-	// claude.cmd lives in that same prefix dir, so dirname(claude.cmd) is the prefix.
-	cliJS := filepath.Join(filepath.Dir(claudePath), "node_modules", "@anthropic-ai", "claude-code", "cli.js")
+	// claude.cmd lives in the npm global prefix dir, so dirname(claude.cmd) is
+	// the prefix and the package sits under its node_modules.
+	pkgDir := filepath.Join(filepath.Dir(claudePath), "node_modules", "@anthropic-ai", "claude-code")
+
+	// claude-code 2.x: native executable, run it directly.
+	exe := filepath.Join(pkgDir, "bin", "claude.exe")
+	if _, err := os.Stat(exe); err == nil {
+		return exec.CommandContext(ctx, exe, args...)
+	}
+
+	// claude-code 1.x: cli.js run via node.
+	cliJS := filepath.Join(pkgDir, "cli.js")
 	if _, err := os.Stat(cliJS); err != nil {
-		// cli.js not found at expected location — fall back to cmd.exe approach
+		// neither layout found — fall back to running the shim via cmd.exe
 		return cmdExec(ctx, claudePath, args...)
 	}
 
