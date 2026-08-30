@@ -1036,6 +1036,153 @@ html, body, #root {
   opacity: 0.6;
 }
 
+/* Chapter-scoped find and replace */
+.chapter-find-bar {
+  flex-shrink: 0;
+  overflow: hidden;
+  padding: 6px 10px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  animation: chapter-find-slide-in 120ms ease-out;
+  position: relative;
+  z-index: 3;
+}
+
+@keyframes chapter-find-slide-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.chapter-find-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+}
+
+.chapter-replace-row {
+  margin-top: 5px;
+}
+
+.chapter-find-scope {
+  width: 54px;
+  flex: 0 0 54px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.25px;
+  text-transform: uppercase;
+}
+
+.chapter-find-input-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 180px;
+}
+
+.chapter-find-input {
+  width: 100%;
+  height: 28px;
+  box-sizing: border-box;
+  padding: 0 82px 0 8px;
+  background: var(--bg-editor);
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  color: var(--text-primary);
+  font: 12px 'IBM Plex Sans', sans-serif;
+  outline: none;
+}
+
+.chapter-find-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-dim);
+}
+
+.chapter-replace-input {
+  flex: 1;
+  width: auto;
+  min-width: 180px;
+  padding-right: 8px;
+}
+
+.chapter-find-count {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 11px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.chapter-find-option,
+.chapter-find-icon,
+.chapter-find-text-button {
+  height: 26px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: 12px 'IBM Plex Sans', sans-serif;
+  cursor: pointer;
+}
+
+.chapter-find-option {
+  min-width: 28px;
+  padding: 0 5px;
+  font-weight: 600;
+}
+
+.chapter-find-icon {
+  width: 26px;
+  padding: 0;
+  font-size: 15px;
+}
+
+.chapter-find-icon.close {
+  margin-left: 2px;
+  font-size: 18px;
+}
+
+.chapter-find-text-button {
+  padding: 0 9px;
+  border-color: var(--border);
+  white-space: nowrap;
+}
+
+.chapter-find-option:hover,
+.chapter-find-icon:hover,
+.chapter-find-text-button:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.chapter-find-option.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.chapter-find-option:disabled,
+.chapter-find-icon:disabled,
+.chapter-find-text-button:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.chapter-search-match {
+  background: rgba(245, 194, 66, 0.38);
+  border-radius: 2px;
+  box-shadow: inset 0 -1px 0 rgba(184, 125, 0, 0.65);
+}
+
+.chapter-search-match-current {
+  background: rgba(255, 151, 45, 0.66);
+  box-shadow: inset 0 0 0 1px rgba(172, 86, 0, 0.78);
+}
+
 /* Editor scroll canvas */
 .editor-scroll {
   flex: 1;

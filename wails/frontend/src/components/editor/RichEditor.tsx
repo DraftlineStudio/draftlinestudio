@@ -12,8 +12,10 @@ import { FontSize } from '../../extensions/FontSize'
 import { CharacterHighlight } from '../../extensions/CharacterHighlight'
 import { SpellCheck } from '../../extensions/SpellCheck'
 import { GrammarCheck } from '../../extensions/GrammarCheck'
+import { ChapterSearch } from '../../extensions/ChapterSearch'
 import { useEffect, useCallback, useState, useRef, useMemo } from 'react'
 import Toolbar from './Toolbar'
+import ChapterFindReplaceBar from './ChapterFindReplaceBar'
 import ContextMenu, { ContextMenuItem } from '../ContextMenu'
 import InlinePrompt from './InlinePrompt'
 import { checkWord, getDictionaryRoot, getImmediateSuggestions, getSuggestions, isLoaded as isSpellCheckLoaded, normalizeCustomDictionary, setCustomWords, setSpellCheckEnabled } from '../../services/spellCheck'
@@ -92,6 +94,7 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
       CharacterCount,
       SpellCheck,
       GrammarCheck,
+      ChapterSearch,
       CharacterHighlight.configure({
         getNames: () => getHighlightedCharacterNames(),
         highlightClass: 'character-highlight',
@@ -470,6 +473,7 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Toolbar editor={editor} />
+      <ChapterFindReplaceBar editor={editor} />
       <div className="editor-scroll" onContextMenu={handleContextMenu} data-context-menu>
         <div className="editor-content-wrapper">
           {(chapterLabel || chapterName) && (
