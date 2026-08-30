@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.15.02376] - 2026-08-30
+
+### Security
+- Updated nanoid and postcss to fix security advisories.
+
 ## [0.15.02375] - 2026-08-30
 
 ### Fixed
