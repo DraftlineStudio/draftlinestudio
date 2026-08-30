@@ -99,21 +99,92 @@
   white-space: nowrap;
   flex-shrink: 0;
 }
-.chars-merge-banner {
-  font-size: 11px;
-  color: var(--text-secondary, #9DA0A8);
+
+/* ── Searchable character merge dialog ── */
+.chars-merge-dialog {
+  max-width: 560px;
+  padding-bottom: 18px;
+}
+.chars-merge-dialog .dialog-title { margin-bottom: 8px; }
+.chars-merge-dialog .dialog-subtitle { margin: 0 0 14px; line-height: 1.45; }
+.chars-merge-results {
+  height: min(320px, 42vh);
+  margin-top: 10px;
+  overflow-y: auto;
+  border: 1px solid var(--border, #323438);
+  border-radius: 5px;
+  background: var(--bg-input, #222428);
+}
+.chars-merge-result {
+  width: 100%;
+  min-height: 46px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  min-width: 0;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--border-subtle, #2A2C30);
+  background: transparent;
+  color: var(--text-primary, #DFE1E5);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
-.chars-merge-banner strong {
-  display: inline-block;
-  max-width: 140px;
+.chars-merge-result:last-child { border-bottom: 0; }
+.chars-merge-result:hover { background: var(--bg-hover, rgba(255, 255, 255, 0.055)); }
+.chars-merge-result.selected {
+  background: var(--app-accent-dim, rgba(90, 175, 224, 0.14));
+  box-shadow: inset 3px 0 0 var(--app-accent, #5aafe0);
+}
+.chars-merge-result:disabled { cursor: wait; opacity: 0.65; }
+.chars-merge-result-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.chars-merge-result-text strong {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  vertical-align: bottom;
+  font-size: 12.5px;
+}
+.chars-merge-result-text small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted, #6A6E75);
+  font-size: 10.5px;
+}
+.chars-merge-result-count {
+  flex-shrink: 0;
+  color: var(--text-muted, #6A6E75);
+  font-size: 10.5px;
+}
+.chars-merge-empty {
+  padding: 28px 14px;
+  color: var(--text-muted, #6A6E75);
+  text-align: center;
+  font-size: 12px;
+}
+.chars-merge-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 34px;
+  margin-top: 10px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: var(--bg-surface-alt, #303238);
+  color: var(--text-secondary, #9DA0A8);
+  font-size: 12px;
+}
+.chars-merge-preview strong { color: var(--app-accent-text, #5aafe0); }
+.chars-merge-dialog .dialog-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 /* ── Swimlane grid ── */
@@ -191,9 +262,6 @@
 .chars-row.selected .chars-lane-sticky {
   background: linear-gradient(var(--bg-active), var(--bg-active)) var(--bg-panel, #27292D);
   box-shadow: inset 2px 0 0 var(--app-accent-text, #5aafe0);
-}
-.chars-row.merge-source .chars-lane-sticky {
-  box-shadow: inset 2px 0 0 var(--status-warning, #E5C07B);
 }
 .chars-name-cell {
   width: 200px;

@@ -88,7 +88,6 @@ export default function CharactersView() {
   const [sortMode, setSortMode] = useState<SortMode>(savedLane === 'heat' ? 'mentions-desc' : 'first')
   const [laneView, setLaneView] = useState<ViewMode>(savedLane)
   const [mergeFrom, setMergeFrom] = useState<string | null>(null)
-  const [mergeWith, setMergeWith] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
   const [adding, setAdding] = useState(false)
   const [splitting, setSplitting] = useState(false)
@@ -98,11 +97,13 @@ export default function CharactersView() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setViewMode('editor')
+      if (e.key !== 'Escape') return
+      if (mergeFrom) setMergeFrom(null)
+      else setViewMode('editor')
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [setViewMode])
+  }, [mergeFrom, setViewMode])
 
   const characters = book?.story_bible?.characters ?? []
   const reviewCount = characters.filter(c => c.detection_status === 'review').length
@@ -163,10 +164,6 @@ export default function CharactersView() {
   }
 
   const pickRow = (id: string) => {
-    if (mergeFrom) {
-      if (id !== mergeFrom && entityIds.has(id)) setMergeWith(id)
-      return
-    }
     setSelectedId(id)
     setEditing(false)
     setSplitting(false)
@@ -179,15 +176,14 @@ export default function CharactersView() {
     setViewMode('editor')
   }
 
-  const doMerge = async (keepId: string) => {
-    if (!mergeFrom || !mergeWith) return
-    const otherId = keepId === mergeFrom ? mergeWith : mergeFrom
-    const ok = await mergeEntities([keepId, otherId], '')
+  const doMerge = async (targetId: string): Promise<boolean> => {
+    if (!mergeFrom || targetId === mergeFrom) return false
+    const ok = await mergeEntities([targetId, mergeFrom], '')
     if (ok) {
-      setSelectedId(keepId)
+      setSelectedId(targetId)
       setMergeFrom(null)
-      setMergeWith(null)
     }
+    return ok
   }
 
   if (!book) return null
@@ -241,28 +237,19 @@ export default function CharactersView() {
               <option value="review">Needs review ({reviewCount})</option>
               <option value="all">All candidates</option>
             </select>
-            {mergeFrom ? (
-              <div className="chars-merge-banner">
-                Click who <strong>{charMap.get(mergeFrom)?.name}</strong> really is…
-                <button className="ai-link-btn" onClick={() => { setMergeFrom(null); setMergeWith(null) }}>cancel</button>
-              </div>
-            ) : (
+            <button className="ai-link-btn" onClick={() => { setAdding(true); setEditing(false); setSplitting(false) }}>+ Add character</button>
+            {characters.length > 0 && (confirmClear ? (
               <>
-                <button className="ai-link-btn" onClick={() => { setAdding(true); setEditing(false); setSplitting(false) }}>+ Add character</button>
-                {characters.length > 0 && (confirmClear ? (
-                  <>
-                    <button className="ai-link-btn" style={{ color: '#E06C75' }} onClick={() => { clearAllCharacters(); setConfirmClear(false); setSelectedId(null) }}>
-                      Clear {characters.length}?
-                    </button>
-                    <button className="ai-link-btn" onClick={() => setConfirmClear(false)}>keep</button>
-                  </>
-                ) : (
-                  <button className="ai-link-btn" onClick={() => setConfirmClear(true)} title="Remove all characters for a fresh detection">
-                    Clear all
-                  </button>
-                ))}
+                <button className="ai-link-btn" style={{ color: '#E06C75' }} onClick={() => { clearAllCharacters(); setConfirmClear(false); setSelectedId(null) }}>
+                  Clear {characters.length}?
+                </button>
+                <button className="ai-link-btn" onClick={() => setConfirmClear(false)}>keep</button>
               </>
-            )}
+            ) : (
+              <button className="ai-link-btn" onClick={() => setConfirmClear(true)} title="Remove all characters for a fresh detection">
+                Clear all
+              </button>
+            ))}
             <span style={{ flex: 1 }} />
             <span className="chars-sort-label">SORTED BY</span>
             <select className="dialog-select" value={sortMode} onChange={e => setSortMode(e.target.value as SortMode)}>
@@ -313,7 +300,7 @@ export default function CharactersView() {
                 return (
                   <div
                     key={c.id}
-                    className={`chars-row${on ? ' selected' : ''}${mergeFrom === c.id ? ' merge-source' : ''}`}
+                    className={`chars-row${on ? ' selected' : ''}`}
                     onClick={() => pickRow(c.id)}
                   >
                     <div className="chars-lane-sticky">
@@ -394,13 +381,6 @@ export default function CharactersView() {
                 onDone={() => setSplitting(false)}
                 onSplit={splitEntity}
               />
-            ) : mergeWith && mergeFrom ? (
-              <MergeConfirm
-                a={charMap.get(mergeFrom)!}
-                b={charMap.get(mergeWith)!}
-                onKeep={doMerge}
-                onCancel={() => setMergeWith(null)}
-              />
             ) : selected ? (
               <DetailPane
                 book={book}
@@ -413,7 +393,7 @@ export default function CharactersView() {
                 onEdit={() => setEditing(true)}
                 onConfirm={() => updateCharacter({ ...selected, detection_status: 'accepted' })}
                 onSplit={() => setSplitting(true)}
-                onMerge={() => { setMergeFrom(selected.id); setMergeWith(null) }}
+                onMerge={() => setMergeFrom(selected.id)}
                 onDelete={() => { deleteCharacter(selected.id); setSelectedId(null) }}
                 onJump={jumpToChapter}
               />
@@ -421,6 +401,15 @@ export default function CharactersView() {
           </aside>
         )}
       </div>
+
+      {mergeFrom && charMap.has(mergeFrom) && (
+        <MergeCharacterModal
+          source={charMap.get(mergeFrom)!}
+          candidates={characters.filter(character => character.id !== mergeFrom && entityIds.has(character.id))}
+          onMerge={doMerge}
+          onClose={() => setMergeFrom(null)}
+        />
+      )}
     </div>
   )
 }
@@ -614,21 +603,103 @@ function DetailPane({ book, char, charMap, relationships, events, entityBacked, 
   )
 }
 
-// ── Merge confirmation ───────────────────────────────────────────────────────
+// ── Character merge modal ────────────────────────────────────────────────────
 
-function MergeConfirm({ a, b, onKeep, onCancel }: {
-  a: Character
-  b: Character
-  onKeep: (keepId: string) => void
-  onCancel: () => void
+function MergeCharacterModal({ source, candidates, onMerge, onClose }: {
+  source: Character
+  candidates: Character[]
+  onMerge: (targetId: string) => Promise<boolean>
+  onClose: () => void
 }) {
+  const [search, setSearch] = useState('')
+  const [targetId, setTargetId] = useState<string | null>(null)
+  const [merging, setMerging] = useState(false)
+
+  const matches = useMemo(() => {
+    const needle = search.trim().toLowerCase()
+    return candidates
+      .filter(character => !needle || character.name.toLowerCase().includes(needle) ||
+        (character.aliases ?? []).some(alias => alias.toLowerCase().includes(needle)))
+      .sort((a, b) => {
+        const aStarts = needle && a.name.toLowerCase().startsWith(needle) ? 0 : 1
+        const bStarts = needle && b.name.toLowerCase().startsWith(needle) ? 0 : 1
+        return aStarts - bStarts || a.name.localeCompare(b.name)
+      })
+  }, [candidates, search])
+
+  const target = targetId ? candidates.find(character => character.id === targetId) ?? null : null
+  const submit = async () => {
+    if (!target || merging) return
+    setMerging(true)
+    const ok = await onMerge(target.id)
+    if (!ok) setMerging(false)
+  }
+
   return (
-    <div>
-      <div className="chars-section-label" style={{ marginBottom: 8 }}>Same person — keep which name?</div>
-      <p className="chars-pane-meta" style={{ marginBottom: 10 }}>The other name becomes an alias. Remembered on every re-detect.</p>
-      <button className="tool-card-btn" style={{ display: 'block', width: '100%', marginBottom: 6 }} onClick={() => onKeep(a.id)}>{a.name}</button>
-      <button className="tool-card-btn" style={{ display: 'block', width: '100%', marginBottom: 6 }} onClick={() => onKeep(b.id)}>{b.name}</button>
-      <button className="ai-link-btn" onClick={onCancel}>Cancel</button>
+    <div className="dialog-overlay" onMouseDown={onClose}>
+      <div
+        className="dialog chars-merge-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="character-merge-title"
+        onMouseDown={event => event.stopPropagation()}
+      >
+        <div className="dialog-title" id="character-merge-title">Merge “{source.name}”</div>
+        <p className="dialog-subtitle">Search for the correct character. The selected character keeps its display name; “{source.name}” becomes an alias.</p>
+        <input
+          className="dialog-input"
+          value={search}
+          onChange={event => { setSearch(event.target.value); setTargetId(null) }}
+          placeholder="Search character names or aliases…"
+          aria-label="Search characters to merge"
+          autoFocus
+        />
+
+        <div className="chars-merge-results" role="listbox" aria-label="Merge targets">
+          {matches.map(character => {
+            const selected = character.id === targetId
+            const aliases = (character.aliases ?? []).filter(alias => alias.toLowerCase() !== character.name.toLowerCase())
+            return (
+              <button
+                key={character.id}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                className={`chars-merge-result${selected ? ' selected' : ''}`}
+                onClick={() => setTargetId(character.id)}
+                disabled={merging}
+              >
+                <span className="chars-dot" style={{ background: characterColor(character.name) }} />
+                <span className="chars-merge-result-text">
+                  <strong>{character.name}</strong>
+                  {aliases.length > 0 && <small>Aliases: {aliases.slice(0, 3).join(', ')}</small>}
+                </span>
+                <span className="chars-merge-result-count">{character.mention_count ?? 0} mentions</span>
+              </button>
+            )
+          })}
+          {matches.length === 0 && (
+            <div className="chars-merge-empty">
+              {search.trim()
+                ? `No mergeable character matches “${search.trim()}”.`
+                : 'No other detected characters are available to merge.'}
+            </div>
+          )}
+        </div>
+
+        {target && (
+          <div className="chars-merge-preview">
+            <span>{source.name}</span><strong>→</strong><span>{target.name}</span>
+          </div>
+        )}
+
+        <div className="dialog-actions">
+          <button className="dialog-btn" onClick={onClose} disabled={merging}>Cancel</button>
+          <button className="dialog-btn primary" onClick={submit} disabled={!target || merging}>
+            {merging ? 'Merging…' : target ? `Merge into ${target.name}` : 'Select a character'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

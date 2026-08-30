@@ -19,6 +19,19 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02410] - 2026-08-30
+
+### Changed
+- Replaced the clipped click-a-row character merge mode with a dedicated searchable **Merge Character** dialog
+- Merge targets can be searched by canonical name or alias and show their mention counts for disambiguation
+- The dialog previews the duplicate-to-canonical direction before confirmation; the searched-for target keeps its display name and the duplicate becomes an alias
+
+### Fixed
+- Character merging no longer appears to be a dead button when toolbar space clips its prior instruction banner
+- Escape and clicking outside the merge dialog now cancel the merge without closing the Characters workspace
+
+---
+
 ## [0.16.02409] - 2026-08-30
 
 ### Added
