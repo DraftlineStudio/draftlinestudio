@@ -26,6 +26,10 @@ export function CheckClaudeCode() {
   return window['go']['main']['App']['CheckClaudeCode']();
 }
 
+export function CheckCodexCLI() {
+  return window['go']['main']['App']['CheckCodexCLI']();
+}
+
 export function ClearAPIKey() {
   return window['go']['main']['App']['ClearAPIKey']();
 }
@@ -126,6 +130,10 @@ export function OpenClaudeAuth() {
   return window['go']['main']['App']['OpenClaudeAuth']();
 }
 
+export function OpenCodexAuth() {
+  return window['go']['main']['App']['OpenCodexAuth']();
+}
+
 export function OpenRecentProject(arg1) {
   return window['go']['main']['App']['OpenRecentProject'](arg1);
 }
@@ -164,6 +172,10 @@ export function SetAPIKey(arg1) {
 
 export function SetupClaudeCode() {
   return window['go']['main']['App']['SetupClaudeCode']();
+}
+
+export function SetupCodexCLI() {
+  return window['go']['main']['App']['SetupCodexCLI']();
 }
 
 export function SplitEntity(arg1, arg2, arg3, arg4) {
