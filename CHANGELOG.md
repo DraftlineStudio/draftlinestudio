@@ -19,6 +19,13 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02399] - 2026-08-30
+
+### Changed
+- The tools sidebar (including the character quick reference) now closes while the Characters codex is open, giving the swimlane grid the full width; it returns when the codex closes
+
+---
+
 ## [0.16.02398] - 2026-08-30
 
 ### Fixed

@@ -184,7 +184,7 @@ export default function App() {
       <div className="main-layout">
         <ChapterPanel />
         {viewMode === 'cast' ? <CharactersView /> : <EditorPanel />}
-        <ToolsPanel />
+        {viewMode !== 'cast' && <ToolsPanel />}
       </div>
       <StatusBar />
       {dialogs.showMetadata && <MetadataDialog />}
