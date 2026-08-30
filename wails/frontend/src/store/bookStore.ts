@@ -18,25 +18,66 @@ import { usePlotStore } from './plotStore'
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
 const AUTO_SAVE_DELAY = 5000
 
+// Save serialization + staleness tracking (module-scoped, not reactive state).
+// saveRevision is bumped by scheduleAutoSave() — the funnel every dirty-marking
+// mutation already calls — so a save that completes after further edits knows
+// its snapshot is stale and must not clear isDirty.
+let saveRevision = 0
+// saveChain serializes all saves (manual, autosave, close, save-and-proceed)
+// so two SaveBook calls can never interleave on the Go side.
+let saveChain: Promise<unknown> = Promise.resolve()
+
+export type SaveOutcome =
+  | { status: 'saved'; filePath: string }
+  | { status: 'cancelled' }
+  | { status: 'error'; message: string }
+
+// Shared save primitive. Chains on saveChain, snapshots the book AFTER the
+// prior save completes (so a queued save always writes the newest state),
+// and clears isDirty only if no edit happened while the save was in flight.
+// Always writes result.file_path back into the book (autosave previously lost it).
+function performSave(kind: 'save' | 'saveAs'): Promise<SaveOutcome> {
+  const run = saveChain.then(async (): Promise<SaveOutcome> => {
+    const book = useBookStore.getState().book
+    if (!book) return { status: 'error', message: 'no book open' }
+    const rev = saveRevision
+    try {
+      const result = kind === 'saveAs' ? await SaveBookAs(book as any) : await SaveBook(book as any)
+      if (result.success) {
+        if (saveRevision === rev) {
+          useBookStore.setState(s => ({ isDirty: false, book: s.book ? { ...s.book, file_path: result.file_path } : null }))
+        } else {
+          // Edited while saving: keep isDirty so the re-armed autosave persists the newer state.
+          useBookStore.setState(s => ({ book: s.book ? { ...s.book, file_path: result.file_path } : null }))
+        }
+        return { status: 'saved', filePath: result.file_path }
+      }
+      if (result.error === 'cancelled') return { status: 'cancelled' }
+      return { status: 'error', message: result.error || 'unknown error' }
+    } catch (e) {
+      return { status: 'error', message: String(e) }
+    }
+  })
+  saveChain = run.catch(() => {})
+  return run
+}
+
 function scheduleAutoSave() {
+  saveRevision++
   if (autoSaveTimer) clearTimeout(autoSaveTimer)
   autoSaveTimer = setTimeout(async () => {
     const state = useBookStore.getState()
     if (state.book && state.isDirty && state.book.file_path) {
       useBookStore.setState({ isAutoSaving: true })
-      try {
-        const result = await SaveBook(state.book as any)
-        if (result.success) {
-          useBookStore.setState({ isDirty: false, isAutoSaving: false, statusMessage: 'Auto-saved' })
-          setTimeout(() => {
-            if (useBookStore.getState().statusMessage === 'Auto-saved') {
-              useBookStore.setState({ statusMessage: '' })
-            }
-          }, 2000)
-        } else {
-          useBookStore.setState({ isAutoSaving: false })
-        }
-      } catch {
+      const outcome = await performSave('save')
+      if (outcome.status === 'saved') {
+        useBookStore.setState({ isAutoSaving: false, statusMessage: 'Auto-saved' })
+        setTimeout(() => {
+          if (useBookStore.getState().statusMessage === 'Auto-saved') {
+            useBookStore.setState({ statusMessage: '' })
+          }
+        }, 2000)
+      } else {
         useBookStore.setState({ isAutoSaving: false })
       }
     }
@@ -300,37 +341,30 @@ export const useBookStore = create<BookStore>((set, get) => ({
   },
 
   saveBook: async () => {
-    const { book } = get()
-    if (!book) return
-    try {
-      const result = await SaveBook(book as any)
-      if (result.success) {
-        set(s => ({ isDirty: false, book: s.book ? { ...s.book, file_path: result.file_path } : null, statusMessage: `Saved: ${result.file_path}` }))
-      } else if (result.error !== 'cancelled') {
-        set({ statusMessage: `Save failed: ${result.error}` })
-      }
-    } catch (e) {
-      set({ statusMessage: `Save error: ${e}` })
+    if (!get().book) return
+    const outcome = await performSave('save')
+    if (outcome.status === 'saved') {
+      set({ statusMessage: `Saved: ${outcome.filePath}` })
+    } else if (outcome.status === 'error') {
+      set({ statusMessage: `Save failed: ${outcome.message}` })
     }
   },
 
   saveBookAs: async () => {
-    const { book } = get()
-    if (!book) return
-    try {
-      const result = await SaveBookAs(book as any)
-      if (result.success) {
-        set(s => ({ isDirty: false, book: s.book ? { ...s.book, file_path: result.file_path } : null, statusMessage: `Saved: ${result.file_path}` }))
-      }
-    } catch (e) {
-      set({ statusMessage: `Save error: ${e}` })
+    if (!get().book) return
+    const outcome = await performSave('saveAs')
+    if (outcome.status === 'saved') {
+      set({ statusMessage: `Saved: ${outcome.filePath}` })
     }
+    // Errors intentionally silent for now (matches previous behavior; next fix surfaces them).
   },
 
   closeProject: async () => {
     const { book, isDirty } = get()
     if (book && isDirty) {
-      try { await SaveBook(book as any) } catch (e) { console.error('Auto-save before close failed:', e) }
+      // Outcome intentionally ignored (matches previous behavior; next fix aborts close on failure).
+      const outcome = await performSave('save')
+      if (outcome.status === 'error') console.error('Auto-save before close failed:', outcome.message)
     }
     set({ book: null, currentSection: 'body', currentIndex: 0, isDirty: false, statusMessage: '' })
     useEditorStore.getState().clearPendingDiff()
@@ -703,6 +737,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
     set(s => ({ dialogs: { ...s.dialogs, showNewBookWizard: false } }))
     const section: Section = book.body.length > 0 ? 'body' : book.front_matter.length > 0 ? 'front_matter' : 'back_matter'
     set({ book, currentSection: section, currentIndex: 0, isDirty: true, statusMessage: `Imported: ${book.metadata.title}` })
+    scheduleAutoSave()
     useAppStore.getState().setShowWelcome(false)
   },
 
@@ -715,17 +750,13 @@ export const useBookStore = create<BookStore>((set, get) => ({
     const action = dialogs.pendingAction
     set(s => ({ dialogs: { ...s.dialogs, showUnsavedWarning: false, pendingAction: null } }))
     if (book) {
-      try {
-        const result = await SaveBook(book as any)
-        if (result.success) {
-          set(s => ({ isDirty: false, book: s.book ? { ...s.book, file_path: result.file_path } : null, statusMessage: `Saved: ${result.file_path}` }))
-        } else if (result.error === 'cancelled') {
-          return
-        }
-      } catch (e) {
-        set({ statusMessage: `Save error: ${e}` })
+      const outcome = await performSave('save')
+      if (outcome.status === 'saved') {
+        set({ statusMessage: `Saved: ${outcome.filePath}` })
+      } else if (outcome.status === 'cancelled') {
         return
       }
+      // 'error' falls through intentionally (matches previous behavior; next fix blocks the transition).
     }
     if (action === 'new') {
       set(s => ({ dialogs: { ...s.dialogs, showNewBookWizard: true } }))
