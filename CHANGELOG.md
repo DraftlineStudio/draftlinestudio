@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02405] - 2026-08-30
+
+### Fixed
+- Character analysis, relationships, and corrections are now saved with the book.
+- Re-detecting characters keeps roles, descriptions, and notes.
+
 ## [0.16.02404] - 2026-08-30
 
 ### Fixed
