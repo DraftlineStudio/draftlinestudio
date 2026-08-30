@@ -19,6 +19,15 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.15.02384] - 2026-08-30
+
+### Fixed
+- A failed save no longer lets "Save and proceed" continue into New/Open and discard the unsaved manuscript: the unsaved-changes dialog now stays open (pending action retained) on a save error, and cancelling the Save As picker returns to the dialog instead of being treated as consent to discard
+- Closing a project with unsaved changes now aborts (book and dirty state untouched, welcome screen not shown) if the save fails or is cancelled, with an explanatory status message
+- Save As now surfaces failures via a "Save failed" status message instead of failing silently
+
+---
+
 ## [0.15.02383] - 2026-08-30
 
 ### Fixed
