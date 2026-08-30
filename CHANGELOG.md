@@ -19,6 +19,20 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02416] - 2026-08-30
+
+### Fixed
+- Spell checking now canonicalizes curly and alternate apostrophes before dictionary lookup, so valid contractions such as `couldn’t`, `wouldn’t`, and `isn’t` are no longer marked as misspelled
+- Suggestion deduplication compares canonical apostrophe forms, preventing a typographic contraction from receiving the visually identical ASCII-apostrophe word as its correction
+- Replacement suggestions preserve the manuscript's apostrophe style
+- Confirmed character names and aliases are now supplied to spell checking as a transient per-project lexicon, preventing names such as Hanlon, Mara, or Ionescu from receiving red underlines without polluting the personal custom dictionary
+- Character possessives inherit the ignored root-name behavior automatically
+
+### Tests
+- Added regression coverage for four apostrophe variants, live dictionary lookup, possessive dictionary roots, duplicate custom entries, suggestion deduplication, and multi-word character-name lexicon expansion
+
+---
+
 ## [0.16.02415] - 2026-08-30
 
 ### Added
