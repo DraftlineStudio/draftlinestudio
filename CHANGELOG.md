@@ -19,6 +19,18 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02394] - 2026-08-30
+
+### Changed
+- Replaced the force-directed relationship graph with a swimlane character grid: one row per character, one column per chapter, cell intensity showing mention density — readable at 8 characters or 800, where the old graph collapsed into a hairball
+- The new Characters workspace keeps everything else: filter, detection, add/edit/delete, split, merge ("Same as…"), relationship strengths, and key events, now in a persistent right-hand detail pane
+- Two lane styles: Grid view (discrete chapter cells with numbered columns) and Heatmap view (continuous per-chapter intensity), with sorting by first appearance or mention count
+
+### Removed
+- The D3 force-graph dependency (~62 kB of minified bundle); character visuals are now pure CSS
+
+---
+
 ## [0.16.02393] - 2026-08-30
 
 ### Changed

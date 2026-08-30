@@ -1,6 +1,7 @@
-// CastView — full-workspace view of the book's cast: character list on the
-// left, relationship web in the center, dossier on the right, chapter spine
-// below. Styled like the rest of the app (IDE look, app font).
+// CharactersView — the character codex: a swimlane chapter-presence grid
+// (one row per character, one column per chapter) with a detail pane on the
+// right. Replaces the old force-graph Cast workspace; scales to hundreds of
+// characters where the graph became an unreadable hairball.
 // All detection is local pattern-matching — no AI, nothing leaves the machine.
 
 import { useMemo, useState, useEffect } from 'react'
@@ -9,8 +10,7 @@ import { useRelationshipStore } from '../../store/relationshipStore'
 import { characterColor, characterInitials } from '../../utils/characterVisuals'
 import { hexToRgba } from '../../utils/accentColor'
 import type { BookData, Character, CharacterRole, CharacterEvent } from '../../types/draftline'
-import { WebCanvas } from './WebCanvas'
-import './cast.css'
+import './characters.css'
 
 function allChapters(book: BookData) {
   return [...(book.front_matter || []), ...(book.body || []), ...(book.back_matter || [])]
@@ -20,7 +20,17 @@ function chapterName(book: BookData, index: number): string {
   return allChapters(book)[index]?.title || `Chapter ${index + 1}`
 }
 
-export default function CastView() {
+// Discrete alpha ramp for grid cells: reads as "none / few / some / many / lots".
+function cellAlpha(v: number): number {
+  return v <= 0 ? 0 : v <= 2 ? 0.3 : v <= 4 ? 0.55 : v <= 6 ? 0.78 : 0.95
+}
+
+const EMPTY_CELL = 'rgba(255,255,255,0.03)'
+
+type SortMode = 'first' | 'mentions-desc' | 'mentions-asc'
+type ViewMode = 'grid' | 'heat'
+
+export default function CharactersView() {
   const {
     book, setViewMode, indexBook, isIndexing, updateBook,
     addCharacter, updateCharacter, deleteCharacter, clearAllCharacters,
@@ -30,6 +40,8 @@ export default function CastView() {
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+  const [sortMode, setSortMode] = useState<SortMode>('first')
+  const [laneView, setLaneView] = useState<ViewMode>('grid')
   const [mergeFrom, setMergeFrom] = useState<string | null>(null)
   const [mergeWith, setMergeWith] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
@@ -50,7 +62,6 @@ export default function CastView() {
   const characters = book?.story_bible?.characters ?? []
   const relationships = book?.analysis?.relationships?.relationships ?? []
   const events = book?.analysis?.relationships?.events ?? []
-  const hasWeb = relationships.length > 0
   const entityIds = useMemo(
     () => new Set((book?.analysis?.entity_resolution?.entities ?? []).map(e => e.id)),
     [book],
@@ -62,17 +73,35 @@ export default function CastView() {
     return m
   }, [characters])
 
-  const filtered = useMemo(() => {
+  const sorted = useMemo(() => {
     const q = query.trim().toLowerCase()
     const list = q
       ? characters.filter(c =>
           c.name.toLowerCase().includes(q) ||
           (c.aliases || []).some(a => a.toLowerCase().includes(q)))
-      : characters
-    return [...list].sort((a, b) => (b.mention_count || 0) - (a.mention_count || 0))
-  }, [characters, query])
+      : [...characters]
+    const byMentions = (a: Character, b: Character) => (b.mention_count || 0) - (a.mention_count || 0)
+    if (sortMode === 'first') {
+      list.sort((a, b) =>
+        (a.first_chapter ?? Number.MAX_SAFE_INTEGER) - (b.first_chapter ?? Number.MAX_SAFE_INTEGER) ||
+        byMentions(a, b))
+    } else if (sortMode === 'mentions-asc') {
+      list.sort((a, b) => -byMentions(a, b))
+    } else {
+      list.sort(byMentions)
+    }
+    return list
+  }, [characters, query, sortMode])
+
+  // The pane always shows someone when characters exist (matches the design).
+  useEffect(() => {
+    if (!selectedId && sorted.length > 0) setSelectedId(sorted[0].id)
+    else if (selectedId && !charMap.has(selectedId)) setSelectedId(sorted[0]?.id ?? null)
+  }, [selectedId, sorted, charMap])
 
   const selected = selectedId ? charMap.get(selectedId) ?? null : null
+  const chapters = book ? allChapters(book) : []
+  const chapterCount = chapters.length
 
   // Detect characters and weave relationships in one action.
   const detect = async () => {
@@ -84,10 +113,14 @@ export default function CastView() {
     if (updated) updateBook(updated)
   }
 
-  const pickForMerge = (id: string) => {
-    if (!mergeFrom || id === mergeFrom) return
-    if (!entityIds.has(id)) return
-    setMergeWith(id)
+  const pickRow = (id: string) => {
+    if (mergeFrom) {
+      if (id !== mergeFrom && entityIds.has(id)) setMergeWith(id)
+      return
+    }
+    setSelectedId(id)
+    setEditing(false)
+    setSplitting(false)
   }
 
   const doMerge = async (keepId: string) => {
@@ -103,16 +136,20 @@ export default function CastView() {
 
   if (!book) return null
 
+  const gridCols = `repeat(${chapterCount}, 18px)`
+  const heatCols = `repeat(${chapterCount}, 14px)`
+  const heatWidth = chapterCount * 14
+
   return (
-    <div className="cast-view">
-      <header className="cast-header">
-        <div className="cast-header-title">
-          <span className="cast-heading">Cast</span>
-          <span className="cast-count">{characters.length} characters{hasWeb ? ` · ${relationships.length} relationships` : ''}</span>
-        </div>
-        <div className="cast-header-actions">
+    <div className="chars-view">
+      <header className="chars-header">
+        <span className="chars-heading">Characters</span>
+        <span className="chars-count">
+          {characters.length} characters{relationships.length ? ` · ${relationships.length} relationships` : ''}
+        </span>
+        <div className="chars-header-actions">
           <button className="tool-card-btn" onClick={detect} disabled={busy}>
-            {busy ? 'Working…' : characters.length ? 'Re-Detect Cast' : 'Detect Cast'}
+            {busy ? 'Working…' : characters.length ? 'Re-Detect' : 'Detect Characters'}
           </button>
           <button className="tool-card-btn secondary" onClick={() => setViewMode('editor')} title="Back to writing (Esc)">
             Close
@@ -120,80 +157,137 @@ export default function CastView() {
         </div>
       </header>
 
-      <div className="cast-body">
-        {/* ── Cast rail ── */}
-        <aside className="cast-rail">
-          <input
-            className="dialog-input cast-search"
-            placeholder="Filter cast…"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-          />
-          {mergeFrom && (
-            <div className="cast-merge-banner">
-              Click who <strong>{charMap.get(mergeFrom)?.name}</strong> really is…
-              <button className="ai-link-btn" onClick={() => { setMergeFrom(null); setMergeWith(null) }}>cancel</button>
-            </div>
-          )}
-          <div className="cast-list">
-            {filtered.map(c => (
-              <button
-                key={c.id}
-                className={`cast-row${selectedId === c.id ? ' selected' : ''}${mergeFrom === c.id ? ' merge-source' : ''}`}
-                onClick={() => (mergeFrom ? pickForMerge(c.id) : (setSelectedId(c.id), setEditing(false), setSplitting(false)))}
-              >
-                <span className="cast-dot" style={{ background: characterColor(c.name) }} />
-                <span className="cast-row-name">{c.name}</span>
-                {c.mention_count ? <span className="cast-row-count">{c.mention_count}</span> : null}
-              </button>
-            ))}
-            {filtered.length === 0 && (
-              <div className="cast-rail-empty">
-                {characters.length === 0 ? 'No characters yet — click Detect Cast.' : 'No matches.'}
+      <div className="chars-body">
+        <div className="chars-main">
+          <div className="chars-toolbar">
+            <input
+              className="dialog-input"
+              placeholder="Filter characters…"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+            />
+            <select className="dialog-select" value={laneView} onChange={e => setLaneView(e.target.value as ViewMode)}>
+              <option value="grid">Grid view</option>
+              <option value="heat">Heatmap view</option>
+            </select>
+            {mergeFrom ? (
+              <div className="chars-merge-banner">
+                Click who <strong>{charMap.get(mergeFrom)?.name}</strong> really is…
+                <button className="ai-link-btn" onClick={() => { setMergeFrom(null); setMergeWith(null) }}>cancel</button>
               </div>
-            )}
-          </div>
-          <div className="cast-rail-footer">
-            <button className="ai-link-btn" onClick={() => { setAdding(true); setSelectedId(null) }}>+ Add character</button>
-            <span style={{ flex: 1 }} />
-            {confirmClear ? (
-              <>
-                <button className="ai-link-btn" style={{ color: '#E06C75' }} onClick={() => { clearAllCharacters(); setConfirmClear(false); setSelectedId(null) }}>
-                  Clear {characters.length}?
-                </button>
-                <button className="ai-link-btn" onClick={() => setConfirmClear(false)}>keep</button>
-              </>
             ) : (
-              <button className="ai-link-btn" onClick={() => setConfirmClear(true)} title="Remove all characters for a fresh detection">
-                Clear all
-              </button>
+              <>
+                <button className="ai-link-btn" onClick={() => { setAdding(true); setEditing(false); setSplitting(false) }}>+ Add character</button>
+                {characters.length > 0 && (confirmClear ? (
+                  <>
+                    <button className="ai-link-btn" style={{ color: '#E06C75' }} onClick={() => { clearAllCharacters(); setConfirmClear(false); setSelectedId(null) }}>
+                      Clear {characters.length}?
+                    </button>
+                    <button className="ai-link-btn" onClick={() => setConfirmClear(false)}>keep</button>
+                  </>
+                ) : (
+                  <button className="ai-link-btn" onClick={() => setConfirmClear(true)} title="Remove all characters for a fresh detection">
+                    Clear all
+                  </button>
+                ))}
+              </>
             )}
+            <span style={{ flex: 1 }} />
+            <span className="chars-sort-label">SORTED BY</span>
+            <select className="dialog-select" value={sortMode} onChange={e => setSortMode(e.target.value as SortMode)}>
+              <option value="first">First appearance</option>
+              <option value="mentions-desc">Mentions (descending)</option>
+              <option value="mentions-asc">Mentions (ascending)</option>
+            </select>
           </div>
-        </aside>
 
-        {/* ── Stage ── */}
-        <main className="cast-stage">
-          {hasWeb ? (
-            <WebCanvas book={book} selectedId={selectedId} onSelect={id => { setSelectedId(id); setEditing(false); setSplitting(false) }} />
-          ) : (
-            <div className="cast-stage-empty">
+          {sorted.length === 0 ? (
+            <div className="chars-empty">
               <p>
-                {characters.length
-                  ? 'Detect the cast again to map who interacts with whom.'
-                  : 'Detect your cast to see the people of this book and the relationships between them.'}
+                {characters.length === 0
+                  ? 'Detect your characters to see who appears where across the book.'
+                  : 'No matches.'}
               </p>
-              <button className="tool-card-btn" onClick={detect} disabled={busy}>
-                {busy ? 'Working…' : 'Detect Cast'}
-              </button>
-              <p className="cast-stage-note">Detection runs entirely on your machine — no AI, no network.</p>
+              {characters.length === 0 && (
+                <>
+                  <button className="tool-card-btn" onClick={detect} disabled={busy}>
+                    {busy ? 'Working…' : 'Detect Characters'}
+                  </button>
+                  <p className="chars-empty-note">Detection runs entirely on your machine — no AI, no network.</p>
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="chars-lanes">
+              <div className="chars-lane-head">
+                <div className="chars-lane-sticky">
+                  <div className="chars-col-label" style={{ width: 200 }}>CHARACTER</div>
+                </div>
+                {laneView === 'grid' ? (
+                  <div className="chars-cells" style={{ gridTemplateColumns: gridCols }}>
+                    {chapters.map((_, i) => (
+                      <div key={i} className="chars-ch-label">{i + 1}</div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="chars-heat-scale" style={{ width: heatWidth }}>
+                    <span>CH 1</span><span>CH {chapterCount}</span>
+                  </div>
+                )}
+              </div>
+              {sorted.map(c => {
+                const color = characterColor(c.name)
+                const on = c.id === selectedId
+                return (
+                  <button
+                    key={c.id}
+                    className={`chars-row${on ? ' selected' : ''}${mergeFrom === c.id ? ' merge-source' : ''}`}
+                    onClick={() => pickRow(c.id)}
+                  >
+                    <div className="chars-lane-sticky">
+                      <div className="chars-name-cell">
+                        <span className="chars-dot" style={{ background: color }} />
+                        <span className="chars-name">{c.name}</span>
+                        <span className="chars-mentions">{c.mention_count || ''}</span>
+                      </div>
+                    </div>
+                    {laneView === 'grid' ? (
+                      <div className="chars-cells" style={{ gridTemplateColumns: gridCols }}>
+                        {chapters.map((_, i) => {
+                          const v = c.chapter_mentions?.[i] || 0
+                          return (
+                            <div
+                              key={i}
+                              className="chars-cell"
+                              title={`${chapterName(book, i)} · ${v} ${v === 1 ? 'mention' : 'mentions'}`}
+                              style={{ background: v > 0 ? hexToRgba(color, cellAlpha(v)) : (on ? 'rgba(255,255,255,0.07)' : EMPTY_CELL) }}
+                            />
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div className="chars-heat" style={{ gridTemplateColumns: heatCols, width: heatWidth }}>
+                        {chapters.map((_, i) => {
+                          const v = c.chapter_mentions?.[i] || 0
+                          return (
+                            <div
+                              key={i}
+                              title={`${chapterName(book, i)} · ${v} ${v === 1 ? 'mention' : 'mentions'}`}
+                              style={{ background: v > 0 ? hexToRgba(color, Math.min(0.92, 0.15 + v * 0.09)) : EMPTY_CELL }}
+                            />
+                          )
+                        })}
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
             </div>
           )}
-          {hasWeb && <StorySpine book={book} selected={selected} events={events} />}
-        </main>
+        </div>
 
-        {/* ── Dossier ── */}
         {(selected || adding) && (
-          <aside className="cast-dossier">
+          <aside className="chars-pane">
             {adding ? (
               <CharacterForm
                 char={null}
@@ -213,7 +307,7 @@ export default function CastView() {
                 onDone={() => setSplitting(false)}
                 onSplit={splitEntity}
               />
-            ) : mergeWith && mergeFrom && selected ? (
+            ) : mergeWith && mergeFrom ? (
               <MergeConfirm
                 a={charMap.get(mergeFrom)!}
                 b={charMap.get(mergeWith)!}
@@ -221,7 +315,7 @@ export default function CastView() {
                 onCancel={() => setMergeWith(null)}
               />
             ) : selected ? (
-              <Dossier
+              <DetailPane
                 book={book}
                 char={selected}
                 charMap={charMap}
@@ -233,7 +327,6 @@ export default function CastView() {
                 onSplit={() => setSplitting(true)}
                 onMerge={() => { setMergeFrom(selected.id); setMergeWith(null) }}
                 onDelete={() => { deleteCharacter(selected.id); setSelectedId(null) }}
-                onClose={() => setSelectedId(null)}
               />
             ) : null}
           </aside>
@@ -243,9 +336,9 @@ export default function CastView() {
   )
 }
 
-// ── Dossier ──────────────────────────────────────────────────────────────────
+// ── Detail pane ──────────────────────────────────────────────────────────────
 
-function Dossier({ book, char, charMap, relationships, events, entityBacked, onSelect, onEdit, onSplit, onMerge, onDelete, onClose }: {
+function DetailPane({ book, char, charMap, relationships, events, entityBacked, onSelect, onEdit, onSplit, onMerge, onDelete }: {
   book: BookData
   char: Character
   charMap: Map<string, Character>
@@ -257,7 +350,6 @@ function Dossier({ book, char, charMap, relationships, events, entityBacked, onS
   onSplit: () => void
   onMerge: () => void
   onDelete: () => void
-  onClose: () => void
 }) {
   const color = characterColor(char.name)
 
@@ -275,62 +367,64 @@ function Dossier({ book, char, charMap, relationships, events, entityBacked, onS
 
   return (
     <>
-      <div className="dossier-top">
-        <span className="cast-portrait" style={{ color, borderColor: color, background: hexToRgba(color, 0.12) }}>
+      <div className="chars-pane-top">
+        <span className="chars-portrait" style={{ color, background: hexToRgba(color, 0.12) }}>
           {characterInitials(char.name)}
         </span>
-        <div className="dossier-title">
-          <div className="dossier-name">{char.name}</div>
-          <div className="dossier-role">{char.role || 'minor'}</div>
+        <div style={{ minWidth: 0 }}>
+          <div className="chars-pane-name">{char.name}</div>
+          <div className="chars-pane-role">{char.role || 'minor'}</div>
         </div>
-        <button className="dossier-close" onClick={onClose} title="Close">×</button>
       </div>
 
       {char.aliases && char.aliases.length > 0 && (
-        <div className="dossier-line muted">aka {char.aliases.slice(0, 5).join(', ')}</div>
+        <div className="chars-pane-meta">aka {char.aliases.slice(0, 5).join(', ')}</div>
       )}
 
-      <div className="dossier-line">
+      <div className="chars-pane-meta">
         {char.first_chapter !== undefined && <>First appears: <strong>{chapterName(book, char.first_chapter)}</strong></>}
         {chapterCount > 0 && <> · {chapterCount} chapter{chapterCount === 1 ? '' : 's'}</>}
         {char.mention_count ? <> · {char.mention_count} mentions</> : null}
       </div>
 
-      {char.description && <div className="dossier-line">{char.description}</div>}
+      {char.description && <div className="chars-pane-meta">{char.description}</div>}
 
       {bonds.length > 0 && (
-        <div className="dossier-block">
-          <div className="dossier-block-title">Relationships</div>
-          {bonds.map(({ otherId, rel }) => {
-            const other = charMap.get(otherId)!
-            return (
-              <button key={rel.id} className="cast-row" onClick={() => onSelect(otherId)}>
-                <span className="cast-dot" style={{ background: characterColor(other.name) }} />
-                <span className="cast-row-name">{other.name}</span>
-                <span className="bond-meter"><span style={{ width: `${Math.round(rel.strength * 100)}%`, background: color }} /></span>
-                <span className="cast-row-count">{rel.interaction_count}</span>
-              </button>
-            )
-          })}
-        </div>
+        <>
+          <div className="chars-section-label">Strongest ties</div>
+          <div>
+            {bonds.slice(0, 8).map(({ otherId, rel }) => {
+              const other = charMap.get(otherId)!
+              return (
+                <button key={rel.id} className="chars-bond" onClick={() => onSelect(otherId)}>
+                  <span className="chars-dot" style={{ background: characterColor(other.name) }} />
+                  <span className="chars-name">{other.name}</span>
+                  <span className="chars-bond-meter"><span style={{ width: `${Math.round(rel.strength * 100)}%`, background: color }} /></span>
+                  <span className="chars-mentions">{rel.interaction_count}</span>
+                </button>
+              )
+            })}
+          </div>
+        </>
       )}
 
       {moments.length > 0 && (
-        <div className="dossier-block">
-          <div className="dossier-block-title">Key events</div>
-          {moments.map(m => (
-            <div key={m.id} className="dossier-event">
-              <span className="dossier-event-dot" style={{ background: color }} />
-              <div>
-                <div>{m.description}</div>
-                <div className="muted">{chapterName(book, m.chapter_index)}</div>
+        <>
+          <div className="chars-section-label">Key events</div>
+          <div>
+            {moments.map(m => (
+              <div key={m.id} className="chars-event">
+                <span className="chars-event-dot" style={{ background: color }} />
+                <span className="chars-event-text">
+                  {m.description}<span className="muted"> · {chapterName(book, m.chapter_index)}</span>
+                </span>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </>
       )}
 
-      <div className="dossier-actions">
+      <div className="chars-pane-actions">
         <button className="tool-card-btn secondary" onClick={onEdit}>Edit</button>
         {entityBacked && (char.mention_count ?? 0) >= 2 && (
           <button className="tool-card-btn secondary" onClick={onSplit} title="Some mentions belong to a different person">Split…</button>
@@ -353,9 +447,9 @@ function MergeConfirm({ a, b, onKeep, onCancel }: {
   onCancel: () => void
 }) {
   return (
-    <div className="dossier-block">
-      <div className="dossier-block-title">Same person — keep which name?</div>
-      <p className="dossier-line muted">The other name becomes an alias. Remembered on every re-detect.</p>
+    <div>
+      <div className="chars-section-label" style={{ marginBottom: 8 }}>Same person — keep which name?</div>
+      <p className="chars-pane-meta" style={{ marginBottom: 10 }}>The other name becomes an alias. Remembered on every re-detect.</p>
       <button className="tool-card-btn" style={{ display: 'block', width: '100%', marginBottom: 6 }} onClick={() => onKeep(a.id)}>{a.name}</button>
       <button className="tool-card-btn" style={{ display: 'block', width: '100%', marginBottom: 6 }} onClick={() => onKeep(b.id)}>{b.name}</button>
       <button className="ai-link-btn" onClick={onCancel}>Cancel</button>
@@ -392,9 +486,9 @@ function SplitPanel({ book, char, onDone, onSplit }: {
   const canSplit = checked.size > 0 && checked.size < mentions.length
 
   return (
-    <div className="dossier-block">
-      <div className="dossier-block-title">Split "{char.name}"</div>
-      <p className="dossier-line muted">Check the mentions that belong to a different person.</p>
+    <div>
+      <div className="chars-section-label" style={{ marginBottom: 8 }}>Split "{char.name}"</div>
+      <p className="chars-pane-meta" style={{ marginBottom: 10 }}>Check the mentions that belong to a different person.</p>
       <div className="split-mentions">
         {mentions.map(m => (
           <label key={m.id} className="split-mention">
@@ -443,8 +537,8 @@ function CharacterForm({ char, onSave, onCancel }: {
   const [notes, setNotes] = useState(char?.notes ?? '')
 
   return (
-    <div className="dossier-block">
-      <div className="dossier-block-title">{char ? 'Edit character' : 'New character'}</div>
+    <div>
+      <div className="chars-section-label" style={{ marginBottom: 8 }}>{char ? 'Edit character' : 'New character'}</div>
       <div className="dialog-field">
         <label className="dialog-label">Name</label>
         <input className="dialog-input" value={name} onChange={e => setName(e.target.value)} autoFocus />
@@ -478,49 +572,5 @@ function CharacterForm({ char, onSave, onCancel }: {
         <button className="ai-link-btn" onClick={onCancel}>Cancel</button>
       </div>
     </div>
-  )
-}
-
-// ── Story spine ──────────────────────────────────────────────────────────────
-
-function StorySpine({ book, selected, events }: {
-  book: BookData
-  selected: Character | null
-  events: CharacterEvent[]
-}) {
-  const chapters = allChapters(book)
-  if (!chapters.length) return null
-
-  const color = selected ? characterColor(selected.name) : 'var(--app-accent, #5B8BFF)'
-  const mentionsAt = (idx: number): number => selected?.chapter_mentions?.[idx] || 0
-  const maxMentions = selected?.chapter_mentions
-    ? Math.max(1, ...Object.values(selected.chapter_mentions))
-    : 1
-  const meetingsAt = (idx: number) =>
-    events.some(e => e.event_type === 'meeting' && e.chapter_index === idx &&
-      (!selected || e.character_ids?.includes(selected.id)))
-
-  return (
-    <footer className="story-spine">
-      <span className="spine-label">{selected ? selected.name : 'All chapters'}</span>
-      <div className="spine-track">
-        {chapters.map((ch, idx) => {
-          const m = mentionsAt(idx)
-          const intensity = selected ? m / maxMentions : 0
-          return (
-            <div key={idx} className="spine-chapter" title={`${ch.title || `Chapter ${idx + 1}`}${m ? ` — ${m} mentions` : ''}`}>
-              <div
-                className="spine-glow"
-                style={selected && m > 0 ? {
-                  background: hexToRgba(color.startsWith('#') ? color : '#5B8BFF', 0.35 + intensity * 0.6),
-                  height: `${4 + intensity * 14}px`,
-                } : undefined}
-              />
-              {meetingsAt(idx) && <span className="spine-meeting" style={{ color }}>◆</span>}
-            </div>
-          )
-        })}
-      </div>
-    </footer>
   )
 }
