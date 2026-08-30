@@ -19,6 +19,13 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02401] - 2026-08-30
+
+### Added
+- The codex lane style (Grid vs Heatmap) is now remembered in app settings alongside the theme and other preferences — pick a favorite once and the Characters view opens that way every time (reopening in Heatmap also restores its ranked sort)
+
+---
+
 ## [0.16.02400] - 2026-08-30
 
 ### Changed
