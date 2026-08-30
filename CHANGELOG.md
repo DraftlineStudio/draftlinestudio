@@ -19,6 +19,13 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02398] - 2026-08-30
+
+### Fixed
+- Long names, aliases, mention excerpts, and event text no longer overflow their containers in the Characters view: the header count, merge banner, detail pane, split-mention checklist, and excerpt cards all clamp or wrap correctly
+
+---
+
 ## [0.16.02397] - 2026-08-30
 
 ### Added
