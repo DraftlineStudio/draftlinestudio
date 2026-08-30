@@ -17,6 +17,9 @@ type Character struct {
 	FirstChapter    int               `json:"first_chapter,omitempty"`    // Chapter index where first mentioned
 	ChapterMentions map[int]int       `json:"chapter_mentions,omitempty"` // Chapter index -> mention count
 	Attributes      map[string]string `json:"attributes,omitempty"`       // Extracted attributes (eye_color, hair_color, etc.)
+	EntityKind      string            `json:"entity_kind,omitempty"`
+	DetectionStatus string            `json:"detection_status,omitempty"`
+	DetectionScore  float64           `json:"detection_score,omitempty"`
 }
 
 // StoryBible contains characters, plot notes, and timeline for the book.

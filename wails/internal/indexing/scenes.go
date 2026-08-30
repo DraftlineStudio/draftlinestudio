@@ -140,6 +140,9 @@ func GetCharactersInScene(scene types.SceneRecord, mentions []types.MentionRecor
 func BuildMentionToEntityMap(entities []types.EntityRecord) map[string]string {
 	result := make(map[string]string)
 	for _, entity := range entities {
+		if entity.DetectionStatus == "rejected" {
+			continue
+		}
 		for _, mentionID := range entity.MentionIDs {
 			result[mentionID] = entity.ID
 		}

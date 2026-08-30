@@ -30,6 +30,9 @@ func ConvertEntitiesToCharacters(entities []entityresolution.Entity, mentions []
 	usedNames := map[string]bool{}
 
 	for _, entity := range entities {
+		if entity.DetectionStatus == "rejected" {
+			continue
+		}
 		chapterMentions := make(map[int]int)
 		firstChapter := -1
 
@@ -64,6 +67,9 @@ func ConvertEntitiesToCharacters(entities []entityresolution.Entity, mentions []
 			MentionCount:    len(entity.MentionIDs),
 			FirstChapter:    firstChapter,
 			ChapterMentions: chapterMentions,
+			EntityKind:      entity.Kind,
+			DetectionStatus: entity.DetectionStatus,
+			DetectionScore:  entity.DetectionScore,
 		})
 	}
 
@@ -75,11 +81,14 @@ func ConvertMentionsToRecords(mentions []entityresolution.Mention) []types.Menti
 	records := make([]types.MentionRecord, len(mentions))
 	for i, m := range mentions {
 		records[i] = types.MentionRecord{
-			ID:         m.ID,
-			Text:       m.Text,
-			SentenceID: m.SentenceID,
-			Chapter:    m.Chapter,
-			CharOffset: m.CharOffset,
+			ID:                   m.ID,
+			Text:                 m.Text,
+			SentenceID:           m.SentenceID,
+			Chapter:              m.Chapter,
+			CharOffset:           m.CharOffset,
+			PersonEvidence:       m.PersonEvidence,
+			NonPersonEvidence:    m.NonPersonEvidence,
+			StrongPersonEvidence: m.StrongPersonEvidence,
 		}
 	}
 	return records
@@ -90,12 +99,15 @@ func ConvertEntitiesToRecords(entities []entityresolution.Entity) []types.Entity
 	records := make([]types.EntityRecord, len(entities))
 	for i, e := range entities {
 		records[i] = types.EntityRecord{
-			ID:         e.ID,
-			Canonical:  e.Canonical,
-			Aliases:    e.Aliases,
-			MentionIDs: e.MentionIDs,
-			Confidence: e.Confidence,
-			Titles:     e.Titles,
+			ID:              e.ID,
+			Canonical:       e.Canonical,
+			Aliases:         e.Aliases,
+			MentionIDs:      e.MentionIDs,
+			Confidence:      e.Confidence,
+			Titles:          e.Titles,
+			Kind:            e.Kind,
+			DetectionStatus: e.DetectionStatus,
+			DetectionScore:  e.DetectionScore,
 		}
 	}
 	return records
@@ -106,11 +118,14 @@ func recordsToMentions(records []types.MentionRecord) []entityresolution.Mention
 	mentions := make([]entityresolution.Mention, len(records))
 	for i, m := range records {
 		mentions[i] = entityresolution.Mention{
-			ID:         m.ID,
-			Text:       m.Text,
-			SentenceID: m.SentenceID,
-			Chapter:    m.Chapter,
-			CharOffset: m.CharOffset,
+			ID:                   m.ID,
+			Text:                 m.Text,
+			SentenceID:           m.SentenceID,
+			Chapter:              m.Chapter,
+			CharOffset:           m.CharOffset,
+			PersonEvidence:       m.PersonEvidence,
+			NonPersonEvidence:    m.NonPersonEvidence,
+			StrongPersonEvidence: m.StrongPersonEvidence,
 		}
 	}
 	return mentions
@@ -121,12 +136,15 @@ func recordsToEntities(records []types.EntityRecord) []entityresolution.Entity {
 	entities := make([]entityresolution.Entity, len(records))
 	for i, e := range records {
 		entities[i] = entityresolution.Entity{
-			ID:         e.ID,
-			Canonical:  e.Canonical,
-			Aliases:    e.Aliases,
-			MentionIDs: e.MentionIDs,
-			Confidence: e.Confidence,
-			Titles:     e.Titles,
+			ID:              e.ID,
+			Canonical:       e.Canonical,
+			Aliases:         e.Aliases,
+			MentionIDs:      e.MentionIDs,
+			Confidence:      e.Confidence,
+			Titles:          e.Titles,
+			Kind:            e.Kind,
+			DetectionStatus: e.DetectionStatus,
+			DetectionScore:  e.DetectionScore,
 		}
 	}
 	return entities

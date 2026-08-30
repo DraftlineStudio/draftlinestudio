@@ -223,6 +223,9 @@ func rebuildCharactersFromEntities(book *types.BookData) {
 			char.Personality = old.Personality
 			char.Motivation = old.Motivation
 			char.Notes = old.Notes
+			if old.DetectionStatus == "accepted" {
+				char.DetectionStatus = "accepted"
+			}
 		}
 		if !charNames[strings.ToLower(char.Name)] {
 			preservedChars = append(preservedChars, char)

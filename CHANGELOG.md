@@ -19,6 +19,24 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02408] - 2026-08-30
+
+### Added
+- Character candidates now carry persisted person/non-person evidence, entity kind, detection score, and an `accepted`, `review`, or `rejected` status
+- Added a Needs Review view to the character Codex for uncertain people and story actors such as organizations, groups, ships, and places, keeping the default Characters view precision-first without permanently discarding ambiguity
+- Added Confirm Character for review candidates; confirmation is author curation and survives future re-detection
+- Added `docs/architecture/CHARACTER-DETECTION.md`, documenting the local pipeline, archive persistence, triage model, and real-manuscript evaluation gates
+
+### Fixed
+- Obvious low-value object/noise candidates are retained for diagnostics in analysis but no longer become character cards
+- Rejected diagnostic candidates are excluded from scene, relationship, and event maps so hidden noise cannot inflate Codex relationship counts
+- EPUB import now prefers visible section headings over repeated book-level `<title>` metadata and recognizes acknowledgment/copyright content markers, allowing story-only indexing to exclude those pages after import
+
+### Tests
+- Added entity-kind/status triage, rejected-card exclusion, visible EPUB heading, and author-review workflow coverage
+
+---
+
 ## [0.16.02407] - 2026-08-30
 
 ### Fixed

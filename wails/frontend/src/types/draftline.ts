@@ -32,6 +32,9 @@ export interface Character {
   first_chapter?: number
   chapter_mentions?: Record<number, number>
   attributes?: Record<string, string>
+  entity_kind?: 'person' | 'group' | 'organization' | 'place' | 'object' | 'unknown' | string
+  detection_status?: 'accepted' | 'review' | string
+  detection_score?: number
 }
 
 export interface StoryBible {
@@ -103,6 +106,9 @@ export interface MentionRecord {
   sentence_id: string // ID of containing sentence
   chapter: number     // Chapter index
   char_offset: number // Character offset in chapter
+  person_evidence?: boolean
+  non_person_evidence?: boolean
+  strong_person_evidence?: boolean
 }
 
 export interface EntityRecord {
@@ -112,6 +118,9 @@ export interface EntityRecord {
   mention_ids: string[] // IDs of all mentions
   confidence: number  // Merge confidence (0-1)
   titles: string[]    // Honorifics/titles seen
+  kind?: string
+  detection_status?: string
+  detection_score?: number
   character_id?: string // Link to Character record
 }
 

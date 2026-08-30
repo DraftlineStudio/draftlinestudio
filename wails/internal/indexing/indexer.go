@@ -58,6 +58,7 @@ func IndexBook(book *types.BookData) types.IndexResult {
 		})
 	}
 	result := resolver.ResolveEntities(allMentions)
+	ClassifyResolvedEntities(result.Entities, allMentions)
 
 	// Re-apply user-confirmed "same person" merges from prior sessions.
 	mergeRules := book.Analysis.EntityResolution.MergeRules
