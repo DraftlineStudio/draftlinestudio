@@ -33,7 +33,7 @@ export interface Character {
   chapter_mentions?: Record<number, number>
   attributes?: Record<string, string>
   entity_kind?: 'person' | 'group' | 'organization' | 'place' | 'object' | 'unknown' | string
-  detection_status?: 'accepted' | 'review' | string
+  detection_status?: 'accepted' | 'review' | 'rejected' | string
   detection_score?: number
 }
 
@@ -136,11 +136,17 @@ export interface MergeRule {
   name_2: string
 }
 
+export interface EntityDecision {
+  names: string[]
+  status: 'accepted' | 'rejected' | string
+}
+
 export interface EntityData {
   mentions?: MentionRecord[]
   entities?: EntityRecord[]
   separated_pairs?: SeparatedPairRecord[]
   merge_rules?: MergeRule[]
+  decisions?: EntityDecision[]
   last_resolved?: string
   version?: number
 }

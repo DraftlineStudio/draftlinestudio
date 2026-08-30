@@ -12,6 +12,9 @@ type EntityData struct {
 	// MergeRules stores user-confirmed "same person" name pairs, re-applied
 	// on every re-index
 	MergeRules []MergeRule `json:"merge_rules,omitempty"`
+	// Decisions stores author-confirmed admission choices using names rather
+	// than volatile entity IDs so they survive a fresh resolution pass.
+	Decisions []EntityDecision `json:"decisions,omitempty"`
 	// LastResolved is the timestamp of the last entity resolution run
 	LastResolved string `json:"last_resolved,omitempty"`
 	// Version tracks schema version for future migrations
@@ -58,6 +61,14 @@ type SeparatedPairRecord struct {
 type MergeRule struct {
 	Name1 string `json:"name_1"`
 	Name2 string `json:"name_2"`
+}
+
+// EntityDecision records whether the author considers a resolved candidate a
+// character. Names contains the canonical form and aliases known when the
+// decision was made; a decision is re-applied only when it matches one entity.
+type EntityDecision struct {
+	Names  []string `json:"names"`
+	Status string   `json:"status"` // accepted | rejected
 }
 
 // AnalysisData is a future-proof container for various analysis results.

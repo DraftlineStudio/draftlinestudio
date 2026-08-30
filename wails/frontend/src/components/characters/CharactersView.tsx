@@ -601,7 +601,14 @@ function DetailPane({ book, char, charMap, relationships, events, entityBacked, 
         {entityBacked && (
           <button className="tool-card-btn secondary" onClick={onMerge} title="This character is the same person as another">Same as…</button>
         )}
-        <button className="tool-card-btn secondary" style={{ color: '#E06C75' }} onClick={onDelete}>Delete</button>
+        <button
+          className="tool-card-btn secondary"
+          style={{ color: '#E06C75' }}
+          onClick={onDelete}
+          title={char.is_auto_detected ? 'Hide this false detection and remember the decision on future re-detects' : 'Delete this character'}
+        >
+          {char.is_auto_detected ? 'Not a character' : 'Delete'}
+        </button>
       </div>
     </>
   )
