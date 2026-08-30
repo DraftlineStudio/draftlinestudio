@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02400] - 2026-08-30
+
+### Changed
+- Heatmap view now sorts by mentions.
+
 ## [0.16.02399] - 2026-08-30
 
 ### Changed

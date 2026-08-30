@@ -213,7 +213,16 @@ export default function CharactersView() {
               value={query}
               onChange={e => setQuery(e.target.value)}
             />
-            <select className="dialog-select" value={laneView} onChange={e => setLaneView(e.target.value as ViewMode)}>
+            <select
+              className="dialog-select"
+              value={laneView}
+              onChange={e => {
+                const v = e.target.value as ViewMode
+                setLaneView(v)
+                // Heatmap reads as a ranked order — put the biggest presences on top.
+                if (v === 'heat') setSortMode('mentions-desc')
+              }}
+            >
               <option value="grid">Grid view</option>
               <option value="heat">Heatmap view</option>
             </select>
