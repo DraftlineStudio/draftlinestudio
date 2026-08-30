@@ -19,6 +19,14 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.15.02386] - 2026-08-30
+
+### Changed
+- `editorStore.ts` now lazy-loads the diff engine (`utils/diff.ts`) via dynamic `import()` instead of a static import, so Vite can code-split it as AIStudio already intended
+- The ineffective-dynamic-import build warning for `diff.ts` is gone; the module ships as its own 2.29 kB chunk and the main bundle shrinks from 833.39 kB to 831.28 kB (gzip 245.75 kB to 244.83 kB)
+
+---
+
 ## [0.15.02385] - 2026-08-30
 
 ### Changed

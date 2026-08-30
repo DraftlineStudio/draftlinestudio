@@ -2,7 +2,6 @@
 
 import { create } from 'zustand'
 import type { ParagraphDiff, DiffChange } from '../utils/diff'
-import { extractChanges, assembleFromChanges } from '../utils/diff'
 
 // Editor instance type (minimal interface for selection access)
 export interface EditorInstance {
@@ -36,7 +35,7 @@ interface EditorStore {
     focusedChangeIdx: number
     originalHtml: string
   } | null
-  setPendingDiff: (payload: { diffs: ParagraphDiff[]; originalHtml: string }) => void
+  setPendingDiff: (payload: { diffs: ParagraphDiff[]; originalHtml: string }) => Promise<void>
   acceptChange: (idx: number) => void
   rejectChange: (idx: number) => void
   setFocusedChange: (idx: number) => void
@@ -44,7 +43,7 @@ interface EditorStore {
   nextChange: () => void
   acceptAllDiff: () => void
   rejectAllDiff: () => void
-  applyPendingDiff: (updateContent: (html: string) => void) => void
+  applyPendingDiff: (updateContent: (html: string) => void) => Promise<void>
   clearPendingDiff: () => void
 }
 
@@ -77,7 +76,11 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   // Diff/review state
   pendingDiff: null,
 
-  setPendingDiff: ({ diffs, originalHtml }) => {
+  setPendingDiff: async ({ diffs, originalHtml }) => {
+    // Lazy-load the diff engine so it stays out of the main bundle
+    // (AIStudio already imports it dynamically; a static import here
+    // would defeat Vite's code-splitting).
+    const { extractChanges } = await import('../utils/diff')
     const changes = extractChanges(diffs)
     set({ pendingDiff: { diffs, changes, focusedChangeIdx: 0, originalHtml } })
   },
@@ -142,9 +145,10 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       ) } }
     : {}),
 
-  applyPendingDiff: (updateContent) => {
+  applyPendingDiff: async (updateContent) => {
     const { pendingDiff } = get()
     if (!pendingDiff) return
+    const { assembleFromChanges } = await import('../utils/diff')
     updateContent(assembleFromChanges(pendingDiff.diffs, pendingDiff.changes))
     set({ pendingDiff: null })
   },
