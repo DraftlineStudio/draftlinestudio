@@ -4,6 +4,8 @@
 .chars-view {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-width: 0;
   height: 100%;
   min-height: 0;
   background: var(--bg-panel, #27292D);
@@ -24,6 +26,8 @@
   font-size: 13px;
   font-weight: 700;
   color: var(--text-primary, #DFE1E5);
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .chars-count {
   font-size: 12px;
@@ -37,7 +41,9 @@
   margin-left: auto;
   display: flex;
   gap: 8px;
+  flex-shrink: 0;
 }
+.chars-header-actions .tool-card-btn { white-space: nowrap; }
 
 .chars-body {
   display: flex;
@@ -61,13 +67,23 @@
   padding: 0 10px;
   border-bottom: 1px solid var(--border-subtle, #2A2C30);
 }
-.chars-toolbar .dialog-input { width: 220px; }
-.chars-toolbar .dialog-select { width: auto; }
+.chars-toolbar .dialog-input {
+  width: 220px;
+  min-width: 120px;
+  flex-shrink: 1;
+}
+.chars-toolbar .dialog-select {
+  width: auto;
+  flex-shrink: 0;
+}
+.chars-toolbar .ai-link-btn { white-space: nowrap; }
 .chars-sort-label {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.8px;
   color: var(--text-section, #7A7E85);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .chars-merge-banner {
   font-size: 11px;
