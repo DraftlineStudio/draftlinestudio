@@ -19,6 +19,15 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.15.02391] - 2026-08-30
+
+### Fixed
+- Clearing an AI diff while its lazily loaded engine is in flight no longer allows the obsolete diff to reappear after navigation
+- Applying a diff now uses the latest accept/reject decisions made while the diff engine loads instead of an earlier snapshot
+- Added two editor-store regression tests (12 frontend tests total)
+
+---
+
 ## [0.15.02390] - 2026-08-30
 
 ### Fixed
