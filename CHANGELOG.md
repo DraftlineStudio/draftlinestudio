@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.15.02382] - 2026-08-30
+
+### Fixed
+- The inline prompt can now be cancelled during generation.
+
 ## [0.15.02381] - 2026-08-30
 
 ### Fixed
