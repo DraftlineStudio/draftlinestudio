@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAppStore } from '../../../store/appStore'
 import { useBookStore } from '../../../store/bookStore'
-import { TestLocalAI, CheckClaudeCode, SetupClaudeCode, OpenClaudeAuth, GetAppVersion } from '../../../../wailsjs/go/main/App'
+import { TestLocalAI, CheckClaudeCode, SetupClaudeCode, OpenClaudeAuth, GetAppVersion, SetAPIKey, ClearAPIKey } from '../../../../wailsjs/go/main/App'
 import { EventsOn } from '../../../../wailsjs/runtime/runtime'
 import type { types } from '../../../../wailsjs/go/models'
 import type { SettingsSection, AIMode, AIProvider, ThemeMode, EditorFontSize, ClaudeCodeSetupStep, TestStatus } from './types'
@@ -14,7 +14,7 @@ import PluginsSection from './PluginsSection'
 import type { FeatureSettingKey } from '../../../features/registry'
 
 export default function AppSettingsDialog() {
-  const { settings, saveSettings, closeSettings, browseForDirectory } = useAppStore()
+  const { settings, saveSettings, closeSettings, browseForDirectory, loadSettings } = useAppStore()
   const { setDarkMode } = useBookStore()
 
   const [section, setSection] = useState<SettingsSection>('application')
@@ -44,7 +44,11 @@ export default function AppSettingsDialog() {
   const [aiEnabled, setAiEnabled]         = useState(settings.ai_enabled)
   const [aiMode, setAiMode]               = useState<AIMode>(settings.ai_mode)
   const [provider, setProvider]           = useState<AIProvider>(settings.ai_provider)
-  const [apiKey, setApiKey]               = useState(settings.ai_api_key)
+  // The stored key never leaves the backend; this field only holds a NEW key
+  // the user types, and is sent via SetAPIKey rather than the settings blob.
+  const [apiKey, setApiKey]               = useState('')
+  const [hasStoredKey, setHasStoredKey]   = useState(settings.has_api_key)
+  const [debugLogging, setDebugLogging]   = useState(settings.ai_debug_logging)
   const [model, setModel]                 = useState(settings.ai_model)
   const [localEndpoint, setLocalEndpoint] = useState(settings.ai_local_endpoint)
   const [localModel, setLocalModel]       = useState(settings.ai_local_model)
@@ -144,8 +148,27 @@ export default function AppSettingsDialog() {
     if (dir) setSaveDir(dir)
   }
 
+  async function handleClearKey() {
+    try {
+      await ClearAPIKey()
+      setApiKey('')
+      setHasStoredKey(false)
+      await loadSettings()
+    } catch (e) {
+      console.error('Failed to clear API key:', e)
+    }
+  }
+
   async function handleSave() {
     const newDarkMode = themeMode === 'auto' ? dark : themeMode === 'dark'
+    if (apiKey.trim() !== '') {
+      try {
+        await SetAPIKey(apiKey.trim())
+        setHasStoredKey(true)
+      } catch (e) {
+        console.error('Failed to store API key:', e)
+      }
+    }
     await saveSettings({
       default_author: author.trim(),
       default_publisher: publisher.trim(),
@@ -164,7 +187,7 @@ export default function AppSettingsDialog() {
       ai_enabled: aiEnabled,
       ai_mode: aiMode,
       ai_provider: provider,
-      ai_api_key: apiKey.trim(),
+      ai_debug_logging: debugLogging,
       ai_model: model,
       ai_local_endpoint: localEndpoint.trim(),
       ai_local_model: localModel.trim(),
@@ -176,6 +199,7 @@ export default function AppSettingsDialog() {
       book_drop_caps: bookDropCaps,
       book_trim_size: bookTrimSize,
     })
+    await loadSettings() // refresh has_api_key from the backend
     setDarkMode(newDarkMode)
     closeSettings()
   }
@@ -268,6 +292,8 @@ export default function AppSettingsDialog() {
                 aiMode={aiMode} setAiMode={setAiMode}
                 provider={provider} setProvider={setProvider}
                 apiKey={apiKey} setApiKey={setApiKey}
+                hasStoredKey={hasStoredKey} onClearKey={handleClearKey}
+                debugLogging={debugLogging} setDebugLogging={setDebugLogging}
                 model={model} setModel={setModel}
                 localEndpoint={localEndpoint} setLocalEndpoint={setLocalEndpoint}
                 localModel={localModel} setLocalModel={setLocalModel}

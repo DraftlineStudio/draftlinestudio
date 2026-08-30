@@ -41,6 +41,10 @@ export interface AIStudioSectionProps {
   setProvider: (v: AIProvider) => void
   apiKey: string
   setApiKey: (v: string) => void
+  hasStoredKey: boolean
+  onClearKey: () => void
+  debugLogging: boolean
+  setDebugLogging: (v: boolean) => void
   model: string
   setModel: (v: string) => void
   localEndpoint: string
