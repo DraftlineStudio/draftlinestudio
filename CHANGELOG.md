@@ -19,6 +19,13 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02397] - 2026-08-30
+
+### Added
+- `docs/frontend/CHARACTERS-VIEW-GAPS.md` — what the character redesign implies but the current data model can't honestly deliver yet: sentence-quality mention excerpts (needs backend sentence text), precise jump-to-mention (needs offset→editor position mapping), computed tiers, role auto-suggestion, and a light-theme cell-color pass
+
+---
+
 ## [0.16.02396] - 2026-08-30
 
 ### Added
