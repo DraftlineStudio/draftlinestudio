@@ -44,7 +44,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.15.02376"
+const AppVersion = "0.15.02377"
 
 // App is the main application struct bound to the frontend.
 type App struct {
@@ -1378,12 +1378,13 @@ func (a *App) callGemini(system, userMsg string) types.AIRewriteResult {
 		},
 	})
 
-	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s", model, a.getAPIKey())
+	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent", model)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(reqBody))
 	if err != nil {
 		return types.AIRewriteResult{Error: err.Error()}
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-goog-api-key", a.getAPIKey())
 
 	client := &http.Client{Timeout: 120 * time.Second}
 	resp, err := client.Do(req)
