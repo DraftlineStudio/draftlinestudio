@@ -19,6 +19,15 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.15.02381] - 2026-08-30
+
+### Fixed
+- AI requests are now serialized through a single request slot: a second concurrent request gets a clean "an AI request is already in progress" error instead of silently overwriting the first request's cancel handle and interleaving streamed tokens
+- Cancel now actually works for the Local AI, OpenAI, Gemini, and Grok providers — their HTTP calls are context-aware (`http.NewRequestWithContext`) with the private 120-second client timeouts removed so the request's 180-second deadline governs; cancellation surfaces as a friendly "cancelled" message
+- A stale cleanup from a finished/cancelled request can no longer clear a successor request's cancel registration (generation-counter guard); custom-prompt rewrites now route through the same guarded dispatch path as all other AI calls
+
+---
+
 ## [0.15.02380] - 2026-08-30
 
 ### Security
