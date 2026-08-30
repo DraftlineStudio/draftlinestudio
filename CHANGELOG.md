@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02419] - 2026-08-30
+
+### Changed
+- Redesigned the AI Studio sidebar with a provider switcher and mode cards.
+
 ## [0.16.02418] - 2026-08-30
 
 ### Added
