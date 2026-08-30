@@ -19,6 +19,13 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.15.02377] - 2026-08-30
+
+### Security
+- Gemini API requests no longer place the API key in the URL (`?key=`), where it could leak into proxy and server logs; the key is now sent via the `x-goog-api-key` request header
+
+---
+
 ## [0.15.02376] - 2026-08-30
 
 ### Security
