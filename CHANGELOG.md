@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.15.02392] - 2026-08-30
+
+### Fixed
+- Typing no longer re-renders the whole application.
+
 ## [0.15.02391] - 2026-08-30
 
 ### Fixed

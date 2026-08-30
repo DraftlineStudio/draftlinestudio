@@ -21,8 +21,10 @@ import AppSettingsDialog from './components/dialogs/AppSettingsDialog'
 import ExportWizard from './components/dialogs/ExportWizard'
 
 export default function App() {
-  const { book, newBook, openBook, openRecentBook, saveBook, saveBookAs, dialogs, initBook, setDarkMode, toggleLeftPanel, toggleRightPanel, viewMode, setViewMode } = useBookStore(useShallow(s => ({
-    book: s.book,
+  const { hasBook, bookTitle, bookFilePath, newBook, openBook, openRecentBook, saveBook, saveBookAs, dialogs, initBook, setDarkMode, toggleLeftPanel, toggleRightPanel, viewMode, setViewMode } = useBookStore(useShallow(s => ({
+    hasBook: s.book !== null,
+    bookTitle: s.book?.metadata.title,
+    bookFilePath: s.book?.file_path,
     newBook: s.newBook,
     openBook: s.openBook,
     openRecentBook: s.openRecentBook,
@@ -119,10 +121,9 @@ export default function App() {
 
   // Drive accent color from book title's avatar color
   useEffect(() => {
-    const title = book?.metadata.title
-    if (title) applyAccent(title)
+    if (bookTitle) applyAccent(bookTitle)
     else clearAccent()
-  }, [book?.metadata.title])
+  }, [bookTitle])
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -146,12 +147,12 @@ export default function App() {
 
   // When book is opened from NewBookWizard, hide welcome screen
   useEffect(() => {
-    if (book && !showWelcome) return
-    if (book && (book.file_path || !dialogs.showNewBookWizard)) {
+    if (hasBook && !showWelcome) return
+    if (hasBook && (bookFilePath || !dialogs.showNewBookWizard)) {
       // Book was created/opened, hide welcome
       setShowWelcome(false)
     }
-  }, [book, dialogs.showNewBookWizard])
+  }, [hasBook, bookFilePath, dialogs.showNewBookWizard, showWelcome, setShowWelcome])
 
   useEffect(() => {
     if (!settings.cast_enabled && viewMode === 'cast') setViewMode('editor')
