@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.15.02380] - 2026-08-30
+
+### Security
+- Claude Code prompts are now sent through stdin instead of the command line.
+- Hardened the Windows batch launcher against command injection.
+
 ## [0.15.02379] - 2026-08-30
 
 ### Fixed
