@@ -19,6 +19,14 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.15.02379] - 2026-08-30
+
+### Fixed
+- Exports (PDF, DOCX, print) now decode HTML entities — `&amp;`, `&nbsp;`, `&mdash;`, `&#8217;`, etc. — instead of emitting them literally in output text or double-escaping them in DOCX
+- Non-breaking spaces from `&nbsp;` are normalized to regular spaces in exported plain text
+
+---
+
 ## [0.15.02378] - 2026-08-30
 
 ### Security

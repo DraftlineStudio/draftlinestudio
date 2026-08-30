@@ -3,17 +3,23 @@ package export
 
 import (
 	"fmt"
+	"html"
 	"regexp"
 	"strings"
 	"time"
 )
 
 // HtmlToPlainParagraphs converts HTML content to plain text paragraphs.
-func HtmlToPlainParagraphs(html string) string {
+func HtmlToPlainParagraphs(content string) string {
 	// Replace paragraph and heading tags with newlines
-	text := regexp.MustCompile(`</?(p|h[1-6]|div|br)[^>]*>`).ReplaceAllString(html, "\n")
+	text := regexp.MustCompile(`</?(p|h[1-6]|div|br)[^>]*>`).ReplaceAllString(content, "\n")
 	// Remove remaining HTML tags
 	text = regexp.MustCompile(`<[^>]*>`).ReplaceAllString(text, "")
+	// Decode HTML entities (&amp; &nbsp; &mdash; &#8217; ...) into their characters
+	// so exporters receive plain text, not markup escapes.
+	text = html.UnescapeString(text)
+	// &nbsp; decodes to U+00A0; normalize to a regular space for export output.
+	text = strings.ReplaceAll(text, " ", " ")
 	// Clean up multiple newlines
 	text = regexp.MustCompile(`\n{3,}`).ReplaceAllString(text, "\n\n")
 	return strings.TrimSpace(text)
