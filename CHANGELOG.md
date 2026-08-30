@@ -19,6 +19,15 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.15.02383] - 2026-08-30
+
+### Fixed
+- Editing while an autosave is in flight no longer marks the newer edits as saved: a document revision counter makes a completing save clear the dirty flag only if nothing changed since its snapshot, so the newer state persists on the next autosave cycle
+- All saves (manual, autosave, Save As, close, save-and-proceed) are serialized through one queue — a queued save always writes the newest book state and two saves can never interleave — and every successful save now writes the file path back into the book (autosave previously dropped it)
+- Books imported through the New Project wizard now arm the autosave timer immediately instead of waiting for the first manual edit
+
+---
+
 ## [0.15.02382] - 2026-08-30
 
 ### Fixed
