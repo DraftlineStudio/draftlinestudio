@@ -216,6 +216,30 @@
   font-size: 12px;
   color: var(--text-chapter, #BFC1C7);
 }
+
+.chars-review-badge {
+  flex: none;
+  color: #d7a84b;
+  border: 1px solid rgba(215, 168, 75, 0.45);
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-size: 8px;
+  line-height: 12px;
+  letter-spacing: 0.06em;
+}
+
+.chars-review-callout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 10px 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(215, 168, 75, 0.35);
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
 .chars-row.selected .chars-name { color: var(--text-primary, #DFE1E5); }
 .chars-mentions {
   width: 30px;

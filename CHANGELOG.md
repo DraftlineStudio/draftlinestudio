@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02408] - 2026-08-30
+
+### Added
+- Added a Needs Review view for uncertain character candidates.
+
 ## [0.16.02407] - 2026-08-30
 
 ### Fixed

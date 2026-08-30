@@ -108,7 +108,7 @@ func (a *App) ImportEPUB(path string) types.ImportResult {
 			if strings.TrimSpace(part.Title) == "" {
 				part.Title = fmt.Sprintf("Chapter %d", chapterNum)
 			}
-			part.Type = classifyImportedSection(part.Title)
+			part.Type = classifyImportedSection(part.Title, part.Content)
 			chapters = append(chapters, part)
 			chapterNum++
 		}
@@ -259,16 +259,18 @@ func parseOPF(data []byte) (opfMetadata, []opfSpineItem, map[string]opfManifestI
 
 // parseXHTMLContent extracts the title and body HTML from XHTML content
 func parseXHTMLContent(xhtml string) (title string, body string) {
-	// Extract title from <title> tag
-	titleRe := regexp.MustCompile(`(?i)<title[^>]*>([^<]*)</title>`)
-	if match := titleRe.FindStringSubmatch(xhtml); len(match) > 1 {
-		title = strings.TrimSpace(match[1])
+	// Prefer the visible document heading. EPUB <title> tags commonly repeat
+	// the book title across every spine item, hiding labels such as
+	// Acknowledgments and Copyright from section classification.
+	if heading := importedHeadingRe.FindString(xhtml); heading != "" {
+		title = plainImportedText(heading)
 	}
 
-	// Try to extract from <h1>, <h2>, or <h3> if no title
+	// Fall back to the metadata title when the document has no heading.
+	titleRe := regexp.MustCompile(`(?i)<title[^>]*>([^<]*)</title>`)
 	if title == "" {
-		headingRe := regexp.MustCompile(`(?i)<h[123][^>]*>([^<]*)</h[123]>`)
-		if match := headingRe.FindStringSubmatch(xhtml); len(match) > 1 {
+		match := titleRe.FindStringSubmatch(xhtml)
+		if len(match) > 1 {
 			title = strings.TrimSpace(match[1])
 		}
 	}
@@ -320,14 +322,26 @@ func plainImportedText(fragment string) string {
 	return strings.TrimSpace(html.UnescapeString(withoutTags))
 }
 
-func classifyImportedSection(title string) string {
+func classifyImportedSection(title, content string) string {
 	normalized := strings.ToLower(strings.TrimSpace(title))
+	prefix := strings.ToLower(plainImportedText(content))
+	if len(prefix) > 500 {
+		prefix = prefix[:500]
+	}
 	switch normalized {
 	case "cover", "title page", "copyright", "dedication", "epigraph",
 		"contents", "table of contents", "acknowledgments", "acknowledgements",
 		"about the author", "also by", "glossary", "index", "colophon":
 		return normalized
 	default:
+		for _, marker := range []string{"acknowledgments", "acknowledgements", "table of contents"} {
+			if strings.HasPrefix(prefix, marker) {
+				return marker
+			}
+		}
+		if strings.Contains(prefix, "publishing plc") && strings.Contains(prefix, "trademark") {
+			return "copyright"
+		}
 		return "Chapter"
 	}
 }

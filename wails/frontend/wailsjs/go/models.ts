@@ -195,6 +195,9 @@ export namespace types {
 	    mention_ids: string[];
 	    confidence: number;
 	    titles: string[];
+	    kind?: string;
+	    detection_status?: string;
+	    detection_score?: number;
 	    character_id?: string;
 	
 	    static createFrom(source: any = {}) {
@@ -209,6 +212,9 @@ export namespace types {
 	        this.mention_ids = source["mention_ids"];
 	        this.confidence = source["confidence"];
 	        this.titles = source["titles"];
+	        this.kind = source["kind"];
+	        this.detection_status = source["detection_status"];
+	        this.detection_score = source["detection_score"];
 	        this.character_id = source["character_id"];
 	    }
 	}
@@ -218,6 +224,9 @@ export namespace types {
 	    sentence_id: string;
 	    chapter: number;
 	    char_offset: number;
+	    person_evidence?: boolean;
+	    non_person_evidence?: boolean;
+	    strong_person_evidence?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new MentionRecord(source);
@@ -230,6 +239,9 @@ export namespace types {
 	        this.sentence_id = source["sentence_id"];
 	        this.chapter = source["chapter"];
 	        this.char_offset = source["char_offset"];
+	        this.person_evidence = source["person_evidence"];
+	        this.non_person_evidence = source["non_person_evidence"];
+	        this.strong_person_evidence = source["strong_person_evidence"];
 	    }
 	}
 	export class EntityData {
@@ -631,6 +643,9 @@ export namespace types {
 	    first_chapter?: number;
 	    chapter_mentions?: Record<number, number>;
 	    attributes?: Record<string, string>;
+	    entity_kind?: string;
+	    detection_status?: string;
+	    detection_score?: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Character(source);
@@ -652,6 +667,9 @@ export namespace types {
 	        this.first_chapter = source["first_chapter"];
 	        this.chapter_mentions = source["chapter_mentions"];
 	        this.attributes = source["attributes"];
+	        this.entity_kind = source["entity_kind"];
+	        this.detection_status = source["detection_status"];
+	        this.detection_score = source["detection_score"];
 	    }
 	}
 	export class StoryBible {
