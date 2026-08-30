@@ -19,6 +19,13 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.15.02375] - 2026-08-30
+
+### Fixed
+- Fixed the AI-detection "Uniform sentence structure" flag never firing: the condition `sentenceVariety < 30 && sentenceVariety > 70` was always false; it now correctly triggers on `sentenceVariety > 70` (high score = uniform, AI-like structure), matching the sibling flag thresholds
+
+---
+
 ## [0.15.02374] - 2026-08-30
 
 ### Added
