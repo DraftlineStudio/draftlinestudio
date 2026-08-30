@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.15.02386] - 2026-08-30
+
+### Changed
+- Reduced the main bundle size.
+
 ## [0.15.02384] - 2026-08-30
 
 ### Fixed
