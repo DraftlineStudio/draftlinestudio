@@ -104,7 +104,7 @@ Each feature is isolated in its own folder:
 
 ### Writing diagnostics and plugins
 
-Spelling and grammar are independent bundled features managed from **Settings > Plugins**. Spelling checks remain local; broad typo suggestions run in a web worker to avoid blocking editor input. Grammar checks use deterministic local rules and distinguish grammar diagnostics from optional style guidance.
+Spelling and grammar are independent bundled features managed from **Settings > Plugins**. Spelling checks remain local; broad typo suggestions use a prewarmed, length-indexed bounded search in a web worker to avoid both main-thread blocking and first-use delays. Grammar checks use deterministic local rules and distinguish grammar diagnostics from optional style guidance.
 
 The bundled feature catalog lives in `features/registry.ts`. The registry separates feature identity and metadata from its persisted setting key, providing the foundation for a future community-plugin catalog.
 

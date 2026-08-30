@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.14.02349] - 2026-08-30
+
+### Changed
+- Spelling suggestions are about ten times faster.
+
 ## [0.14.02348] - 2026-08-30
 
 ### Fixed

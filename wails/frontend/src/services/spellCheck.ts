@@ -52,6 +52,9 @@ export async function loadDictionary(): Promise<void> {
 
   loadingPromise = (async () => {
     try {
+      // Parse and index the worker dictionary in parallel with the main checker
+      // so the first context menu never pays the cold-start cost.
+      prewarmSpellSuggestions()
       const [affResponse, dicResponse] = await Promise.all([
         fetch('/dictionaries/en_US.aff'),
         fetch('/dictionaries/en_US.dic'),
@@ -157,7 +160,11 @@ function getSuggestionWorker(): Worker | null {
       new URL('../workers/spellSuggestions.worker.ts', import.meta.url),
       { type: 'module' },
     )
-    suggestionWorker.onmessage = (event: MessageEvent<{ id: number; suggestions: string[] }>) => {
+    suggestionWorker.onmessage = (event: MessageEvent<
+      | { type: 'ready' }
+      | { type: 'suggestions'; id: number; suggestions: string[] }
+    >) => {
+      if (event.data.type === 'ready') return
       const resolve = pendingSuggestionRequests.get(event.data.id)
       if (!resolve) return
       pendingSuggestionRequests.delete(event.data.id)
@@ -166,6 +173,7 @@ function getSuggestionWorker(): Worker | null {
     suggestionWorker.onerror = () => {
       pendingSuggestionRequests.forEach(resolve => resolve([]))
       pendingSuggestionRequests.clear()
+      suggestionCache.clear()
       suggestionWorker?.terminate()
       suggestionWorker = null
     }
@@ -176,6 +184,10 @@ function getSuggestionWorker(): Worker | null {
   }
 }
 
+export function prewarmSpellSuggestions(): void {
+  getSuggestionWorker()?.postMessage({ type: 'init' })
+}
+
 function requestWorkerSuggestions(word: string, limit: number): Promise<string[]> {
   const worker = getSuggestionWorker()
   if (!worker) return Promise.resolve([])
@@ -183,7 +195,7 @@ function requestWorkerSuggestions(word: string, limit: number): Promise<string[]
   return new Promise(resolve => {
     const id = nextSuggestionRequestId++
     pendingSuggestionRequests.set(id, resolve)
-    worker.postMessage({ id, word, limit })
+    worker.postMessage({ type: 'suggest', id, word, limit })
   })
 }
 
