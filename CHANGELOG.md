@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02404] - 2026-08-30
+
+### Fixed
+- Saving an imported book no longer overwrites the previously open project.
+
 ## [0.16.02403] - 2026-08-30
 
 ### Fixed
