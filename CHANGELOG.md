@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02402] - 2026-08-30
+
+### Fixed
+- The Characters view now fills the workspace.
+
 ## [0.16.02401] - 2026-08-30
 
 ### Added
