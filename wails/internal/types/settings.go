@@ -18,6 +18,8 @@ type AppSettings struct {
 	CastEnabled         bool     `json:"cast_enabled"`
 	StoryBibleEnabled   bool     `json:"story_bible_enabled"`
 	PlotWalkerEnabled   bool     `json:"plot_walker_enabled"`
+	// CharactersLaneView remembers the codex lane style: "grid" | "heat".
+	CharactersLaneView string `json:"characters_lane_view"`
 	// AI
 	AIEnabled  bool   `json:"ai_enabled"`
 	AIMode     string `json:"ai_mode"`     // "claudecode" | "api" | "local"

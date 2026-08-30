@@ -6,6 +6,7 @@
 
 import { useMemo, useState, useEffect } from 'react'
 import { useBookStore } from '../../store/bookStore'
+import { useAppStore } from '../../store/appStore'
 import { useRelationshipStore } from '../../store/relationshipStore'
 import { characterColor, characterInitials } from '../../utils/characterVisuals'
 import { hexToRgba } from '../../utils/accentColor'
@@ -77,11 +78,13 @@ export default function CharactersView() {
     mergeEntities, splitEntity,
   } = useBookStore()
   const { isAnalyzing, analyzeRelationships } = useRelationshipStore()
+  const { settings, saveSettings } = useAppStore()
 
+  const savedLane: ViewMode = settings.characters_lane_view === 'heat' ? 'heat' : 'grid'
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
-  const [sortMode, setSortMode] = useState<SortMode>('first')
-  const [laneView, setLaneView] = useState<ViewMode>('grid')
+  const [sortMode, setSortMode] = useState<SortMode>(savedLane === 'heat' ? 'mentions-desc' : 'first')
+  const [laneView, setLaneView] = useState<ViewMode>(savedLane)
   const [mergeFrom, setMergeFrom] = useState<string | null>(null)
   const [mergeWith, setMergeWith] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
@@ -219,6 +222,7 @@ export default function CharactersView() {
               onChange={e => {
                 const v = e.target.value as ViewMode
                 setLaneView(v)
+                saveSettings({ characters_lane_view: v })
                 // Heatmap reads as a ranked order — put the biggest presences on top.
                 if (v === 'heat') setSortMode('mentions-desc')
               }}

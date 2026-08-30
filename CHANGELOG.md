@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02401] - 2026-08-30
+
+### Added
+- The Characters view remembers Grid or Heatmap.
+
 ## [0.16.02400] - 2026-08-30
 
 ### Changed
