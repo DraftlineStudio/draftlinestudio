@@ -14,6 +14,8 @@ export function CancelRewrite():Promise<void>;
 
 export function CheckClaudeCode():Promise<types.ClaudeCodeStatus>;
 
+export function CheckCodexCLI():Promise<types.ClaudeCodeStatus>;
+
 export function ClearAPIKey():Promise<void>;
 
 export function ClearRecentProjects():Promise<void>;
@@ -64,6 +66,8 @@ export function OpenBookDialog():Promise<types.BookData>;
 
 export function OpenClaudeAuth():Promise<void>;
 
+export function OpenCodexAuth():Promise<void>;
+
 export function OpenRecentProject(arg1:string):Promise<types.BookData>;
 
 export function RemoveRecentProject(arg1:string):Promise<void>;
@@ -83,6 +87,8 @@ export function SaveSettings(arg1:types.AppSettings):Promise<void>;
 export function SetAPIKey(arg1:string):Promise<void>;
 
 export function SetupClaudeCode():Promise<types.ClaudeCodeStatus>;
+
+export function SetupCodexCLI():Promise<types.ClaudeCodeStatus>;
 
 export function SplitEntity(arg1:types.BookData,arg2:string,arg3:Array<string>,arg4:string):Promise<types.SplitEntityResult>;
 

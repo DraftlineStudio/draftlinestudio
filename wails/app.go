@@ -44,7 +44,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.16.02408"
+const AppVersion = "0.16.02410"
 
 // App is the main application struct bound to the frontend.
 type App struct {
@@ -908,6 +908,177 @@ func (a *App) OpenClaudeAuth() {
 	}()
 }
 
+// CheckCodexCLI checks whether the OpenAI Codex CLI is installed and
+// authenticated (ChatGPT-account mode). Reuses the ClaudeCodeStatus shape.
+func (a *App) CheckCodexCLI() types.ClaudeCodeStatus {
+	npmAvailable := resolveNpmBin() != ""
+
+	codexPath := resolveCodexBin()
+	if codexPath == "" {
+		return types.ClaudeCodeStatus{NpmAvailable: npmAvailable}
+	}
+	out, err := codexExec(context.Background(), codexPath, "--version").Output()
+	version := ""
+	if err == nil {
+		version = strings.TrimSpace(string(out))
+	}
+	home, _ := os.UserHomeDir()
+	authenticated := false
+	if _, err := os.Stat(filepath.Join(home, ".codex", "auth.json")); err == nil {
+		authenticated = true
+	}
+	return types.ClaudeCodeStatus{Installed: true, Authenticated: authenticated, NpmAvailable: npmAvailable, Version: version}
+}
+
+// OpenCodexAuth runs "codex login" as a hidden background process. It opens
+// the user's browser for the ChatGPT OAuth flow — the in-app intercept for
+// what would otherwise require running /login in a terminal. When the process
+// exits it emits "codex:auth_complete".
+func (a *App) OpenCodexAuth() {
+	codexPath := resolveCodexBin()
+	if codexPath == "" {
+		return
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		defer cancel()
+		cmd := codexExec(ctx, codexPath, "login")
+		platform.HideWindow(cmd)
+		_ = cmd.Start()
+		_ = cmd.Wait()
+		runtime.EventsEmit(a.ctx, "codex:auth_complete", nil)
+	}()
+}
+
+// codexExecArgs builds the constant argv for a non-interactive codex run.
+// The prompt is NEVER an argv element — it is piped via stdin ("-"), the same
+// injection-safe pattern as the Claude CLI. lastMessageFile receives the final
+// assistant message (--output-last-message) so the result needn't be parsed
+// out of the progress stream.
+func codexExecArgs(model, lastMessageFile string) []string {
+	args := []string{
+		"exec",
+		"--skip-git-repo-check", // temp workdir is not a git repo
+		"--sandbox", "read-only",
+		"--output-last-message", lastMessageFile,
+	}
+	if model != "" {
+		args = append(args, "-m", model)
+	}
+	return append(args, "-")
+}
+
+// callCodexCLI handles the "codex" AI mode: prose rewrites through the OpenAI
+// Codex CLI using the user's ChatGPT account.
+func (a *App) callCodexCLI(ctx context.Context, system, userMsg string) types.AIRewriteResult {
+	path := resolveCodexBin()
+	if path == "" {
+		return types.AIRewriteResult{Error: "Codex CLI is not installed — open Settings › AI Studio to set it up"}
+	}
+
+	// Isolated home: real auth.json so the ChatGPT session works, but none of
+	// the user's config.toml (MCP servers etc. could hang the subprocess).
+	tempHome, err := os.MkdirTemp("", "draftline-codex-*")
+	if err != nil {
+		return types.AIRewriteResult{Error: "cannot create temp dir: " + err.Error()}
+	}
+	defer func() { _ = os.RemoveAll(tempHome) }()
+
+	realHome, _ := os.UserHomeDir()
+	codexDir := filepath.Join(tempHome, ".codex")
+	_ = os.MkdirAll(codexDir, 0755)
+	if data, e2 := os.ReadFile(filepath.Join(realHome, ".codex", "auth.json")); e2 == nil {
+		_ = os.WriteFile(filepath.Join(codexDir, "auth.json"), data, 0600)
+	}
+
+	lastMsg := filepath.Join(tempHome, "last-message.txt")
+	// No default model is hardcoded: without an override the CLI's own current
+	// default is used, so model churn on OpenAI's side never strands us.
+	cmd := codexExec(ctx, path, codexExecArgs(a.settings.AIModel, lastMsg)...)
+	cmd.Stdin = strings.NewReader(system + "\n\n" + userMsg)
+	cmd.Dir = tempHome
+
+	nodeDir := nodeInstallBinDir()
+	baseEnv := os.Environ()
+	filteredEnv := make([]string, 0, len(baseEnv)+5)
+	for _, e := range baseEnv {
+		key, _, _ := strings.Cut(e, "=")
+		switch strings.ToUpper(key) {
+		case "PATH", "HOME", "USERPROFILE", "HOMEDRIVE", "HOMEPATH", "CODEX_HOME":
+			continue
+		}
+		filteredEnv = append(filteredEnv, e)
+	}
+	vol := filepath.VolumeName(tempHome)
+	cmd.Env = append(filteredEnv,
+		"PATH="+nodeDir+string(os.PathListSeparator)+os.Getenv("PATH"),
+		"HOME="+tempHome,
+		"USERPROFILE="+tempHome,
+		"HOMEDRIVE="+vol,
+		"HOMEPATH="+strings.TrimPrefix(tempHome, vol),
+		"CODEX_HOME="+codexDir,
+	)
+	platform.HideWindow(cmd)
+
+	stdoutPipe, stdoutPipeErr := cmd.StdoutPipe()
+	stderrPipe, stderrPipeErr := cmd.StderrPipe()
+
+	runtime.EventsEmit(a.ctx, "ai:log", "Starting: "+filepath.Base(cmd.Path))
+	if err := cmd.Start(); err != nil {
+		return types.AIRewriteResult{Error: err.Error()}
+	}
+	runtime.EventsEmit(a.ctx, "ai:log", "Process started…")
+
+	var wg sync.WaitGroup
+	var stderrBuf strings.Builder
+	for _, p := range []struct {
+		pipe io.ReadCloser
+		err  error
+		errs bool
+	}{{stdoutPipe, stdoutPipeErr, false}, {stderrPipe, stderrPipeErr, true}} {
+		if p.err != nil {
+			continue
+		}
+		wg.Add(1)
+		go func(r io.ReadCloser, isErr bool) {
+			defer wg.Done()
+			scanner := bufio.NewScanner(r)
+			scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
+			for scanner.Scan() {
+				line := scanner.Text()
+				if isErr {
+					stderrBuf.WriteString(line + "\n")
+				}
+				preview := line
+				if len(preview) > 100 {
+					preview = preview[:100] + "…"
+				}
+				runtime.EventsEmit(a.ctx, "ai:log", "→ "+preview)
+			}
+		}(p.pipe, p.errs)
+	}
+
+	runErr := cmd.Wait()
+	wg.Wait()
+
+	if errors.Is(ctx.Err(), context.Canceled) {
+		return types.AIRewriteResult{Error: "cancelled"}
+	}
+	if runErr != nil {
+		errMsg := strings.TrimSpace(stderrBuf.String())
+		if errMsg == "" {
+			errMsg = runErr.Error()
+		}
+		return types.AIRewriteResult{Error: errMsg}
+	}
+
+	result, err := os.ReadFile(lastMsg)
+	if err != nil || len(strings.TrimSpace(string(result))) == 0 {
+		return types.AIRewriteResult{Error: "Codex produced no output — check that you are signed in (Settings › AI Studio)"}
+	}
+	return types.AIRewriteResult{Result: strings.TrimSpace(string(result))}
+}
+
 // readClaudeAPIKey reads the Anthropic API key stored by the Claude Code CLI.
 // Returns empty string if not found or if using OAuth (no direct API key).
 func readClaudeAPIKey() string {
@@ -1036,6 +1207,8 @@ func (a *App) dispatchAI(system, userMsg string) types.AIRewriteResult {
 	switch a.settings.AIMode {
 	case "claudecode":
 		return a.callClaudeCode(ctx, system, userMsg)
+	case "codex":
+		return a.callCodexCLI(ctx, system, userMsg)
 	case "local":
 		if a.settings.AILocalEndpoint == "" {
 			return types.AIRewriteResult{Error: "no local endpoint configured — set it in App Settings"}

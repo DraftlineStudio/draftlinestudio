@@ -19,6 +19,20 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02410] - 2026-08-30
+
+_Build 0.16.02409 is reserved for the character-detection work landing on master in parallel; this branch numbers from 02410 to merge cleanly._
+
+### Added
+- OpenAI Codex CLI as a third AI mode ("codex"), letting ChatGPT Plus/Pro/Team accounts power AI features the same way Claude.ai accounts do: installed through the identical bundled-Node pipeline (`@openai/codex` pinned to 0.151.0), invoked non-interactively with the prompt piped via stdin (never on the command line), running read-only sandboxed in an isolated home with only the ChatGPT auth credentials — the user's own Codex config and MCP servers can never hang a rewrite
+- In-app sign-in intercept for Codex: `codex login` runs as a hidden background process that opens the browser OAuth flow and reports completion back to the app — no terminal, no `/login` incantations
+- The final assistant message is captured via `--output-last-message` rather than scraped from the progress stream; no default model is hardcoded, so the CLI's own current default is used unless the user sets an override
+
+### Tests
+- Codex argv construction (stdin placeholder always last, model flag only with override, git-check/sandbox flags present) and graceful not-installed error
+
+---
+
 ## [0.16.02408] - 2026-08-30
 
 ### Added
