@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.15.02381] - 2026-08-30
+
+### Fixed
+- Only one AI request can run at a time.
+- Cancel now works for Local, OpenAI, Gemini, and Grok.
+
 ## [0.15.02380] - 2026-08-30
 
 ### Security
