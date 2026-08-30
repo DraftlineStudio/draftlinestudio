@@ -5,11 +5,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
 	"time"
 
 	"draftline/internal/backup"
+	"draftline/internal/fsutil"
 	"draftline/internal/types"
+	"draftline/internal/ziputil"
 )
 
 // Write saves a BookData to a .draftline file at the specified path.
@@ -133,7 +134,16 @@ func Write(path string, book types.BookData, appVersion string) types.SaveResult
 		return types.SaveResult{Success: false, Error: fmt.Sprintf("failed to finalize archive: %v", err)}
 	}
 
-	if err := os.WriteFile(path, buf.Bytes(), 0644); err != nil {
+	// Validate the produced archive before letting it near the user's file.
+	zr, err := zip.NewReader(bytes.NewReader(buf.Bytes()), int64(buf.Len()))
+	if err != nil {
+		return types.SaveResult{Success: false, Error: fmt.Sprintf("internal error: produced archive is invalid: %v", err)}
+	}
+	if _, err := ziputil.ReadNamed(zr.File, "manifest.json", false); err != nil {
+		return types.SaveResult{Success: false, Error: "internal error: produced archive is missing manifest.json"}
+	}
+
+	if err := fsutil.WriteFileAtomic(path, buf.Bytes(), 0644); err != nil {
 		return types.SaveResult{Success: false, Error: err.Error()}
 	}
 

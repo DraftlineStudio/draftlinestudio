@@ -41,7 +41,7 @@ export default function AiStudioTab() {
   // Determine if AI is configured based on mode
   const aiConfigured = settings.ai_enabled && (
     (settings.ai_mode === 'claudecode' && ccStatus?.installed && ccStatus?.authenticated) ||
-    (settings.ai_mode === 'api' && settings.ai_provider !== '' && settings.ai_api_key !== '') ||
+    (settings.ai_mode === 'api' && settings.ai_provider !== '' && settings.has_api_key) ||
     (settings.ai_mode === 'local' && settings.ai_local_endpoint !== '')
   )
 
@@ -381,7 +381,7 @@ export default function AiStudioTab() {
 interface AiSetupGuidanceProps {
   ccStatus: types.ClaudeCodeStatus | null
   ccChecking: boolean
-  settings: { ai_mode: string; ai_provider: string; ai_api_key: string; ai_local_endpoint: string }
+  settings: { ai_mode: string; ai_provider: string; has_api_key: boolean; ai_local_endpoint: string }
   onOpenSettings: () => void
 }
 
@@ -389,7 +389,7 @@ function AiSetupGuidance({ ccStatus, ccChecking, settings, onOpenSettings }: AiS
   // Determine what's configured
   const ccInstalled = ccStatus?.installed
   const ccAuthenticated = ccStatus?.authenticated
-  const hasApiKey = settings.ai_provider !== '' && settings.ai_api_key !== ''
+  const hasApiKey = settings.ai_provider !== '' && settings.has_api_key
   const hasLocalEndpoint = settings.ai_local_endpoint !== ''
 
   // If Claude Code mode is selected but not set up

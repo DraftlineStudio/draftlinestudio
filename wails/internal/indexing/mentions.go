@@ -39,6 +39,7 @@ var contractionSuffixes = []string{"'s", "'m", "'d", "'t", "'ll", "'ve", "'re",
 // strode in").
 type mentionCandidate struct {
 	mention      entityresolution.Mention
+	nlpPerson    bool
 	tokens       []string // lowercase name tokens
 	quoteInitial bool     // span starts immediately after an opening quote
 	firstInitial bool     // first name token opens its sentence or quote
@@ -57,7 +58,9 @@ type mentionCandidate struct {
 // book-wide corroboration.
 func ExtractMentions(text string, chapter int) []entityresolution.Mention {
 	candidates, attested := scanChapter(text, chapter)
-	return filterCandidates(candidates, attested)
+	knowledge := collectCandidateKnowledge([][]mentionCandidate{candidates})
+	removeNonPersonAttestation(attested, knowledge)
+	return filterCandidates(candidates, attested, knowledge)
 }
 
 // ExtractBookMentions extracts mentions for every chapter with BOOK-WIDE
@@ -75,9 +78,11 @@ func ExtractBookMentions(chapterTexts []string) []entityresolution.Mention {
 		}
 	}
 
+	knowledge := collectCandidateKnowledge(allCandidates)
+	removeNonPersonAttestation(attested, knowledge)
 	mentions := []entityresolution.Mention{}
 	for _, candidates := range allCandidates {
-		mentions = append(mentions, filterCandidates(candidates, attested)...)
+		mentions = append(mentions, filterCandidates(candidates, attested, knowledge)...)
 	}
 	return mentions
 }
@@ -87,6 +92,7 @@ func ExtractBookMentions(chapterTexts []string) []entityresolution.Mention {
 // multi-token or honorific-prefixed name.
 func scanChapter(text string, chapter int) ([]mentionCandidate, map[string]bool) {
 	words := scanWords(text)
+	linguistic := analyzeLinguisticEvidence(text)
 	candidates := []mentionCandidate{}
 
 	attested := map[string]bool{}
@@ -121,7 +127,7 @@ func scanChapter(text string, chapter int) ([]mentionCandidate, map[string]bool)
 			j++
 		}
 
-		if c, ok := buildMention(text, words[i:j+1], chapter, len(candidates), wordIsInitial(text, words, i)); ok {
+		if c, ok := buildMention(text, words[i:j+1], chapter, len(candidates), wordIsInitial(text, words, i), linguistic); ok {
 			candidates = append(candidates, c)
 		}
 		i = j + 1
@@ -171,21 +177,7 @@ func wordIsInitial(text string, words []wordSpan, i int) bool {
 // Department") are blacklisted: a bare "Hubbard" is the street, not a
 // person — even mid-sentence — unless the token also appears in a real
 // multi-token or honorific-prefixed name.
-func filterCandidates(candidates []mentionCandidate, attested map[string]bool) []entityresolution.Mention {
-	blacklist := map[string]bool{}
-	personTokens := map[string]bool{}
-	for _, c := range candidates {
-		if c.fpKilled {
-			for _, tok := range c.tokens {
-				blacklist[tok] = true
-			}
-		} else if len(c.tokens) >= 2 || c.honorific {
-			for _, tok := range c.tokens {
-				personTokens[tok] = true
-			}
-		}
-	}
-
+func filterCandidates(candidates []mentionCandidate, attested map[string]bool, knowledge candidateKnowledge) []entityresolution.Mention {
 	mentions := []entityresolution.Mention{}
 
 	for _, c := range candidates {
@@ -210,7 +202,7 @@ func filterCandidates(candidates []mentionCandidate, attested map[string]bool) [
 
 		if single {
 			tok := c.tokens[len(c.tokens)-1]
-			if blacklist[tok] && !personTokens[tok] {
+			if knowledge.blacklist[tok] && !knowledge.personTokens[tok] {
 				continue
 			}
 			if !c.honorific && initial && !attested[tok] {
@@ -221,6 +213,47 @@ func filterCandidates(candidates []mentionCandidate, attested map[string]bool) [
 		mentions = append(mentions, c.mention)
 	}
 	return mentions
+}
+
+type candidateKnowledge struct {
+	blacklist    map[string]bool
+	personTokens map[string]bool
+}
+
+// collectCandidateKnowledge is deliberately book-wide. A location identified
+// as "Hubbard Street" in one chapter must stop an unqualified "Hubbard" in a
+// later chapter from becoming a character. Strong person evidence can still
+// override the collision when a story genuinely has both a place and person
+// sharing a token.
+func collectCandidateKnowledge(groups [][]mentionCandidate) candidateKnowledge {
+	knowledge := candidateKnowledge{
+		blacklist:    map[string]bool{},
+		personTokens: map[string]bool{},
+	}
+	for _, candidates := range groups {
+		for _, candidate := range candidates {
+			if candidate.fpKilled {
+				for _, token := range candidate.tokens {
+					knowledge.blacklist[token] = true
+				}
+				continue
+			}
+			if candidate.honorific || candidate.nlpPerson {
+				for _, token := range candidate.tokens {
+					knowledge.personTokens[token] = true
+				}
+			}
+		}
+	}
+	return knowledge
+}
+
+func removeNonPersonAttestation(attested map[string]bool, knowledge candidateKnowledge) {
+	for token := range knowledge.blacklist {
+		if !knowledge.personTokens[token] {
+			delete(attested, token)
+		}
+	}
 }
 
 // isQuoteInitial reports whether the span at offset directly follows an
@@ -385,7 +418,7 @@ func joinable(text string, a, b wordSpan) bool {
 
 // buildMention filters and assembles a mention candidate from a run of name
 // words. Returns false if the run is not a plausible character reference.
-func buildMention(text string, run []wordSpan, chapter, seq int, runInitial bool) (mentionCandidate, bool) {
+func buildMention(text string, run []wordSpan, chapter, seq int, runInitial bool, linguistic linguisticEvidence) (mentionCandidate, bool) {
 	// Leading honorifics stay in the span but don't count as name tokens.
 	spanStart := run[0].start
 	nameWords := run
@@ -431,7 +464,16 @@ func buildMention(text string, run []wordSpan, chapter, seq int, runInitial bool
 			fpKilled = true
 		}
 	}
+	if IsStreetDesignator(fullRun[len(fullRun)-1].base) {
+		fpKilled = true
+	}
 	if IsFalsePositiveContext(text, fullRun[len(fullRun)-1].baseEnd) {
+		fpKilled = true
+	}
+
+	last := nameWords[len(nameWords)-1]
+	nlpPerson, nlpNonPerson := linguistic.classification(spanStart, last.baseEnd)
+	if nlpNonPerson || IsAddressIntersectionContext(text, spanStart, last.baseEnd) {
 		fpKilled = true
 	}
 
@@ -454,8 +496,6 @@ func buildMention(text string, run []wordSpan, chapter, seq int, runInitial bool
 		}
 	}
 
-	last := nameWords[len(nameWords)-1]
-
 	c := mentionCandidate{
 		mention: entityresolution.Mention{
 			ID:         fmt.Sprintf("m-%d-%d", chapter, seq),
@@ -464,6 +504,7 @@ func buildMention(text string, run []wordSpan, chapter, seq int, runInitial bool
 			Chapter:    chapter,
 			CharOffset: spanStart,
 		},
+		nlpPerson:    nlpPerson,
 		tokens:       tokens,
 		quoteInitial: isQuoteInitial(text, spanStart),
 		firstInitial: runInitial && !hasHonorific && !droppedCommon,

@@ -19,6 +19,167 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.15.02373] - 2026-08-30
+
+### Changed
+- Annotated the Sol 5.6 security audit (`docs/ai-audit/gpt-sol.md`) with a per-finding status scoreboard: findings 3–6 fixed by builds 02351–02366, findings 1–2 (frontend data-loss flows) remain the open release blockers
+
+---
+
+## [0.15.02372] - 2026-08-30
+
+### Added
+- Added regression tests for backup rotation and restore, book save/open round-trips, atomic file writes, archive decompression limits, and Node archive extraction safety
+
+---
+
+## [0.15.02371] - 2026-08-30
+
+### Changed
+- Tidied Go module metadata; promoted go-keyring to a direct dependency
+
+---
+
+## [0.15.02370] - 2026-08-30
+
+### Fixed
+- A transient OS keyring read failure no longer permanently caches an empty API key until restart; the next AI request retries the keyring
+
+---
+
+## [0.15.02369] - 2026-08-30
+
+### Fixed
+- Clearing the API key now removes the plaintext fallback copy from settings.json even when the OS keyring is unavailable — previously the one machine that stored the key on disk was the one where clearing silently failed
+
+---
+
+## [0.15.02368] - 2026-08-30
+
+### Changed
+- AI Studio determines API configuration from the backend's has-key flag instead of reading a key value from frontend state
+
+---
+
+## [0.15.02367] - 2026-08-30
+
+### Changed
+- The settings dialog no longer displays or round-trips the stored API key: the field only accepts a replacement key (submitted through the dedicated keyring binding on save) and gains a Clear button
+
+---
+
+## [0.15.02366] - 2026-08-30
+
+### Security
+- Opening .draftline files and importing EPUB/DOCX now enforce archive limits (entry count, per-entry size, total size, compression ratio) with bounded decompression reads, preventing crafted archives from exhausting memory
+
+---
+
+## [0.15.02365] - 2026-08-30
+
+### Fixed
+- Backup restores write the manuscript atomically, and a failed pre-restore safety backup is logged instead of silently ignored
+
+---
+
+## [0.15.02364] - 2026-08-30
+
+### Fixed
+- Backup copies and metadata are written atomically, and backup-rotation failures are now surfaced in the log instead of swallowed
+
+---
+
+## [0.15.02363] - 2026-08-30
+
+### Fixed
+- Book saves are crash-safe: the archive is written to a same-directory temporary file and atomically renamed over the manuscript, and the produced archive is validated (manifest readable) before it replaces the user's file — a disk-full or crash mid-save can no longer truncate the manuscript
+
+---
+
+## [0.15.02362] - 2026-08-30
+
+### Security
+- The Claude Code CLI install is pinned to an explicit version instead of latest, keeping the setup supply chain auditable
+
+---
+
+## [0.15.02361] - 2026-08-30
+
+### Security
+- Node.js archive extraction caps entry count and per-entry/total decompressed sizes, counted on actual bytes written rather than declared headers
+
+---
+
+## [0.15.02360] - 2026-08-30
+
+### Security
+- Archive-supplied file modes are masked during extraction, stripping setuid/setgid/sticky and non-permission bits
+
+---
+
+## [0.15.02359] - 2026-08-30
+
+### Security
+- Tar symlinks in the Node.js archive must resolve inside the destination directory and hardlink entries are rejected outright
+
+---
+
+## [0.15.02358] - 2026-08-30
+
+### Security
+- Node.js archive entry paths are confined to the destination directory, rejecting absolute, drive-prefixed, and traversal paths (zip-slip)
+
+---
+
+## [0.15.02357] - 2026-08-30
+
+### Security
+- The Node.js bootstrap download is verified against pinned per-platform SHA-256 checksums (matching the official nodejs.org SHASUMS256.txt) with a download size cap; unlisted platforms are refused rather than installed unverified
+
+---
+
+## [0.15.02356] - 2026-08-30
+
+### Security
+- AI debug log files are created user-only (0600) in a user-only (0700) directory
+
+---
+
+## [0.15.02355] - 2026-08-30
+
+### Security
+- AI debug logging — which can include manuscript text and prompts — is now explicitly opt-in via a new setting with a toggle in AI Studio settings, and is off by default
+
+---
+
+## [0.15.02354] - 2026-08-30
+
+### Security
+- settings.json is written atomically with user-only (0600) permissions
+
+---
+
+## [0.15.02353] - 2026-08-30
+
+### Fixed
+- On machines without an OS keyring, the API key is retained in user-only settings.json instead of being lost, and saving settings no longer wipes the stored key
+
+---
+
+## [0.15.02352] - 2026-08-30
+
+### Security
+- The API key never crosses the frontend/backend bridge in either direction: settings expose only a has-key flag, saved settings discard any key field, and new SetAPIKey / HasAPIKey / ClearAPIKey bindings handle the key directly
+
+---
+
+## [0.15.02351] - 2026-08-30
+
+### Security
+- AI provider API keys are stored in the OS keyring (Windows Credential Manager / macOS Keychain / Secret Service) instead of plaintext settings.json, with a one-time migration that strips the plaintext copy only after the keyring accepts the key
+
+---
+
 ## [0.15.02350] - 2026-08-30
 
 ### Added
