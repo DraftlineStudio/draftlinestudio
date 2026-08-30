@@ -45,6 +45,9 @@ var nodeSHA256 = map[string]string{
 // chain stays auditable.
 const claudeCodeVersion = "2.1.251"
 
+// Pinned OpenAI Codex CLI version (ChatGPT-account AI mode); same policy.
+const codexCLIVersion = "0.151.0"
+
 // Extraction limits for the Node distribution (npm ships thousands of small
 // files; node's binary is ~90 MB uncompressed).
 const (
@@ -105,6 +108,27 @@ func bundledClaudeBin() string {
 		return filepath.Join(d, "claude.cmd")
 	}
 	return filepath.Join(d, "bin", "claude")
+}
+
+// bundledCodexBin returns the expected path to the codex binary in our npm global dir.
+func bundledCodexBin() string {
+	d := npmGlobalDir()
+	if goruntime.GOOS == "windows" {
+		return filepath.Join(d, "codex.cmd")
+	}
+	return filepath.Join(d, "bin", "codex")
+}
+
+// resolveCodexBin returns the best available codex binary (system PATH → bundled), or "".
+func resolveCodexBin() string {
+	if p, err := exec.LookPath("codex"); err == nil {
+		return p
+	}
+	p := bundledCodexBin()
+	if _, err := os.Stat(p); err == nil {
+		return p
+	}
+	return ""
 }
 
 // resolveNpmBin returns the best available npm binary (system PATH → bundled), or "".
@@ -172,6 +196,49 @@ func claudeExec(ctx context.Context, claudePath string, args ...string) *exec.Cm
 	return exec.CommandContext(ctx, nodeBin, append([]string{cliJS}, args...)...)
 }
 
+// codexExec builds an exec.Cmd to run the Codex CLI. On Windows it bypasses
+// the codex.cmd shim when possible: @openai/codex ships a native binary under
+// the package's vendor/ tree, and older layouts a bin/codex.js for node.
+// Falling back to the shim via cmdExec is safe — every codex invocation passes
+// only constant args, with the prompt piped via stdin.
+func codexExec(ctx context.Context, codexPath string, args ...string) *exec.Cmd {
+	if goruntime.GOOS != "windows" {
+		return cmdExec(ctx, codexPath, args...)
+	}
+
+	pkgDir := filepath.Join(filepath.Dir(codexPath), "node_modules", "@openai", "codex")
+
+	// Native binary layouts (target triple varies by architecture).
+	targets := []string{"x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc"}
+	for _, t := range targets {
+		for _, rel := range []string{
+			filepath.Join("vendor", t, "codex", "codex.exe"),
+			filepath.Join("bin", "codex-"+t+".exe"),
+		} {
+			exe := filepath.Join(pkgDir, rel)
+			if _, err := os.Stat(exe); err == nil {
+				return exec.CommandContext(ctx, exe, args...)
+			}
+		}
+	}
+
+	// JS launcher via node.
+	cliJS := filepath.Join(pkgDir, "bin", "codex.js")
+	if _, err := os.Stat(cliJS); err == nil {
+		nodeBin := bundledNodeBin()
+		if _, err := os.Stat(nodeBin); err != nil {
+			if p, err := exec.LookPath("node"); err == nil {
+				nodeBin = p
+			} else {
+				return cmdExec(ctx, codexPath, args...)
+			}
+		}
+		return exec.CommandContext(ctx, nodeBin, append([]string{cliJS}, args...)...)
+	}
+
+	return cmdExec(ctx, codexPath, args...)
+}
+
 // resolveClaudeBin returns the best available claude binary (system PATH → bundled), or "".
 func resolveClaudeBin() string {
 	if p, err := exec.LookPath("claude"); err == nil {
@@ -217,7 +284,7 @@ func (a *App) SetupClaudeCode() types.ClaudeCodeStatus {
 	if claudePath == "" {
 		emit("step:claude")
 		emit("Installing Claude Code CLI — this takes about a minute…")
-		if err := runNpmInstall(npmPath); err != nil {
+		if err := runNpmInstall(npmPath, "@anthropic-ai/claude-code@"+claudeCodeVersion); err != nil {
 			emit("error:Claude Code installation failed: " + err.Error())
 			return types.ClaudeCodeStatus{Error: "Claude Code install failed: " + err.Error()}
 		}
@@ -230,13 +297,47 @@ func (a *App) SetupClaudeCode() types.ClaudeCodeStatus {
 	return a.CheckClaudeCode()
 }
 
-func runNpmInstall(npmPath string) error {
+// SetupCodexCLI orchestrates OpenAI Codex CLI setup for ChatGPT-account users,
+// through the same bundled-Node pipeline as Claude Code. Progress streams over
+// the shared "setup:progress" channel (one setup wizard runs at a time).
+func (a *App) SetupCodexCLI() types.ClaudeCodeStatus {
+	emit := func(msg string) {
+		runtime.EventsEmit(a.ctx, "setup:progress", msg)
+	}
+
+	npmPath := resolveNpmBin()
+	if npmPath == "" {
+		emit("step:node")
+		emit("Downloading Node.js " + nodeVersion + " — this is a one-time 28 MB download…")
+		if err := downloadAndExtractNode(emit); err != nil {
+			emit("error:Node.js installation failed: " + err.Error())
+			return types.ClaudeCodeStatus{Error: "Node.js install failed: " + err.Error()}
+		}
+		npmPath = bundledNpmBin()
+	}
+	emit("node:done")
+
+	if resolveCodexBin() == "" {
+		emit("step:claude")
+		emit("Installing Codex CLI — this takes about a minute…")
+		if err := runNpmInstall(npmPath, "@openai/codex@"+codexCLIVersion); err != nil {
+			emit("error:Codex installation failed: " + err.Error())
+			return types.ClaudeCodeStatus{Error: "Codex install failed: " + err.Error()}
+		}
+	}
+	emit("claude:done")
+
+	emit("step:auth")
+	return a.CheckCodexCLI()
+}
+
+func runNpmInstall(npmPath, pkg string) error {
 	prefix := npmGlobalDir()
 	_ = os.MkdirAll(prefix, 0755)
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
 
-	cmd := cmdExec(ctx, npmPath, "install", "-g", "@anthropic-ai/claude-code@"+claudeCodeVersion, "--prefix", prefix)
+	cmd := cmdExec(ctx, npmPath, "install", "-g", pkg, "--prefix", prefix)
 	// Ensure our bundled node is on PATH so npm scripts can find it.
 	cmd.Env = append(os.Environ(),
 		"PATH="+nodeInstallBinDir()+string(os.PathListSeparator)+os.Getenv("PATH"),
