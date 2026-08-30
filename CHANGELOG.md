@@ -19,6 +19,18 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02405] - 2026-08-30
+
+### Fixed
+- `.draftline` archive format 2.1 now persists entity mentions, relationships, manual events, and character merge/split corrections in `analysis.json` instead of silently losing them when a project is closed
+- Legacy files that claim to be indexed but contain no analysis are marked for re-detection when opened, preventing a stale character Codex with unavailable merge, split, relationship, and mention controls
+- Re-detecting characters now preserves author-curated roles, descriptions, appearance, personality, motivation, and notes when the character can be matched uniquely by name or alias
+
+### Tests
+- Added archive round-trip coverage for analysis, correction rules, manual events, and legacy indexed-state migration
+
+---
+
 ## [0.16.02404] - 2026-08-30
 
 ### Fixed

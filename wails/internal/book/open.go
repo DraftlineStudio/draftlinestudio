@@ -68,7 +68,7 @@ func Open(path string) (types.BookData, error) {
 	}
 
 	book := types.BookData{
-		Version:      "2.0",
+		Version:      raw.Version,
 		Metadata:     raw.Metadata,
 		FilePath:     path,
 		FrontMatter:  []types.ChapterItem{},
@@ -128,6 +128,22 @@ func Open(path string) (types.BookData, error) {
 	}
 	if book.StoryBible.Characters == nil {
 		book.StoryBible.Characters = []types.Character{}
+	}
+
+	// analysis.json was introduced in archive v2.1. Its absence is valid for
+	// older projects; those books remain openable and can rebuild the cache on
+	// the next Detect Characters run.
+	if analysisData, err := ReadZipEntry(r, "analysis.json"); err == nil {
+		var analysis types.AnalysisData
+		if json.Unmarshal(analysisData, &analysis) == nil {
+			book.Analysis = analysis
+		}
+	}
+	if book.IsIndexed && book.Analysis.EntityResolution == nil {
+		// A legacy manifest may claim to be indexed even though older writers
+		// never persisted the corresponding analysis. Do not expose stale UI.
+		book.IsIndexed = false
+		book.LastIndexed = ""
 	}
 
 	// beat_sheet.json (optional)

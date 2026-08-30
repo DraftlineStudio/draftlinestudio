@@ -38,6 +38,30 @@ func TestExtractMentions_Acceptance(t *testing.T) {
 	}
 }
 
+func TestReindexPreservesCuratedAutoCharacterFields(t *testing.T) {
+	book := types.BookData{Body: []types.ChapterItem{{
+		Title: "Chapter 1", Type: "chapter",
+		Content: `<p>Detective Mara Ionescu entered. Mara studied the room.</p>`,
+	}}}
+	if result := IndexBook(&book); !result.Success {
+		t.Fatalf("first IndexBook failed: %s", result.Error)
+	}
+	if len(book.StoryBible.Characters) != 1 {
+		t.Fatalf("expected one character, got %d", len(book.StoryBible.Characters))
+	}
+	book.StoryBible.Characters[0].Role = "protagonist"
+	book.StoryBible.Characters[0].Description = "Captain of the Echo"
+	book.StoryBible.Characters[0].Notes = "User-authored note"
+
+	if result := IndexBook(&book); !result.Success {
+		t.Fatalf("second IndexBook failed: %s", result.Error)
+	}
+	got := book.StoryBible.Characters[0]
+	if got.Role != "protagonist" || got.Description != "Captain of the Echo" || got.Notes != "User-authored note" {
+		t.Fatalf("curated fields were lost on re-index: %+v", got)
+	}
+}
+
 // Honorifics are part of the raw span (metadata is extracted during
 // resolution), but never split a multi-token name into two mentions.
 func TestExtractMentions_Honorifics(t *testing.T) {

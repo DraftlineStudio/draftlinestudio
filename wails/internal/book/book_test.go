@@ -67,6 +67,67 @@ func TestWriteOpenRoundTrip(t *testing.T) {
 	}
 }
 
+func TestWriteOpenPersistsAnalysisAndCorrections(t *testing.T) {
+	isolateConfigDir(t)
+	path := filepath.Join(t.TempDir(), "analysis.draftline")
+	b := testBook()
+	b.IsIndexed = true
+	b.LastIndexed = "2026-08-30T12:00:00-05:00"
+	b.Analysis = types.AnalysisData{
+		Version: 1,
+		EntityResolution: &types.EntityData{
+			Version:    1,
+			Mentions:   []types.MentionRecord{{ID: "m-0-0", Text: "Mara", Chapter: 0, CharOffset: 3}},
+			Entities:   []types.EntityRecord{{ID: "entity-1", Canonical: "Mara", MentionIDs: []string{"m-0-0"}}},
+			MergeRules: []types.MergeRule{{Name1: "Mara Voss", Name2: "Mara Ionescu"}},
+		},
+		Relationships: &types.RelationshipData{
+			Version: 1,
+			Events:  []types.CharacterEvent{{ID: "manual-1", CharacterIDs: []string{"entity-1"}, Description: "Pinned event"}},
+		},
+	}
+
+	if res := Write(path, b, "test-version"); !res.Success {
+		t.Fatalf("Write failed: %s", res.Error)
+	}
+	got, err := Open(path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if got.Version != "2.1" || !got.IsIndexed {
+		t.Fatalf("expected indexed v2.1 book, got version=%q indexed=%v", got.Version, got.IsIndexed)
+	}
+	if got.Analysis.EntityResolution == nil || len(got.Analysis.EntityResolution.MergeRules) != 1 {
+		t.Fatal("entity analysis or merge rules did not survive round trip")
+	}
+	if got.Analysis.Relationships == nil || len(got.Analysis.Relationships.Events) != 1 {
+		t.Fatal("relationship analysis or manual events did not survive round trip")
+	}
+}
+
+func TestOpenLegacyIndexedBookWithoutAnalysisRequiresReindex(t *testing.T) {
+	isolateConfigDir(t)
+	path := filepath.Join(t.TempDir(), "legacy.draftline")
+
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := zip.NewWriter(f)
+	mw, _ := w.Create("manifest.json")
+	_, _ = mw.Write([]byte(`{"version":"2.0","is_indexed":true,"last_indexed":"stale","body":[]}`))
+	_ = w.Close()
+	_ = f.Close()
+
+	got, err := Open(path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if got.IsIndexed || got.LastIndexed != "" {
+		t.Fatal("legacy book without persisted analysis must require re-indexing")
+	}
+}
+
 func TestWriteReplacesExistingFileAtomically(t *testing.T) {
 	isolateConfigDir(t)
 	path := filepath.Join(t.TempDir(), "book.draftline")

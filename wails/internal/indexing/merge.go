@@ -179,6 +179,23 @@ func rebuildCharactersFromEntities(book *types.BookData) {
 	mentions := recordsToMentions(ed.Mentions)
 	entities := recordsToEntities(ed.Entities)
 
+	// Keep author curation from auto-detected records. Detection owns mention
+	// metrics and aliases; the author owns role, description, appearance,
+	// personality, motivation, and notes. Match by any prior name/alias so a
+	// better canonical spelling does not erase that work.
+	curatedByName := make(map[string][]types.Character)
+	for _, char := range book.StoryBible.Characters {
+		if !char.IsAutoDetected {
+			continue
+		}
+		for _, name := range append([]string{char.Name}, char.Aliases...) {
+			key := strings.ToLower(strings.TrimSpace(name))
+			if key != "" {
+				curatedByName[key] = append(curatedByName[key], char)
+			}
+		}
+	}
+
 	preservedChars := make([]types.Character, 0)
 	charNames := make(map[string]bool)
 	for _, char := range book.StoryBible.Characters {
@@ -188,6 +205,25 @@ func rebuildCharactersFromEntities(book *types.BookData) {
 		}
 	}
 	for _, char := range ConvertEntitiesToCharacters(entities, mentions) {
+		var matches []types.Character
+		seen := make(map[string]bool)
+		for _, name := range append([]string{char.Name}, char.Aliases...) {
+			for _, old := range curatedByName[strings.ToLower(strings.TrimSpace(name))] {
+				if !seen[old.ID] {
+					matches = append(matches, old)
+					seen[old.ID] = true
+				}
+			}
+		}
+		if len(matches) == 1 {
+			old := matches[0]
+			char.Role = old.Role
+			char.Description = old.Description
+			char.Appearance = old.Appearance
+			char.Personality = old.Personality
+			char.Motivation = old.Motivation
+			char.Notes = old.Notes
+		}
 		if !charNames[strings.ToLower(char.Name)] {
 			preservedChars = append(preservedChars, char)
 			charNames[strings.ToLower(char.Name)] = true
