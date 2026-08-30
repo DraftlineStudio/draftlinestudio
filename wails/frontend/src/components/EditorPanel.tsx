@@ -1,5 +1,6 @@
 import { useCallback, useRef, useEffect, useMemo } from 'react'
 import { useBookStore } from '../store/bookStore'
+import { useEditorStore } from '../store/editorStore'
 import { useAppStore } from '../store/appStore'
 import { getCurrentContent } from '../utils/textUtils'
 import RichEditor from './editor/RichEditor'
@@ -26,8 +27,10 @@ function getChapterInfo(book: ReturnType<typeof useBookStore.getState>['book'], 
 }
 
 function DiffPanel({ label, name }: { label: string; name: string }) {
+  // pendingDiff lives in editorStore — subscribe there directly; the bookStore
+  // bridge getter does not notify bookStore subscribers when editorStore changes
+  const pendingDiff = useEditorStore(s => s.pendingDiff)
   const {
-    pendingDiff,
     acceptChange,
     rejectChange,
     setFocusedChange,
@@ -178,7 +181,8 @@ function DiffPanel({ label, name }: { label: string; name: string }) {
 }
 
 export default function EditorPanel() {
-  const { book, currentSection, currentIndex, updateCurrentContent, pendingDiff, updateChapterTitle, updateChapterSubtitle } = useBookStore()
+  const { book, currentSection, currentIndex, updateCurrentContent, updateChapterTitle, updateChapterSubtitle } = useBookStore()
+  const pendingDiff = useEditorStore(s => s.pendingDiff)
   const { settings } = useAppStore()
 
   const content = getCurrentContent(book, currentSection, currentIndex)

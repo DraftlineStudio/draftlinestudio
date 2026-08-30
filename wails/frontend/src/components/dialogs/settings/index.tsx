@@ -10,6 +10,8 @@ import type { SettingsSection, AIMode, AIProvider, ThemeMode, EditorFontSize, Cl
 import ApplicationSection from './ApplicationSection'
 import AIStudioSection from './AIStudioSection'
 import BookSection from './BookSection'
+import PluginsSection from './PluginsSection'
+import type { FeatureSettingKey } from '../../../features/registry'
 
 export default function AppSettingsDialog() {
   const { settings, saveSettings, closeSettings, browseForDirectory } = useAppStore()
@@ -32,10 +34,14 @@ export default function AppSettingsDialog() {
   const [autoThemeUseManual, setAutoThemeUseManual] = useState(settings.auto_theme_use_manual)
   const [autoThemeDawn, setAutoThemeDawn] = useState(settings.auto_theme_dawn)
   const [autoThemeDusk, setAutoThemeDusk] = useState(settings.auto_theme_dusk)
+  const [spellCheckEnabled, setSpellCheckEnabled] = useState(settings.spell_check_enabled)
+  const [grammarCheckEnabled, setGrammarCheckEnabled] = useState(settings.grammar_check_enabled)
+  const [castEnabled, setCastEnabled] = useState(settings.cast_enabled)
+  const [storyBibleEnabled, setStoryBibleEnabled] = useState(settings.story_bible_enabled)
+  const [plotWalkerEnabled, setPlotWalkerEnabled] = useState(settings.plot_walker_enabled)
 
   // AI state
   const [aiEnabled, setAiEnabled]         = useState(settings.ai_enabled)
-  const [showAiTab, setShowAiTab]         = useState(settings.show_ai_tab)
   const [aiMode, setAiMode]               = useState<AIMode>(settings.ai_mode)
   const [provider, setProvider]           = useState<AIProvider>(settings.ai_provider)
   const [apiKey, setApiKey]               = useState(settings.ai_api_key)
@@ -150,8 +156,12 @@ export default function AppSettingsDialog() {
       auto_theme_use_manual: autoThemeUseManual,
       auto_theme_dawn: autoThemeDawn,
       auto_theme_dusk: autoThemeDusk,
+      spell_check_enabled: spellCheckEnabled,
+      grammar_check_enabled: grammarCheckEnabled,
+      cast_enabled: castEnabled,
+      story_bible_enabled: storyBibleEnabled,
+      plot_walker_enabled: plotWalkerEnabled,
       ai_enabled: aiEnabled,
-      show_ai_tab: showAiTab,
       ai_mode: aiMode,
       ai_provider: provider,
       ai_api_key: apiKey.trim(),
@@ -168,6 +178,27 @@ export default function AppSettingsDialog() {
     })
     setDarkMode(newDarkMode)
     closeSettings()
+  }
+
+  const pluginEnabled = {
+    spell_check_enabled: spellCheckEnabled,
+    grammar_check_enabled: grammarCheckEnabled,
+    cast_enabled: castEnabled,
+    story_bible_enabled: storyBibleEnabled,
+    plot_walker_enabled: plotWalkerEnabled,
+    ai_enabled: aiEnabled,
+  }
+
+  function handlePluginToggle(key: FeatureSettingKey, enabled: boolean) {
+    const setters: Record<FeatureSettingKey, (value: boolean) => void> = {
+      spell_check_enabled: setSpellCheckEnabled,
+      grammar_check_enabled: setGrammarCheckEnabled,
+      cast_enabled: setCastEnabled,
+      story_bible_enabled: setStoryBibleEnabled,
+      plot_walker_enabled: setPlotWalkerEnabled,
+      ai_enabled: setAiEnabled,
+    }
+    setters[key](enabled)
   }
 
   return (
@@ -190,6 +221,12 @@ export default function AppSettingsDialog() {
                 <circle cx="7" cy="5" r="2.4"/><path d="M2 12c0-2.8 2.2-5 5-5s5 2.2 5 5"/>
               </svg>
               Application
+            </button>
+            <button className={`settings-nav-item${section === 'plugins' ? ' active' : ''}`} onClick={() => setSection('plugins')}>
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3">
+                <path d="M5.5 1v3M8.5 1v3M4 4h6v2.5A3 3 0 0 1 7 9.5v2.75"/><path d="M5 12.25h4"/>
+              </svg>
+              Plugins
             </button>
             <button className={`settings-nav-item${section === 'ai' ? ' active' : ''}`} onClick={() => setSection('ai')}>
               <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
@@ -221,10 +258,13 @@ export default function AppSettingsDialog() {
               />
             )}
 
+            {section === 'plugins' && (
+              <PluginsSection enabled={pluginEnabled} onToggle={handlePluginToggle} />
+            )}
+
             {section === 'ai' && (
               <AIStudioSection
                 aiEnabled={aiEnabled} setAiEnabled={setAiEnabled}
-                showAiTab={showAiTab} setShowAiTab={setShowAiTab}
                 aiMode={aiMode} setAiMode={setAiMode}
                 provider={provider} setProvider={setProvider}
                 apiKey={apiKey} setApiKey={setApiKey}

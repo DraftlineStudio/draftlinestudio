@@ -10,12 +10,16 @@ import Superscript from '@tiptap/extension-superscript'
 import CharacterCount from '@tiptap/extension-character-count'
 import { FontSize } from '../../extensions/FontSize'
 import { CharacterHighlight } from '../../extensions/CharacterHighlight'
+import { SpellCheck } from '../../extensions/SpellCheck'
+import { GrammarCheck } from '../../extensions/GrammarCheck'
 import { useEffect, useCallback, useState, useRef, useMemo } from 'react'
 import Toolbar from './Toolbar'
 import ContextMenu, { ContextMenuItem } from '../ContextMenu'
 import InlinePrompt from './InlinePrompt'
-import { checkWord, getSuggestions, isLoaded as isSpellCheckLoaded } from '../../services/spellCheck'
+import { checkWord, getImmediateSuggestions, getSuggestions, isLoaded as isSpellCheckLoaded, setCustomWords, setSpellCheckEnabled } from '../../services/spellCheck'
+import { analyzeGrammar, setGrammarCheckEnabled, type GrammarIssue } from '../../services/grammarCheck'
 import { useBookStore } from '../../store/bookStore'
+import { useEditorStore } from '../../store/editorStore'
 import { useAppStore } from '../../store/appStore'
 
 interface ContextMenuState {
@@ -26,6 +30,8 @@ interface ContextMenuState {
   wordStart?: number
   wordEnd?: number
   suggestions?: string[]
+  suggestionsLoading?: boolean
+  grammarIssue?: GrammarIssue & { absoluteFrom: number; absoluteTo: number }
 }
 
 interface Props {
@@ -47,7 +53,13 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
   const [showAiDisabledModal, setShowAiDisabledModal] = useState(false)
   const titleInputRef = useRef<HTMLInputElement>(null)
   const subtitleInputRef = useRef<HTMLInputElement>(null)
-  const { settings, openSettings } = useAppStore()
+  const { settings, openSettings, saveSettings } = useAppStore()
+
+  useEffect(() => {
+    setCustomWords(settings.custom_dictionary)
+    setSpellCheckEnabled(settings.spell_check_enabled)
+    setGrammarCheckEnabled(settings.grammar_check_enabled)
+  }, [settings.custom_dictionary, settings.spell_check_enabled, settings.grammar_check_enabled])
 
   const handleUpdate = useCallback(
     ({ editor }: { editor: ReturnType<typeof useEditor> & { getHTML: () => string } }) => {
@@ -71,6 +83,8 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
       Subscript,
       Superscript,
       CharacterCount,
+      SpellCheck,
+      GrammarCheck,
       CharacterHighlight.configure({
         getNames: () => getHighlightedCharacterNames(),
         highlightClass: 'character-highlight',
@@ -80,7 +94,9 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
     onUpdate: handleUpdate as any,
     editorProps: {
       attributes: {
-        spellcheck: 'true',
+        // SpellCheck renders persistent TipTap decorations. Native WebView
+        // markers disappear whenever our custom context menu changes focus.
+        spellcheck: 'false',
       },
     },
   })
@@ -144,9 +160,10 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
     }
   }, [editingSubtitle])
 
-  // Inline AI prompt state
-  const inlinePrompt = useBookStore(s => s.inlinePrompt)
-  const openInlinePrompt = useBookStore(s => s.openInlinePrompt)
+  // Inline AI prompt state — subscribe to editorStore directly; the bookStore
+  // bridge getter does not notify bookStore subscribers when editorStore changes
+  const inlinePrompt = useEditorStore(s => s.inlinePrompt)
+  const openInlinePrompt = useEditorStore(s => s.openInlinePrompt)
 
   // Ctrl+L to open inline prompt (if AI is enabled)
   useEffect(() => {
@@ -207,10 +224,13 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
     e.preventDefault()
 
     const menuState: ContextMenuState = { x: e.clientX, y: e.clientY }
+    let suggestionRequest: { word: string; wordStart: number; wordEnd: number } | null = null
 
-    // Check for misspelled word under cursor
-    if (editor && isSpellCheckLoaded()) {
-      const { from } = editor.state.selection
+    // Resolve writing diagnostics under the pointer, rather than wherever the
+    // keyboard selection happened to be before the context menu opened.
+    if (editor) {
+      const clickedPosition = editor.view.posAtCoords({ left: e.clientX, top: e.clientY })
+      const from = clickedPosition?.pos ?? editor.state.selection.from
       const $pos = editor.state.doc.resolve(from)
       const textNode = $pos.parent
 
@@ -219,27 +239,65 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
         const nodeStart = $pos.start()
         const offsetInNode = from - nodeStart
 
-        // Find word boundaries
-        let wordStart = offsetInNode
-        let wordEnd = offsetInNode
+        if (settings.grammar_check_enabled) {
+          const grammarIssue = analyzeGrammar(text).find(
+            issue => offsetInNode >= issue.from && offsetInNode <= issue.to,
+          )
+          if (grammarIssue) {
+            menuState.grammarIssue = {
+              ...grammarIssue,
+              absoluteFrom: nodeStart + grammarIssue.from,
+              absoluteTo: nodeStart + grammarIssue.to,
+            }
+          }
+        }
 
-        while (wordStart > 0 && /\w/.test(text[wordStart - 1])) wordStart--
-        while (wordEnd < text.length && /\w/.test(text[wordEnd])) wordEnd++
+        if (settings.spell_check_enabled && isSpellCheckLoaded()) {
+          let wordStart = offsetInNode
+          let wordEnd = offsetInNode
 
-        if (wordStart < wordEnd) {
-          const word = text.substring(wordStart, wordEnd)
+          const isWordCharacter = (character: string) => /[A-Za-z0-9'’]/.test(character)
+          while (wordStart > 0 && isWordCharacter(text[wordStart - 1])) wordStart--
+          while (wordEnd < text.length && isWordCharacter(text[wordEnd])) wordEnd++
 
-          if (word.length >= 2 && !checkWord(word)) {
-            menuState.misspelledWord = word
-            menuState.wordStart = nodeStart + wordStart
-            menuState.wordEnd = nodeStart + wordEnd
-            menuState.suggestions = getSuggestions(word, 5)
+          if (wordStart < wordEnd) {
+            const word = text.substring(wordStart, wordEnd)
+
+            if (word.length >= 2 && !checkWord(word)) {
+              menuState.misspelledWord = word
+              menuState.wordStart = nodeStart + wordStart
+              menuState.wordEnd = nodeStart + wordEnd
+              menuState.suggestions = getImmediateSuggestions(word, 5)
+              menuState.suggestionsLoading = true
+              suggestionRequest = {
+                word,
+                wordStart: menuState.wordStart,
+                wordEnd: menuState.wordEnd,
+              }
+            }
           }
         }
       }
     }
 
     setContextMenu(menuState)
+
+    // Broad typo-js suggestions run in a worker so they cannot block the menu.
+    if (suggestionRequest) {
+      const request = suggestionRequest
+      window.setTimeout(() => {
+        void getSuggestions(request.word, 5).then(suggestions => {
+          setContextMenu(current => {
+            if (
+              current?.misspelledWord !== request.word
+              || current.wordStart !== request.wordStart
+              || current.wordEnd !== request.wordEnd
+            ) return current
+            return { ...current, suggestions, suggestionsLoading: false }
+          })
+        })
+      }, 0)
+    }
   }
 
   // Context menu actions
@@ -299,7 +357,7 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
 
   // Replace misspelled word with suggestion
   function handleSpellSuggestion(suggestion: string) {
-    if (!editor || !contextMenu?.wordStart || !contextMenu?.wordEnd) return
+    if (!editor || contextMenu?.wordStart == null || contextMenu.wordEnd == null) return
     editor
       .chain()
       .focus()
@@ -308,26 +366,75 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
       .run()
   }
 
+  function handleGrammarSuggestion(
+    issue: GrammarIssue & { absoluteFrom: number; absoluteTo: number },
+    replacement: string,
+  ) {
+    if (!editor) return
+    let from = issue.absoluteFrom
+    if (replacement === '' && from > 1 && /\s/.test(editor.state.doc.textBetween(from - 1, from))) {
+      from--
+    }
+    editor.chain()
+      .focus()
+      .setTextSelection({ from, to: issue.absoluteTo })
+      .insertContent(replacement)
+      .run()
+  }
+
+  async function handleAddToDictionary(word: string) {
+    const normalized = word.trim()
+    if (!normalized) return
+    const alreadyAdded = settings.custom_dictionary.some(
+      existing => existing.toLocaleLowerCase() === normalized.toLocaleLowerCase(),
+    )
+    if (alreadyAdded) return
+
+    const customDictionary = [...settings.custom_dictionary, normalized]
+      .sort((left, right) => left.localeCompare(right))
+    setCustomWords(customDictionary)
+    await saveSettings({ custom_dictionary: customDictionary })
+  }
+
   // Build context menu items
   const contextMenuItems: ContextMenuItem[] = []
 
   // Add spell suggestions if there's a misspelled word
-  if (contextMenu?.misspelledWord && contextMenu.suggestions && contextMenu.suggestions.length > 0) {
-    contextMenu.suggestions.forEach((suggestion) => {
-      contextMenuItems.push({
-        label: suggestion,
-        icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>,
-        onClick: () => handleSpellSuggestion(suggestion),
+  if (contextMenu?.misspelledWord) {
+    if (contextMenu.suggestions && contextMenu.suggestions.length > 0) {
+      contextMenu.suggestions.forEach((suggestion) => {
+        contextMenuItems.push({
+          label: suggestion,
+          icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>,
+          onClick: () => handleSpellSuggestion(suggestion),
+        })
       })
-    })
-    // Add separator
-    contextMenuItems.push({ label: '', onClick: () => {}, separator: true })
-  } else if (contextMenu?.misspelledWord && (!contextMenu.suggestions || contextMenu.suggestions.length === 0)) {
-    // No suggestions available
+    }
+    if (contextMenu.suggestionsLoading) {
+      contextMenuItems.push({ label: 'Finding more suggestions…', onClick: () => {}, disabled: true })
+    } else if (!contextMenu.suggestions?.length) {
+      contextMenuItems.push({ label: 'No suggestions', onClick: () => {}, disabled: true })
+    }
     contextMenuItems.push({
-      label: 'No suggestions',
+      label: `Add “${contextMenu.misspelledWord}” to dictionary`,
+      onClick: () => handleAddToDictionary(contextMenu.misspelledWord!),
+    })
+    contextMenuItems.push({ label: '', onClick: () => {}, separator: true })
+  }
+
+  if (contextMenu?.grammarIssue) {
+    const issue = contextMenu.grammarIssue
+    contextMenuItems.push({
+      label: issue.message,
       onClick: () => {},
       disabled: true,
+    })
+    issue.replacements.forEach(replacement => {
+      contextMenuItems.push({
+        label: replacement ? `Replace with “${replacement}”` : 'Remove repeated word',
+        icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m5 12 4 4L19 6"/></svg>,
+        onClick: () => handleGrammarSuggestion(issue, replacement),
+      })
     })
     contextMenuItems.push({ label: '', onClick: () => {}, separator: true })
   }

@@ -20,7 +20,7 @@ import AppSettingsDialog from './components/dialogs/AppSettingsDialog'
 import ExportWizard from './components/dialogs/ExportWizard'
 
 export default function App() {
-  const { book, newBook, openBook, openRecentBook, saveBook, saveBookAs, dialogs, initBook, setDarkMode, toggleLeftPanel, toggleRightPanel, viewMode } = useBookStore()
+  const { book, newBook, openBook, openRecentBook, saveBook, saveBookAs, dialogs, initBook, setDarkMode, toggleLeftPanel, toggleRightPanel, viewMode, setViewMode } = useBookStore()
   const { loadSettings, settings, showSettings, showWelcome, setShowWelcome, loadRecentProjects, showNewUniverse, setShowNewUniverse } = useAppStore()
   const prevThemeRef = useRef<'light' | 'dark' | null>(null)
   const [isTransitioning, setIsTransitioning] = useState(false)
@@ -137,6 +137,10 @@ export default function App() {
       setShowWelcome(false)
     }
   }, [book, dialogs.showNewBookWizard])
+
+  useEffect(() => {
+    if (!settings.cast_enabled && viewMode === 'cast') setViewMode('editor')
+  }, [settings.cast_enabled, viewMode, setViewMode])
 
   // Show welcome screen
   if (showWelcome) {

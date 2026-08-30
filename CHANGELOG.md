@@ -5,6 +5,35 @@ All notable changes to Draftline will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.02340] - 2026-08-30
+
+### Added
+- Offline grammar checking with distinct grammar and style diagnostics, contextual explanations, and one-click corrections
+- Persistent spelling diagnostics with asynchronous suggestions and a personal custom dictionary
+- A searchable, JetBrains-inspired Plugins settings page for enabling or disabling bundled features
+- Feature controls for Spelling, Grammar Check, Cast, Story Bible, Plot Walker, and AI Studio
+- A registry-based feature model designed to accommodate community plugins in a future release
+
+### Changed
+- Moved expensive spelling suggestions into a dedicated web worker, keeping editor input and context menus responsive
+- Routed Claude Code AI work through a dedicated subprocess flow so long-running generation does not block the main application process
+- Improved Claude Code discovery on Windows by launching the native executable or Node entry point directly instead of relying on fragile command-shim invocation
+- Preserved existing user settings while adding backwards-compatible defaults for newly introduced feature flags
+- Normalized backend and frontend version reporting to `0.13.02340`
+
+### Fixed
+- Fixed Claude Code integration failures that surfaced as `not recognized as an internal or external command` in the AI sidebar
+- Fixed persistent spell-check lag caused by synchronous suggestion generation on the editor thread
+- Fixed reactive editor-store subscriptions that caused excessive rerenders, instability, and intermittent crashes during editing and AI review
+- Fixed spelling markers disappearing when the custom context menu took focus
+- Fixed misspelling suggestions being calculated for the keyboard cursor instead of the word that was right-clicked
+- Fixed sidebar width and feature settings being discarded when settings were persisted
+
+### Removed
+- Removed legacy trial, Indie, and paid-edition branding from the welcome screen for the open-source release
+
+---
+
 ## [0.2.02330]
 
 ### Added

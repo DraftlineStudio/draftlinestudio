@@ -316,6 +316,12 @@ export namespace types {
 	    auto_theme_use_manual: boolean;
 	    auto_theme_dawn: string;
 	    auto_theme_dusk: string;
+	    custom_dictionary?: string[];
+	    spell_check_enabled: boolean;
+	    grammar_check_enabled: boolean;
+	    cast_enabled: boolean;
+	    story_bible_enabled: boolean;
+	    plot_walker_enabled: boolean;
 	    ai_enabled: boolean;
 	    ai_mode: string;
 	    ai_provider: string;
@@ -330,6 +336,7 @@ export namespace types {
 	    book_line_spacing: string;
 	    book_drop_caps: boolean;
 	    book_trim_size: string;
+	    sidebar_panel_width: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppSettings(source);
@@ -346,6 +353,12 @@ export namespace types {
 	        this.auto_theme_use_manual = source["auto_theme_use_manual"];
 	        this.auto_theme_dawn = source["auto_theme_dawn"];
 	        this.auto_theme_dusk = source["auto_theme_dusk"];
+	        this.custom_dictionary = source["custom_dictionary"];
+	        this.spell_check_enabled = source["spell_check_enabled"];
+	        this.grammar_check_enabled = source["grammar_check_enabled"];
+	        this.cast_enabled = source["cast_enabled"];
+	        this.story_bible_enabled = source["story_bible_enabled"];
+	        this.plot_walker_enabled = source["plot_walker_enabled"];
 	        this.ai_enabled = source["ai_enabled"];
 	        this.ai_mode = source["ai_mode"];
 	        this.ai_provider = source["ai_provider"];
@@ -360,6 +373,7 @@ export namespace types {
 	        this.book_line_spacing = source["book_line_spacing"];
 	        this.book_drop_caps = source["book_drop_caps"];
 	        this.book_trim_size = source["book_trim_size"];
+	        this.sidebar_panel_width = source["sidebar_panel_width"];
 	    }
 	}
 	export class BackupInfo {
