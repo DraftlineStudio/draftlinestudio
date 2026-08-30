@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { useBookStore } from '../../store/bookStore'
 import { characterColor, characterInitials } from '../../utils/characterVisuals'
 import { hexToRgba } from '../../utils/accentColor'
+import { isConfirmedCharacter } from '../../utils/characterStatus'
 import '../cast/cast.css'
 
 export default function CastQuickRef() {
@@ -18,7 +19,8 @@ export default function CastQuickRef() {
 
   if (!book) return <div className="tool-empty-state">Open a project to see its cast.</div>
 
-  const characters = book.story_bible?.characters ?? []
+  const allCharacters = book.story_bible?.characters ?? []
+  const characters = allCharacters.filter(isConfirmedCharacter)
 
   const q = query.trim().toLowerCase()
   const matching = q
