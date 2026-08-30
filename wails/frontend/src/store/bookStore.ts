@@ -355,16 +355,24 @@ export const useBookStore = create<BookStore>((set, get) => ({
     const outcome = await performSave('saveAs')
     if (outcome.status === 'saved') {
       set({ statusMessage: `Saved: ${outcome.filePath}` })
+    } else if (outcome.status === 'error') {
+      set({ statusMessage: `Save failed: ${outcome.message}` })
     }
-    // Errors intentionally silent for now (matches previous behavior; next fix surfaces them).
+    // 'cancelled' (user dismissed the picker) stays silent.
   },
 
   closeProject: async () => {
     const { book, isDirty } = get()
     if (book && isDirty) {
-      // Outcome intentionally ignored (matches previous behavior; next fix aborts close on failure).
       const outcome = await performSave('save')
-      if (outcome.status === 'error') console.error('Auto-save before close failed:', outcome.message)
+      if (outcome.status === 'error') {
+        set({ statusMessage: `Save failed: ${outcome.message} — project not closed` })
+        return
+      }
+      if (outcome.status === 'cancelled') {
+        set({ statusMessage: 'Save cancelled — project not closed' })
+        return
+      }
     }
     set({ book: null, currentSection: 'body', currentIndex: 0, isDirty: false, statusMessage: '' })
     useEditorStore.getState().clearPendingDiff()
@@ -746,18 +754,22 @@ export const useBookStore = create<BookStore>((set, get) => ({
   setDarkMode: (v) => set({ darkMode: v }),
 
   saveAndProceed: async () => {
+    // The dialog stays open until the save actually succeeds: a failed or
+    // cancelled save must not let the pending new/open action discard the book.
     const { book, dialogs } = get()
     const action = dialogs.pendingAction
-    set(s => ({ dialogs: { ...s.dialogs, showUnsavedWarning: false, pendingAction: null } }))
     if (book) {
       const outcome = await performSave('save')
-      if (outcome.status === 'saved') {
-        set({ statusMessage: `Saved: ${outcome.filePath}` })
-      } else if (outcome.status === 'cancelled') {
-        return
+      if (outcome.status === 'error') {
+        set({ statusMessage: `Save failed: ${outcome.message}` })
+        return // dialog stays open, pendingAction retained
       }
-      // 'error' falls through intentionally (matches previous behavior; next fix blocks the transition).
+      if (outcome.status === 'cancelled') {
+        return // dismissing the SaveAs picker is not consent to discard
+      }
+      set({ statusMessage: `Saved: ${outcome.filePath}` })
     }
+    set(s => ({ dialogs: { ...s.dialogs, showUnsavedWarning: false, pendingAction: null } }))
     if (action === 'new') {
       set(s => ({ dialogs: { ...s.dialogs, showNewBookWizard: true } }))
     } else if (action === 'open') {

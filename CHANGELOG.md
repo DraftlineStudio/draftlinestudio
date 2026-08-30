@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.15.02384] - 2026-08-30
+
+### Fixed
+- A failed or cancelled save no longer discards unsaved changes when opening or creating a book.
+- Closing a project now stops if the save fails.
+
 ## [0.15.02383] - 2026-08-30
 
 ### Fixed
