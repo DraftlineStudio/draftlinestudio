@@ -19,6 +19,15 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.15.02385] - 2026-08-30
+
+### Changed
+- Added a Vitest test harness to the frontend (`npm test` in `wails/frontend`, node environment, Wails bindings mocked at the module boundary)
+- Added 8 regression tests for the save pipeline proving the 0.15.02383/0.15.02384 data-loss fixes: an edit during an in-flight autosave stays dirty and persists the newer content next cycle; failed or cancelled saves block save-and-proceed and close-project (dialog stays open, book retained); Save As surfaces errors but stays silent on a dismissed picker; saves are strictly serialized
+- Tests were mutation-checked against the pre-fix code: reverting 0.15.02383 fails 6 of 8, reverting only 0.15.02384 fails the 4 transition tests
+
+---
+
 ## [0.15.02384] - 2026-08-30
 
 ### Fixed
