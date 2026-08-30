@@ -21,6 +21,19 @@ function cleanWord(word: string): string {
   return word.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, '')
 }
 
+export function getDictionaryRoot(word: string): string {
+  return cleanWord(word).replace(/['’]s$/i, '')
+}
+
+export function normalizeCustomDictionary(words: string[]): string[] {
+  const normalized = new Map<string, string>()
+  words.forEach(word => {
+    const root = getDictionaryRoot(word.trim())
+    if (root) normalized.set(root.toLocaleLowerCase(), root)
+  })
+  return [...normalized.values()].sort((left, right) => left.localeCompare(right))
+}
+
 function notifyChanged(): void {
   changeListeners.forEach(listener => listener())
 }
@@ -82,7 +95,7 @@ export function onDictionaryChanged(listener: () => void): () => void {
 }
 
 export function setCustomWords(words: string[]): void {
-  const next = new Set(words.map(cleanWord).filter(Boolean).map(word => word.toLocaleLowerCase()))
+  const next = new Set(normalizeCustomDictionary(words).map(word => word.toLocaleLowerCase()))
   if (next.size === customWords.size && [...next].every(word => customWords.has(word))) return
 
   customWords.clear()
@@ -99,11 +112,14 @@ export function checkWord(word: string): boolean {
   if (/^\d+(?:st|nd|rd|th)$/i.test(cleaned)) return true
 
   const key = cleaned.toLocaleLowerCase()
-  if (customWords.has(key)) return true
+  const root = getDictionaryRoot(cleaned)
+  const rootKey = root.toLocaleLowerCase()
+  if (customWords.has(key) || customWords.has(rootKey)) return true
   const cached = checkCache.get(key)
   if (cached !== undefined) return cached
 
   const correct = dictionary.check(cleaned)
+    || (root !== cleaned && dictionary.check(root))
   checkCache.set(key, correct)
   return correct
 }

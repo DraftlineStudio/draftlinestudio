@@ -19,6 +19,14 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.14.02348] - 2026-08-30
+
+### Fixed
+- Normalized possessive spellings to their lexical root so adding `FleetCom's` or `FleetCom’s` stores `FleetCom`, and all possessive uses are then recognized automatically
+- Migrated existing custom-dictionary possessive entries to deduplicated root words
+
+---
+
 ## [0.14.02347] - 2026-08-30
 
 ### Added
