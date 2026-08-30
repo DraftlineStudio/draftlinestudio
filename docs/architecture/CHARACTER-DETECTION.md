@@ -25,6 +25,8 @@ Marking an auto-detected card as **Not a character** stores a rejection rule and
 
 The **Same as...** correction opens a searchable merge dialog across detected names and aliases. The selected target is treated as the correct character: its display name is retained, the duplicate becomes an alias, and the resulting name-based merge rule is remembered on future detection runs.
 
+Needs Review remains an analysis and curation surface, not a source of sidebar facts. Compact character lists, strongest-tie associations, generated meeting events, and visible relationship totals are restricted to manually created or accepted characters. An event is hidden if any participant is still unconfirmed, preventing plausible places or organizations from appearing as character relationships.
+
 ## Archive Persistence
 
 Archive format 2.1 stores derived analysis in `analysis.json` separately from `story_bible.json`. Entity mentions, evidence, relationships, events, merge rules, and split rules therefore survive close/reopen. A legacy archive with `is_indexed=true` but no analysis is marked for re-detection instead of presenting stale controls.

@@ -10,6 +10,7 @@ import { useAppStore } from '../../store/appStore'
 import { useRelationshipStore } from '../../store/relationshipStore'
 import { characterColor, characterInitials } from '../../utils/characterVisuals'
 import { hexToRgba } from '../../utils/accentColor'
+import { confirmedCharacterIds, confirmedEvents, confirmedRelationships, isConfirmedCharacter } from '../../utils/characterStatus'
 import type { BookData, Character, CharacterRole, CharacterEvent, MentionRecord, Section } from '../../types/draftline'
 import './characters.css'
 
@@ -107,8 +108,15 @@ export default function CharactersView() {
 
   const characters = book?.story_bible?.characters ?? []
   const reviewCount = characters.filter(c => c.detection_status === 'review').length
-  const relationships = book?.analysis?.relationships?.relationships ?? []
-  const events = book?.analysis?.relationships?.events ?? []
+  const characterIdsForSidebar = useMemo(() => confirmedCharacterIds(characters), [characters])
+  const relationships = useMemo(
+    () => confirmedRelationships(book?.analysis?.relationships?.relationships ?? [], characterIdsForSidebar),
+    [book, characterIdsForSidebar],
+  )
+  const events = useMemo(
+    () => confirmedEvents(book?.analysis?.relationships?.events ?? [], characterIdsForSidebar),
+    [book, characterIdsForSidebar],
+  )
   const entityIds = useMemo(
     () => new Set((book?.analysis?.entity_resolution?.entities ?? []).map(e => e.id)),
     [book],
@@ -124,7 +132,7 @@ export default function CharactersView() {
     const q = query.trim().toLowerCase()
     const byStatus = characters.filter(c =>
       statusFilter === 'all' ||
-      (statusFilter === 'review' ? c.detection_status === 'review' : c.detection_status !== 'review'))
+      (statusFilter === 'review' ? c.detection_status === 'review' : isConfirmedCharacter(c)))
     const list = q
       ? byStatus.filter(c =>
           c.name.toLowerCase().includes(q) ||

@@ -18,12 +18,12 @@ func TestAnalyzeBook_EndToEnd(t *testing.T) {
 			{
 				Title: "Chapter 1",
 				Type:  "chapter",
-				Content: `<p>Marcus Webb entered the bar. Clara was already there.</p>` +
+				Content: `<p>Marcus Webb entered the bar. Detective Clara was already there.</p>` +
 					`<p>"You're late," Clara said. Marcus shrugged. "Traffic," Marcus said to Clara.</p>`,
 			},
 			{
-				Title: "Chapter 2",
-				Type:  "chapter",
+				Title:   "Chapter 2",
+				Type:    "chapter",
 				Content: `<p>Webb woke early. Clara had left a note for Marcus.</p>`,
 			},
 		},
