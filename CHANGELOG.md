@@ -2,6 +2,101 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.15.02370] - 2026-08-30
+
+### Fixed
+- A temporary keyring error no longer clears the API key until restart.
+
+## [0.15.02369] - 2026-08-30
+
+### Fixed
+- Clearing the API key now removes the fallback copy from settings.
+
+## [0.15.02367] - 2026-08-30
+
+### Changed
+- Settings no longer displays the stored API key and has a Clear button.
+
+## [0.15.02366] - 2026-08-30
+
+### Security
+- Added size limits when opening project files and importing EPUB and DOCX.
+
+## [0.15.02365] - 2026-08-30
+
+### Fixed
+- Backup restores are now written safely.
+
+## [0.15.02364] - 2026-08-30
+
+### Fixed
+- Backups are now written safely.
+
+## [0.15.02363] - 2026-08-30
+
+### Fixed
+- Saves are now crash-safe.
+
+## [0.15.02362] - 2026-08-30
+
+### Security
+- Pinned the Claude Code install to a specific version.
+
+## [0.15.02361] - 2026-08-30
+
+### Security
+- Limited file sizes when extracting the Node.js runtime.
+
+## [0.15.02360] - 2026-08-30
+
+### Security
+- Stripped unsafe file permissions when extracting the Node.js runtime.
+
+## [0.15.02359] - 2026-08-30
+
+### Security
+- Blocked unsafe links when extracting the Node.js runtime.
+
+## [0.15.02358] - 2026-08-30
+
+### Security
+- Blocked path traversal when extracting the Node.js runtime.
+
+## [0.15.02357] - 2026-08-30
+
+### Security
+- The Node.js download is now verified against pinned checksums.
+
+## [0.15.02356] - 2026-08-30
+
+### Security
+- AI debug logs are now readable only by the current user.
+
+## [0.15.02355] - 2026-08-30
+
+### Security
+- AI debug logging is now off by default.
+
+## [0.15.02354] - 2026-08-30
+
+### Security
+- Settings are now saved safely and readable only by the current user.
+
+## [0.15.02353] - 2026-08-30
+
+### Fixed
+- The API key is no longer lost on systems without a keyring.
+
+## [0.15.02352] - 2026-08-30
+
+### Security
+- The API key no longer passes through the frontend.
+
+## [0.15.02351] - 2026-08-30
+
+### Security
+- API keys are now stored in the system keyring.
+
 ## [0.15.02350] - 2026-08-30
 
 ### Added
