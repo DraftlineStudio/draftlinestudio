@@ -103,19 +103,22 @@ export default function AiStudioTab() {
     {
       mode: 'claudecode', name: 'Claude Code', mono: 'C',
       ready: !!(ccStatus?.installed && ccStatus?.authenticated),
-      model: settings.ai_model || 'Claude.ai account',
+      model: (settings.ai_mode === 'claudecode' && settings.ai_model) || 'Claude.ai account',
     },
     {
       mode: 'codex', name: 'Codex', mono: 'O',
       ready: !!(cxStatus?.installed && cxStatus?.authenticated),
-      model: settings.ai_model || 'ChatGPT account',
+      model: settings.ai_mode === 'codex' && !/^(claude|gemini|grok|llama|mistral)/i.test(settings.ai_model)
+        ? settings.ai_model || 'ChatGPT account'
+        : 'ChatGPT account',
     },
     {
       mode: 'api',
       name: settings.ai_provider ? `${providerLabels[settings.ai_provider]} API` : 'API key',
       mono: settings.ai_provider ? providerLabels[settings.ai_provider][0] : 'A',
       ready: settings.ai_provider !== '' && settings.has_api_key,
-      model: settings.ai_model || (settings.ai_provider ? providerLabels[settings.ai_provider] : 'no key stored'),
+      model: (settings.ai_mode === 'api' && settings.ai_model)
+        || (settings.ai_provider ? providerLabels[settings.ai_provider] : 'no key stored'),
     },
     {
       mode: 'local', name: 'Local', mono: 'L',
@@ -128,7 +131,15 @@ export default function AiStudioTab() {
   function pickRoute(route: (typeof routes)[number]) {
     setProviderMenuOpen(false)
     if (route.ready) {
-      saveSettings({ ai_mode: route.mode })
+      const currentModel = settings.ai_model.trim()
+      const incompatibleWithCodex = /^(claude|gemini|grok|llama|mistral)/i.test(currentModel)
+      const patch: Partial<typeof settings> = { ai_mode: route.mode }
+      if (route.mode === 'codex' && incompatibleWithCodex) patch.ai_model = ''
+      if (route.mode === 'claudecode' && (!currentModel || !currentModel.toLowerCase().startsWith('claude'))) {
+        patch.ai_model = 'claude-sonnet-4-6'
+      }
+      if (route.mode === 'api' && settings.ai_mode !== 'api') patch.ai_model = ''
+      void saveSettings(patch)
     } else {
       openSettings()
     }

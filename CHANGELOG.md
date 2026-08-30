@@ -19,6 +19,21 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02421] - 2026-08-30
+
+### Fixed
+- Switching AI Studio to Codex no longer passes a leftover Claude, Gemini, Grok, Llama, or Mistral model name to the Codex CLI; existing settings are also sanitized in the backend so Codex falls back to its supported account default
+- Codex failures now show a concise actionable message instead of dumping CLI session diagnostics and submitted manuscript text into the AI Studio error panel
+- Provider rows no longer display the active provider's shared model name under every inactive route
+
+### Changed
+- Codex CLI output is requested as uncolored JSON and drained privately; only safe lifecycle messages are sent to the AI Studio activity log
+
+### Tests
+- Added regression coverage for provider-model isolation, Codex command arguments, and prompt-safe failure messages
+
+---
+
 ## [0.16.02420] - 2026-08-30
 
 ### Added

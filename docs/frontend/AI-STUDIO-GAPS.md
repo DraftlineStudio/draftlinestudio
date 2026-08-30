@@ -16,7 +16,7 @@ The design lists every API provider as its own switchable row. The app stores **
 
 ## 3. Model names in the menu are display-only
 
-The design shows a model name per provider row (e.g. "Sonnet 4.6", "GPT-5.2"). The app has a single shared `ai_model` setting (plus CLI defaults when blank), so the menu displays that or an account label — it is not a per-provider model picker. A per-route model memory would need per-route settings fields.
+The design shows a model name per provider row (e.g. "Sonnet 4.6", "GPT-5.2"). The app has a single shared `ai_model` setting (plus CLI defaults when blank), so the menu displays a model only for the active route and an account label for inactive routes — it is not a per-provider model picker. The quick-switcher clears incompatible provider-specific values, and the backend independently prevents non-Codex model IDs from reaching the Codex CLI. A per-route model memory would still need per-route settings fields.
 
 ## 4. Kept intentionally different from the design
 
