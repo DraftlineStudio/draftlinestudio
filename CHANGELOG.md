@@ -19,6 +19,15 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.15.02378] - 2026-08-30
+
+### Security
+- Auto theme now defaults to manual dawn/dusk times (no network call); IP-based geolocation is strictly opt-in
+- When location-based times are enabled, geolocation now uses HTTPS (ipwho.is) instead of plaintext HTTP (ip-api.com)
+- Settings dialog now discloses that the location option sends the device IP to ipwho.is and derived coordinates to sunrise-sunset.org
+
+---
+
 ## [0.15.02377] - 2026-08-30
 
 ### Security

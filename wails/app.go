@@ -44,7 +44,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.15.02377"
+const AppVersion = "0.15.02378"
 
 // App is the main application struct bound to the frontend.
 type App struct {
@@ -439,6 +439,7 @@ func (a *App) loadSettingsFromDisk() types.AppSettings {
 		AIEnabled:           false,
 		DarkMode:            true,
 		ThemeMode:           "dark",
+		AutoThemeUseManual:  true,
 		AutoThemeDawn:       "06:30",
 		AutoThemeDusk:       "19:00",
 		CustomDictionary:    []string{},
