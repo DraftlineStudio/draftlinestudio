@@ -11,31 +11,10 @@ import { useRelationshipStore } from '../../store/relationshipStore'
 import { characterColor, characterInitials } from '../../utils/characterVisuals'
 import { hexToRgba } from '../../utils/accentColor'
 import { confirmedCharacterIds, confirmedEvents, confirmedRelationships, isConfirmedCharacter } from '../../utils/characterStatus'
-import type { BookData, Character, CharacterRole, CharacterEvent, MentionRecord, Section } from '../../types/draftline'
+import type { BookData, Character, CharacterRole, CharacterEvent, MentionRecord } from '../../types/draftline'
 import './characters.css'
 
-function allChapters(book: BookData) {
-  return [...(book.front_matter || []), ...(book.body || []), ...(book.back_matter || [])]
-}
-
-function chapterName(book: BookData, index: number): string {
-  return allChapters(book)[index]?.title || `Chapter ${index + 1}`
-}
-
-// Discrete alpha ramp for grid cells: reads as "none / few / some / many / lots".
-function cellAlpha(v: number): number {
-  return v <= 0 ? 0 : v <= 2 ? 0.3 : v <= 4 ? 0.55 : v <= 6 ? 0.78 : 0.95
-}
-
-// Maps a combined-chapter index (front_matter + body + back_matter) back to a
-// navigable (section, index) pair.
-function chapterLocation(book: BookData, index: number): { section: Section; index: number } {
-  const front = book.front_matter?.length || 0
-  const body = book.body?.length || 0
-  if (index < front) return { section: 'front_matter', index }
-  if (index < front + body) return { section: 'body', index: index - front }
-  return { section: 'back_matter', index: index - front - body }
-}
+import { allChapters, chapterName, cellAlpha, chapterLocation, takeCharacterFocus } from './shared'
 
 function stripHtml(html: string): string {
   const div = document.createElement('div')
@@ -83,7 +62,8 @@ export default function CharactersView() {
   const { settings, saveSettings } = useAppStore()
 
   const savedLane: ViewMode = settings.characters_lane_view === 'heat' ? 'heat' : 'grid'
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  // A pending focus (sidebar's "Open in Characters") wins over auto-select.
+  const [selectedId, setSelectedId] = useState<string | null>(() => takeCharacterFocus())
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('accepted')
   const [sortMode, setSortMode] = useState<SortMode>(savedLane === 'heat' ? 'mentions-desc' : 'first')

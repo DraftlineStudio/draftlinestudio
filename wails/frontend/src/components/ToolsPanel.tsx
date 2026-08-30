@@ -11,7 +11,7 @@ import DashboardTab from './tools/Dashboard'
 import AiStudioTab from './tools/AIStudio'
 import { PlotSection, TimelineSection } from './tools/StoryBible'
 import { BeatsSection, ForeshadowingSection, KnowledgeSection, IssuesSection } from './tools/PlotWalker'
-import CastQuickRef from './tools/CastQuickRef'
+import CharacterQuickRef from './tools/CharacterQuickRef'
 
 function isSectionEnabled(section: Exclude<GlyphSection, null>, settings: AppSettings): boolean {
   if (section === 'ai') return settings.ai_enabled
@@ -111,7 +111,7 @@ export default function ToolsPanel() {
           </div>
           <div className="slide-panel-content">
             {activeSection === 'dashboard' && <DashboardTab />}
-            {activeSection === 'characters' && <CastQuickRef />}
+            {activeSection === 'characters' && <CharacterQuickRef />}
             {activeSection === 'plot' && <PlotSection />}
             {activeSection === 'timeline' && <TimelineSection />}
             {activeSection === 'beats' && <BeatsSection />}
