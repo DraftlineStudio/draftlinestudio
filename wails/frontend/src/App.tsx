@@ -9,7 +9,7 @@ import WelcomeScreen from './components/WelcomeScreen'
 import TitleBar from './components/TitleBar'
 import ChapterPanel from './components/ChapterPanel'
 import EditorPanel from './components/EditorPanel'
-import CastView from './components/cast/CastView'
+import CharactersView from './components/characters/CharactersView'
 import ToolsPanel from './components/ToolsPanel'
 import StatusBar from './components/StatusBar'
 import MetadataDialog from './components/dialogs/MetadataDialog'
@@ -183,7 +183,7 @@ export default function App() {
       <TitleBar />
       <div className="main-layout">
         <ChapterPanel />
-        {viewMode === 'cast' ? <CastView /> : <EditorPanel />}
+        {viewMode === 'cast' ? <CharactersView /> : <EditorPanel />}
         <ToolsPanel />
       </div>
       <StatusBar />
