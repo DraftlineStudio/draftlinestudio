@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.15.02350] - 2026-08-30
+
+### Added
+- Added chapter Find and Replace with Ctrl+F and Ctrl+H.
+
+### Changed
+- Moved to version 0.15.
+
 ## [0.14.02349] - 2026-08-30
 
 ### Changed
