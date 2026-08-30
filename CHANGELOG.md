@@ -19,6 +19,14 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.15.02380] - 2026-08-30
+
+### Security
+- Claude Code CLI prompts are now piped via stdin instead of being placed on the command line, keeping manuscript-derived content out of every exec path (and lifting the ~32K Windows command-line length limit on prompt size)
+- `BatchCommand` (Windows .cmd/.bat launcher) now rejects cmd.exe metacharacters (`& | < > ^ "`, CR/LF/NUL) and any script path or argument containing two or more `%` signs — on the /S /C command line cmd.exe expands `%VAR%` and even `%%VAR%%` (percent-doubling only escapes inside batch-file bodies), so multi-`%` strings are refused outright while a lone `%` (e.g. "100% done") stays allowed — refusing to run instead of assembling a hostile command line
+
+---
+
 ## [0.15.02379] - 2026-08-30
 
 ### Fixed
