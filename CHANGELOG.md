@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.15.02379] - 2026-08-30
+
+### Fixed
+- PDF, DOCX, and print exports now decode HTML entities.
+
 ## [0.15.02378] - 2026-08-30
 
 ### Security
