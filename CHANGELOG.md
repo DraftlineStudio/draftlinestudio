@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02406] - 2026-08-30
+
+### Fixed
+- Character analysis now ignores headings, contents, copyright pages, and other non-story sections.
+
 ## [0.16.02405] - 2026-08-30
 
 ### Fixed
