@@ -23,14 +23,28 @@ const AUTO_SAVE_DELAY = 5000
 // mutation already calls — so a save that completes after further edits knows
 // its snapshot is stale and must not clear isDirty.
 let saveRevision = 0
+// Identifies the currently open project. A save may finish after the user has
+// discarded that project and opened another one; its result must never mutate
+// the replacement project's path or dirty state.
+let bookSession = 0
 // saveChain serializes all saves (manual, autosave, close, save-and-proceed)
 // so two SaveBook calls can never interleave on the Go side.
 let saveChain: Promise<unknown> = Promise.resolve()
 
 export type SaveOutcome =
   | { status: 'saved'; filePath: string }
+  | { status: 'stale'; filePath: string }
+  | { status: 'superseded' }
   | { status: 'cancelled' }
   | { status: 'error'; message: string }
+
+function beginBookSession() {
+  bookSession++
+  if (autoSaveTimer) {
+    clearTimeout(autoSaveTimer)
+    autoSaveTimer = null
+  }
+}
 
 // Shared save primitive. Chains on saveChain, snapshots the book AFTER the
 // prior save completes (so a queued save always writes the newest state),
@@ -41,16 +55,19 @@ function performSave(kind: 'save' | 'saveAs'): Promise<SaveOutcome> {
     const book = useBookStore.getState().book
     if (!book) return { status: 'error', message: 'no book open' }
     const rev = saveRevision
+    const session = bookSession
     try {
       const result = kind === 'saveAs' ? await SaveBookAs(book as any) : await SaveBook(book as any)
+      if (bookSession !== session) return { status: 'superseded' }
       if (result.success) {
         if (saveRevision === rev) {
           useBookStore.setState(s => ({ isDirty: false, book: s.book ? { ...s.book, file_path: result.file_path } : null }))
+          return { status: 'saved', filePath: result.file_path }
         } else {
           // Edited while saving: keep isDirty so the re-armed autosave persists the newer state.
           useBookStore.setState(s => ({ book: s.book ? { ...s.book, file_path: result.file_path } : null }))
+          return { status: 'stale', filePath: result.file_path }
         }
-        return { status: 'saved', filePath: result.file_path }
       }
       if (result.error === 'cancelled') return { status: 'cancelled' }
       return { status: 'error', message: result.error || 'unknown error' }
@@ -68,8 +85,10 @@ function scheduleAutoSave() {
   autoSaveTimer = setTimeout(async () => {
     const state = useBookStore.getState()
     if (state.book && state.isDirty && state.book.file_path) {
+      const session = bookSession
       useBookStore.setState({ isAutoSaving: true })
       const outcome = await performSave('save')
+      if (bookSession !== session) return
       if (outcome.status === 'saved') {
         useBookStore.setState({ isAutoSaving: false, statusMessage: 'Auto-saved' })
         setTimeout(() => {
@@ -300,6 +319,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
       const book: BookData = await OpenBookDialog()
       if (!book?.version) return
       const section: Section = book.body.length > 0 ? 'body' : 'front_matter'
+      beginBookSession()
       set({ book, currentSection: section, currentIndex: 0, isDirty: false, statusMessage: `Opened: ${book.metadata.title}` })
       useEditorStore.getState().clearPendingDiff()
       if (book.file_path) {
@@ -326,6 +346,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
       const book: BookData = await OpenRecentProject(path)
       if (!book?.version) return
       const section: Section = book.body.length > 0 ? 'body' : 'front_matter'
+      beginBookSession()
       set({ book, currentSection: section, currentIndex: 0, isDirty: false, statusMessage: `Opened: ${book.metadata.title}` })
       useEditorStore.getState().clearPendingDiff()
       const wordCount = countBookWords(book)
@@ -345,6 +366,8 @@ export const useBookStore = create<BookStore>((set, get) => ({
     const outcome = await performSave('save')
     if (outcome.status === 'saved') {
       set({ statusMessage: `Saved: ${outcome.filePath}` })
+    } else if (outcome.status === 'stale') {
+      set({ statusMessage: 'Newer edits were made while saving — save again' })
     } else if (outcome.status === 'error') {
       set({ statusMessage: `Save failed: ${outcome.message}` })
     }
@@ -355,6 +378,8 @@ export const useBookStore = create<BookStore>((set, get) => ({
     const outcome = await performSave('saveAs')
     if (outcome.status === 'saved') {
       set({ statusMessage: `Saved: ${outcome.filePath}` })
+    } else if (outcome.status === 'stale') {
+      set({ statusMessage: 'Newer edits were made while saving — save again' })
     } else if (outcome.status === 'error') {
       set({ statusMessage: `Save failed: ${outcome.message}` })
     }
@@ -373,7 +398,12 @@ export const useBookStore = create<BookStore>((set, get) => ({
         set({ statusMessage: 'Save cancelled — project not closed' })
         return
       }
+      if (outcome.status !== 'saved') {
+        set({ statusMessage: 'Newer edits are still unsaved — project not closed' })
+        return
+      }
     }
+    beginBookSession()
     set({ book: null, currentSection: 'body', currentIndex: 0, isDirty: false, statusMessage: '' })
     useEditorStore.getState().clearPendingDiff()
     useAppStore.getState().setShowWelcome(true)
@@ -724,6 +754,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
   initBook: async () => {
     try {
       const book: BookData = await NewBook()
+      beginBookSession()
       set({ book, currentSection: 'body', currentIndex: 0, isDirty: false, statusMessage: 'Ready' })
     } catch (e) {
       console.error('initBook failed:', e)
@@ -735,6 +766,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
     try {
       const book: BookData = await NewBook()
       const merged: BookData = { ...book, metadata: { ...book.metadata, title: title || 'Untitled', author, publisher } }
+      beginBookSession()
       set({ book: merged, currentSection: 'body', currentIndex: 0, isDirty: false, statusMessage: 'New project created' })
     } catch (e) {
       set({ statusMessage: `Error: ${e}` })
@@ -744,6 +776,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
   loadImportedBook: (book: BookData) => {
     set(s => ({ dialogs: { ...s.dialogs, showNewBookWizard: false } }))
     const section: Section = book.body.length > 0 ? 'body' : book.front_matter.length > 0 ? 'front_matter' : 'back_matter'
+    beginBookSession()
     set({ book, currentSection: section, currentIndex: 0, isDirty: true, statusMessage: `Imported: ${book.metadata.title}` })
     scheduleAutoSave()
     useAppStore.getState().setShowWelcome(false)
@@ -767,6 +800,10 @@ export const useBookStore = create<BookStore>((set, get) => ({
       if (outcome.status === 'cancelled') {
         return // dismissing the SaveAs picker is not consent to discard
       }
+      if (outcome.status !== 'saved') {
+        set({ statusMessage: 'Newer edits are still unsaved — action cancelled' })
+        return
+      }
       set({ statusMessage: `Saved: ${outcome.filePath}` })
     }
     set(s => ({ dialogs: { ...s.dialogs, showUnsavedWarning: false, pendingAction: null } }))
@@ -777,6 +814,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
         const opened: BookData = await OpenBookDialog()
         if (!opened?.version) return
         const section: Section = opened.body.length > 0 ? 'body' : 'front_matter'
+        beginBookSession()
         set({ book: opened, currentSection: section, currentIndex: 0, isDirty: false, statusMessage: `Opened: ${opened.metadata.title}` })
       } catch (e) { set({ statusMessage: `Error opening file: ${e}` }) }
     }
@@ -785,6 +823,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
   discardAndProceed: async () => {
     const { dialogs } = get()
     const action = dialogs.pendingAction
+    beginBookSession()
     set(s => ({ dialogs: { ...s.dialogs, showUnsavedWarning: false, pendingAction: null }, isDirty: false }))
     if (action === 'new') {
       set(s => ({ dialogs: { ...s.dialogs, showNewBookWizard: true } }))
@@ -793,6 +832,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
         const opened: BookData = await OpenBookDialog()
         if (!opened?.version) return
         const section: Section = opened.body.length > 0 ? 'body' : 'front_matter'
+        beginBookSession()
         set({ book: opened, currentSection: section, currentIndex: 0, isDirty: false, statusMessage: `Opened: ${opened.metadata.title}` })
       } catch (e) { set({ statusMessage: `Error opening file: ${e}` }) }
     }
