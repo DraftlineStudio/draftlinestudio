@@ -19,6 +19,15 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.15.02390] - 2026-08-30
+
+### Fixed
+- Save-and-proceed and project close now stop if the saved snapshot became stale because the manuscript changed while the save was in flight
+- A late autosave from a discarded project can no longer update the replacement project's file path, dirty flag, or autosave status
+- Added regression coverage for both stale-transition and cross-project autosave races (10 frontend store tests total)
+
+---
+
 ## [0.15.02389] - 2026-08-30
 
 ### Changed
