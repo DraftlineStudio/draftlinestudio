@@ -19,6 +19,14 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.15.02376] - 2026-08-30
+
+### Security
+- Cleared both high-severity npm dev-dependency advisories via `npm audit fix`: nanoid 3.3.15 → 3.3.18 (GHSA-28wg-ghj8-5hjv, GHSA-2v37-7h3g-55p8) and postcss 8.5.16 → 8.5.26 (GHSA-fxqj-rqcc-2cmp, GHSA-r28c-9q8g-f849)
+- `npm audit --audit-level=high` now reports zero vulnerabilities; lockfile diff confined to the two version/integrity bumps
+
+---
+
 ## [0.15.02375] - 2026-08-30
 
 ### Fixed
