@@ -9,10 +9,23 @@ import { EventsOn, EventsOff } from '../../../../wailsjs/runtime/runtime'
 import type { WritingStyleOptions } from '../../../types/draftline'
 import type { AIMode, AIState } from '../types'
 import { AI_MODES, STYLE_FEATURES, INTENSITY_LABELS } from '../constants'
+import './aistudio.css'
+
+// Icon paths per editing mode (24-viewBox, stroke-based, per the design).
+const MODE_ICONS: Record<AIMode, string> = {
+  line_edit: 'M4 20l3.2-.9L18 8.3 15.7 6 4.9 16.8 4 20zM13.5 8.2l2.3 2.3',
+  copy_edit: 'M4 7h9M4 11h6M12.5 15.5l2.6 2.6L20 13',
+  expand: 'M9 4H4v5M15 4h5v5M15 20h5v-5M9 20H4v-5',
+  smooth: 'M3 15c2.5-5 5.5-5 8 0s5.5 5 8 0',
+  custom: 'M5 7l4.5 5L5 17M12.5 17H19',
+}
+
+// Positions of the 4 style-option stop centers along the track (percent).
+const STOP_CENTERS = [12.5, 37.5, 62.5, 87.5]
 
 export default function AiStudioTab() {
   const { book, currentSection, currentIndex, setPendingDiff, getStyleOptions, updateStyleOptions, getEditorSelection } = useBookStore()
-  const { settings, openSettings } = useAppStore()
+  const { settings, saveSettings, openSettings } = useAppStore()
 
   const [aiMode, setAiMode] = useState<AIMode>('line_edit')
   const [aiState, setAiState] = useState<AIState>('idle')
@@ -29,18 +42,11 @@ export default function AiStudioTab() {
   const styleOptions = getStyleOptions()
   const selection = getEditorSelection()
 
-  // Check CLI status on mount for the active mode
+  const [providerMenuOpen, setProviderMenuOpen] = useState(false)
+
+  // Check both CLIs on mount so the provider quick-switcher shows accurate
+  // ready states without a trip through settings.
   useEffect(() => {
-    if (settings.ai_mode === 'codex') {
-      if (!cxStatus && !cxChecking) {
-        setCxChecking(true)
-        CheckCodexCLI()
-          .then(setCxStatus)
-          .catch(() => {})
-          .finally(() => setCxChecking(false))
-      }
-      return
-    }
     if (!ccStatus && !ccChecking) {
       setCcChecking(true)
       CheckClaudeCode()
@@ -48,7 +54,14 @@ export default function AiStudioTab() {
         .catch(() => {})
         .finally(() => setCcChecking(false))
     }
-  }, [settings.ai_mode])
+    if (!cxStatus && !cxChecking) {
+      setCxChecking(true)
+      CheckCodexCLI()
+        .then(setCxStatus)
+        .catch(() => {})
+        .finally(() => setCxChecking(false))
+    }
+  }, [])
 
   // Determine if AI is configured based on mode
   const aiConfigured = settings.ai_enabled && (
@@ -81,6 +94,45 @@ export default function AiStudioTab() {
   }
 
   const currentMode = AI_MODES.find(m => m.id === aiMode)!
+
+  // Provider quick-switcher routes, derived from what's actually configured
+  // in AI Studio settings. One API row: the app stores a single key for the
+  // currently selected provider (see docs/frontend/AI-STUDIO-GAPS.md).
+  const providerLabels: Record<string, string> = { claude: 'Claude', openai: 'OpenAI', gemini: 'Gemini', grok: 'Grok' }
+  const routes: { mode: typeof settings.ai_mode; name: string; mono: string; ready: boolean; model: string }[] = [
+    {
+      mode: 'claudecode', name: 'Claude Code', mono: 'C',
+      ready: !!(ccStatus?.installed && ccStatus?.authenticated),
+      model: settings.ai_model || 'Claude.ai account',
+    },
+    {
+      mode: 'codex', name: 'Codex', mono: 'O',
+      ready: !!(cxStatus?.installed && cxStatus?.authenticated),
+      model: settings.ai_model || 'ChatGPT account',
+    },
+    {
+      mode: 'api',
+      name: settings.ai_provider ? `${providerLabels[settings.ai_provider]} API` : 'API key',
+      mono: settings.ai_provider ? providerLabels[settings.ai_provider][0] : 'A',
+      ready: settings.ai_provider !== '' && settings.has_api_key,
+      model: settings.ai_model || (settings.ai_provider ? providerLabels[settings.ai_provider] : 'no key stored'),
+    },
+    {
+      mode: 'local', name: 'Local', mono: 'L',
+      ready: settings.ai_local_endpoint !== '',
+      model: settings.ai_local_model || settings.ai_local_endpoint || 'no endpoint',
+    },
+  ]
+  const activeRoute = routes.find(r => r.mode === settings.ai_mode) ?? routes[0]
+
+  function pickRoute(route: (typeof routes)[number]) {
+    setProviderMenuOpen(false)
+    if (route.ready) {
+      saveSettings({ ai_mode: route.mode })
+    } else {
+      openSettings()
+    }
+  }
 
   async function handleRun() {
     const fullHtml = getCurrentHTML()
@@ -251,144 +303,197 @@ export default function AiStudioTab() {
 
   // ── Idle state ──
   const showMixer = (aiMode === 'expand' || aiMode === 'smooth')
+  const stylesOnCount = STYLE_FEATURES.filter(f => styleOptions[f.key] > 0).length
 
   return (
-    <>
-      {/* Mode selector */}
-      <div className="ai-section-label">Editing Mode</div>
-      <div className="ai-mode-list">
-        {AI_MODES.map(m => (
-          <button
-            key={m.id}
-            className={`ai-mode-row${aiMode === m.id ? ' selected' : ''}`}
-            onClick={() => setAiMode(m.id)}
-          >
-            <span className="ai-mode-dot" />
-            <span className="ai-mode-name">{m.label}</span>
-            <span className="ai-mode-hint">{m.desc}</span>
-          </button>
-        ))}
+    <div className="ais-root">
+      {/* Provider quick-switcher */}
+      <div className="ais-provider-wrap">
+        <button className="ais-provider-btn" onClick={() => setProviderMenuOpen(o => !o)}>
+          <span className={`ais-provider-dot${activeRoute.ready ? ' ready' : ''}`} />
+          <span className="ais-provider-name">{activeRoute.name}</span>
+          <span className="ais-provider-model">{activeRoute.model}</span>
+          <svg className={`ais-chevron${providerMenuOpen ? ' open' : ''}`} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
+        {providerMenuOpen && (
+          <>
+            <div className="ais-menu-overlay" onClick={() => setProviderMenuOpen(false)} />
+            <div className="ais-menu">
+              <div className="ais-menu-label">Provider</div>
+              {routes.map(r => (
+                <button
+                  key={r.mode}
+                  className={`ais-menu-row${r.mode === settings.ai_mode ? ' active' : ''}${r.ready ? '' : ' unconfigured'}`}
+                  onClick={() => pickRoute(r)}
+                >
+                  <span className="ais-menu-mono">{r.mono}</span>
+                  <span className="ais-menu-texts">
+                    <span className="ais-menu-name">{r.name}</span>
+                    <span className="ais-menu-model">{r.model}</span>
+                  </span>
+                  {r.ready
+                    ? <span className="ais-menu-ready" />
+                    : <span className="ais-menu-status">Not configured</span>}
+                  {r.mode === settings.ai_mode && (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--app-accent-text)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+              <div className="ais-menu-sep" />
+              <button className="ais-menu-manage" onClick={() => { setProviderMenuOpen(false); openSettings() }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1" />
+                </svg>
+                Manage providers…
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Style Mixer for Expand/Smooth modes */}
-      {showMixer && (
-        <div className="style-mixer-section">
-          <button
-            className="style-mixer-toggle"
-            onClick={() => setShowStyleMixer(!showStyleMixer)}
-          >
-            <span>Style Options</span>
-            <svg
-              className={`style-mixer-chevron${showStyleMixer ? ' open' : ''}`}
-              width="10"
-              height="6"
-              viewBox="0 0 10 6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+      <div className="ais-body">
+        {/* Editing modes */}
+        <div className="ais-section-label">Editing Mode</div>
+        <div className="ais-mode-list">
+          {AI_MODES.map(m => (
+            <button
+              key={m.id}
+              className={`ais-mode-row${aiMode === m.id ? ' selected' : ''}`}
+              onClick={() => setAiMode(m.id)}
             >
-              <path d="M1 1l4 4 4-4" />
-            </svg>
-          </button>
-          {showStyleMixer && (
-            <div className="style-mixer-content">
-              {STYLE_FEATURES.map(feature => (
-                <div key={feature.key} className="style-feature-row">
-                  <div className="style-feature-header">
-                    <span className="style-feature-label">{feature.label}</span>
-                    <span className="style-feature-value">{INTENSITY_LABELS[styleOptions[feature.key]]}</span>
-                  </div>
-                  <div className="style-feature-slider">
-                    <input
-                      type="range"
-                      min="0"
-                      max="3"
-                      value={styleOptions[feature.key]}
-                      onChange={e => handleStyleChange(feature.key, parseInt(e.target.value))}
-                      className="style-slider"
-                    />
-                    <div className="style-slider-marks">
-                      {INTENSITY_LABELS.map((label, i) => (
-                        <span
-                          key={i}
-                          className={`style-slider-mark${styleOptions[feature.key] === i ? ' active' : ''}`}
-                        />
-                      ))}
+              <span className="ais-mode-icon">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d={MODE_ICONS[m.id]} />
+                </svg>
+              </span>
+              <span className="ais-mode-texts">
+                <span className="ais-mode-name">{m.label}</span>
+                <span className="ais-mode-desc">{m.desc}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Style options for Expand/Smooth modes */}
+        {showMixer && (
+          <div className="ais-style-card">
+            <button className="ais-style-toggle" onClick={() => setShowStyleMixer(!showStyleMixer)}>
+              <span className="ais-section-label">Style Options</span>
+              <span className="ais-style-count">{stylesOnCount} of {STYLE_FEATURES.length} on</span>
+              <svg className={`ais-chevron${showStyleMixer ? ' open' : ''}`} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+            {showStyleMixer && (
+              <div className="ais-style-body">
+                {STYLE_FEATURES.map(feature => {
+                  const v = styleOptions[feature.key]
+                  return (
+                    <div key={feature.key} className="ais-style-row">
+                      <div className="ais-style-rowhead">
+                        <span className="ais-style-name">{feature.label}</span>
+                        <span className={`ais-style-value${v > 0 ? ' on' : ''}`}>{INTENSITY_LABELS[v]}</span>
+                      </div>
+                      <div className="ais-stop-track">
+                        <div className="ais-stop-line" />
+                        <div className="ais-stop-fill" style={{ width: `${STOP_CENTERS[v] - STOP_CENTERS[0]}%` }} />
+                        <div className="ais-stop-grid">
+                          {INTENSITY_LABELS.map((label, i) => (
+                            <button
+                              key={i}
+                              className="ais-stop"
+                              title={label}
+                              onClick={() => handleStyleChange(feature.key, i)}
+                            >
+                              <span className={`ais-stop-dot${i === v ? ' active' : i < v ? ' passed' : ''}`} />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )
+                })}
+                <div className="ais-style-hint">
+                  Customize how the AI enhances your writing. "Off" skips that feature entirely.
                 </div>
-              ))}
-              <div className="style-mixer-hint">
-                Customize how the AI enhances your writing. "Off" skips that feature entirely.
               </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Custom mode prompt input */}
-      {aiMode === 'custom' && (
-        <div className="custom-prompt-section">
-          <div className="ai-section-label">Custom Prompt</div>
-          <textarea
-            className="custom-prompt-input"
-            value={customPrompt}
-            onChange={e => setCustomPrompt(e.target.value)}
-            placeholder="Enter your instruction (e.g., 'expand this scene with more sensory detail') or use @ai in your text..."
-            rows={3}
-          />
-          <div className="custom-prompt-hint">
-            Tip: You can also write <code>@ai your instruction</code> directly in your text.
+            )}
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Selection indicator */}
-      {selection && (
-        <div className="ai-selection-indicator">
-          <span className="selection-icon">✓</span>
-          <span>Selection active ({selection.text.length} chars) — AI will target only selected text</span>
-        </div>
-      )}
+        {/* Custom mode prompt input */}
+        {aiMode === 'custom' && (
+          <div className="ais-custom">
+            <div className="ais-section-label">Custom Prompt</div>
+            <textarea
+              className="ais-custom-textarea"
+              value={customPrompt}
+              onChange={e => setCustomPrompt(e.target.value)}
+              placeholder="Enter your instruction (e.g., 'expand this scene with more sensory detail') or use @ai in your text…"
+            />
+            <div className="ais-custom-hint">
+              Tip: write <span className="ais-kbd">@ai your instruction</span> directly in your text.
+            </div>
+          </div>
+        )}
 
-      {/* Import pane */}
-      {showImport ? (
-        <div className="import-pane">
-          <div className="import-pane-label">Paste edited version — plain text or HTML:</div>
-          <textarea
-            className="import-edits-textarea"
-            value={importText}
-            onChange={e => setImportText(e.target.value)}
-            placeholder="Paste the edited chapter here…"
-            autoFocus
+        {/* Selection indicator */}
+        {selection && (
+          <div className="ai-selection-indicator">
+            <span className="selection-icon">✓</span>
+            <span>Selection active ({selection.text.length} chars) — AI will target only selected text</span>
+          </div>
+        )}
+
+        {/* Import pane */}
+        {showImport && (
+          <div className="import-pane">
+            <div className="import-pane-label">Paste edited version — plain text or HTML:</div>
+            <textarea
+              className="import-edits-textarea"
+              value={importText}
+              onChange={e => setImportText(e.target.value)}
+              placeholder="Paste the edited chapter here…"
+              autoFocus
+            />
+            <button className="ai-run-btn" onClick={handleImportCompare} disabled={!importText.trim()}>
+              Compare with Current
+            </button>
+            <button className="ai-link-btn" onClick={() => { setShowImport(false); setImportText('') }}>Cancel</button>
+          </div>
+        )}
+
+        {/* Setup guidance when the active route is unconfigured */}
+        {!aiConfigured && !showImport && (
+          <AiSetupGuidance
+            ccStatus={ccStatus}
+            ccChecking={ccChecking}
+            cxStatus={cxStatus}
+            cxChecking={cxChecking}
+            settings={settings}
+            onOpenSettings={openSettings}
           />
-          <button className="ai-run-btn" onClick={handleImportCompare} disabled={!importText.trim()}>
-            Compare with Current
-          </button>
-          <button className="ai-link-btn" onClick={() => { setShowImport(false); setImportText('') }}>Cancel</button>
-        </div>
-      ) : aiConfigured ? (
-        <div className="ai-actions">
+        )}
+      </div>
+
+      {/* Pinned run footer */}
+      {aiConfigured && !showImport && (
+        <div className="ais-footer">
           <button className="ai-run-btn" onClick={handleRun}>
             Run {currentMode.label}
           </button>
-          <button className="ai-link-btn" onClick={() => setShowImport(true)}>
-            or compare with imported draft ›
-          </button>
+          <div className="ais-compare">
+            <button className="ai-link-btn" onClick={() => setShowImport(true)}>
+              or compare with imported draft ›
+            </button>
+          </div>
         </div>
-      ) : (
-        <AiSetupGuidance
-          ccStatus={ccStatus}
-          ccChecking={ccChecking}
-          cxStatus={cxStatus}
-          cxChecking={cxChecking}
-          settings={settings}
-          onOpenSettings={openSettings}
-        />
       )}
-    </>
+    </div>
   )
 }
 
