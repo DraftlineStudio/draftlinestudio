@@ -19,6 +19,13 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02412] - 2026-08-30
+
+### Fixed
+- The tools sidebar header now matches the 38px chrome height of the editor toolbar and manuscript panel header — it previously sized itself from padding and sat ~6px taller, breaking the horizontal chrome line across the top of the workspace
+
+---
+
 ## [0.16.02411] - 2026-08-30
 
 ### Fixed

@@ -1641,7 +1641,8 @@ html, body, #root {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
+  height: 38px; /* chrome height — matches .editor-toolbar and .chapter-panel-header */
+  padding: 0 12px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-toolbar);
   flex-shrink: 0;
