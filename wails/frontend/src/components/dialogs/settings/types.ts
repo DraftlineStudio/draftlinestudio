@@ -4,7 +4,7 @@ import type { types } from '../../../../wailsjs/go/models'
 
 export type SettingsSection = 'application' | 'plugins' | 'ai' | 'book'
 
-export type AIMode = 'claudecode' | 'api' | 'local'
+export type AIMode = 'claudecode' | 'codex' | 'api' | 'local'
 export type AIProvider = 'claude' | 'openai' | 'gemini' | 'grok' | ''
 export type ThemeMode = 'light' | 'dark' | 'auto'
 export type EditorFontSize = 'small' | 'normal' | 'large'
@@ -61,6 +61,14 @@ export interface AIStudioSectionProps {
   onCheckCC: () => void
   onSetup: () => void
   onOpenAuth: () => void
+  // Codex CLI state (ChatGPT accounts) — same lifecycle as Claude Code
+  cxStatus: types.ClaudeCodeStatus | null
+  cxChecking: boolean
+  cxSetupStep: ClaudeCodeSetupStep
+  cxSetupLog: string[]
+  onCheckCx: () => void
+  onSetupCx: () => void
+  onOpenCxAuth: () => void
   // Test state
   testStatus: TestStatus
   testMsg: string

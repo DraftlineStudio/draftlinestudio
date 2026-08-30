@@ -19,6 +19,29 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02415] - 2026-08-30
+
+### Added
+- A "Codex" option in Settings › AI Studio beside Claude Code: the same guided setup wizard (install runtime & CLI → sign in) now serves both CLIs, with a "Sign in with ChatGPT…" button that runs the browser OAuth flow in-app — no terminal `/login` required for either assistant
+- AI Studio recognizes Codex mode: configured-state detection, setup guidance panes (not installed / sign-in required), and run labeling
+- Codex model field is a free-text override, left blank by default so the CLI's own current model is used
+
+---
+
+## [0.16.02414] - 2026-08-30
+
+_Developed in parallel with builds 02409–02413 and renumbered at merge time (originally 02410–02411 on its branch)._
+
+### Added
+- OpenAI Codex CLI as a third AI mode ("codex"), letting ChatGPT Plus/Pro/Team accounts power AI features the same way Claude.ai accounts do: installed through the identical bundled-Node pipeline (`@openai/codex` pinned to 0.151.0), invoked non-interactively with the prompt piped via stdin (never on the command line), running read-only sandboxed in an isolated home with only the ChatGPT auth credentials — the user's own Codex config and MCP servers can never hang a rewrite
+- In-app sign-in intercept for Codex: `codex login` runs as a hidden background process that opens the browser OAuth flow and reports completion back to the app — no terminal, no `/login` incantations
+- The final assistant message is captured via `--output-last-message` rather than scraped from the progress stream; no default model is hardcoded, so the CLI's own current default is used unless the user sets an override
+
+### Tests
+- Codex argv construction (stdin placeholder always last, model flag only with override, git-check/sandbox flags present) and graceful not-installed error
+
+---
+
 ## [0.16.02413] - 2026-08-30
 
 ### Changed

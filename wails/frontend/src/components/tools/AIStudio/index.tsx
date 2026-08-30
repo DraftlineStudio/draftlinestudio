@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useBookStore } from '../../../store/bookStore'
 import { useAppStore } from '../../../store/appStore'
-import { RewriteText, RewriteTextCustom, CancelRewrite, CheckClaudeCode } from '../../../../wailsjs/go/main/App'
+import { RewriteText, RewriteTextCustom, CancelRewrite, CheckClaudeCode, CheckCodexCLI } from '../../../../wailsjs/go/main/App'
 import type { types } from '../../../../wailsjs/go/models'
 import { EventsOn, EventsOff } from '../../../../wailsjs/runtime/runtime'
 import type { WritingStyleOptions } from '../../../types/draftline'
@@ -23,12 +23,24 @@ export default function AiStudioTab() {
   const [customPrompt, setCustomPrompt] = useState('')
   const [ccStatus, setCcStatus] = useState<types.ClaudeCodeStatus | null>(null)
   const [ccChecking, setCcChecking] = useState(false)
+  const [cxStatus, setCxStatus] = useState<types.ClaudeCodeStatus | null>(null)
+  const [cxChecking, setCxChecking] = useState(false)
 
   const styleOptions = getStyleOptions()
   const selection = getEditorSelection()
 
-  // Check Claude Code status on mount
+  // Check CLI status on mount for the active mode
   useEffect(() => {
+    if (settings.ai_mode === 'codex') {
+      if (!cxStatus && !cxChecking) {
+        setCxChecking(true)
+        CheckCodexCLI()
+          .then(setCxStatus)
+          .catch(() => {})
+          .finally(() => setCxChecking(false))
+      }
+      return
+    }
     if (!ccStatus && !ccChecking) {
       setCcChecking(true)
       CheckClaudeCode()
@@ -36,11 +48,12 @@ export default function AiStudioTab() {
         .catch(() => {})
         .finally(() => setCcChecking(false))
     }
-  }, [])
+  }, [settings.ai_mode])
 
   // Determine if AI is configured based on mode
   const aiConfigured = settings.ai_enabled && (
     (settings.ai_mode === 'claudecode' && ccStatus?.installed && ccStatus?.authenticated) ||
+    (settings.ai_mode === 'codex' && cxStatus?.installed && cxStatus?.authenticated) ||
     (settings.ai_mode === 'api' && settings.ai_provider !== '' && settings.has_api_key) ||
     (settings.ai_mode === 'local' && settings.ai_local_endpoint !== '')
   )
@@ -56,6 +69,7 @@ export default function AiStudioTab() {
 
   function getAiLabel(): string {
     if (settings.ai_mode === 'claudecode') return 'Claude Code'
+    if (settings.ai_mode === 'codex') return 'Codex'
     if (settings.ai_mode === 'local') return settings.ai_local_model || 'Local AI'
     const providerLabels: Record<string, string> = {
       claude: 'Claude',
@@ -368,6 +382,8 @@ export default function AiStudioTab() {
         <AiSetupGuidance
           ccStatus={ccStatus}
           ccChecking={ccChecking}
+          cxStatus={cxStatus}
+          cxChecking={cxChecking}
           settings={settings}
           onOpenSettings={openSettings}
         />
@@ -381,11 +397,13 @@ export default function AiStudioTab() {
 interface AiSetupGuidanceProps {
   ccStatus: types.ClaudeCodeStatus | null
   ccChecking: boolean
+  cxStatus: types.ClaudeCodeStatus | null
+  cxChecking: boolean
   settings: { ai_mode: string; ai_provider: string; has_api_key: boolean; ai_local_endpoint: string }
   onOpenSettings: () => void
 }
 
-function AiSetupGuidance({ ccStatus, ccChecking, settings, onOpenSettings }: AiSetupGuidanceProps) {
+function AiSetupGuidance({ ccStatus, ccChecking, cxStatus, cxChecking, settings, onOpenSettings }: AiSetupGuidanceProps) {
   // Determine what's configured
   const ccInstalled = ccStatus?.installed
   const ccAuthenticated = ccStatus?.authenticated
@@ -442,6 +460,40 @@ function AiSetupGuidance({ ccStatus, ccChecking, settings, onOpenSettings }: AiS
           </p>
           <button className="ai-run-btn" onClick={onOpenSettings}>
             Authenticate →
+          </button>
+        </div>
+      )
+    }
+  }
+
+  // If Codex mode is selected but not set up
+  if (settings.ai_mode === 'codex') {
+    if (cxChecking) {
+      return (
+        <div className="ai-setup-pane">
+          <div className="ai-setup-checking">
+            <div className="ai-spinner" />
+            <span>Checking Codex...</span>
+          </div>
+        </div>
+      )
+    }
+    if (!cxStatus?.installed || !cxStatus?.authenticated) {
+      return (
+        <div className="ai-setup-pane">
+          <div className="ai-setup-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+            </svg>
+          </div>
+          <div className="ai-setup-title">{cxStatus?.installed ? 'Sign In Required' : 'Codex Not Installed'}</div>
+          <p className="ai-setup-desc">
+            {cxStatus?.installed
+              ? 'Codex is installed but needs a signed-in ChatGPT account.'
+              : 'Codex uses your ChatGPT account to power the editing features.'}
+          </p>
+          <button className="ai-run-btn" onClick={onOpenSettings}>
+            {cxStatus?.installed ? 'Sign In →' : 'Set Up Codex'}
           </button>
         </div>
       )

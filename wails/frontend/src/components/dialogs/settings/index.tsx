@@ -1,9 +1,9 @@
 // App Settings Dialog - Main container and state management
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAppStore } from '../../../store/appStore'
 import { useBookStore } from '../../../store/bookStore'
-import { TestLocalAI, CheckClaudeCode, SetupClaudeCode, OpenClaudeAuth, GetAppVersion, SetAPIKey, ClearAPIKey } from '../../../../wailsjs/go/main/App'
+import { TestLocalAI, CheckClaudeCode, SetupClaudeCode, OpenClaudeAuth, CheckCodexCLI, SetupCodexCLI, OpenCodexAuth, GetAppVersion, SetAPIKey, ClearAPIKey } from '../../../../wailsjs/go/main/App'
 import { EventsOn } from '../../../../wailsjs/runtime/runtime'
 import type { types } from '../../../../wailsjs/go/models'
 import type { SettingsSection, AIMode, AIProvider, ThemeMode, EditorFontSize, ClaudeCodeSetupStep, TestStatus } from './types'
@@ -59,6 +59,13 @@ export default function AppSettingsDialog() {
   const [ccChecking, setCcChecking]       = useState(false)
   const [ccSetupStep, setCcSetupStep]     = useState<ClaudeCodeSetupStep>('idle')
   const [ccSetupLog, setCcSetupLog]       = useState<string[]>([])
+  const [cxStatus, setCxStatus]           = useState<types.ClaudeCodeStatus | null>(null)
+  const [cxChecking, setCxChecking]       = useState(false)
+  const [cxSetupStep, setCxSetupStep]     = useState<ClaudeCodeSetupStep>('idle')
+  const [cxSetupLog, setCxSetupLog]       = useState<string[]>([])
+  // Both CLI setup wizards stream over the shared "setup:progress" channel;
+  // this ref routes the events to whichever wizard is currently running.
+  const activeSetup = useRef<'cc' | 'cx'>('cc')
 
   // Book state
   const [bookFont, setBookFont]               = useState(settings.book_font)
@@ -68,34 +75,43 @@ export default function AppSettingsDialog() {
   const [bookDropCaps, setBookDropCaps]       = useState(settings.book_drop_caps)
   const [bookTrimSize, setBookTrimSize]       = useState(settings.book_trim_size)
 
-  // Check Claude Code status when AI section opened
+  // Check CLI status when AI section opened
   useEffect(() => {
     if (section === 'ai' && aiMode === 'claudecode' && !ccStatus && !ccChecking) {
       handleCheckCC()
+    }
+    if (section === 'ai' && aiMode === 'codex' && !cxStatus && !cxChecking) {
+      handleCheckCx()
     }
   }, [section, aiMode])
 
   // Subscribe to backend events for setup progress
   useEffect(() => {
     const offProgress = EventsOn('setup:progress', (msg: string) => {
+      const setLog = activeSetup.current === 'cx' ? setCxSetupLog : setCcSetupLog
+      const setStep = activeSetup.current === 'cx' ? setCxSetupStep : setCcSetupStep
       if (msg.startsWith('step:')) {
         // step markers don't go in the log
       } else if (msg.startsWith('error:')) {
-        setCcSetupLog(l => [...l, msg.slice(6)])
-        setCcSetupStep('error')
+        setLog(l => [...l, msg.slice(6)])
+        setStep('error')
       } else if (msg === 'node:done' || msg === 'claude:done') {
         // no log entry
       } else if (msg === 'step:auth') {
-        setCcSetupStep('auth')
+        setStep('auth')
       } else {
-        setCcSetupLog(l => [...l, msg])
+        setLog(l => [...l, msg])
       }
     })
     const offAuth = EventsOn('claude:auth_complete', () => {
       handleCheckCC()
       setCcSetupStep('done')
     })
-    return () => { offProgress(); offAuth() }
+    const offCxAuth = EventsOn('codex:auth_complete', () => {
+      handleCheckCx()
+      setCxSetupStep('done')
+    })
+    return () => { offProgress(); offAuth(); offCxAuth() }
   }, [])
 
   async function handleCheckCC() {
@@ -108,6 +124,7 @@ export default function AppSettingsDialog() {
   }
 
   async function handleSetup() {
+    activeSetup.current = 'cc'
     setCcSetupStep('running')
     setCcSetupLog([])
     try {
@@ -129,6 +146,40 @@ export default function AppSettingsDialog() {
   async function handleOpenAuth() {
     setCcSetupStep('auth-waiting')
     try { await OpenClaudeAuth() } catch { /* ignore */ }
+  }
+
+  async function handleCheckCx() {
+    setCxChecking(true)
+    try {
+      const s = await CheckCodexCLI()
+      setCxStatus(s)
+    } catch { /* ignore */ }
+    setCxChecking(false)
+  }
+
+  async function handleSetupCx() {
+    activeSetup.current = 'cx'
+    setCxSetupStep('running')
+    setCxSetupLog([])
+    try {
+      const s = await SetupCodexCLI()
+      setCxStatus(s)
+      if (s.error) {
+        setCxSetupStep('error')
+      } else if (!s.authenticated) {
+        setCxSetupStep('auth')
+      } else {
+        setCxSetupStep('done')
+      }
+    } catch (e) {
+      setCxSetupLog(l => [...l, String(e)])
+      setCxSetupStep('error')
+    }
+  }
+
+  async function handleOpenCxAuth() {
+    setCxSetupStep('auth-waiting')
+    try { await OpenCodexAuth() } catch { /* ignore */ }
   }
 
   async function handleTestLocal() {
@@ -301,6 +352,9 @@ export default function AppSettingsDialog() {
                 ccStatus={ccStatus} ccChecking={ccChecking}
                 ccSetupStep={ccSetupStep} ccSetupLog={ccSetupLog}
                 onCheckCC={handleCheckCC} onSetup={handleSetup} onOpenAuth={handleOpenAuth}
+                cxStatus={cxStatus} cxChecking={cxChecking}
+                cxSetupStep={cxSetupStep} cxSetupLog={cxSetupLog}
+                onCheckCx={handleCheckCx} onSetupCx={handleSetupCx} onOpenCxAuth={handleOpenCxAuth}
                 testStatus={testStatus} testMsg={testMsg} onTestLocal={handleTestLocal}
               />
             )}
