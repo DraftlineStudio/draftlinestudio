@@ -19,11 +19,19 @@ type AppSettings struct {
 	StoryBibleEnabled   bool     `json:"story_bible_enabled"`
 	PlotWalkerEnabled   bool     `json:"plot_walker_enabled"`
 	// AI
-	AIEnabled       bool   `json:"ai_enabled"`
-	AIMode          string `json:"ai_mode"`     // "claudecode" | "api" | "local"
-	AIProvider      string `json:"ai_provider"` // "claude" | "openai" | ""
-	AIAPIKey        string `json:"ai_api_key"`
-	AIModel         string `json:"ai_model"`
+	AIEnabled  bool   `json:"ai_enabled"`
+	AIMode     string `json:"ai_mode"`     // "claudecode" | "api" | "local"
+	AIProvider string `json:"ai_provider"` // "claude" | "openai" | ""
+	// AIAPIKey is legacy: keys now live in the OS keyring. The tag is kept
+	// (with omitempty) so old settings.json files can still be read and
+	// migrated; it is never returned to the frontend or written back once the
+	// keyring holds the key.
+	AIAPIKey string `json:"ai_api_key,omitempty"`
+	// HasAPIKey tells the frontend whether a key is stored, without exposing it.
+	HasAPIKey bool `json:"has_api_key"`
+	// AIDebugLogging opts in to writing prompts/manuscript text to local logs.
+	AIDebugLogging bool   `json:"ai_debug_logging"`
+	AIModel        string `json:"ai_model"`
 	AILocalEndpoint string `json:"ai_local_endpoint"` // e.g. http://localhost:11434/v1
 	AILocalModel    string `json:"ai_local_model"`
 	ProseGuide      string `json:"prose_guide"`
