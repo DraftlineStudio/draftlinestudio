@@ -19,6 +19,15 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02411] - 2026-08-30
+
+### Added
+- A "Codex" option in Settings › AI Studio beside Claude Code: the same guided setup wizard (install runtime & CLI → sign in) now serves both CLIs, with a "Sign in with ChatGPT…" button that runs the browser OAuth flow in-app — no terminal `/login` required for either assistant
+- AI Studio recognizes Codex mode: configured-state detection, setup guidance panes (not installed / sign-in required), and run labeling
+- Codex model field is a free-text override, left blank by default so the CLI's own current model is used
+
+---
+
 ## [0.16.02410] - 2026-08-30
 
 _Build 0.16.02409 is reserved for the character-detection work landing on master in parallel; this branch numbers from 02410 to merge cleanly._
