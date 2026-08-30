@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.15.02377] - 2026-08-30
+
+### Security
+- The Gemini API key is no longer sent in the URL.
+
 ## [0.15.02376] - 2026-08-30
 
 ### Security
