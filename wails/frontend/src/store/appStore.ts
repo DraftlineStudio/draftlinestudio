@@ -41,6 +41,7 @@ export interface AppSettings {
   book_trim_size: string
   // Sidebar
   sidebar_panel_width: number
+  sidebar_active_section: string // glyph section id, or '' when closed
 }
 
 interface AppStore {
@@ -96,6 +97,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   book_drop_caps: false,
   book_trim_size: '6x9',
   sidebar_panel_width: 350,
+  sidebar_active_section: 'dashboard',
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({

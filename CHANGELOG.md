@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02423] - 2026-08-30
+
+### Added
+- The tools sidebar remembers whether it was open and which pane was active.
+
 ## [0.16.02422] - 2026-08-30
 
 ### Changed
