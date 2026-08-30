@@ -19,6 +19,14 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02395] - 2026-08-30
+
+### Added
+- An ego mini-map in the character detail pane: the selected character centered with their six strongest ties at fixed spoke positions — the relationship-graph feel without ever laying out the whole web
+- An "Appears in" per-chapter presence strip and up to three mention excerpts (drawn from the manuscript around each recorded mention) with "Jump to chapter" navigation back into the editor
+
+---
+
 ## [0.16.02394] - 2026-08-30
 
 ### Changed
