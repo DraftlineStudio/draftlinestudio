@@ -44,7 +44,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.16.02400"
+const AppVersion = "0.16.02401"
 
 // App is the main application struct bound to the frontend.
 type App struct {
@@ -450,6 +450,7 @@ func (a *App) loadSettingsFromDisk() types.AppSettings {
 		CastEnabled:         true,
 		StoryBibleEnabled:   true,
 		PlotWalkerEnabled:   true,
+		CharactersLaneView:  "grid",
 		SidebarPanelWidth:   350,
 	}
 	data, err := os.ReadFile(a.settingsPath())

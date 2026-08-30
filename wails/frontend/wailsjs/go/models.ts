@@ -322,6 +322,7 @@ export namespace types {
 	    cast_enabled: boolean;
 	    story_bible_enabled: boolean;
 	    plot_walker_enabled: boolean;
+	    characters_lane_view: string;
 	    ai_enabled: boolean;
 	    ai_mode: string;
 	    ai_provider: string;
@@ -361,6 +362,7 @@ export namespace types {
 	        this.cast_enabled = source["cast_enabled"];
 	        this.story_bible_enabled = source["story_bible_enabled"];
 	        this.plot_walker_enabled = source["plot_walker_enabled"];
+	        this.characters_lane_view = source["characters_lane_view"];
 	        this.ai_enabled = source["ai_enabled"];
 	        this.ai_mode = source["ai_mode"];
 	        this.ai_provider = source["ai_provider"];
