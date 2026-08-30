@@ -138,6 +138,11 @@ func (a *App) ImportEPUB(path string) types.ImportResult {
 		book.Metadata.Title = strings.TrimSuffix(filepath.Base(path), ".epub")
 	}
 
+	// The imported book is a NEW, unsaved project. Clear the session's current
+	// file so Save cannot silently overwrite whatever project was open before
+	// the import — Ctrl+S on an imported book must go through Save As.
+	a.currentFile = ""
+
 	return types.ImportResult{Success: true, Book: book}
 }
 
@@ -386,6 +391,10 @@ func (a *App) ImportDOCX(path string) types.ImportResult {
 	if book.Metadata.Title == "" {
 		book.Metadata.Title = strings.TrimSuffix(filepath.Base(path), ".docx")
 	}
+
+	// See ImportEPUB: an imported book must never inherit the previous
+	// project's save target.
+	a.currentFile = ""
 
 	return types.ImportResult{Success: true, Book: book}
 }

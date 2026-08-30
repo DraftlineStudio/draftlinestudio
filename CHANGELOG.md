@@ -19,6 +19,15 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02404] - 2026-08-30
+
+### Fixed
+- **Critical data-loss bug:** importing an EPUB or DOCX while a project was open left the backend's save target pointing at the previous project's file, so Ctrl+S silently overwrote it with the imported book instead of opening the Save As dialog. Imports now clear the session save target — an imported book is a new, unsaved project and Save always routes through Save As
+- Added regression tests: a successful import clears the save target (with a real minimal EPUB fixture); a failed import leaves the open project's save target untouched
+- If this bit you: the overwritten file's pre-overwrite content is in the rolling backups (`%AppData%\draftline\backups\`, folder identified by `info.json` → `original_path`, newest is `backup.1.draftline`)
+
+---
+
 ## [0.16.02403] - 2026-08-30
 
 ### Fixed
