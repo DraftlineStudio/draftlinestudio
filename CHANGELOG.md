@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02394] - 2026-08-30
+
+### Changed
+- Replaced the character relationship graph with a chapter grid and heatmap.
+
 ## [0.16.02393] - 2026-08-30
 
 ### Changed
