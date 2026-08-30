@@ -38,7 +38,10 @@ func IndexBook(book *types.BookData) types.IndexResult {
 	var fullText strings.Builder
 	chapterTexts := []string{}
 	for _, chapter := range AllChapters(book) {
-		text := StripHTML(chapter.Content)
+		text := ""
+		if ShouldAnalyzeChapter(chapter) {
+			text = StripHTMLForAnalysis(chapter.Content)
+		}
 		fullText.WriteString(" ")
 		fullText.WriteString(text)
 		chapterTexts = append(chapterTexts, text)

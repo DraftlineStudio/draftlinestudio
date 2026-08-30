@@ -62,6 +62,30 @@ func TestReindexPreservesCuratedAutoCharacterFields(t *testing.T) {
 	}
 }
 
+func TestIndexBookIgnoresHeadingsAndNonStorySections(t *testing.T) {
+	book := types.BookData{
+		Body: []types.ChapterItem{
+			{Title: "Chapter 1", Type: "chapter", Content: `<h1>What Rael Saw</h1><p>Rael entered. Auberic greeted Rael.</p>`},
+			{Title: "Acknowledgments", Type: "acknowledgments", Content: `<p>Thank you to Editor Tamar Rydzinski.</p>`},
+		},
+	}
+	if result := IndexBook(&book); !result.Success {
+		t.Fatalf("IndexBook failed: %s", result.Error)
+	}
+	names := make([]string, 0, len(book.StoryBible.Characters))
+	for _, char := range book.StoryBible.Characters {
+		names = append(names, char.Name)
+	}
+	if !containsFold(names, "Rael") || !containsFold(names, "Auberic") {
+		t.Fatalf("narrative characters missing: %v", names)
+	}
+	for _, unwanted := range []string{"Rael Saw", "Tamar Rydzinski", "Editor Tamar Rydzinski"} {
+		if containsFold(names, unwanted) {
+			t.Fatalf("non-story or heading entity %q was indexed: %v", unwanted, names)
+		}
+	}
+}
+
 // Honorifics are part of the raw span (metadata is extracted during
 // resolution), but never split a multi-token name into two mentions.
 func TestExtractMentions_Honorifics(t *testing.T) {

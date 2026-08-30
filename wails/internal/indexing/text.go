@@ -4,6 +4,8 @@ import (
 	"html"
 	"regexp"
 	"strings"
+
+	"draftline/internal/types"
 )
 
 // The character pipeline runs entirely in "stripped text" coordinates:
@@ -18,9 +20,21 @@ var (
 	blockEndRe = regexp.MustCompile(`(?i)</(p|div|h[1-6]|li|blockquote|tr)>`)
 	anyTagRe   = regexp.MustCompile(`<[^>]*>`)
 
-	spacesRe       = regexp.MustCompile(`[ \t]+`)
+	spacesRe        = regexp.MustCompile(`[ \t]+`)
 	spaceAroundNLRe = regexp.MustCompile(`[ \t]*\n[ \t]*`)
-	manyNewlinesRe = regexp.MustCompile(`\n{3,}`)
+	manyNewlinesRe  = regexp.MustCompile(`\n{3,}`)
+
+	// Structural EPUB/editor elements are useful for display but are not
+	// manuscript prose. Letting headings and navigation into NER turns chapter
+	// titles such as "What Rael Saw" into character aliases.
+	analysisExcludedBlocks = []*regexp.Regexp{
+		regexp.MustCompile(`(?is)<h[1-6]\b[^>]*>.*?</h[1-6]>`),
+		regexp.MustCompile(`(?is)<nav\b[^>]*>.*?</nav>`),
+		regexp.MustCompile(`(?is)<header\b[^>]*>.*?</header>`),
+		regexp.MustCompile(`(?is)<footer\b[^>]*>.*?</footer>`),
+		regexp.MustCompile(`(?is)<script\b[^>]*>.*?</script>`),
+		regexp.MustCompile(`(?is)<style\b[^>]*>.*?</style>`),
+	}
 )
 
 // StripHTML converts chapter HTML to plain text, preserving paragraph
@@ -36,6 +50,33 @@ func StripHTML(content string) string {
 	text = spaceAroundNLRe.ReplaceAllString(text, "\n")
 	text = manyNewlinesRe.ReplaceAllString(text, "\n\n")
 	return strings.TrimSpace(text)
+}
+
+// StripHTMLForAnalysis creates the shared coordinate space used by character
+// and relationship analysis while excluding display-only structure.
+func StripHTMLForAnalysis(content string) string {
+	for _, re := range analysisExcludedBlocks {
+		content = re.ReplaceAllString(content, " ")
+	}
+	return StripHTML(content)
+}
+
+// ShouldAnalyzeChapter reports whether a section is narrative prose. EPUBs
+// often place acknowledgments, copyright, contents, and glossaries in the
+// spine beside chapters; people named there are real people, but not cast.
+func ShouldAnalyzeChapter(chapter types.ChapterItem) bool {
+	typeName := strings.ToLower(strings.TrimSpace(chapter.Type))
+	title := strings.ToLower(strings.TrimSpace(chapter.Title))
+	for _, excluded := range []string{
+		"cover", "title page", "copyright", "dedication", "epigraph",
+		"contents", "table of contents", "acknowledgments", "acknowledgements",
+		"about the author", "also by", "glossary", "index", "colophon",
+	} {
+		if typeName == excluded || title == excluded {
+			return false
+		}
+	}
+	return true
 }
 
 // LooksLikeCommonWord checks if a word has suffixes/patterns typical of
@@ -67,7 +108,7 @@ func LooksLikeCommonWord(word string) bool {
 // Never re-scan the full text per character — that made indexing take
 // minutes on real manuscripts.
 var (
-	eyeColorRe = regexp.MustCompile(`([A-Z][A-Za-z'’-]+)['’]s\s+(?i:(blue|green|brown|hazel|gray|grey|black|amber|violet|golden))\s+eyes`)
+	eyeColorRe  = regexp.MustCompile(`([A-Z][A-Za-z'’-]+)['’]s\s+(?i:(blue|green|brown|hazel|gray|grey|black|amber|violet|golden))\s+eyes`)
 	hairColorRe = regexp.MustCompile(`([A-Z][A-Za-z'’-]+)['’]s\s+(?i:(blonde|blond|brunette|brown|black|red|auburn|gray|grey|white|silver|golden|dark|light))\s+hair`)
 	ageRe       = regexp.MustCompile(`([A-Z][A-Za-z'’-]+)[^.!?\n]{0,30}?\b(\d{1,2})[\s-]year[\s-]old`)
 )

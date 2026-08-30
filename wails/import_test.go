@@ -89,3 +89,22 @@ func TestFailedImportKeepsCurrentFile(t *testing.T) {
 		t.Fatalf("failed import changed currentFile: %q", a.currentFile)
 	}
 }
+
+func TestSplitImportedChaptersUsesInternalHeadings(t *testing.T) {
+	body := `<div><h2>1</h2><p>Mara arrived.</p><h2>2</h2><p>Hanlon answered.</p><h2>3</h2><p>Ruiz waited.</p></div>`
+	parts := splitImportedChapters("Novel", body)
+	if len(parts) != 3 {
+		t.Fatalf("expected 3 chapters, got %d: %+v", len(parts), parts)
+	}
+	if parts[0].Title != "1" || parts[1].Title != "2" || parts[2].Title != "3" {
+		t.Fatalf("heading titles not preserved: %+v", parts)
+	}
+}
+
+func TestClassifyImportedNonStorySection(t *testing.T) {
+	for _, title := range []string{"Copyright", "ACKNOWLEDGMENTS", "Table of Contents", "Glossary"} {
+		if got := classifyImportedSection(title); got == "Chapter" {
+			t.Fatalf("%q should not be classified as story prose", title)
+		}
+	}
+}
