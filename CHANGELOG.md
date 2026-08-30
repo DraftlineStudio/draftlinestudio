@@ -19,6 +19,16 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.15.02388] - 2026-08-30
+
+### Added
+- `docs/ai-audit/overnight-run-report.md` — morning report for the overnight audit-fix run (13 fixes, builds 0.15.02375–0.15.02387): what landed per fix with verification evidence, open items, final gate results, and the merge procedure
+
+### Changed
+- `docs/ai-audit/gpt-sol.md` — refreshed the stale "Testing and release readiness" annotation (exports, AI request coordination, and frontend-store tests landed during the run; only imports and settings remain untested), unified the finding 12/13 annotation markers with the rest of the file, and linked the run report from the scoreboard
+
+---
+
 ## [0.15.02387] - 2026-08-30
 
 ### Changed
