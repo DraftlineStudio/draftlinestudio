@@ -2,6 +2,27 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.14.02347] - 2026-08-30
+
+### Added
+- Added offline grammar and style checking.
+- Added spelling suggestions and a custom dictionary.
+- Added a Plugins page in Settings for turning features on and off.
+
+### Changed
+- Spelling suggestions now run in the background.
+- Claude Code work now runs in a separate process.
+
+### Fixed
+- Fixed Claude Code not being found on Windows.
+- Fixed spell check lag.
+- Fixed crashes from excessive re-renders during editing.
+- Fixed suggestions appearing for the wrong word.
+- Fixed sidebar width and feature settings not saving.
+
+### Removed
+- Removed trial and paid edition branding.
+
 ## [0.12.02330] - 2026-07-08
 
 ### Added
