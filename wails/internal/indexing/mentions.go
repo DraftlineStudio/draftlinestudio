@@ -40,6 +40,8 @@ var contractionSuffixes = []string{"'s", "'m", "'d", "'t", "'ll", "'ve", "'re",
 type mentionCandidate struct {
 	mention      entityresolution.Mention
 	nlpPerson    bool
+	nlpNonPerson bool
+	strongPerson bool
 	tokens       []string // lowercase name tokens
 	quoteInitial bool     // span starts immediately after an opening quote
 	firstInitial bool     // first name token opens its sentence or quote
@@ -69,9 +71,10 @@ func ExtractMentions(text string, chapter int) []entityresolution.Mention {
 func ExtractBookMentions(chapterTexts []string) []entityresolution.Mention {
 	allCandidates := make([][]mentionCandidate, len(chapterTexts))
 	attested := map[string]bool{}
+	linguisticByChapter := analyzeBookLinguisticEvidence(chapterTexts)
 
 	for ch, text := range chapterTexts {
-		candidates, chapterAttested := scanChapter(text, ch)
+		candidates, chapterAttested := scanChapterWithEvidence(text, ch, linguisticByChapter[ch])
 		allCandidates[ch] = candidates
 		for tok := range chapterAttested {
 			attested[tok] = true
@@ -91,8 +94,11 @@ func ExtractBookMentions(chapterTexts []string) []entityresolution.Mention {
 // tokens: names seen mid-sentence, used as possessives, or belonging to a
 // multi-token or honorific-prefixed name.
 func scanChapter(text string, chapter int) ([]mentionCandidate, map[string]bool) {
+	return scanChapterWithEvidence(text, chapter, analyzeLinguisticEvidence(text))
+}
+
+func scanChapterWithEvidence(text string, chapter int, linguistic linguisticEvidence) ([]mentionCandidate, map[string]bool) {
 	words := scanWords(text)
-	linguistic := analyzeLinguisticEvidence(text)
 	candidates := []mentionCandidate{}
 
 	attested := map[string]bool{}
@@ -184,6 +190,9 @@ func filterCandidates(candidates []mentionCandidate, attested map[string]bool, k
 		if c.fpKilled {
 			continue
 		}
+		if c.nlpNonPerson && !knowledge.personNames[strings.Join(c.tokens, " ")] {
+			continue
+		}
 
 		single := len(c.tokens) == 1
 		initial := c.firstInitial || c.quoteInitial
@@ -202,7 +211,10 @@ func filterCandidates(candidates []mentionCandidate, attested map[string]bool, k
 
 		if single {
 			tok := c.tokens[len(c.tokens)-1]
-			if knowledge.blacklist[tok] && !knowledge.personTokens[tok] {
+			if knowledge.hardBlacklist[tok] && !knowledge.strongPersonTokens[tok] {
+				continue
+			}
+			if knowledge.nlpBlacklist[tok] && !knowledge.personTokens[tok] {
 				continue
 			}
 			if !c.honorific && initial && !attested[tok] {
@@ -216,8 +228,11 @@ func filterCandidates(candidates []mentionCandidate, attested map[string]bool, k
 }
 
 type candidateKnowledge struct {
-	blacklist    map[string]bool
-	personTokens map[string]bool
+	hardBlacklist      map[string]bool
+	nlpBlacklist       map[string]bool
+	personTokens       map[string]bool
+	strongPersonTokens map[string]bool
+	personNames        map[string]bool
 }
 
 // collectCandidateKnowledge is deliberately book-wide. A location identified
@@ -227,20 +242,33 @@ type candidateKnowledge struct {
 // sharing a token.
 func collectCandidateKnowledge(groups [][]mentionCandidate) candidateKnowledge {
 	knowledge := candidateKnowledge{
-		blacklist:    map[string]bool{},
-		personTokens: map[string]bool{},
+		hardBlacklist:      map[string]bool{},
+		nlpBlacklist:       map[string]bool{},
+		personTokens:       map[string]bool{},
+		strongPersonTokens: map[string]bool{},
+		personNames:        map[string]bool{},
 	}
 	for _, candidates := range groups {
 		for _, candidate := range candidates {
 			if candidate.fpKilled {
 				for _, token := range candidate.tokens {
-					knowledge.blacklist[token] = true
+					knowledge.hardBlacklist[token] = true
 				}
-				continue
 			}
-			if candidate.honorific || candidate.nlpPerson {
+			if candidate.nlpNonPerson {
+				for _, token := range candidate.tokens {
+					knowledge.nlpBlacklist[token] = true
+				}
+			}
+			if candidate.nlpPerson || candidate.strongPerson {
+				knowledge.personNames[strings.Join(candidate.tokens, " ")] = true
 				for _, token := range candidate.tokens {
 					knowledge.personTokens[token] = true
+				}
+			}
+			if candidate.strongPerson {
+				for _, token := range candidate.tokens {
+					knowledge.strongPersonTokens[token] = true
 				}
 			}
 		}
@@ -249,8 +277,12 @@ func collectCandidateKnowledge(groups [][]mentionCandidate) candidateKnowledge {
 }
 
 func removeNonPersonAttestation(attested map[string]bool, knowledge candidateKnowledge) {
-	for token := range knowledge.blacklist {
-		if !knowledge.personTokens[token] {
+	for token := range attested {
+		if knowledge.hardBlacklist[token] && !knowledge.strongPersonTokens[token] {
+			delete(attested, token)
+			continue
+		}
+		if knowledge.nlpBlacklist[token] && !knowledge.personTokens[token] {
 			delete(attested, token)
 		}
 	}
@@ -473,9 +505,10 @@ func buildMention(text string, run []wordSpan, chapter, seq int, runInitial bool
 
 	last := nameWords[len(nameWords)-1]
 	nlpPerson, nlpNonPerson := linguistic.classification(spanStart, last.baseEnd)
-	if nlpNonPerson || IsAddressIntersectionContext(text, spanStart, last.baseEnd) {
+	if IsAddressIntersectionContext(text, spanStart, last.baseEnd) {
 		fpKilled = true
 	}
+	strongPerson := hasHonorific || last.possessive || (nlpPerson && len(nameWords) >= 2)
 
 	commonCount := 0
 	tokens := make([]string, 0, len(nameWords))
@@ -505,6 +538,8 @@ func buildMention(text string, run []wordSpan, chapter, seq int, runInitial bool
 			CharOffset: spanStart,
 		},
 		nlpPerson:    nlpPerson,
+		nlpNonPerson: nlpNonPerson,
+		strongPerson: strongPerson,
 		tokens:       tokens,
 		quoteInitial: isQuoteInitial(text, spanStart),
 		firstInitial: runInitial && !hasHonorific && !droppedCommon,
