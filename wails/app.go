@@ -44,7 +44,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.16.02420"
+const AppVersion = "0.16.02421"
 
 // App is the main application struct bound to the frontend.
 type App struct {
@@ -960,12 +960,76 @@ func codexExecArgs(model, lastMessageFile string) []string {
 		"exec",
 		"--skip-git-repo-check", // temp workdir is not a git repo
 		"--sandbox", "read-only",
+		"--color", "never",
+		"--json",
 		"--output-last-message", lastMessageFile,
 	}
 	if model != "" {
 		args = append(args, "-m", model)
 	}
 	return append(args, "-")
+}
+
+// codexModelOverride prevents the shared legacy ai_model setting from leaking
+// a provider-specific model into Codex when the AI Studio quick-switcher is
+// used. Unknown values are left alone so future OpenAI model IDs still work.
+func codexModelOverride(model string) string {
+	trimmed := strings.TrimSpace(model)
+	lower := strings.ToLower(trimmed)
+	for _, prefix := range []string{"claude", "gemini", "grok", "llama", "mistral"} {
+		if strings.HasPrefix(lower, prefix) {
+			return ""
+		}
+	}
+	return trimmed
+}
+
+func codexFailureMessage(stderr string, runErr error) string {
+	lines := strings.Split(stderr, "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			continue
+		}
+
+		// API failures commonly end in a JSON object containing detail/message.
+		if start := strings.Index(line, "{"); start >= 0 {
+			var payload map[string]any
+			if json.Unmarshal([]byte(line[start:]), &payload) == nil {
+				for _, key := range []string{"detail", "message", "error"} {
+					if message, ok := payload[key].(string); ok && strings.TrimSpace(message) != "" {
+						return "Codex request failed: " + truncateCodexError(message)
+					}
+				}
+			}
+		}
+
+		lower := strings.ToLower(line)
+		actionable := strings.HasPrefix(lower, "error:") || strings.HasPrefix(lower, "error ") ||
+			strings.Contains(lower, "unexpected status") || strings.Contains(lower, "not supported") ||
+			strings.Contains(lower, "invalid model") || strings.Contains(lower, "authentication failed") ||
+			strings.Contains(lower, "rate limit")
+		if !actionable {
+			continue
+		}
+		if idx := strings.Index(lower, "error:"); idx >= 0 {
+			line = strings.TrimSpace(line[idx+len("error:"):])
+		}
+		return "Codex request failed: " + truncateCodexError(line)
+	}
+
+	if runErr != nil {
+		return "Codex request failed (" + runErr.Error() + "). Check your Codex model setting and ChatGPT sign-in."
+	}
+	return "Codex request failed. Check your Codex model setting and ChatGPT sign-in."
+}
+
+func truncateCodexError(message string) string {
+	message = strings.TrimSpace(message)
+	if len(message) > 500 {
+		return message[:500] + "…"
+	}
+	return message
 }
 
 // callCodexCLI handles the "codex" AI mode: prose rewrites through the OpenAI
@@ -994,7 +1058,7 @@ func (a *App) callCodexCLI(ctx context.Context, system, userMsg string) types.AI
 	lastMsg := filepath.Join(tempHome, "last-message.txt")
 	// No default model is hardcoded: without an override the CLI's own current
 	// default is used, so model churn on OpenAI's side never strands us.
-	cmd := codexExec(ctx, path, codexExecArgs(a.settings.AIModel, lastMsg)...)
+	cmd := codexExec(ctx, path, codexExecArgs(codexModelOverride(a.settings.AIModel), lastMsg)...)
 	cmd.Stdin = strings.NewReader(system + "\n\n" + userMsg)
 	cmd.Dir = tempHome
 
@@ -1049,11 +1113,6 @@ func (a *App) callCodexCLI(ctx context.Context, system, userMsg string) types.AI
 				if isErr {
 					stderrBuf.WriteString(line + "\n")
 				}
-				preview := line
-				if len(preview) > 100 {
-					preview = preview[:100] + "…"
-				}
-				runtime.EventsEmit(a.ctx, "ai:log", "→ "+preview)
 			}
 		}(p.pipe, p.errs)
 	}
@@ -1065,11 +1124,7 @@ func (a *App) callCodexCLI(ctx context.Context, system, userMsg string) types.AI
 		return types.AIRewriteResult{Error: "cancelled"}
 	}
 	if runErr != nil {
-		errMsg := strings.TrimSpace(stderrBuf.String())
-		if errMsg == "" {
-			errMsg = runErr.Error()
-		}
-		return types.AIRewriteResult{Error: errMsg}
+		return types.AIRewriteResult{Error: codexFailureMessage(stderrBuf.String(), runErr)}
 	}
 
 	result, err := os.ReadFile(lastMsg)
