@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02418] - 2026-08-30
+
+### Added
+- Added a Copy Edit AI mode that fixes errors without changing style.
+
 ## [0.16.02416] - 2026-08-30
 
 ### Fixed
