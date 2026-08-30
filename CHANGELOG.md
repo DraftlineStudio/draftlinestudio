@@ -19,6 +19,20 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.15.02350] - 2026-08-30
+
+### Added
+- Added a JetBrains-inspired Find/Replace bar scoped to the current chapter, opened with `Ctrl+F` or `Ctrl+H`
+- Added live match highlighting, current-match navigation, match counts, case-sensitive search, and whole-word search
+- Added formatting-safe Replace and single-transaction Replace All operations that can be undone in one step
+- Added roadmap designs for character refactoring and AI-assisted story-detail/event refactoring with evidence-based human review
+
+### Changed
+- Advanced the feature line to 0.15 for chapter editing and future manuscript-refactoring work
+- Defined fixture-based accuracy gates and a stable-ID entity-resolution foundation to replace the current prototype character-detection heuristics before refactoring ships
+
+---
+
 ## [0.14.02349] - 2026-08-30
 
 ### Changed
