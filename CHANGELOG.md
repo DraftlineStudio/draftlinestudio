@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02421] - 2026-08-30
+
+### Fixed
+- Switching to Codex no longer passes a model name from another provider.
+- Codex errors now show a short message instead of raw output.
+
 ## [0.16.02419] - 2026-08-30
 
 ### Changed
