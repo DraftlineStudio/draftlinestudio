@@ -19,6 +19,14 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02393] - 2026-08-30
+
+### Changed
+- Advanced the feature line to 0.16 for the character codex redesign
+- Renamed the "Cast" plugin to "Characters" in the Plugins settings page — this is a character codex, not a theater production; the full view rename lands with the redesigned workspace (in-editor sidebar rename deferred to its own redesign)
+
+---
+
 ## [0.15.02392] - 2026-08-30
 
 ### Fixed

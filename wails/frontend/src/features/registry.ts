@@ -33,9 +33,9 @@ export const FEATURE_REGISTRY: DraftlineFeature[] = [
     description: 'Fast, privacy-friendly checks for high-confidence grammar and usage issues.',
   },
   {
-    id: 'draftline.cast', settingKey: 'cast_enabled', name: 'Cast',
-    vendor: 'Draftline', version: '1.0', category: 'Story tools', monogram: 'Ca', accent: '#ba6ed6', bundled: true,
-    description: 'Character quick reference, entity indexing, and the visual cast workspace.',
+    id: 'draftline.cast', settingKey: 'cast_enabled', name: 'Characters',
+    vendor: 'Draftline', version: '1.0', category: 'Story tools', monogram: 'Ch', accent: '#ba6ed6', bundled: true,
+    description: 'Character codex: entity indexing, chapter presence, and relationship insight.',
   },
   {
     id: 'draftline.story-bible', settingKey: 'story_bible_enabled', name: 'Story Bible',
