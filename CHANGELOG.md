@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02409] - 2026-08-30
+
+### Added
+- Rejected character candidates stay rejected after re-detection.
+
 ## [0.16.02408] - 2026-08-30
 
 ### Added

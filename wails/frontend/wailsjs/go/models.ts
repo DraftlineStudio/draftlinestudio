@@ -172,6 +172,20 @@ export namespace types {
 	        this.name_2 = source["name_2"];
 	    }
 	}
+	export class EntityDecision {
+	    names: string[];
+	    status: string;
+
+	    static createFrom(source: any = {}) {
+	        return new EntityDecision(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.names = source["names"];
+	        this.status = source["status"];
+	    }
+	}
 	export class SeparatedPairRecord {
 	    mention_id_1: string;
 	    mention_id_2: string;
@@ -249,6 +263,7 @@ export namespace types {
 	    entities?: EntityRecord[];
 	    separated_pairs?: SeparatedPairRecord[];
 	    merge_rules?: MergeRule[];
+	    decisions?: EntityDecision[];
 	    last_resolved?: string;
 	    version?: number;
 	
@@ -262,6 +277,7 @@ export namespace types {
 	        this.entities = this.convertValues(source["entities"], EntityRecord);
 	        this.separated_pairs = this.convertValues(source["separated_pairs"], SeparatedPairRecord);
 	        this.merge_rules = this.convertValues(source["merge_rules"], MergeRule);
+	        this.decisions = this.convertValues(source["decisions"], EntityDecision);
 	        this.last_resolved = source["last_resolved"];
 	        this.version = source["version"];
 	    }
@@ -1259,4 +1275,3 @@ export namespace types {
 	
 
 }
-

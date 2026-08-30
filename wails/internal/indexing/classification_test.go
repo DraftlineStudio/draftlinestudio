@@ -62,3 +62,35 @@ func TestRejectedCandidatesDoNotEnterRelationshipMap(t *testing.T) {
 		t.Fatal("rejected candidate leaked into relationship lookup")
 	}
 }
+
+func TestApplyEntityDecisionsSurvivesChangedEntityIDs(t *testing.T) {
+	entities := []types.EntityRecord{
+		{ID: "new-id", Canonical: "Mara Ionescu", Aliases: []string{"Captain Ionescu"}, DetectionStatus: "review"},
+		{ID: "noise-id", Canonical: "Wacker Drive", DetectionStatus: "review"},
+	}
+	decisions := []types.EntityDecision{
+		{Names: []string{"Captain Ionescu"}, Status: "accepted"},
+		{Names: []string{"Wacker Drive"}, Status: "rejected"},
+	}
+
+	ApplyEntityDecisions(entities, decisions)
+	if entities[0].DetectionStatus != "accepted" {
+		t.Fatalf("accepted author decision was not restored: %+v", entities[0])
+	}
+	if entities[1].DetectionStatus != "rejected" {
+		t.Fatalf("rejected author decision was not restored: %+v", entities[1])
+	}
+}
+
+func TestApplyEntityDecisionsSkipsAmbiguousNames(t *testing.T) {
+	entities := []types.EntityRecord{
+		{ID: "one", Canonical: "Alex North", Aliases: []string{"Alex"}, DetectionStatus: "review"},
+		{ID: "two", Canonical: "Alex Reed", Aliases: []string{"Alex"}, DetectionStatus: "review"},
+	}
+	ApplyEntityDecisions(entities, []types.EntityDecision{{Names: []string{"Alex"}, Status: "rejected"}})
+	for _, entity := range entities {
+		if entity.DetectionStatus != "review" {
+			t.Fatalf("ambiguous rule changed entity %s", entity.ID)
+		}
+	}
+}

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"draftline/internal/entityresolution"
+	"draftline/internal/types"
 )
 
 var entitySuffixKinds = map[string]string{
@@ -18,6 +19,58 @@ var entitySuffixKinds = map[string]string{
 	"maps": "object", "accord": "object", "series": "object", "system": "object",
 	"client": "object", "windows": "object", "atvs": "object", "leds": "object", "tvs": "object",
 	"nodes": "object", "strike": "object",
+}
+
+// ApplyEntityDecisions restores explicit author choices after re-resolution.
+// A rule is deliberately ignored when its names match multiple entities: an
+// ambiguous old decision must never silently reject or accept a new person.
+func ApplyEntityDecisions(entities []types.EntityRecord, decisions []types.EntityDecision) {
+	for _, decision := range decisions {
+		if decision.Status != "accepted" && decision.Status != "rejected" {
+			continue
+		}
+		ruleNames := normalizedNameSet(decision.Names)
+		if len(ruleNames) == 0 {
+			continue
+		}
+
+		matched := -1
+		ambiguous := false
+		for i, entity := range entities {
+			entityNames := normalizedNameSet(append([]string{entity.Canonical}, entity.Aliases...))
+			if !nameSetsIntersect(ruleNames, entityNames) {
+				continue
+			}
+			if matched != -1 {
+				ambiguous = true
+				break
+			}
+			matched = i
+		}
+		if matched != -1 && !ambiguous {
+			entities[matched].DetectionStatus = decision.Status
+		}
+	}
+}
+
+func normalizedNameSet(names []string) map[string]bool {
+	result := make(map[string]bool, len(names))
+	for _, name := range names {
+		normalized := strings.ToLower(strings.TrimSpace(name))
+		if normalized != "" {
+			result[normalized] = true
+		}
+	}
+	return result
+}
+
+func nameSetsIntersect(a, b map[string]bool) bool {
+	for name := range a {
+		if b[name] {
+			return true
+		}
+	}
+	return false
 }
 
 var obviousNonActorWords = map[string]bool{
