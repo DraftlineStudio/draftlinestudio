@@ -45,6 +45,9 @@ type AppSettings struct {
 	BookDropCaps      bool   `json:"book_drop_caps"`
 	BookTrimSize      string `json:"book_trim_size"` // "6x9"|"5.5x8.5"|"5x8"|"7x10"|"A5"
 	SidebarPanelWidth int    `json:"sidebar_panel_width"`
+	// SidebarActiveSection remembers which tools-sidebar pane is open
+	// ("dashboard", "characters", "ai", …); "" means the sidebar is closed.
+	SidebarActiveSection string `json:"sidebar_active_section"`
 }
 
 // ClaudeCodeStatus contains the status of the Claude Code CLI installation.

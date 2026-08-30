@@ -30,7 +30,28 @@ export default function ToolsPanel() {
   const [panelWidth, setPanelWidth] = useState(350)
   const [isResizing, setIsResizing] = useState(false)
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null)
-  const { settings, saveSettings } = useAppStore()
+  const restoredRef = useRef(false)
+  const { settings, saveSettings, loaded } = useAppStore()
+
+  // setSection persists open/closed + active pane so the sidebar survives
+  // restarts and remounts (e.g. the Characters codex unmounting this panel).
+  const setSection = (next: GlyphSection) => {
+    setActiveSection(next)
+    saveSettings({ sidebar_active_section: next ?? '' })
+  }
+
+  // Restore the saved sidebar state once settings are loaded. An invalid or
+  // plugin-disabled saved section falls back to the Dashboard rather than a
+  // surprise-closed sidebar.
+  useEffect(() => {
+    if (!loaded || restoredRef.current) return
+    restoredRef.current = true
+    const saved = settings.sidebar_active_section
+    if (!saved) return // deliberately closed
+    const known = SECTION_CONFIG.some(s => s.id === saved)
+    const section = (known ? saved : 'dashboard') as Exclude<GlyphSection, null>
+    setActiveSection(isSectionEnabled(section, settings) ? section : 'dashboard')
+  }, [loaded])
 
   // Load saved panel width from settings
   useEffect(() => {
@@ -41,7 +62,7 @@ export default function ToolsPanel() {
 
   useEffect(() => {
     if (activeSection && !isSectionEnabled(activeSection, settings)) {
-      setActiveSection(null)
+      setSection(null)
     }
   }, [
     activeSection,
@@ -87,7 +108,7 @@ export default function ToolsPanel() {
   }, [isResizing, panelWidth, saveSettings])
 
   const handleGlyphClick = (section: Exclude<GlyphSection, null>) => {
-    setActiveSection(prev => prev === section ? null : section)
+    setSection(activeSection === section ? null : section)
   }
 
   const visibleSections = SECTION_CONFIG.filter(section => isSectionEnabled(section.id, settings))
@@ -102,7 +123,7 @@ export default function ToolsPanel() {
           <div className="resize-handle" onMouseDown={handleResizeStart} />
           <div className="slide-panel-header">
             <span className="slide-panel-title">{activeSectionConfig?.tooltip}</span>
-            <button className="slide-panel-close" onClick={() => setActiveSection(null)} title="Close panel">
+            <button className="slide-panel-close" onClick={() => setSection(null)} title="Close panel">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />

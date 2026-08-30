@@ -368,6 +368,7 @@ export namespace types {
 	    book_drop_caps: boolean;
 	    book_trim_size: string;
 	    sidebar_panel_width: number;
+	    sidebar_active_section: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppSettings(source);
@@ -408,6 +409,7 @@ export namespace types {
 	        this.book_drop_caps = source["book_drop_caps"];
 	        this.book_trim_size = source["book_trim_size"];
 	        this.sidebar_panel_width = source["sidebar_panel_width"];
+	        this.sidebar_active_section = source["sidebar_active_section"];
 	    }
 	}
 	export class BackupInfo {

@@ -19,6 +19,16 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02423] - 2026-08-30
+
+### Added
+- The tools sidebar's open/closed state and active pane are now saved with the rest of the app preferences: it opens on the Writing Dashboard by default, restores whichever pane it was left on, and no longer resets to closed after opening the Characters codex or restarting — writers who prefer a single sidebar can close it once and it stays closed
+
+### Fixed
+- If a saved sidebar pane's plugin has been disabled, the sidebar falls back to the Dashboard instead of opening a dead pane
+
+---
+
 ## [0.16.02422] - 2026-08-30
 
 ### Changed
