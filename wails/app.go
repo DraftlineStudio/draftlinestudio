@@ -44,7 +44,17 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.16.02421"
+const AppVersion = "0.16.02422"
+
+type aiRequestProfile struct {
+	lightweight bool
+}
+
+var standardAIRequest = aiRequestProfile{}
+
+func rewriteRequestProfile(mode string) aiRequestProfile {
+	return aiRequestProfile{lightweight: mode == "line_edit" || mode == "copy_edit"}
+}
 
 // App is the main application struct bound to the frontend.
 type App struct {
@@ -731,7 +741,7 @@ func (a *App) RewriteText(html string, mode string, styleOptionsJson string) typ
 		userMsg = "Rewrite the following, returning only the rewritten HTML paragraphs:\n\n" + html
 	}
 
-	res := a.dispatchAI(system, userMsg)
+	res := a.dispatchAI(system, userMsg, rewriteRequestProfile(mode))
 
 	// If the model returned diff format, reconstruct full HTML before handing back.
 	if res.Error == "" && useDiffFormat {
@@ -782,7 +792,7 @@ CRITICAL: Return ONLY the revised text content. Do not include any instructions,
 
 	userMsg := fmt.Sprintf("Instruction: %s\n\nText to revise:\n%s", prompt, text)
 
-	res := a.dispatchAI(system, userMsg)
+	res := a.dispatchAI(system, userMsg, standardAIRequest)
 
 	// Log the result
 	if res.Error != "" {
@@ -857,7 +867,7 @@ CRITICAL: Return ONLY the new prose content as HTML paragraphs. Do not include a
 
 	userMsg := strings.Join(contextParts, "\n\n")
 
-	return a.dispatchAI(system, userMsg)
+	return a.dispatchAI(system, userMsg, standardAIRequest)
 }
 
 // CheckClaudeCode checks whether the claude CLI is installed and authenticated.
@@ -955,14 +965,18 @@ func (a *App) OpenCodexAuth() {
 // injection-safe pattern as the Claude CLI. lastMessageFile receives the final
 // assistant message (--output-last-message) so the result needn't be parsed
 // out of the progress stream.
-func codexExecArgs(model, lastMessageFile string) []string {
+func codexExecArgs(model, lastMessageFile string, lightweight bool) []string {
 	args := []string{
 		"exec",
 		"--skip-git-repo-check", // temp workdir is not a git repo
 		"--sandbox", "read-only",
+		"--ephemeral",
 		"--color", "never",
 		"--json",
 		"--output-last-message", lastMessageFile,
+	}
+	if lightweight {
+		args = append(args, "--config", `model_reasoning_effort="low"`)
 	}
 	if model != "" {
 		args = append(args, "-m", model)
@@ -982,6 +996,39 @@ func codexModelOverride(model string) string {
 		}
 	}
 	return trimmed
+}
+
+// resolveCodexLightweightModel uses the CLI's own cached availability list so
+// fast editing never hard-fails on installations that predate a model name.
+// With no known lightweight model, an empty override safely uses the CLI's
+// account default (still at low reasoning effort).
+func resolveCodexLightweightModel(home string) string {
+	data, err := os.ReadFile(filepath.Join(home, ".codex", "models_cache.json"))
+	if err != nil {
+		return ""
+	}
+	return selectCodexLightweightModel(data)
+}
+
+func selectCodexLightweightModel(data []byte) string {
+	var cache struct {
+		Models []struct {
+			Slug string `json:"slug"`
+		} `json:"models"`
+	}
+	if json.Unmarshal(data, &cache) != nil {
+		return ""
+	}
+	available := make(map[string]bool, len(cache.Models))
+	for _, model := range cache.Models {
+		available[model.Slug] = true
+	}
+	for _, preferred := range []string{"gpt-5.6-luna", "gpt-5.4-mini", "gpt-reserve"} {
+		if available[preferred] {
+			return preferred
+		}
+	}
+	return ""
 }
 
 func codexFailureMessage(stderr string, runErr error) string {
@@ -1034,7 +1081,7 @@ func truncateCodexError(message string) string {
 
 // callCodexCLI handles the "codex" AI mode: prose rewrites through the OpenAI
 // Codex CLI using the user's ChatGPT account.
-func (a *App) callCodexCLI(ctx context.Context, system, userMsg string) types.AIRewriteResult {
+func (a *App) callCodexCLI(ctx context.Context, system, userMsg string, profile aiRequestProfile) types.AIRewriteResult {
 	path := resolveCodexBin()
 	if path == "" {
 		return types.AIRewriteResult{Error: "Codex CLI is not installed — open Settings › AI Studio to set it up"}
@@ -1051,14 +1098,23 @@ func (a *App) callCodexCLI(ctx context.Context, system, userMsg string) types.AI
 	realHome, _ := os.UserHomeDir()
 	codexDir := filepath.Join(tempHome, ".codex")
 	_ = os.MkdirAll(codexDir, 0755)
-	if data, e2 := os.ReadFile(filepath.Join(realHome, ".codex", "auth.json")); e2 == nil {
-		_ = os.WriteFile(filepath.Join(codexDir, "auth.json"), data, 0600)
+	for _, cachedFile := range []string{"auth.json", "models_cache.json"} {
+		if data, e2 := os.ReadFile(filepath.Join(realHome, ".codex", cachedFile)); e2 == nil {
+			_ = os.WriteFile(filepath.Join(codexDir, cachedFile), data, 0600)
+		}
 	}
 
 	lastMsg := filepath.Join(tempHome, "last-message.txt")
-	// No default model is hardcoded: without an override the CLI's own current
-	// default is used, so model churn on OpenAI's side never strands us.
-	cmd := codexExec(ctx, path, codexExecArgs(codexModelOverride(a.settings.AIModel), lastMsg)...)
+	model := codexModelOverride(a.settings.AIModel)
+	if profile.lightweight {
+		model = resolveCodexLightweightModel(realHome)
+		if model != "" {
+			runtime.EventsEmit(a.ctx, "ai:log", "Fast edit model: "+model)
+		}
+	}
+	// Lightweight editing prefers a model advertised by this CLI installation;
+	// otherwise no hardcoded override is used, avoiding model-churn failures.
+	cmd := codexExec(ctx, path, codexExecArgs(model, lastMsg, profile.lightweight)...)
 	cmd.Stdin = strings.NewReader(system + "\n\n" + userMsg)
 	cmd.Dir = tempHome
 
@@ -1252,7 +1308,7 @@ func (a *App) streamAnthropic(ctx context.Context, apiKey, model, system, userMs
 // This is the central dispatch point for all AI modes (claudecode, local, api)
 // and the single place that claims the AI-request slot: concurrent requests
 // get a clean "busy" error instead of corrupting each other's cancel handles.
-func (a *App) dispatchAI(system, userMsg string) types.AIRewriteResult {
+func (a *App) dispatchAI(system, userMsg string, profile aiRequestProfile) types.AIRewriteResult {
 	ctx, release, ok := a.acquireAI()
 	if !ok {
 		return types.AIRewriteResult{Error: "an AI request is already in progress — wait for it to finish or cancel it"}
@@ -1261,9 +1317,9 @@ func (a *App) dispatchAI(system, userMsg string) types.AIRewriteResult {
 
 	switch a.settings.AIMode {
 	case "claudecode":
-		return a.callClaudeCode(ctx, system, userMsg)
+		return a.callClaudeCode(ctx, system, userMsg, profile)
 	case "codex":
-		return a.callCodexCLI(ctx, system, userMsg)
+		return a.callCodexCLI(ctx, system, userMsg, profile)
 	case "local":
 		if a.settings.AILocalEndpoint == "" {
 			return types.AIRewriteResult{Error: "no local endpoint configured — set it in App Settings"}
@@ -1275,13 +1331,13 @@ func (a *App) dispatchAI(system, userMsg string) types.AIRewriteResult {
 		}
 		switch a.settings.AIProvider {
 		case "claude":
-			return a.callClaude(ctx, system, userMsg)
+			return a.callClaude(ctx, system, userMsg, profile)
 		case "openai":
-			return a.callOpenAI(ctx, system, userMsg)
+			return a.callOpenAI(ctx, system, userMsg, profile)
 		case "gemini":
-			return a.callGemini(ctx, system, userMsg)
+			return a.callGemini(ctx, system, userMsg, profile)
 		case "grok":
-			return a.callGrok(ctx, system, userMsg)
+			return a.callGrok(ctx, system, userMsg, profile)
 		default:
 			return types.AIRewriteResult{Error: "unknown provider: " + a.settings.AIProvider}
 		}
@@ -1336,13 +1392,23 @@ func (a *App) resolveAIModel(defaultModel string) string {
 	return defaultModel
 }
 
+func (a *App) resolveRequestModel(defaultModel, lightweightModel string, profile aiRequestProfile) string {
+	if profile.lightweight && lightweightModel != "" {
+		return lightweightModel
+	}
+	return a.resolveAIModel(defaultModel)
+}
+
 // callClaudeCode handles the "claudecode" AI mode. If the credentials file
 // contains a direct API key it calls the Anthropic API with streaming directly —
 // faster and more reliable than the CLI subprocess. Falls back to the CLI when
 // only OAuth credentials are present.
-func (a *App) callClaudeCode(ctx context.Context, system, userMsg string) types.AIRewriteResult {
+func (a *App) callClaudeCode(ctx context.Context, system, userMsg string, profile aiRequestProfile) types.AIRewriteResult {
 	if apiKey := readClaudeAPIKey(); apiKey != "" {
-		model := a.resolveAIModel("claude-sonnet-4-6")
+		model := a.resolveRequestModel("claude-sonnet-4-6", "claude-haiku-4-5-20251001", profile)
+		if profile.lightweight {
+			runtime.EventsEmit(a.ctx, "ai:log", "Fast edit model: Claude Haiku")
+		}
 		runtime.EventsEmit(a.ctx, "ai:log", "Connecting to Anthropic API…")
 		result, err := a.streamAnthropic(ctx, apiKey, model, system, userMsg)
 		if err != nil {
@@ -1350,17 +1416,20 @@ func (a *App) callClaudeCode(ctx context.Context, system, userMsg string) types.
 		}
 		return types.AIRewriteResult{Result: result}
 	}
-	return a.callClaudeCodeCLI(ctx, system, userMsg)
+	return a.callClaudeCodeCLI(ctx, system, userMsg, profile)
 }
 
 // callClaudeCodeCLI invokes the Claude Code CLI as a subprocess.
 // Used as a fallback when only OAuth credentials are available (no raw API key).
-func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string) types.AIRewriteResult {
+func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string, profile aiRequestProfile) types.AIRewriteResult {
 	path := resolveClaudeBin()
 	if path == "" {
 		return types.AIRewriteResult{Error: "Claude Code is not installed — open Settings › AI Studio to set it up"}
 	}
-	model := a.resolveAIModel("claude-sonnet-4-6")
+	model := a.resolveRequestModel("claude-sonnet-4-6", "claude-haiku-4-5-20251001", profile)
+	if profile.lightweight {
+		runtime.EventsEmit(a.ctx, "ai:log", "Fast edit model: Claude Haiku")
+	}
 
 	// Create an isolated home directory: real credentials so auth works, but no
 	// MCP server config. MCP servers are started between init and the first API
@@ -1386,7 +1455,7 @@ func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string) typ
 	// .cmd-shim fallback, where argv metacharacters would be interpreted) and
 	// sidesteps the ~32K Windows command-line length limit.
 	fullPrompt := system + "\n\n" + userMsg
-	cmd := claudeExec(ctx, path,
+	claudeArgs := []string{
 		"-p",
 		"--output-format", "stream-json",
 		"--verbose",
@@ -1394,7 +1463,12 @@ func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string) typ
 		"--model", model,
 		"--dangerously-skip-permissions",
 		"--allowedTools", "",
-	)
+	}
+	if profile.lightweight {
+		claudeArgs = append(claudeArgs, "--effort", "low")
+	}
+	claudeArgs = append(claudeArgs, "--no-session-persistence")
+	cmd := claudeExec(ctx, path, claudeArgs...)
 	cmd.Stdin = strings.NewReader(fullPrompt)
 	cmd.Dir = tempHome
 
@@ -1548,8 +1622,8 @@ func (a *App) callLocalAI(ctx context.Context, system, userMsg string) types.AIR
 	return types.AIRewriteResult{Result: strings.TrimSpace(result.Choices[0].Message.Content)}
 }
 
-func (a *App) callClaude(ctx context.Context, system, userMsg string) types.AIRewriteResult {
-	model := a.resolveAIModel("claude-sonnet-4-6")
+func (a *App) callClaude(ctx context.Context, system, userMsg string, profile aiRequestProfile) types.AIRewriteResult {
+	model := a.resolveRequestModel("claude-sonnet-4-6", "claude-haiku-4-5-20251001", profile)
 	runtime.EventsEmit(a.ctx, "ai:log", "Connecting to Claude API…")
 	result, err := a.streamAnthropic(ctx, a.getAPIKey(), model, system, userMsg)
 	if err != nil {
@@ -1558,8 +1632,8 @@ func (a *App) callClaude(ctx context.Context, system, userMsg string) types.AIRe
 	return types.AIRewriteResult{Result: result}
 }
 
-func (a *App) callOpenAI(ctx context.Context, system, userMsg string) types.AIRewriteResult {
-	model := a.resolveAIModel("gpt-4o")
+func (a *App) callOpenAI(ctx context.Context, system, userMsg string, profile aiRequestProfile) types.AIRewriteResult {
+	model := a.resolveRequestModel("gpt-4o", "gpt-4o-mini", profile)
 	reqBody, _ := json.Marshal(map[string]any{
 		"model": model,
 		"messages": []map[string]string{
@@ -1607,8 +1681,8 @@ func (a *App) callOpenAI(ctx context.Context, system, userMsg string) types.AIRe
 	return types.AIRewriteResult{Result: strings.TrimSpace(result.Choices[0].Message.Content)}
 }
 
-func (a *App) callGemini(ctx context.Context, system, userMsg string) types.AIRewriteResult {
-	model := a.resolveAIModel("gemini-1.5-pro")
+func (a *App) callGemini(ctx context.Context, system, userMsg string, profile aiRequestProfile) types.AIRewriteResult {
+	model := a.resolveRequestModel("gemini-1.5-pro", "gemini-1.5-flash", profile)
 
 	// Gemini API uses a different format
 	reqBody, _ := json.Marshal(map[string]any{
@@ -1670,8 +1744,8 @@ func (a *App) callGemini(ctx context.Context, system, userMsg string) types.AIRe
 	return types.AIRewriteResult{Result: strings.TrimSpace(result.Candidates[0].Content.Parts[0].Text)}
 }
 
-func (a *App) callGrok(ctx context.Context, system, userMsg string) types.AIRewriteResult {
-	model := a.resolveAIModel("grok-2")
+func (a *App) callGrok(ctx context.Context, system, userMsg string, profile aiRequestProfile) types.AIRewriteResult {
+	model := a.resolveRequestModel("grok-2", "", profile)
 
 	// Grok uses OpenAI-compatible API format
 	reqBody, _ := json.Marshal(map[string]any{
