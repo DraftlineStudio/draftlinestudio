@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02393] - 2026-08-30
+
+### Changed
+- Moved to version 0.16 and renamed Cast to Characters.
+
 ## [0.15.02392] - 2026-08-30
 
 ### Fixed
