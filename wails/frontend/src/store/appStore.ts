@@ -23,7 +23,7 @@ export interface AppSettings {
   plot_walker_enabled: boolean
   // AI
   ai_enabled: boolean
-  ai_mode: 'claudecode' | 'api' | 'local'
+  ai_mode: 'claudecode' | 'codex' | 'api' | 'local'
   ai_provider: 'claude' | 'openai' | 'gemini' | 'grok' | ''
   characters_lane_view: 'grid' | 'heat'
   has_api_key: boolean
