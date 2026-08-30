@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.15.02391] - 2026-08-30
+
+### Fixed
+- Cleared AI diffs no longer reappear.
+
 ## [0.15.02390] - 2026-08-30
 
 ### Fixed
