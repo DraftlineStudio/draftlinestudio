@@ -3,9 +3,23 @@
 All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.13.02340] - 2026-08-30
+## Versioning System
+
+This project does NOT use Semantic Versioning (SemVer).
+
+Instead, it uses a Linear Build Versioning system.
+Format: MAJOR.MINOR.BUILD
+
+* **MAJOR / MINOR:** Incremented manually when major feature sets or milestones are reached.
+* **BUILD:** A monotonic counter that increments by 1 for every single change/commit to the main branch. One fix = one number.
+
+If a package manager or strict SemVer parsing is a hard requirement for your workflow, this project may not be a fit for you.
+
+If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
+
+
+## [0.14.02347] - 2026-08-30
 
 ### Added
 - Offline grammar checking with distinct grammar and style diagnostics, contextual explanations, and one-click corrections
@@ -19,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Routed Claude Code AI work through a dedicated subprocess flow so long-running generation does not block the main application process
 - Improved Claude Code discovery on Windows by launching the native executable or Node entry point directly instead of relying on fragile command-shim invocation
 - Preserved existing user settings while adding backwards-compatible defaults for newly introduced feature flags
-- Normalized backend and frontend version reporting to `0.13.02340`
+- Normalized backend and frontend version reporting to `0.14.02347`
 
 ### Fixed
 - Fixed Claude Code integration failures that surfaced as `not recognized as an internal or external command` in the AI sidebar
