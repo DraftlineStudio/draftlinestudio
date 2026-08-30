@@ -19,6 +19,13 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02400] - 2026-08-30
+
+### Changed
+- Switching to Heatmap view auto-selects "Mentions (descending)" sorting — the heatmap reads as a ranked order, so the biggest presences go on top; the sort remains freely changeable afterwards
+
+---
+
 ## [0.16.02399] - 2026-08-30
 
 ### Changed
