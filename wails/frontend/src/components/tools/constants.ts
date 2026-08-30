@@ -29,7 +29,7 @@ export const INTENSITY_LABELS = ['Off', 'Subtle', 'Moderate', 'Heavy']
 // Glyph section configuration for the sidebar
 export const SECTION_CONFIG: { id: Exclude<GlyphSection, null>; label: string; tooltip: string }[] = [
   { id: 'dashboard', label: 'Dashboard', tooltip: 'Writing Dashboard' },
-  { id: 'characters', label: 'Cast', tooltip: 'Cast — quick reference' },
+  { id: 'characters', label: 'Characters', tooltip: 'Characters' },
   { id: 'plot', label: 'Plot', tooltip: 'Plot Notes' },
   { id: 'timeline', label: 'Timeline', tooltip: 'Story Timeline' },
   { id: 'beats', label: 'Beats', tooltip: 'Beat Sheet' },

@@ -19,6 +19,15 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02413] - 2026-08-30
+
+### Changed
+- Redesigned the in-editor character sidebar per the "chapter-first + inline detail" design: characters present in the chapter being written come first with their local mention counts, everyone else follows with a mini per-chapter presence strip, and each row click-expands an inline card (meta, presence strip, top-3 ties, jump links) without anything else moving
+- The sidebar can pre-select a character in the Characters codex ("Open in Characters"), jump to a character's first-appearance chapter, and still toggle in-text highlighting
+- Sidebar glyph and panel now say "Characters" — the last user-visible "Cast" is gone, and the old CastQuickRef component and cast.css are deleted
+
+---
+
 ## [0.16.02412] - 2026-08-30
 
 ### Fixed
