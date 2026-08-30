@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02398] - 2026-08-30
+
+### Fixed
+- Long names and text no longer overflow in the Characters view.
+
 ## [0.16.02396] - 2026-08-30
 
 ### Added

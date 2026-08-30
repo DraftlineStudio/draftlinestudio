@@ -28,6 +28,10 @@
 .chars-count {
   font-size: 12px;
   color: var(--text-secondary, #9DA0A8);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .chars-header-actions {
   margin-left: auto;
@@ -71,6 +75,15 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+}
+.chars-merge-banner strong {
+  display: inline-block;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
 }
 
 /* ── Swimlane grid ── */
@@ -245,7 +258,9 @@
   flex-direction: column;
   gap: 12px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
+.chars-pane > * { min-width: 0; }
 .chars-pane-top {
   display: flex;
   gap: 10px;
@@ -280,6 +295,7 @@
   font-size: 12px;
   color: var(--text-secondary, #9DA0A8);
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 .chars-section-label {
   font-size: 10px;
@@ -310,9 +326,11 @@
 }
 .chars-event-text {
   flex: 1;
+  min-width: 0;
   font-size: 12px;
   color: var(--text-chapter, #BFC1C7);
   line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 .chars-event-text .muted { color: var(--text-muted, #6A6E75); }
 /* Ego mini-map: the selected character and their strongest ties at fixed
@@ -407,6 +425,7 @@
   line-height: 1.65;
   color: var(--text-chapter, #BFC1C7);
   font-style: italic;
+  overflow-wrap: anywhere;
 }
 .chars-mention-meta {
   display: flex;
@@ -444,9 +463,17 @@
   padding: 3px 2px;
   cursor: pointer;
 }
+.chars-pane .split-mention > span:not(.muted) {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .chars-pane .split-mention .muted {
   margin-left: auto;
   font-size: 10px;
   color: var(--text-muted, #6A6E75);
   white-space: nowrap;
+  flex-shrink: 0;
 }
