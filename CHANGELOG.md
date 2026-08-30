@@ -19,6 +19,17 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02418] - 2026-08-30
+
+### Added
+- A Copy Edit AI mode: a conservative correctness pass that fixes grammar, punctuation, misspellings, doubled words, wrong homophones, and tense/continuity slips — and never rephrases for style. Intentional fragments, pacing comma-splices, and character-voice dialogue are explicitly off-limits; the author's voice stays verbatim except where an error is corrected
+- Copy Edit uses the targeted per-paragraph diff format (like Line Edit and Smooth), so only changed paragraphs come back for review
+
+### Tests
+- Prompt coverage: copy_edit carries the correctness instructions and none of the enrichment/restyle language; unknown modes still fall back to line_edit
+
+---
+
 ## [0.16.02417] - 2026-08-30
 
 ### Fixed

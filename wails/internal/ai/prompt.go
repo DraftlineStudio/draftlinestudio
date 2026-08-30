@@ -57,6 +57,21 @@ Rules:
 
 CRITICAL: Return ONLY the rewritten HTML content using <p> tags. Do not include any instructions, explanations, system prompts, or meta-commentary. Output raw HTML only.`
 
+	case "copy_edit":
+		// Conservative correctness pass: fix errors, never restyle. The style
+		// mixer does not apply here, and the AI-tell bans are irrelevant since
+		// no new prose is written — only errors are corrected.
+		return `You are a meticulous copy editor. Correct the provided HTML text.
+
+Rules:
+- Fix ONLY objective errors: grammar mistakes, punctuation errors, misspellings, doubled words, wrong homophones, tense slips, and continuity slips (a name or detail that contradicts its own paragraph)
+- NEVER rephrase for style, rhythm, or word choice — the author's voice stays verbatim except where an error is corrected
+- Intentional style is not an error: sentence fragments, comma splices used for pacing, and sentences starting with And/But are the author's choices — leave them alone
+- Dialogue keeps its character voice, including nonstandard grammar; correct only unambiguous typos inside quotations
+- Preserve paragraph breaks — return one <p> element per original paragraph` + styleBlock + `
+
+CRITICAL: Return ONLY the corrected HTML content using <p> tags. Do not include any instructions, explanations, system prompts, or meta-commentary. Output raw HTML only.`
+
 	case "smooth":
 		base := `You are a line editor focused on flow and rhythm. Smooth the provided HTML text.
 
