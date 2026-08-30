@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02407] - 2026-08-30
+
+### Fixed
+- Character detection no longer merges different characters who share a word in their names.
+
 ## [0.16.02406] - 2026-08-30
 
 ### Fixed
