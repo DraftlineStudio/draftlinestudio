@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02410] - 2026-08-30
+
+### Changed
+- Replaced character merge mode with a searchable Merge Character dialog.
+
 ## [0.16.02409] - 2026-08-30
 
 ### Added
