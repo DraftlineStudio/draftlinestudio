@@ -1,7 +1,11 @@
 // Package indexing provides character detection and attribute extraction.
 package indexing
 
-import "strings"
+import (
+	"strings"
+	"unicode"
+	"unicode/utf8"
+)
 
 // commonWordsLower contains words to exclude from character detection (all lowercase for case-insensitive matching).
 var commonWordsLower = map[string]bool{
@@ -269,4 +273,68 @@ func IsFalsePositiveContext(text string, nameEndIndex int) bool {
 	}
 
 	return FalsePositiveContextWords[strings.ToLower(nextWord)]
+}
+
+var streetDesignators = map[string]bool{
+	"st": true, "ave": true, "rd": true, "blvd": true, "dr": true,
+	"ln": true, "ct": true, "pkwy": true, "hwy": true, "pl": true,
+	"street": true, "avenue": true, "road": true, "boulevard": true,
+	"drive": true, "lane": true, "court": true, "parkway": true,
+	"highway": true, "place": true,
+}
+
+var locationPrepositions = map[string]bool{
+	"at": true, "on": true, "onto": true, "along": true, "down": true,
+	"from": true, "toward": true, "towards": true, "near": true,
+	"off": true, "across": true, "through": true,
+}
+
+// IsAddressIntersectionContext catches constructions that generic NER often
+// mistakes for people, such as "onto Ontario at Wells Ave". Requiring both a
+// movement/location preposition before the candidate and a street-designated
+// cross street after it avoids suppressing a person in "met Daniel at Wells".
+func IsAddressIntersectionContext(text string, candidateStart, candidateEnd int) bool {
+	if !locationPrepositions[previousWordLower(text, candidateStart)] {
+		return false
+	}
+
+	after := strings.TrimLeft(text[candidateEnd:], " \t")
+	lowerAfter := strings.ToLower(after)
+	for _, connector := range []string{"at ", "and ", "& "} {
+		if strings.HasPrefix(lowerAfter, connector) {
+			after = after[len(connector):]
+			words := scanWords(after)
+			for i := 0; i < len(words) && i < 4; i++ {
+				if streetDesignators[strings.ToLower(words[i].base)] {
+					return true
+				}
+			}
+			return false
+		}
+	}
+	return false
+}
+
+func previousWordLower(text string, offset int) string {
+	end := offset
+	for end > 0 {
+		r, size := utf8.DecodeLastRuneInString(text[:end])
+		if unicode.IsLetter(r) {
+			break
+		}
+		end -= size
+	}
+	start := end
+	for start > 0 {
+		r, size := utf8.DecodeLastRuneInString(text[:start])
+		if !unicode.IsLetter(r) {
+			break
+		}
+		start -= size
+	}
+	return strings.ToLower(text[start:end])
+}
+
+func IsStreetDesignator(word string) bool {
+	return streetDesignators[strings.ToLower(strings.TrimSuffix(word, "."))]
 }

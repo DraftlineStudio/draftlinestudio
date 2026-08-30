@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.15.02374] - 2026-08-30
+
+### Added
+- Character detection now uses local NLP to tell people apart from places and organizations.
+
 ## [0.15.02370] - 2026-08-30
 
 ### Fixed
