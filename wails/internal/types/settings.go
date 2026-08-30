@@ -22,7 +22,7 @@ type AppSettings struct {
 	CharactersLaneView string `json:"characters_lane_view"`
 	// AI
 	AIEnabled  bool   `json:"ai_enabled"`
-	AIMode     string `json:"ai_mode"`     // "claudecode" | "api" | "local"
+	AIMode     string `json:"ai_mode"`     // "claudecode" | "codex" | "api" | "local"
 	AIProvider string `json:"ai_provider"` // "claude" | "openai" | ""
 	// AIAPIKey is legacy: keys now live in the OS keyring. The tag is kept
 	// (with omitempty) so old settings.json files can still be read and
