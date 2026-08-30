@@ -49,17 +49,20 @@ func TestConvertEntitiesToCharactersOmitsRejectedCandidates(t *testing.T) {
 	}
 }
 
-func TestRejectedCandidatesDoNotEnterRelationshipMap(t *testing.T) {
+func TestUnconfirmedCandidatesDoNotEnterRelationshipMap(t *testing.T) {
 	entities := []types.EntityRecord{
 		{ID: "keep", MentionIDs: []string{"m1"}, DetectionStatus: "accepted"},
-		{ID: "drop", MentionIDs: []string{"m2"}, DetectionStatus: "rejected"},
+		{ID: "review", MentionIDs: []string{"m2"}, DetectionStatus: "review"},
+		{ID: "rejected", MentionIDs: []string{"m3"}, DetectionStatus: "rejected"},
 	}
 	lookup := BuildMentionToEntityMap(entities)
 	if lookup["m1"] != "keep" {
 		t.Fatal("accepted character missing from relationship lookup")
 	}
-	if _, exists := lookup["m2"]; exists {
-		t.Fatal("rejected candidate leaked into relationship lookup")
+	for _, mentionID := range []string{"m2", "m3"} {
+		if _, exists := lookup[mentionID]; exists {
+			t.Fatalf("unconfirmed candidate %s leaked into relationship lookup", mentionID)
+		}
 	}
 }
 

@@ -19,6 +19,20 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02411] - 2026-08-30
+
+### Fixed
+- The compact Characters sidebar now lists only manually created or confirmed characters; Needs Review candidates remain available only in the review workspace
+- Strongest-tie associations and generated character events are hidden whenever either endpoint is unconfirmed, preventing output such as a detective meeting a street or neighborhood fragment
+- Fresh relationship analysis now excludes Needs Review mentions before building interactions, relationships, and meeting events
+- Visible relationship totals now count only confirmed-character relationships
+- Legacy auto-detected cards without an admission status no longer leak into precision-first sidebars; re-detection classifies them before display
+
+### Tests
+- Added confirmed-character scope coverage for manual, accepted, review, rejected, and legacy candidates, including mixed relationship and event participants
+
+---
+
 ## [0.16.02410] - 2026-08-30
 
 ### Changed

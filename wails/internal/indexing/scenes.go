@@ -140,7 +140,10 @@ func GetCharactersInScene(scene types.SceneRecord, mentions []types.MentionRecor
 func BuildMentionToEntityMap(entities []types.EntityRecord) map[string]string {
 	result := make(map[string]string)
 	for _, entity := range entities {
-		if entity.DetectionStatus == "rejected" {
+		// Legacy entities without a status remain analyzable for archive
+		// compatibility, but current Needs Review and rejected candidates must
+		// never become relationship endpoints.
+		if entity.DetectionStatus == "review" || entity.DetectionStatus == "rejected" {
 			continue
 		}
 		for _, mentionID := range entity.MentionIDs {
