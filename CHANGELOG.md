@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02399] - 2026-08-30
+
+### Changed
+- The tools sidebar hides while the Characters view is open.
+
 ## [0.16.02398] - 2026-08-30
 
 ### Fixed
