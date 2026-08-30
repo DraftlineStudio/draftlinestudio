@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02395] - 2026-08-30
+
+### Added
+- Added a relationship map, chapter presence strip, and mention excerpts to the character detail pane.
+
 ## [0.16.02394] - 2026-08-30
 
 ### Changed

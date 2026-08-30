@@ -9,7 +9,7 @@ import { useBookStore } from '../../store/bookStore'
 import { useRelationshipStore } from '../../store/relationshipStore'
 import { characterColor, characterInitials } from '../../utils/characterVisuals'
 import { hexToRgba } from '../../utils/accentColor'
-import type { BookData, Character, CharacterRole, CharacterEvent } from '../../types/draftline'
+import type { BookData, Character, CharacterRole, CharacterEvent, MentionRecord, Section } from '../../types/draftline'
 import './characters.css'
 
 function allChapters(book: BookData) {
@@ -25,6 +25,46 @@ function cellAlpha(v: number): number {
   return v <= 0 ? 0 : v <= 2 ? 0.3 : v <= 4 ? 0.55 : v <= 6 ? 0.78 : 0.95
 }
 
+// Maps a combined-chapter index (front_matter + body + back_matter) back to a
+// navigable (section, index) pair.
+function chapterLocation(book: BookData, index: number): { section: Section; index: number } {
+  const front = book.front_matter?.length || 0
+  const body = book.body?.length || 0
+  if (index < front) return { section: 'front_matter', index }
+  if (index < front + body) return { section: 'body', index: index - front }
+  return { section: 'back_matter', index: index - front - body }
+}
+
+function stripHtml(html: string): string {
+  const div = document.createElement('div')
+  div.innerHTML = html
+  return div.textContent || ''
+}
+
+// Best-effort context around a mention: locate the mention text near its
+// recorded offset in the stripped chapter text and slice to word boundaries.
+// Offsets come from the Go-side text stripper, so treat them as a hint, not
+// an exact position; fall back to the bare mention text when unlocatable.
+function mentionExcerpt(book: BookData, m: MentionRecord): string {
+  const html = allChapters(book)[m.chapter]?.content
+  if (!html || !m.text) return m.text || ''
+  const text = stripHtml(html)
+  let idx = text.indexOf(m.text, Math.max(0, (m.char_offset ?? 0) - 300))
+  if (idx === -1) idx = text.indexOf(m.text)
+  if (idx === -1) return m.text
+  let start = Math.max(0, idx - 90)
+  let end = Math.min(text.length, idx + m.text.length + 90)
+  if (start > 0) {
+    const sp = text.indexOf(' ', start)
+    if (sp !== -1 && sp < idx) start = sp + 1
+  }
+  if (end < text.length) {
+    const sp = text.lastIndexOf(' ', end)
+    if (sp > idx + m.text.length) end = sp
+  }
+  return `${start > 0 ? '…' : ''}${text.slice(start, end).trim()}${end < text.length ? '…' : ''}`
+}
+
 const EMPTY_CELL = 'rgba(255,255,255,0.03)'
 
 type SortMode = 'first' | 'mentions-desc' | 'mentions-asc'
@@ -32,7 +72,7 @@ type ViewMode = 'grid' | 'heat'
 
 export default function CharactersView() {
   const {
-    book, setViewMode, indexBook, isIndexing, updateBook,
+    book, setViewMode, setCurrentChapter, indexBook, isIndexing, updateBook,
     addCharacter, updateCharacter, deleteCharacter, clearAllCharacters,
     mergeEntities, splitEntity,
   } = useBookStore()
@@ -121,6 +161,13 @@ export default function CharactersView() {
     setSelectedId(id)
     setEditing(false)
     setSplitting(false)
+  }
+
+  const jumpToChapter = (chapterIndex: number) => {
+    if (!book) return
+    const loc = chapterLocation(book, chapterIndex)
+    setCurrentChapter(loc.section, loc.index)
+    setViewMode('editor')
   }
 
   const doMerge = async (keepId: string) => {
@@ -327,6 +374,7 @@ export default function CharactersView() {
                 onSplit={() => setSplitting(true)}
                 onMerge={() => { setMergeFrom(selected.id); setMergeWith(null) }}
                 onDelete={() => { deleteCharacter(selected.id); setSelectedId(null) }}
+                onJump={jumpToChapter}
               />
             ) : null}
           </aside>
@@ -338,7 +386,7 @@ export default function CharactersView() {
 
 // ── Detail pane ──────────────────────────────────────────────────────────────
 
-function DetailPane({ book, char, charMap, relationships, events, entityBacked, onSelect, onEdit, onSplit, onMerge, onDelete }: {
+function DetailPane({ book, char, charMap, relationships, events, entityBacked, onSelect, onEdit, onSplit, onMerge, onDelete, onJump }: {
   book: BookData
   char: Character
   charMap: Map<string, Character>
@@ -350,6 +398,7 @@ function DetailPane({ book, char, charMap, relationships, events, entityBacked, 
   onSplit: () => void
   onMerge: () => void
   onDelete: () => void
+  onJump: (chapterIndex: number) => void
 }) {
   const color = characterColor(char.name)
 
@@ -359,11 +408,41 @@ function DetailPane({ book, char, charMap, relationships, events, entityBacked, 
     .filter(b => charMap.has(b.otherId))
     .sort((a, b) => b.rel.strength - a.rel.strength)
 
+  // Fixed 60° spokes: no layout pass, no simulation — positions never shift.
+  const spokes = bonds.slice(0, 6).map(({ otherId, rel }, k) => {
+    const other = charMap.get(otherId)!
+    const angle = -90 + k * 60
+    const rad = (angle * Math.PI) / 180
+    const cx = 136, cy = 100, r = 74
+    return {
+      otherId,
+      angle,
+      left: Math.max(2, Math.min(198, cx + Math.cos(rad) * r - 36)),
+      top: cy + Math.sin(rad) * r - 13,
+      lineWidth: Math.max(1, Math.min(3, 1 + rel.strength * 2)),
+      color: characterColor(other.name),
+      initials: characterInitials(other.name),
+      name: other.name,
+    }
+  })
+
   const moments = events
     .filter(e => e.character_ids?.includes(char.id))
     .sort((a, b) => a.chapter_index - b.chapter_index)
 
+  const chapters = allChapters(book)
   const chapterCount = char.chapter_mentions ? Object.keys(char.chapter_mentions).length : 0
+
+  // Up to three mention excerpts spread across the character's arc.
+  const entity = entityBacked ? book.analysis?.entity_resolution?.entities?.find(e => e.id === char.id) : undefined
+  const mentionRecords = entity
+    ? (book.analysis?.entity_resolution?.mentions ?? [])
+        .filter(m => entity.mention_ids.includes(m.id))
+        .sort((a, b) => a.chapter - b.chapter || a.char_offset - b.char_offset)
+    : []
+  const shownMentions = mentionRecords.length <= 3
+    ? mentionRecords
+    : [mentionRecords[0], mentionRecords[Math.floor(mentionRecords.length / 2)], mentionRecords[mentionRecords.length - 1]]
 
   return (
     <>
@@ -389,21 +468,45 @@ function DetailPane({ book, char, charMap, relationships, events, entityBacked, 
 
       {char.description && <div className="chars-pane-meta">{char.description}</div>}
 
-      {bonds.length > 0 && (
+      {spokes.length > 0 && (
         <>
           <div className="chars-section-label">Strongest ties</div>
+          <div className="chars-ego">
+            {spokes.map(s => (
+              <div
+                key={`line-${s.otherId}`}
+                className="chars-ego-spoke"
+                style={{ width: 74, height: s.lineWidth, background: hexToRgba(s.color, 0.55), transform: `rotate(${s.angle}deg)` }}
+              />
+            ))}
+            {spokes.map(s => (
+              <button
+                key={s.otherId}
+                className="chars-ego-node"
+                style={{ left: s.left, top: s.top }}
+                title={s.name}
+                onClick={() => onSelect(s.otherId)}
+              >
+                <span className="chars-ego-orb" style={{ color: s.color }}>{s.initials}</span>
+                <span className="chars-ego-name">{s.name}</span>
+              </button>
+            ))}
+            <div className="chars-ego-center" style={{ color }}>{characterInitials(char.name)}</div>
+          </div>
+        </>
+      )}
+
+      {chapters.length > 0 && (
+        <>
+          <div className="chars-section-label">Appears in</div>
           <div>
-            {bonds.slice(0, 8).map(({ otherId, rel }) => {
-              const other = charMap.get(otherId)!
-              return (
-                <button key={rel.id} className="chars-bond" onClick={() => onSelect(otherId)}>
-                  <span className="chars-dot" style={{ background: characterColor(other.name) }} />
-                  <span className="chars-name">{other.name}</span>
-                  <span className="chars-bond-meter"><span style={{ width: `${Math.round(rel.strength * 100)}%`, background: color }} /></span>
-                  <span className="chars-mentions">{rel.interaction_count}</span>
-                </button>
-              )
-            })}
+            <div className="chars-strip" style={{ gridTemplateColumns: `repeat(${chapters.length}, 1fr)` }}>
+              {chapters.map((_, i) => {
+                const v = char.chapter_mentions?.[i] || 0
+                return <div key={i} style={{ background: v > 0 ? hexToRgba(color, cellAlpha(v)) : 'rgba(255,255,255,0.05)' }} />
+              })}
+            </div>
+            <div className="chars-strip-labels"><span>Ch 1</span><span>Ch {chapters.length}</span></div>
           </div>
         </>
       )}
@@ -418,6 +521,23 @@ function DetailPane({ book, char, charMap, relationships, events, entityBacked, 
                 <span className="chars-event-text">
                   {m.description}<span className="muted"> · {chapterName(book, m.chapter_index)}</span>
                 </span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {shownMentions.length > 0 && (
+        <>
+          <div className="chars-section-label">Mentions</div>
+          <div>
+            {shownMentions.map(m => (
+              <div key={m.id} className="chars-mention">
+                <div className="chars-mention-text">{mentionExcerpt(book, m)}</div>
+                <div className="chars-mention-meta">
+                  <span className="muted">{chapterName(book, m.chapter)}</span>
+                  <button className="chars-jump" onClick={() => onJump(m.chapter)}>Jump to chapter →</button>
+                </div>
               </div>
             ))}
           </div>
