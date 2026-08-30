@@ -3,6 +3,10 @@
 import { create } from 'zustand'
 import type { ParagraphDiff, DiffChange } from '../utils/diff'
 
+// Invalidates async diff operations when navigation or a newer AI result
+// replaces/clears the review while the lazily loaded diff module is in flight.
+let pendingDiffGeneration = 0
+
 // Editor instance type (minimal interface for selection access)
 export interface EditorInstance {
   state: {
@@ -77,10 +81,12 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   pendingDiff: null,
 
   setPendingDiff: async ({ diffs, originalHtml }) => {
+    const generation = ++pendingDiffGeneration
     // Lazy-load the diff engine so it stays out of the main bundle
     // (AIStudio already imports it dynamically; a static import here
     // would defeat Vite's code-splitting).
     const { extractChanges } = await import('../utils/diff')
+    if (pendingDiffGeneration !== generation) return
     const changes = extractChanges(diffs)
     set({ pendingDiff: { diffs, changes, focusedChangeIdx: 0, originalHtml } })
   },
@@ -146,12 +152,19 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     : {}),
 
   applyPendingDiff: async (updateContent) => {
+    if (!get().pendingDiff) return
+    const generation = pendingDiffGeneration
+    const { assembleFromChanges } = await import('../utils/diff')
+    if (pendingDiffGeneration !== generation) return
     const { pendingDiff } = get()
     if (!pendingDiff) return
-    const { assembleFromChanges } = await import('../utils/diff')
     updateContent(assembleFromChanges(pendingDiff.diffs, pendingDiff.changes))
+    pendingDiffGeneration++
     set({ pendingDiff: null })
   },
 
-  clearPendingDiff: () => set({ pendingDiff: null }),
+  clearPendingDiff: () => {
+    pendingDiffGeneration++
+    set({ pendingDiff: null })
+  },
 }))
