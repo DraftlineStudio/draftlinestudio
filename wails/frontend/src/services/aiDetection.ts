@@ -342,7 +342,7 @@ export function analyzeText(html: string): AIDetectionResult {
   if (burstiness > 70) flags.push('Low sentence length variation')
   if (vocabularyRichness > 70) flags.push('Limited vocabulary diversity')
   if (repetition > 60) flags.push('Repetitive patterns detected')
-  if (sentenceVariety < 30 && sentenceVariety > 70) flags.push('Uniform sentence structure')
+  if (sentenceVariety > 70) flags.push('Uniform sentence structure')
 
   return {
     score,
