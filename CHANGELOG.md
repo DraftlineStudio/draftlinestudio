@@ -19,6 +19,14 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.15.02392] - 2026-08-30
+
+### Fixed
+- The root App component now selects only book existence, title, and file path instead of the entire mutable book object, so ordinary editor keystrokes no longer rerender the whole application shell
+- Corrected the welcome-screen effect dependencies while narrowing the subscription
+
+---
+
 ## [0.15.02391] - 2026-08-30
 
 ### Fixed
