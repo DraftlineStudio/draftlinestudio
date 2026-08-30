@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.15.02383] - 2026-08-30
+
+### Fixed
+- Edits made during an autosave are no longer marked as saved.
+- Saves now run one at a time.
+
 ## [0.15.02382] - 2026-08-30
 
 ### Fixed
