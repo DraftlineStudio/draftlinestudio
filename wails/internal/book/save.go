@@ -47,7 +47,7 @@ func Write(path string, book types.BookData, appVersion string) types.SaveResult
 	}
 
 	mf := manifest{
-		Version:      "2.0",
+		Version:      "2.1",
 		AppVersion:   appVersion,
 		Metadata:     book.Metadata,
 		FrontMatter:  []entry{},
@@ -76,6 +76,17 @@ func Write(path string, book types.BookData, appVersion string) types.SaveResult
 	}
 	bibleJSON, _ := json.MarshalIndent(book.StoryBible, "", "  ")
 	if err := addEntry("story_bible.json", string(bibleJSON)); err != nil {
+		return types.SaveResult{Success: false, Error: err.Error()}
+	}
+
+	// Analysis is stored separately from the author-owned story bible. It is
+	// rebuildable, but persisting it keeps mention locations, relationships,
+	// and manual merge/split decisions available after reopening a project.
+	analysisJSON, err := json.MarshalIndent(book.Analysis, "", "  ")
+	if err != nil {
+		return types.SaveResult{Success: false, Error: fmt.Sprintf("failed to encode analysis: %v", err)}
+	}
+	if err := addEntry("analysis.json", string(analysisJSON)); err != nil {
 		return types.SaveResult{Success: false, Error: err.Error()}
 	}
 
