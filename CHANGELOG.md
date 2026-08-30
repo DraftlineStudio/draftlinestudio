@@ -19,6 +19,13 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02403] - 2026-08-30
+
+### Fixed
+- Header and pane buttons in the Characters view no longer inherit the tool-card button's stacked-layout quirks (full width, zero side padding, 4px sibling offset) — Re-Detect and Close now sit level with proper padding
+
+---
+
 ## [0.16.02402] - 2026-08-30
 
 ### Fixed

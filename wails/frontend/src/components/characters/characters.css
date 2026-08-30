@@ -40,10 +40,24 @@
 .chars-header-actions {
   margin-left: auto;
   display: flex;
+  align-items: center;
   gap: 8px;
   flex-shrink: 0;
 }
-.chars-header-actions .tool-card-btn { white-space: nowrap; }
+
+/* .tool-card-btn is built for stacked full-width tool cards (width 100%,
+   no side padding, 4px sibling top margin). Reshape it for inline rows here. */
+.chars-header-actions .tool-card-btn,
+.chars-empty .tool-card-btn,
+.chars-pane .tool-card-btn {
+  width: auto;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+.chars-header-actions .tool-card-btn + .tool-card-btn,
+.chars-pane .tool-card-btn + .tool-card-btn {
+  margin-top: 0;
+}
 
 .chars-body {
   display: flex;
