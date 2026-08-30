@@ -19,6 +19,18 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02419] - 2026-08-30
+
+### Changed
+- Rebuilt the AI Studio sidebar per the redesign: a provider quick-switcher bar sits under the header showing the active route (Claude Code / Codex / configured API provider / Local) with a live ready dot, and its dropdown switches routes in one click — unconfigured routes appear dimmed as "Not configured" and route to Settings, with "Manage providers…" alongside
+- Editing modes are now icon cards (including the new Copy Edit); the Style Options panel is a collapsible card with four-stop dot tracks and an "N of 8 on" count replacing the range sliders; the custom-prompt area keeps the `@ai` in-text tip; the Run button lives in a pinned footer
+- Both CLI statuses are checked on sidebar mount so the switcher is accurate without opening Settings
+
+### Removed
+- ~300 lines of dead AI-panel CSS from two superseded layouts (the pre-redesign mode grid and the flat list this replaces); the new styles live in a component-scoped stylesheet
+
+---
+
 ## [0.16.02418] - 2026-08-30
 
 ### Added
