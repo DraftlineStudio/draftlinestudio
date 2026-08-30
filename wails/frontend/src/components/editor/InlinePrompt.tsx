@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useBookStore } from '../../store/bookStore'
-import { GenerateInlineContent } from '../../../wailsjs/go/main/App'
+import { CancelRewrite, GenerateInlineContent } from '../../../wailsjs/go/main/App'
 
 interface Props {
   onInsert: (html: string) => void
@@ -21,17 +21,24 @@ export default function InlinePrompt({ onInsert, onCancel, beforeContext, afterC
     inputRef.current?.focus()
   }, [])
 
+  const handleCancel = () => {
+    if (loading) {
+      CancelRewrite().catch(() => {})
+    }
+    onCancel()
+    closeInlinePrompt()
+  }
+
   // Handle escape key
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onCancel()
-        closeInlinePrompt()
+        handleCancel()
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [onCancel, closeInlinePrompt])
+  }, [loading, onCancel, closeInlinePrompt])
 
   const getChapterTitle = () => {
     if (!book) return ''
@@ -111,8 +118,7 @@ export default function InlinePrompt({ onInsert, onCancel, beforeContext, afterC
           <div className="inline-prompt-actions">
             <button
               className="inline-prompt-btn cancel"
-              onClick={() => { onCancel(); closeInlinePrompt() }}
-              disabled={loading}
+              onClick={handleCancel}
             >
               Cancel
             </button>
