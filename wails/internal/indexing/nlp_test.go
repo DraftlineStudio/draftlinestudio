@@ -83,6 +83,31 @@ func TestIndexBook_PreservesInventedNames(t *testing.T) {
 	}
 }
 
+func TestCommonSentenceGrammarDoesNotBecomePartOfNames(t *testing.T) {
+	book := types.BookData{Body: []types.ChapterItem{{
+		Title: "Chapter 1", Type: "chapter",
+		Content: `<p>Maeve waited. Could Maeve have known? Yrene answered. Would Yrene agree? Thank Anneith for that.</p>`,
+	}}}
+	if result := IndexBook(&book); !result.Success {
+		t.Fatalf("IndexBook failed: %s", result.Error)
+	}
+	names := make([]string, 0, len(book.StoryBible.Characters))
+	for _, char := range book.StoryBible.Characters {
+		names = append(names, char.Name)
+	}
+	for _, expected := range []string{"Maeve", "Yrene", "Anneith"} {
+		if !containsFold(names, expected) {
+			t.Errorf("expected %q in %v", expected, names)
+		}
+	}
+	for _, name := range names {
+		lower := strings.ToLower(name)
+		if strings.Contains(lower, "could") || strings.Contains(lower, "would") || strings.Contains(lower, "thank") {
+			t.Errorf("sentence grammar leaked into character name %q", name)
+		}
+	}
+}
+
 func containsFold(values []string, expected string) bool {
 	for _, value := range values {
 		if strings.EqualFold(value, expected) {

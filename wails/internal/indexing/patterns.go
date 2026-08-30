@@ -19,14 +19,17 @@ var commonWordsLower = map[string]bool{
 	"the": true, "she": true, "you": true, "his": true, "her": true, "its": true,
 	"our": true, "they": true, "your": true, "this": true, "that": true, "him": true,
 	"their": true, "mine": true, "yours": true, "ours": true, "theirs": true,
+	"each": true, "every": true, "some": true, "many": true,
 	// Question words
 	"who": true, "what": true, "where": true, "when": true, "why": true, "how": true,
 	// Common verbs and short words
 	"was": true, "were": true, "has": true, "had": true, "can": true, "did": true,
+	"could": true, "would": true, "should": true, "might": true, "must": true, "shall": true,
 	"get": true, "got": true, "let": true, "see": true, "say": true, "use": true,
 	"lets": true, "let's": true, "says": true, "goes": true, "went": true, "come": true,
 	"came": true, "take": true, "took": true, "make": true, "made": true, "give": true,
 	"gave": true, "know": true, "knew": true, "think": true, "thought": true,
+	"thank": true, "thanks": true, "carried": true, "remembers": true, "gives": true, "takes": true,
 	"feel": true, "felt": true, "look": true, "looked": true, "seem": true, "seemed": true,
 	"want": true, "wanted": true, "need": true, "needed": true, "like": true, "liked": true,
 	"ask": true, "asked": true, "tell": true, "told": true, "call": true, "called": true,

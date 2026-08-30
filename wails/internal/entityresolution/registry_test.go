@@ -59,6 +59,51 @@ func TestResolveEntities_MergeIntoLongerForm(t *testing.T) {
 	}
 }
 
+func TestResolveEntities_DoesNotBridgePeopleThroughSharedCommonToken(t *testing.T) {
+	mentions := []Mention{
+		{ID: "m1", Text: "Maeve", Chapter: 0, CharOffset: 10},
+		{ID: "m2", Text: "Could Maeve", Chapter: 0, CharOffset: 30},
+		{ID: "m3", Text: "Yrene", Chapter: 0, CharOffset: 60},
+		{ID: "m4", Text: "Could Yrene", Chapter: 0, CharOffset: 90},
+		{ID: "m5", Text: "That Could Not Be Broken", Chapter: 1, CharOffset: 10},
+	}
+	result := NewResolver().ResolveEntities(mentions)
+	if len(result.Entities) < 3 {
+		t.Fatalf("bridge mentions collapsed distinct people: %+v", result.Entities)
+	}
+	for _, entity := range result.Entities {
+		aliases := strings.ToLower(strings.Join(entity.Aliases, " "))
+		if strings.Contains(aliases, "maeve") && strings.Contains(aliases, "yrene") {
+			t.Fatalf("Maeve and Yrene were transitively merged: %+v", entity)
+		}
+	}
+}
+
+func TestResolveEntities_DoesNotFuzzyMergeBareWords(t *testing.T) {
+	mentions := []Mention{
+		{ID: "m1", Text: "Mart", Chapter: 0, CharOffset: 10},
+		{ID: "m2", Text: "Mark", Chapter: 0, CharOffset: 30},
+		{ID: "m3", Text: "Bank", Chapter: 0, CharOffset: 50},
+		{ID: "m4", Text: "Bonk", Chapter: 0, CharOffset: 70},
+	}
+	result := NewResolver().ResolveEntities(mentions)
+	if len(result.Entities) != 4 {
+		t.Fatalf("bare words were fuzzy-merged: %+v", result.Entities)
+	}
+}
+
+func TestResolveEntities_CanonicalPrefersFrequentSingular(t *testing.T) {
+	mentions := []Mention{
+		{ID: "m1", Text: "Daniel Hanlons", Chapter: 0, CharOffset: 10},
+		{ID: "m2", Text: "Daniel Hanlon", Chapter: 0, CharOffset: 30},
+		{ID: "m3", Text: "Daniel Hanlon", Chapter: 1, CharOffset: 10},
+	}
+	result := NewResolver().ResolveEntities(mentions)
+	if len(result.Entities) != 1 || result.Entities[0].Canonical != "Daniel Hanlon" {
+		t.Fatalf("wrong canonical selection: %+v", result.Entities)
+	}
+}
+
 // An ambiguous single-token mention resolves to the most recently
 // mentioned matching entity.
 func TestResolveEntities_RecencyDisambiguation(t *testing.T) {
