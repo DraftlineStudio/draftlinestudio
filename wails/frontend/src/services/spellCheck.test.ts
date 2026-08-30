@@ -39,7 +39,7 @@ describe('spell-check word normalization', () => {
       text: async () => String(input).endsWith('.aff')
         ? 'SET UTF-8\n'
         : "2\ncouldn't\nwouldn't\n",
-    })) as typeof fetch
+    })) as unknown as typeof fetch
 
     try {
       await loadDictionary()
