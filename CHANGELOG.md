@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02412] - 2026-08-30
+
+### Fixed
+- Aligned the tools sidebar header with the rest of the toolbar.
+
 ## [0.16.02411] - 2026-08-30
 
 ### Fixed
