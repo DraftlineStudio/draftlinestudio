@@ -19,6 +19,13 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.15.02389] - 2026-08-30
+
+### Changed
+- Manuscript files (`*.draftline`) are now gitignored so a book saved into the repo directory can never be committed
+
+---
+
 ## [0.15.02388] - 2026-08-30
 
 ### Added
