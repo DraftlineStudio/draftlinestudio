@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -19,12 +20,14 @@ import (
 	"draftline/internal/backup"
 	"draftline/internal/book"
 	"draftline/internal/export"
+	"draftline/internal/fsutil"
 	"draftline/internal/indexing"
 	"draftline/internal/logging"
 	"draftline/internal/platform"
 	"draftline/internal/types"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/zalando/go-keyring"
 )
 
 // ── Backup System ───────────────────────────────────────────────────────────
@@ -41,7 +44,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.15.02350"
+const AppVersion = "0.15.02373"
 
 // App is the main application struct bound to the frontend.
 type App struct {
@@ -50,6 +53,14 @@ type App struct {
 	settings      types.AppSettings
 	cancelMu      sync.Mutex
 	cancelRewrite context.CancelFunc // non-nil while a rewrite is in progress
+
+	// API key state. The key lives in the OS keyring; legacyAPIKey holds a
+	// plaintext key only on machines where no keyring is available, so users
+	// there don't lose AI access.
+	apiKeyMu     sync.Mutex
+	apiKeyCache  string
+	apiKeyLoaded bool
+	legacyAPIKey string
 }
 
 // GetAppVersion returns the current application version string.
@@ -205,7 +216,24 @@ func NewApp() *App {
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
-	a.settings = a.LoadSettings()
+	raw := a.loadSettingsFromDisk()
+	// One-time migration: move a plaintext key from settings.json into the OS
+	// keyring. The plaintext copy is only removed after the keyring accepts
+	// the key; if no keyring is available the key stays put so it isn't lost.
+	if raw.AIAPIKey != "" {
+		if err := keyring.Set(keyringService, keyringAccount, raw.AIAPIKey); err == nil {
+			stripped := raw
+			stripped.AIAPIKey = ""
+			if werr := a.writeSettingsFile(stripped); werr != nil {
+				log.Printf("failed to strip migrated API key from settings.json: %v", werr)
+			}
+		} else {
+			a.legacyAPIKey = raw.AIAPIKey
+		}
+	}
+	raw.AIAPIKey = ""
+	a.settings = raw
+	logging.SetEnabled(raw.AIDebugLogging)
 }
 
 // NewBook returns an empty types.BookData struct with defaults.
@@ -404,7 +432,9 @@ func (a *App) settingsPath() string {
 	return filepath.Join(dir, "settings.json")
 }
 
-func (a *App) LoadSettings() types.AppSettings {
+// loadSettingsFromDisk reads settings.json verbatim (including a legacy
+// plaintext API key, which only startup's migration may see).
+func (a *App) loadSettingsFromDisk() types.AppSettings {
 	defaults := types.AppSettings{
 		AIEnabled:           false,
 		DarkMode:            true,
@@ -432,13 +462,121 @@ func (a *App) LoadSettings() types.AppSettings {
 	return s
 }
 
-func (a *App) SaveSettings(settings types.AppSettings) error {
-	a.settings = settings
+// LoadSettings returns the settings for the frontend. The API key itself
+// never crosses the Wails bridge — only the has_api_key flag does.
+func (a *App) LoadSettings() types.AppSettings {
+	s := a.loadSettingsFromDisk()
+	s.AIAPIKey = ""
+	s.HasAPIKey = a.HasAPIKey()
+	return s
+}
+
+func (a *App) writeSettingsFile(settings types.AppSettings) error {
+	settings.HasAPIKey = false // derived at load time, not persisted
 	data, err := json.MarshalIndent(settings, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(a.settingsPath(), data, 0644)
+	return fsutil.WriteFileAtomic(a.settingsPath(), data, 0600)
+}
+
+func (a *App) SaveSettings(settings types.AppSettings) error {
+	// Never trust a key from the frontend; keys arrive via SetAPIKey only.
+	settings.AIAPIKey = ""
+	a.settings = settings
+	logging.SetEnabled(settings.AIDebugLogging)
+
+	onDisk := settings
+	if a.legacyAPIKey != "" {
+		// Keyring unavailable on this machine: keep the stored key so a
+		// settings round-trip doesn't wipe it.
+		onDisk.AIAPIKey = a.legacyAPIKey
+	}
+	return a.writeSettingsFile(onDisk)
+}
+
+// ── API key (OS keyring) ─────────────────────────────────────────────────────
+
+const (
+	keyringService = "draftline"
+	keyringAccount = "ai_api_key"
+)
+
+// SetAPIKey stores the key in the OS keyring. If no keyring is available it
+// falls back to settings.json (user-only permissions) rather than losing it.
+func (a *App) SetAPIKey(key string) error {
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return fmt.Errorf("API key is empty")
+	}
+	if err := keyring.Set(keyringService, keyringAccount, key); err != nil {
+		log.Printf("keyring unavailable (%v); storing key in settings.json", err)
+		a.legacyAPIKey = key
+		a.setCachedKey(key)
+		onDisk := a.settings
+		onDisk.AIAPIKey = key
+		return a.writeSettingsFile(onDisk)
+	}
+	a.legacyAPIKey = ""
+	a.setCachedKey(key)
+	// Make sure no plaintext copy lingers on disk.
+	onDisk := a.settings
+	onDisk.AIAPIKey = ""
+	return a.writeSettingsFile(onDisk)
+}
+
+// HasAPIKey reports whether a key is stored, without revealing it.
+func (a *App) HasAPIKey() bool {
+	return a.getAPIKey() != ""
+}
+
+// ClearAPIKey removes the stored key from the keyring and settings.json.
+// Local copies (legacy plaintext, cache) are cleared even if the keyring
+// operation fails — on keyring-less machines settings.json is the only place
+// the key lives, and clearing must not be blocked by an "unavailable" error.
+func (a *App) ClearAPIKey() error {
+	delErr := keyring.Delete(keyringService, keyringAccount)
+	if delErr != nil && errors.Is(delErr, keyring.ErrNotFound) {
+		delErr = nil
+	}
+	a.legacyAPIKey = ""
+	a.setCachedKey("")
+	onDisk := a.settings
+	onDisk.AIAPIKey = ""
+	if err := a.writeSettingsFile(onDisk); err != nil {
+		return err
+	}
+	return delErr
+}
+
+func (a *App) setCachedKey(key string) {
+	a.apiKeyMu.Lock()
+	a.apiKeyCache = key
+	a.apiKeyLoaded = true
+	a.apiKeyMu.Unlock()
+}
+
+// getAPIKey returns the stored key (keyring first, then legacy fallback),
+// caching the keyring read.
+func (a *App) getAPIKey() string {
+	a.apiKeyMu.Lock()
+	defer a.apiKeyMu.Unlock()
+	if a.apiKeyLoaded {
+		return a.apiKeyCache
+	}
+	v, err := keyring.Get(keyringService, keyringAccount)
+	switch {
+	case err == nil:
+		a.apiKeyCache = v
+	case errors.Is(err, keyring.ErrNotFound):
+		a.apiKeyCache = a.legacyAPIKey
+	default:
+		// Transient keyring failure: fall back without caching so the next
+		// call retries the keyring.
+		return a.legacyAPIKey
+	}
+	a.apiKeyLoaded = true
+	return a.apiKeyCache
 }
 
 func (a *App) BrowseForDirectory() string {
@@ -650,7 +788,7 @@ CRITICAL: Return ONLY the revised text content. Do not include any instructions,
 		}
 		res = a.callLocalAI(system, userMsg)
 	default: // "api"
-		if a.settings.AIProvider == "" || a.settings.AIAPIKey == "" {
+		if a.settings.AIProvider == "" || a.getAPIKey() == "" {
 			return types.AIRewriteResult{Error: "no API provider configured — add your key in App Settings"}
 		}
 		switch a.settings.AIProvider {
@@ -918,7 +1056,7 @@ func (a *App) dispatchAI(system, userMsg string) types.AIRewriteResult {
 		}
 		return a.callLocalAI(system, userMsg)
 	default: // "api"
-		if a.settings.AIProvider == "" || a.settings.AIAPIKey == "" {
+		if a.settings.AIProvider == "" || a.getAPIKey() == "" {
 			return types.AIRewriteResult{Error: "no API provider configured — add your key in App Settings"}
 		}
 		switch a.settings.AIProvider {
@@ -1161,7 +1299,7 @@ func (a *App) callClaude(system, userMsg string) types.AIRewriteResult {
 	model, ctx, cleanup := a.setupAIContext("claude-sonnet-4-6")
 	defer cleanup()
 	runtime.EventsEmit(a.ctx, "ai:log", "Connecting to Claude API…")
-	result, err := a.streamAnthropic(ctx, a.settings.AIAPIKey, model, system, userMsg)
+	result, err := a.streamAnthropic(ctx, a.getAPIKey(), model, system, userMsg)
 	if err != nil {
 		return types.AIRewriteResult{Error: err.Error()}
 	}
@@ -1185,7 +1323,7 @@ func (a *App) callOpenAI(system, userMsg string) types.AIRewriteResult {
 		return types.AIRewriteResult{Error: err.Error()}
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+a.settings.AIAPIKey)
+	req.Header.Set("Authorization", "Bearer "+a.getAPIKey())
 
 	client := &http.Client{Timeout: 120 * time.Second}
 	resp, err := client.Do(req)
@@ -1240,7 +1378,7 @@ func (a *App) callGemini(system, userMsg string) types.AIRewriteResult {
 		},
 	})
 
-	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s", model, a.settings.AIAPIKey)
+	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s", model, a.getAPIKey())
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(reqBody))
 	if err != nil {
 		return types.AIRewriteResult{Error: err.Error()}
@@ -1299,7 +1437,7 @@ func (a *App) callGrok(system, userMsg string) types.AIRewriteResult {
 		return types.AIRewriteResult{Error: err.Error()}
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+a.settings.AIAPIKey)
+	req.Header.Set("Authorization", "Bearer "+a.getAPIKey())
 
 	client := &http.Client{Timeout: 120 * time.Second}
 	resp, err := client.Do(req)

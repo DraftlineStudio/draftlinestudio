@@ -26,6 +26,10 @@ export function CheckClaudeCode() {
   return window['go']['main']['App']['CheckClaudeCode']();
 }
 
+export function ClearAPIKey() {
+  return window['go']['main']['App']['ClearAPIKey']();
+}
+
 export function ClearRecentProjects() {
   return window['go']['main']['App']['ClearRecentProjects']();
 }
@@ -72,6 +76,10 @@ export function GetCurrentFile() {
 
 export function GetRecentProjects() {
   return window['go']['main']['App']['GetRecentProjects']();
+}
+
+export function HasAPIKey() {
+  return window['go']['main']['App']['HasAPIKey']();
 }
 
 export function ImportDOCX(arg1) {
@@ -148,6 +156,10 @@ export function SaveBookAs(arg1) {
 
 export function SaveSettings(arg1) {
   return window['go']['main']['App']['SaveSettings'](arg1);
+}
+
+export function SetAPIKey(arg1) {
+  return window['go']['main']['App']['SetAPIKey'](arg1);
 }
 
 export function SetupClaudeCode() {

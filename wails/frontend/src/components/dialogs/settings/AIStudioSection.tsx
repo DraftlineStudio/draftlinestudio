@@ -9,6 +9,8 @@ export default function AIStudioSection({
   aiMode, setAiMode,
   provider, setProvider,
   apiKey, setApiKey,
+  hasStoredKey, onClearKey,
+  debugLogging, setDebugLogging,
   model, setModel,
   localEndpoint, setLocalEndpoint,
   localModel, setLocalModel,
@@ -103,14 +105,21 @@ export default function AIStudioSection({
                   type={showKey ? 'text' : 'password'}
                   value={apiKey}
                   onChange={e => setApiKey(e.target.value)}
-                  placeholder={provider === 'claude' ? 'sk-ant-...' : 'sk-...'}
+                  placeholder={hasStoredKey
+                    ? '••••••••  key stored — enter a new key to replace it'
+                    : provider === 'claude' ? 'sk-ant-...' : 'sk-...'}
                   autoComplete="off"
                 />
                 <button className="dialog-btn settings-browse-btn" onClick={() => setShowKey(v => !v)}>
                   {showKey ? 'Hide' : 'Show'}
                 </button>
+                {hasStoredKey && (
+                  <button className="dialog-btn settings-browse-btn" onClick={onClearKey} title="Remove the stored key">
+                    Clear
+                  </button>
+                )}
               </div>
-              <div className="settings-hint">Stored locally in your app settings file — never transmitted to Draftline servers.</div>
+              <div className="settings-hint">Stored in your system keychain — never written to disk in plain text or transmitted to Draftline servers.</div>
             </div>
           </>}
         </>}
@@ -164,6 +173,16 @@ export default function AIStudioSection({
           />
           <div className="settings-hint">The AI will match the rhythm, vocabulary, and sentence structure of these examples when rewriting.</div>
         </div>
+
+        <div className="settings-section-label">
+          Debug Logging
+          <label className="settings-toggle" title="Write AI prompts and responses to local log files">
+            <input type="checkbox" checked={debugLogging} onChange={e => setDebugLogging(e.target.checked)} />
+            <span className="settings-toggle-track"><span className="settings-toggle-thumb" /></span>
+            <span className="settings-toggle-label">{debugLogging ? 'Enabled' : 'Disabled'}</span>
+          </label>
+        </div>
+        <div className="settings-hint">When enabled, AI requests (including manuscript text) are logged to local files for troubleshooting. Off by default.</div>
       </>}
     </>
   )

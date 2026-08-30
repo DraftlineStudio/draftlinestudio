@@ -6,6 +6,8 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -25,6 +27,32 @@ import (
 
 // Pinned LTS version. Can be bumped in future releases.
 const nodeVersion = "v22.14.0"
+
+// nodeSHA256 pins the expected checksum of each Node.js artifact. When bumping
+// nodeVersion, refresh every entry from
+// https://nodejs.org/dist/<version>/SHASUMS256.txt. Platforms not listed here
+// are refused rather than installed unverified.
+var nodeSHA256 = map[string]string{
+	"node-v22.14.0-win-x64.zip":         "55b639295920b219bb2acbcfa00f90393a2789095b7323f79475c9f34795f217",
+	"node-v22.14.0-win-arm64.zip":       "2d71f5f9b2fffa33baa108c07d74b0d24e0c3dd8f441d567772ae0e3dd4b1a22",
+	"node-v22.14.0-darwin-x64.tar.gz":   "6698587713ab565a94a360e091df9f6d91c8fadda6d00f0cf6526e9b40bed250",
+	"node-v22.14.0-darwin-arm64.tar.gz": "e9404633bc02a5162c5c573b1e2490f5fb44648345d64a958b17e325729a5e42",
+	"node-v22.14.0-linux-x64.tar.gz":    "9d942932535988091034dc94cc5f42b6dc8784d6366df3a36c4c9ccb3996f0c2",
+	"node-v22.14.0-linux-arm64.tar.gz":  "8cf30ff7250f9463b53c18f89c6c606dfda70378215b2c905d0a9a8b08bd45e0",
+}
+
+// Pinned Claude Code CLI version; updates ride app releases so the supply
+// chain stays auditable.
+const claudeCodeVersion = "2.1.251"
+
+// Extraction limits for the Node distribution (npm ships thousands of small
+// files; node's binary is ~90 MB uncompressed).
+const (
+	maxNodeDownload   = 80 << 20
+	maxExtractEntry   = 200 << 20
+	maxExtractTotal   = 500 << 20
+	maxExtractEntries = 50_000
+)
 
 // ── Path helpers ────────────────────────────────────────────────────────────
 
@@ -208,7 +236,7 @@ func runNpmInstall(npmPath string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
 
-	cmd := cmdExec(ctx, npmPath, "install", "-g", "@anthropic-ai/claude-code", "--prefix", prefix)
+	cmd := cmdExec(ctx, npmPath, "install", "-g", "@anthropic-ai/claude-code@"+claudeCodeVersion, "--prefix", prefix)
 	// Ensure our bundled node is on PATH so npm scripts can find it.
 	cmd.Env = append(os.Environ(),
 		"PATH="+nodeInstallBinDir()+string(os.PathListSeparator)+os.Getenv("PATH"),
@@ -247,7 +275,12 @@ func nodeDownloadURL() (url, filename string) {
 }
 
 func downloadAndExtractNode(emit func(string)) error {
-	url, _ := nodeDownloadURL()
+	url, filename := nodeDownloadURL()
+	wantSum, ok := nodeSHA256[filename]
+	if !ok {
+		return fmt.Errorf("no pinned checksum for %s on this platform; refusing to install unverified Node.js", filename)
+	}
+
 	client := &http.Client{Timeout: 10 * time.Minute}
 	resp, err := client.Get(url)
 	if err != nil {
@@ -257,9 +290,17 @@ func downloadAndExtractNode(emit func(string)) error {
 	if resp.StatusCode != 200 {
 		return fmt.Errorf("download failed: HTTP %d", resp.StatusCode)
 	}
-	data, err := io.ReadAll(resp.Body)
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxNodeDownload+1))
 	if err != nil {
 		return fmt.Errorf("read failed: %w", err)
+	}
+	if len(data) > maxNodeDownload {
+		return fmt.Errorf("download exceeds %d bytes; aborting", maxNodeDownload)
+	}
+	sum := sha256.Sum256(data)
+	gotSum := hex.EncodeToString(sum[:])
+	if gotSum != wantSum {
+		return fmt.Errorf("checksum mismatch for %s: got %s, expected %s — refusing to install", filename, gotSum, wantSum)
 	}
 	emit("Extracting Node.js…")
 	dest := nodeInstallDir()
@@ -270,19 +311,56 @@ func downloadAndExtractNode(emit func(string)) error {
 	return extractNodeTarGz(data, dest)
 }
 
-// extractNodeZip extracts the Windows Node.js zip, stripping the top-level versioned directory.
+// securePath joins rel under dest, rejecting absolute paths, volume prefixes,
+// and any traversal that would escape dest.
+func securePath(dest, rel string) (string, error) {
+	rel = filepath.FromSlash(rel)
+	// Reject absolute, drive-prefixed, and rooted paths (on Windows IsAbs is
+	// false for `\etc` yet it still escapes any relative join semantics).
+	if filepath.IsAbs(rel) || filepath.VolumeName(rel) != "" ||
+		(len(rel) > 0 && os.IsPathSeparator(rel[0])) {
+		return "", fmt.Errorf("archive entry has absolute path: %q", rel)
+	}
+	target := filepath.Join(dest, rel)
+	back, err := filepath.Rel(dest, target)
+	if err != nil || back == ".." || strings.HasPrefix(back, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("archive entry escapes destination: %q", rel)
+	}
+	return target, nil
+}
+
+// maskMode strips setuid/setgid/sticky and any non-permission bits from an
+// archive-supplied mode, flooring to a sane minimum.
+func maskMode(mode int64) os.FileMode {
+	m := os.FileMode(mode) & 0o777
+	if m&0o400 == 0 {
+		m |= 0o644
+	}
+	return m
+}
+
+// extractNodeZip extracts the Windows Node.js zip, stripping the top-level
+// versioned directory. Entry paths are confined to dest and sizes are capped
+// on actual bytes decompressed.
 func extractNodeZip(data []byte, dest string) error {
 	r, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
 	if err != nil {
 		return err
 	}
+	if len(r.File) > maxExtractEntries {
+		return fmt.Errorf("archive has %d entries (limit %d)", len(r.File), maxExtractEntries)
+	}
+	var total int64
 	for _, f := range r.File {
 		// Strip first path component: "node-v22.14.0-win-x64/"
 		parts := strings.SplitN(filepath.ToSlash(f.Name), "/", 2)
 		if len(parts) < 2 || parts[1] == "" {
 			continue
 		}
-		target := filepath.Join(dest, filepath.FromSlash(parts[1]))
+		target, err := securePath(dest, parts[1])
+		if err != nil {
+			return err
+		}
 		if f.FileInfo().IsDir() {
 			_ = os.MkdirAll(target, 0755)
 			continue
@@ -297,17 +375,28 @@ func extractNodeZip(data []byte, dest string) error {
 			_ = rc.Close()
 			return err
 		}
-		_, cpErr := io.Copy(out, rc)
+		n, cpErr := io.Copy(out, io.LimitReader(rc, maxExtractEntry+1))
 		_ = out.Close()
 		_ = rc.Close()
 		if cpErr != nil {
 			return cpErr
 		}
+		if n > maxExtractEntry {
+			return fmt.Errorf("entry %q exceeds %d bytes", f.Name, maxExtractEntry)
+		}
+		total += n
+		if total > maxExtractTotal {
+			return fmt.Errorf("archive exceeds %d bytes total", maxExtractTotal)
+		}
 	}
 	return nil
 }
 
-// extractNodeTarGz extracts the macOS/Linux Node.js tarball, stripping the top-level directory.
+// extractNodeTarGz extracts the macOS/Linux Node.js tarball, stripping the
+// top-level directory. Paths are confined to dest, symlinks must resolve
+// inside dest (Node's Unix layout needs relative in-tree links like
+// bin/npm -> ../lib/node_modules/npm/bin/npm-cli.js), hardlinks are rejected,
+// and mode bits are masked.
 func extractNodeTarGz(data []byte, dest string) error {
 	gr, err := gzip.NewReader(bytes.NewReader(data))
 	if err != nil {
@@ -315,6 +404,8 @@ func extractNodeTarGz(data []byte, dest string) error {
 	}
 	defer func() { _ = gr.Close() }()
 	tr := tar.NewReader(gr)
+	var total int64
+	entries := 0
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
@@ -322,6 +413,10 @@ func extractNodeTarGz(data []byte, dest string) error {
 		}
 		if err != nil {
 			return err
+		}
+		entries++
+		if entries > maxExtractEntries {
+			return fmt.Errorf("archive has more than %d entries", maxExtractEntries)
 		}
 		// Strip top-level component: "node-v22.14.0-darwin-arm64/"
 		slash := strings.Index(hdr.Name, "/")
@@ -332,25 +427,48 @@ func extractNodeTarGz(data []byte, dest string) error {
 		if rel == "" {
 			continue
 		}
-		target := filepath.Join(dest, rel)
+		target, err := securePath(dest, rel)
+		if err != nil {
+			return err
+		}
 		switch hdr.Typeflag {
 		case tar.TypeDir:
-			_ = os.MkdirAll(target, os.FileMode(hdr.Mode))
+			_ = os.MkdirAll(target, maskMode(hdr.Mode)|0o700)
 		case tar.TypeReg:
 			_ = os.MkdirAll(filepath.Dir(target), 0755)
-			f, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(hdr.Mode))
+			f, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, maskMode(hdr.Mode))
 			if err != nil {
 				return err
 			}
-			_, cpErr := io.Copy(f, tr)
+			n, cpErr := io.Copy(f, io.LimitReader(tr, maxExtractEntry+1))
 			_ = f.Close()
 			if cpErr != nil {
 				return cpErr
 			}
+			if n > maxExtractEntry {
+				return fmt.Errorf("entry %q exceeds %d bytes", hdr.Name, maxExtractEntry)
+			}
+			total += n
+			if total > maxExtractTotal {
+				return fmt.Errorf("archive exceeds %d bytes total", maxExtractTotal)
+			}
 		case tar.TypeSymlink:
+			if filepath.IsAbs(hdr.Linkname) || filepath.VolumeName(hdr.Linkname) != "" {
+				return fmt.Errorf("symlink %q has absolute target %q", hdr.Name, hdr.Linkname)
+			}
+			// The resolved link target must stay inside dest.
+			resolved := filepath.Join(filepath.Dir(target), filepath.FromSlash(hdr.Linkname))
+			if back, err := filepath.Rel(dest, resolved); err != nil || back == ".." ||
+				strings.HasPrefix(back, ".."+string(filepath.Separator)) {
+				return fmt.Errorf("symlink %q escapes destination (target %q)", hdr.Name, hdr.Linkname)
+			}
 			_ = os.MkdirAll(filepath.Dir(target), 0755)
 			_ = os.Remove(target)
-			_ = os.Symlink(hdr.Linkname, target)
+			if err := os.Symlink(hdr.Linkname, target); err != nil {
+				return fmt.Errorf("create symlink %q: %w", hdr.Name, err)
+			}
+		case tar.TypeLink:
+			return fmt.Errorf("hardlink %q not permitted in archive", hdr.Name)
 		}
 	}
 	return nil

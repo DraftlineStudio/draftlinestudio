@@ -5,11 +5,14 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
 
+	"draftline/internal/fsutil"
 	"draftline/internal/types"
 )
 
@@ -41,17 +44,24 @@ func Create(filePath string) error {
 
 	backupDir := Dir(filePath)
 
-	// Rotate existing backups (delete oldest, shift others)
+	// Rotate existing backups (delete oldest, shift others). Rotation is
+	// best-effort but failures must be visible, not swallowed.
+	var rotateErrs []error
 	for i := MaxBackups; i >= 1; i-- {
 		old := filepath.Join(backupDir, fmt.Sprintf("backup.%d.draftline", i))
 		if i == MaxBackups {
-			// Delete the oldest backup
-			_ = os.Remove(old)
+			if err := os.Remove(old); err != nil && !os.IsNotExist(err) {
+				rotateErrs = append(rotateErrs, err)
+			}
 		} else {
-			// Rename backup.N to backup.N+1
 			newName := filepath.Join(backupDir, fmt.Sprintf("backup.%d.draftline", i+1))
-			_ = os.Rename(old, newName)
+			if err := os.Rename(old, newName); err != nil && !errors.Is(err, os.ErrNotExist) {
+				rotateErrs = append(rotateErrs, err)
+			}
 		}
+	}
+	if len(rotateErrs) > 0 {
+		log.Printf("backup rotation issues for %s: %v", filePath, errors.Join(rotateErrs...))
 	}
 
 	// Copy current file to backup.1
@@ -61,7 +71,7 @@ func Create(filePath string) error {
 	}
 
 	backupPath := filepath.Join(backupDir, "backup.1.draftline")
-	if err := os.WriteFile(backupPath, src, 0644); err != nil {
+	if err := fsutil.WriteFileAtomic(backupPath, src, 0644); err != nil {
 		return err
 	}
 
@@ -72,7 +82,9 @@ func Create(filePath string) error {
 		"last_backup":   time.Now().Format(time.RFC3339),
 	}
 	metaBytes, _ := json.MarshalIndent(meta, "", "  ")
-	_ = os.WriteFile(metaPath, metaBytes, 0644)
+	if err := fsutil.WriteFileAtomic(metaPath, metaBytes, 0644); err != nil {
+		log.Printf("backup metadata write failed for %s: %v", filePath, err)
+	}
 
 	return nil
 }
@@ -128,10 +140,12 @@ func Restore(filePath string, number int) types.SaveResult {
 	}
 
 	// Before restoring, backup the current state (so restore is reversible)
-	_ = Create(filePath)
+	if err := Create(filePath); err != nil {
+		log.Printf("pre-restore backup failed for %s: %v", filePath, err)
+	}
 
 	// Write backup data to current file
-	if err := os.WriteFile(filePath, data, 0644); err != nil {
+	if err := fsutil.WriteFileAtomic(filePath, data, 0644); err != nil {
 		return types.SaveResult{Success: false, Error: err.Error()}
 	}
 

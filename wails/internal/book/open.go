@@ -5,25 +5,14 @@ import (
 	"archive/zip"
 	"encoding/json"
 	"fmt"
-	"io"
 
 	"draftline/internal/types"
+	"draftline/internal/ziputil"
 )
 
-// ReadZipEntry reads a named entry from a ZIP archive.
+// ReadZipEntry reads a named entry from a ZIP archive, enforcing size limits.
 func ReadZipEntry(r *zip.ReadCloser, name string) ([]byte, error) {
-	for _, f := range r.File {
-		if f.Name == name {
-			rc, err := f.Open()
-			if err != nil {
-				return nil, err
-			}
-			data, err := io.ReadAll(rc)
-			_ = rc.Close()
-			return data, err
-		}
-	}
-	return nil, fmt.Errorf("entry %q not found", name)
+	return ziputil.ReadNamed(r.File, name, false)
 }
 
 // Open reads a .draftline file and returns the BookData.
@@ -33,6 +22,10 @@ func Open(path string) (types.BookData, error) {
 		return types.BookData{}, fmt.Errorf("failed to open file: %w", err)
 	}
 	defer func() { _ = r.Close() }()
+
+	if err := ziputil.CheckArchive(r.File); err != nil {
+		return types.BookData{}, fmt.Errorf("refusing to open archive: %w", err)
+	}
 
 	manifestData, err := ReadZipEntry(r, "manifest.json")
 	if err != nil {

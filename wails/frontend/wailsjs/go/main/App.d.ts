@@ -14,6 +14,8 @@ export function CancelRewrite():Promise<void>;
 
 export function CheckClaudeCode():Promise<types.ClaudeCodeStatus>;
 
+export function ClearAPIKey():Promise<void>;
+
 export function ClearRecentProjects():Promise<void>;
 
 export function DeleteCharacterEvent(arg1:types.BookData,arg2:string):Promise<types.BookData>;
@@ -37,6 +39,8 @@ export function GetCharacterTimeline(arg1:types.BookData,arg2:string):Promise<ty
 export function GetCurrentFile():Promise<string>;
 
 export function GetRecentProjects():Promise<Array<types.RecentProject>>;
+
+export function HasAPIKey():Promise<boolean>;
 
 export function ImportDOCX(arg1:string):Promise<types.ImportResult>;
 
@@ -75,6 +79,8 @@ export function SaveBook(arg1:types.BookData):Promise<types.SaveResult>;
 export function SaveBookAs(arg1:types.BookData):Promise<types.SaveResult>;
 
 export function SaveSettings(arg1:types.AppSettings):Promise<void>;
+
+export function SetAPIKey(arg1:string):Promise<void>;
 
 export function SetupClaudeCode():Promise<types.ClaudeCodeStatus>;
 

@@ -325,7 +325,9 @@ export namespace types {
 	    ai_enabled: boolean;
 	    ai_mode: string;
 	    ai_provider: string;
-	    ai_api_key: string;
+	    ai_api_key?: string;
+	    has_api_key: boolean;
+	    ai_debug_logging: boolean;
 	    ai_model: string;
 	    ai_local_endpoint: string;
 	    ai_local_model: string;
@@ -363,6 +365,8 @@ export namespace types {
 	        this.ai_mode = source["ai_mode"];
 	        this.ai_provider = source["ai_provider"];
 	        this.ai_api_key = source["ai_api_key"];
+	        this.has_api_key = source["has_api_key"];
+	        this.ai_debug_logging = source["ai_debug_logging"];
 	        this.ai_model = source["ai_model"];
 	        this.ai_local_endpoint = source["ai_local_endpoint"];
 	        this.ai_local_model = source["ai_local_model"];

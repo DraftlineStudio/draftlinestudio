@@ -4,13 +4,13 @@ import (
 	"archive/zip"
 	"encoding/xml"
 	"fmt"
-	"io"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 
 	"draftline/internal/types"
+	"draftline/internal/ziputil"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -41,6 +41,10 @@ func (a *App) ImportEPUB(path string) types.ImportResult {
 		return types.ImportResult{Success: false, Error: fmt.Sprintf("Failed to open EPUB: %v", err)}
 	}
 	defer func() { _ = r.Close() }()
+
+	if err := ziputil.CheckArchive(r.File); err != nil {
+		return types.ImportResult{Success: false, Error: fmt.Sprintf("Refusing to import EPUB: %v", err)}
+	}
 
 	// Step 1: Find the OPF file via container.xml
 	opfPath, err := findOPFPath(r)
@@ -137,19 +141,14 @@ func (a *App) ImportEPUB(path string) types.ImportResult {
 	return types.ImportResult{Success: true, Book: book}
 }
 
-// readEpubEntry reads a file from the EPUB ZIP with case-insensitive path matching
+// readEpubEntry reads a file from the EPUB ZIP with case-insensitive path
+// matching, enforcing size limits on the decompressed content.
 func readEpubEntry(r *zip.ReadCloser, name string) ([]byte, error) {
 	name = strings.ReplaceAll(name, "\\", "/")
 	for _, f := range r.File {
 		fName := strings.ReplaceAll(f.Name, "\\", "/")
 		if strings.EqualFold(fName, name) {
-			rc, err := f.Open()
-			if err != nil {
-				return nil, err
-			}
-			data, err := io.ReadAll(rc)
-			_ = rc.Close()
-			return data, err
+			return ziputil.ReadEntry(f)
 		}
 	}
 	return nil, fmt.Errorf("file not found: %s", name)
@@ -342,6 +341,10 @@ func (a *App) ImportDOCX(path string) types.ImportResult {
 	}
 	defer func() { _ = r.Close() }()
 
+	if err := ziputil.CheckArchive(r.File); err != nil {
+		return types.ImportResult{Success: false, Error: fmt.Sprintf("Refusing to import DOCX: %v", err)}
+	}
+
 	// Extract metadata from docProps/core.xml
 	meta := extractDOCXMetadata(r)
 
@@ -387,20 +390,9 @@ func (a *App) ImportDOCX(path string) types.ImportResult {
 	return types.ImportResult{Success: true, Book: book}
 }
 
-// readDocxEntry reads a file from the DOCX ZIP
+// readDocxEntry reads a file from the DOCX ZIP, enforcing size limits.
 func readDocxEntry(r *zip.ReadCloser, name string) ([]byte, error) {
-	for _, f := range r.File {
-		if strings.EqualFold(f.Name, name) {
-			rc, err := f.Open()
-			if err != nil {
-				return nil, err
-			}
-			data, err := io.ReadAll(rc)
-			_ = rc.Close()
-			return data, err
-		}
-	}
-	return nil, fmt.Errorf("file not found: %s", name)
+	return ziputil.ReadNamed(r.File, name, true)
 }
 
 type docxMeta struct {

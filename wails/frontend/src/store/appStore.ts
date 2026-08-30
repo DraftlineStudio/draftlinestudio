@@ -25,7 +25,8 @@ export interface AppSettings {
   ai_enabled: boolean
   ai_mode: 'claudecode' | 'api' | 'local'
   ai_provider: 'claude' | 'openai' | 'gemini' | 'grok' | ''
-  ai_api_key: string
+  has_api_key: boolean
+  ai_debug_logging: boolean
   ai_model: string
   ai_local_endpoint: string
   ai_local_model: string
@@ -80,7 +81,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   ai_enabled: false,
   ai_mode: 'claudecode',
   ai_provider: '',
-  ai_api_key: '',
+  has_api_key: false,
+  ai_debug_logging: false,
   ai_model: '',
   ai_local_endpoint: 'http://localhost:11434/v1',
   ai_local_model: '',
