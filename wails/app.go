@@ -44,7 +44,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.15.02380"
+const AppVersion = "0.15.02381"
 
 // App is the main application struct bound to the frontend.
 type App struct {
@@ -53,6 +53,8 @@ type App struct {
 	settings      types.AppSettings
 	cancelMu      sync.Mutex
 	cancelRewrite context.CancelFunc // non-nil while a rewrite is in progress
+	aiBusy        bool               // true while the single AI-request slot is held
+	aiGen         uint64             // generation counter; guards stale releases
 
 	// API key state. The key lives in the OS keyring; legacyAPIKey holds a
 	// plaintext key only on machines where no keyring is available, so users
@@ -779,33 +781,7 @@ CRITICAL: Return ONLY the revised text content. Do not include any instructions,
 
 	userMsg := fmt.Sprintf("Instruction: %s\n\nText to revise:\n%s", prompt, text)
 
-	var res types.AIRewriteResult
-	switch a.settings.AIMode {
-	case "claudecode":
-		res = a.callClaudeCode(system, userMsg)
-	case "local":
-		if a.settings.AILocalEndpoint == "" {
-			return types.AIRewriteResult{Error: "no local endpoint configured — set it in App Settings"}
-		}
-		res = a.callLocalAI(system, userMsg)
-	default: // "api"
-		if a.settings.AIProvider == "" || a.getAPIKey() == "" {
-			return types.AIRewriteResult{Error: "no API provider configured — add your key in App Settings"}
-		}
-		switch a.settings.AIProvider {
-		case "claude":
-			res = a.callClaude(system, userMsg)
-		case "openai":
-			res = a.callOpenAI(system, userMsg)
-		case "gemini":
-			res = a.callGemini(system, userMsg)
-		case "grok":
-			res = a.callGrok(system, userMsg)
-		default:
-			logging.AI("ERROR: unknown provider: %s", a.settings.AIProvider)
-			return types.AIRewriteResult{Error: "unknown provider: " + a.settings.AIProvider}
-		}
-	}
+	res := a.dispatchAI(system, userMsg)
 
 	// Log the result
 	if res.Error != "" {
@@ -1046,65 +1022,98 @@ func (a *App) streamAnthropic(ctx context.Context, apiKey, model, system, userMs
 }
 
 // dispatchAI routes the AI request to the appropriate provider based on settings.
-// This is the central dispatch point for all AI modes (claudecode, local, api).
+// This is the central dispatch point for all AI modes (claudecode, local, api)
+// and the single place that claims the AI-request slot: concurrent requests
+// get a clean "busy" error instead of corrupting each other's cancel handles.
 func (a *App) dispatchAI(system, userMsg string) types.AIRewriteResult {
+	ctx, release, ok := a.acquireAI()
+	if !ok {
+		return types.AIRewriteResult{Error: "an AI request is already in progress — wait for it to finish or cancel it"}
+	}
+	defer release()
+
 	switch a.settings.AIMode {
 	case "claudecode":
-		return a.callClaudeCode(system, userMsg)
+		return a.callClaudeCode(ctx, system, userMsg)
 	case "local":
 		if a.settings.AILocalEndpoint == "" {
 			return types.AIRewriteResult{Error: "no local endpoint configured — set it in App Settings"}
 		}
-		return a.callLocalAI(system, userMsg)
+		return a.callLocalAI(ctx, system, userMsg)
 	default: // "api"
 		if a.settings.AIProvider == "" || a.getAPIKey() == "" {
 			return types.AIRewriteResult{Error: "no API provider configured — add your key in App Settings"}
 		}
 		switch a.settings.AIProvider {
 		case "claude":
-			return a.callClaude(system, userMsg)
+			return a.callClaude(ctx, system, userMsg)
 		case "openai":
-			return a.callOpenAI(system, userMsg)
+			return a.callOpenAI(ctx, system, userMsg)
 		case "gemini":
-			return a.callGemini(system, userMsg)
+			return a.callGemini(ctx, system, userMsg)
 		case "grok":
-			return a.callGrok(system, userMsg)
+			return a.callGrok(ctx, system, userMsg)
 		default:
 			return types.AIRewriteResult{Error: "unknown provider: " + a.settings.AIProvider}
 		}
 	}
 }
 
-// setupAIContext creates a 180-second timeout context, registers the cancel function
-// for potential abort requests, and returns the resolved model name plus a cleanup
-// function that must be deferred by the caller.
-func (a *App) setupAIContext(defaultModel string) (model string, ctx context.Context, cleanup func()) {
-	model = a.settings.AIModel
-	if model == "" {
-		model = defaultModel
+// acquireAI claims the single AI-request slot. On success it returns a
+// 180-second timeout context, an idempotent release function that must be
+// deferred by the caller, and ok=true. If another AI request is already in
+// flight it returns ok=false — callers surface a "busy" error instead of
+// interleaving cancel handles and token streams.
+//
+// CancelRewrite cancels the live context but does NOT free the slot; only the
+// owning request's release does. release is guarded by a generation counter so
+// a stale (double) release can never free or disturb a successor's slot.
+func (a *App) acquireAI() (ctx context.Context, release func(), ok bool) {
+	a.cancelMu.Lock()
+	defer a.cancelMu.Unlock()
+	if a.aiBusy {
+		return nil, nil, false
+	}
+	a.aiBusy = true
+	a.aiGen++
+	gen := a.aiGen
+
+	parent := a.ctx
+	if parent == nil {
+		parent = context.Background() // tests construct App without a Wails context
 	}
 	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(a.ctx, 180*time.Second)
-	a.cancelMu.Lock()
+	ctx, cancel = context.WithTimeout(parent, 180*time.Second)
 	a.cancelRewrite = cancel
-	a.cancelMu.Unlock()
-	cleanup = func() {
-		cancel()
+
+	release = func() {
+		cancel() // idempotent; only affects this request's own context
 		a.cancelMu.Lock()
-		a.cancelRewrite = nil
-		a.cancelMu.Unlock()
+		defer a.cancelMu.Unlock()
+		if a.aiGen == gen {
+			a.aiBusy = false
+			a.cancelRewrite = nil
+		}
 	}
-	return
+	return ctx, release, true
+}
+
+// resolveAIModel returns the configured model name, falling back to the
+// provider's default when none is set.
+func (a *App) resolveAIModel(defaultModel string) string {
+	if a.settings.AIModel != "" {
+		return a.settings.AIModel
+	}
+	return defaultModel
 }
 
 // callClaudeCode handles the "claudecode" AI mode. If the credentials file
 // contains a direct API key it calls the Anthropic API with streaming directly —
 // faster and more reliable than the CLI subprocess. Falls back to the CLI when
 // only OAuth credentials are present.
-func (a *App) callClaudeCode(system, userMsg string) types.AIRewriteResult {
+func (a *App) callClaudeCode(ctx context.Context, system, userMsg string) types.AIRewriteResult {
 	if apiKey := readClaudeAPIKey(); apiKey != "" {
-		model, ctx, cleanup := a.setupAIContext("claude-sonnet-4-6")
-		defer cleanup()
+		model := a.resolveAIModel("claude-sonnet-4-6")
 		runtime.EventsEmit(a.ctx, "ai:log", "Connecting to Anthropic API…")
 		result, err := a.streamAnthropic(ctx, apiKey, model, system, userMsg)
 		if err != nil {
@@ -1112,18 +1121,17 @@ func (a *App) callClaudeCode(system, userMsg string) types.AIRewriteResult {
 		}
 		return types.AIRewriteResult{Result: result}
 	}
-	return a.callClaudeCodeCLI(system, userMsg)
+	return a.callClaudeCodeCLI(ctx, system, userMsg)
 }
 
 // callClaudeCodeCLI invokes the Claude Code CLI as a subprocess.
 // Used as a fallback when only OAuth credentials are available (no raw API key).
-func (a *App) callClaudeCodeCLI(system, userMsg string) types.AIRewriteResult {
+func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string) types.AIRewriteResult {
 	path := resolveClaudeBin()
 	if path == "" {
 		return types.AIRewriteResult{Error: "Claude Code is not installed — open Settings › AI Studio to set it up"}
 	}
-	model, ctx, cleanup := a.setupAIContext("claude-sonnet-4-6")
-	defer cleanup()
+	model := a.resolveAIModel("claude-sonnet-4-6")
 
 	// Create an isolated home directory: real credentials so auth works, but no
 	// MCP server config. MCP servers are started between init and the first API
@@ -1262,7 +1270,7 @@ func (a *App) callClaudeCodeCLI(system, userMsg string) types.AIRewriteResult {
 
 // extractHTMLParagraphs returns each <p>...</p> element from HTML as a full tag string.
 
-func (a *App) callLocalAI(system, userMsg string) types.AIRewriteResult {
+func (a *App) callLocalAI(ctx context.Context, system, userMsg string) types.AIRewriteResult {
 	model := a.settings.AILocalModel
 	if model == "" {
 		model = "llama3"
@@ -1276,9 +1284,18 @@ func (a *App) callLocalAI(system, userMsg string) types.AIRewriteResult {
 		"messages": []msg{{Role: "system", Content: system}, {Role: "user", Content: userMsg}},
 	})
 	endpoint := strings.TrimRight(a.settings.AILocalEndpoint, "/") + "/chat/completions"
-	client := &http.Client{Timeout: 120 * time.Second}
-	resp, err := client.Post(endpoint, "application/json", bytes.NewReader(reqBody))
+	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewReader(reqBody))
 	if err != nil {
+		return types.AIRewriteResult{Error: err.Error()}
+	}
+	req.Header.Set("Content-Type", "application/json")
+	// No client timeout: the request context's 180-second deadline governs,
+	// and a shorter competing timeout would mask cancellation.
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		if errors.Is(ctx.Err(), context.Canceled) {
+			return types.AIRewriteResult{Error: "cancelled"}
+		}
 		return types.AIRewriteResult{Error: "local AI request failed: " + err.Error()}
 	}
 	defer func() { _ = resp.Body.Close() }()
@@ -1302,9 +1319,8 @@ func (a *App) callLocalAI(system, userMsg string) types.AIRewriteResult {
 	return types.AIRewriteResult{Result: strings.TrimSpace(result.Choices[0].Message.Content)}
 }
 
-func (a *App) callClaude(system, userMsg string) types.AIRewriteResult {
-	model, ctx, cleanup := a.setupAIContext("claude-sonnet-4-6")
-	defer cleanup()
+func (a *App) callClaude(ctx context.Context, system, userMsg string) types.AIRewriteResult {
+	model := a.resolveAIModel("claude-sonnet-4-6")
 	runtime.EventsEmit(a.ctx, "ai:log", "Connecting to Claude API…")
 	result, err := a.streamAnthropic(ctx, a.getAPIKey(), model, system, userMsg)
 	if err != nil {
@@ -1313,11 +1329,8 @@ func (a *App) callClaude(system, userMsg string) types.AIRewriteResult {
 	return types.AIRewriteResult{Result: result}
 }
 
-func (a *App) callOpenAI(system, userMsg string) types.AIRewriteResult {
-	model := a.settings.AIModel
-	if model == "" {
-		model = "gpt-4o"
-	}
+func (a *App) callOpenAI(ctx context.Context, system, userMsg string) types.AIRewriteResult {
+	model := a.resolveAIModel("gpt-4o")
 	reqBody, _ := json.Marshal(map[string]any{
 		"model": model,
 		"messages": []map[string]string{
@@ -1325,16 +1338,19 @@ func (a *App) callOpenAI(system, userMsg string) types.AIRewriteResult {
 			{"role": "user", "content": userMsg},
 		},
 	})
-	req, err := http.NewRequest("POST", "https://api.openai.com/v1/chat/completions", bytes.NewBuffer(reqBody))
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.openai.com/v1/chat/completions", bytes.NewBuffer(reqBody))
 	if err != nil {
 		return types.AIRewriteResult{Error: err.Error()}
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+a.getAPIKey())
 
-	client := &http.Client{Timeout: 120 * time.Second}
-	resp, err := client.Do(req)
+	// No client timeout: the request context's 180-second deadline governs.
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		if errors.Is(ctx.Err(), context.Canceled) {
+			return types.AIRewriteResult{Error: "cancelled"}
+		}
 		return types.AIRewriteResult{Error: err.Error()}
 	}
 	defer func() { _ = resp.Body.Close() }()
@@ -1362,11 +1378,8 @@ func (a *App) callOpenAI(system, userMsg string) types.AIRewriteResult {
 	return types.AIRewriteResult{Result: strings.TrimSpace(result.Choices[0].Message.Content)}
 }
 
-func (a *App) callGemini(system, userMsg string) types.AIRewriteResult {
-	model := a.settings.AIModel
-	if model == "" {
-		model = "gemini-1.5-pro"
-	}
+func (a *App) callGemini(ctx context.Context, system, userMsg string) types.AIRewriteResult {
+	model := a.resolveAIModel("gemini-1.5-pro")
 
 	// Gemini API uses a different format
 	reqBody, _ := json.Marshal(map[string]any{
@@ -1386,16 +1399,19 @@ func (a *App) callGemini(system, userMsg string) types.AIRewriteResult {
 	})
 
 	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent", model)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(reqBody))
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(reqBody))
 	if err != nil {
 		return types.AIRewriteResult{Error: err.Error()}
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-goog-api-key", a.getAPIKey())
 
-	client := &http.Client{Timeout: 120 * time.Second}
-	resp, err := client.Do(req)
+	// No client timeout: the request context's 180-second deadline governs.
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		if errors.Is(ctx.Err(), context.Canceled) {
+			return types.AIRewriteResult{Error: "cancelled"}
+		}
 		return types.AIRewriteResult{Error: "Failed to connect to Gemini API: " + err.Error()}
 	}
 	defer func() { _ = resp.Body.Close() }()
@@ -1425,11 +1441,8 @@ func (a *App) callGemini(system, userMsg string) types.AIRewriteResult {
 	return types.AIRewriteResult{Result: strings.TrimSpace(result.Candidates[0].Content.Parts[0].Text)}
 }
 
-func (a *App) callGrok(system, userMsg string) types.AIRewriteResult {
-	model := a.settings.AIModel
-	if model == "" {
-		model = "grok-2"
-	}
+func (a *App) callGrok(ctx context.Context, system, userMsg string) types.AIRewriteResult {
+	model := a.resolveAIModel("grok-2")
 
 	// Grok uses OpenAI-compatible API format
 	reqBody, _ := json.Marshal(map[string]any{
@@ -1440,16 +1453,19 @@ func (a *App) callGrok(system, userMsg string) types.AIRewriteResult {
 		},
 	})
 
-	req, err := http.NewRequest("POST", "https://api.x.ai/v1/chat/completions", bytes.NewBuffer(reqBody))
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.x.ai/v1/chat/completions", bytes.NewBuffer(reqBody))
 	if err != nil {
 		return types.AIRewriteResult{Error: err.Error()}
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+a.getAPIKey())
 
-	client := &http.Client{Timeout: 120 * time.Second}
-	resp, err := client.Do(req)
+	// No client timeout: the request context's 180-second deadline governs.
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		if errors.Is(ctx.Err(), context.Canceled) {
+			return types.AIRewriteResult{Error: "cancelled"}
+		}
 		return types.AIRewriteResult{Error: "Failed to connect to Grok API: " + err.Error()}
 	}
 	defer func() { _ = resp.Body.Close() }()
