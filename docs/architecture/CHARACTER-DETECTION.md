@@ -23,6 +23,8 @@ Statuses are:
 Confirming a review candidate is author curation and survives re-detection.
 Marking an auto-detected card as **Not a character** stores a rejection rule and removes the card. Decisions use the canonical name plus known aliases instead of volatile entity IDs, and are re-applied only when they identify one unambiguous entity. Clearing all character analysis also clears these decisions and provides a clean reset.
 
+The **Same as...** correction opens a searchable merge dialog across detected names and aliases. The selected target is treated as the correct character: its display name is retained, the duplicate becomes an alias, and the resulting name-based merge rule is remembered on future detection runs.
+
 ## Archive Persistence
 
 Archive format 2.1 stores derived analysis in `analysis.json` separately from `story_bible.json`. Entity mentions, evidence, relationships, events, merge rules, and split rules therefore survive close/reopen. A legacy archive with `is_indexed=true` but no analysis is marked for re-detection instead of presenting stale controls.
