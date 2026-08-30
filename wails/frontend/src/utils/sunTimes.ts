@@ -5,13 +5,17 @@ export interface SunTimes {
 }
 
 /**
- * Get approximate location from IP address (free API, no key required)
+ * Get approximate location from IP address (free API, no key required).
+ * Uses HTTPS so the request and response are not readable in transit.
  */
 async function getLocationByIP(): Promise<{ lat: number; lng: number }> {
-  const res = await fetch('http://ip-api.com/json/?fields=lat,lon')
+  const res = await fetch('https://ipwho.is/')
   if (!res.ok) throw new Error('Failed to fetch location')
   const data = await res.json()
-  return { lat: data.lat, lng: data.lon }
+  if (typeof data.latitude !== 'number' || typeof data.longitude !== 'number') {
+    throw new Error('Invalid location response')
+  }
+  return { lat: data.latitude, lng: data.longitude }
 }
 
 /**

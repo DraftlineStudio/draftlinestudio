@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.15.02378] - 2026-08-30
+
+### Security
+- Auto theme no longer uses location unless you turn it on.
+- Location lookups now use HTTPS.
+
 ## [0.15.02377] - 2026-08-30
 
 ### Security
