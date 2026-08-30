@@ -19,6 +19,14 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02402] - 2026-08-30
+
+### Fixed
+- The Characters view now stretches to fill the workspace: it was missing the flex-grow the old view had, leaving a phantom empty strip along the right edge
+- "Re-Detect" and "SORTED BY" no longer wrap onto two lines; header and toolbar controls keep their width and the filter input shrinks first when space is tight
+
+---
+
 ## [0.16.02401] - 2026-08-30
 
 ### Added
