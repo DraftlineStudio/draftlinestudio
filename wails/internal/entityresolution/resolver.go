@@ -136,23 +136,21 @@ func (reg *registry) resolve(m *Mention, seq int) {
 	candidates := reg.match(m)
 
 	if len(candidates) == 0 {
-		e := &regEntity{
-			ordinal:    reg.nextID,
-			variantSet: map[string]bool{},
-			groups:     map[string]bool{},
-			lastSeen:   seq,
-		}
-		reg.nextID++
-		reg.entities = append(reg.entities, e)
-		reg.assign(e, m, seq)
+		reg.create(m, seq)
 		return
 	}
 
-	// A multi-token mention absorbs every candidate whose name is a
-	// component of it ("Daniel" + "Hanlon" merge into "Daniel Hanlon"),
-	// unless the candidates are separated or title-incompatible.
+	// A multi-token mention matching several existing entities is ambiguous.
+	// Never let it transitively glue established characters together. The one
+	// safe construction is two plausible single-name entities followed by an
+	// exact two-token full name ("Daniel" + "Hanlon" -> "Daniel Hanlon").
+	if len(m.Tokens) >= 2 && len(candidates) > 1 && !reg.canCombineTwoTokenName(m, candidates) {
+		reg.create(m, seq)
+		return
+	}
+
 	target := candidates[0]
-	if len(m.Tokens) >= 2 {
+	if len(m.Tokens) == 2 && len(candidates) > 1 {
 		for _, c := range candidates[1:] {
 			if reg.entitiesSeparated(target, c) || !GroupsCompatible(target.groups, c.groups) {
 				continue
@@ -161,6 +159,36 @@ func (reg *registry) resolve(m *Mention, seq int) {
 		}
 	}
 	reg.assign(target, m, seq)
+}
+
+func (reg *registry) create(m *Mention, seq int) {
+	e := &regEntity{
+		ordinal:    reg.nextID,
+		variantSet: map[string]bool{},
+		groups:     map[string]bool{},
+		lastSeen:   seq,
+	}
+	reg.nextID++
+	reg.entities = append(reg.entities, e)
+	reg.assign(e, m, seq)
+}
+
+func (reg *registry) canCombineTwoTokenName(m *Mention, candidates []*regEntity) bool {
+	if len(m.Tokens) != 2 || len(candidates) != 2 {
+		return false
+	}
+	wanted := map[string]bool{strings.ToLower(m.Tokens[0]): true, strings.ToLower(m.Tokens[1]): true}
+	for _, candidate := range candidates {
+		if len(candidate.variants) != 1 || len(candidate.variants[0]) != 1 {
+			return false
+		}
+		token := strings.ToLower(candidate.variants[0][0])
+		if !wanted[token] || resolverStopword[token] {
+			return false
+		}
+		delete(wanted, token)
+	}
+	return len(wanted) == 0
 }
 
 // match returns candidate entities for a mention, best tier first and most
@@ -206,7 +234,7 @@ func (reg *registry) match(m *Mention) []*regEntity {
 // strict subset/superset relation (component match).
 func (reg *registry) subsetMatch(tokens []string, e *regEntity) bool {
 	for _, v := range e.variants {
-		if isSubset(tokens, v) || isSubset(v, tokens) {
+		if isNameComponent(tokens, v) || isNameComponent(v, tokens) {
 			return true
 		}
 	}
@@ -232,8 +260,27 @@ func (reg *registry) nicknameMatch(tokens []string, e *regEntity) bool {
 
 // typoMatch reports whether the mention head is a likely typo of a variant head.
 func (reg *registry) typoMatch(tokens []string, e *regEntity) bool {
+	// Bare-word fuzzy matching merged unrelated nouns and names (Mart/Mark,
+	// Bank/Bonk, Chris/Christ). Restrict automatic typo repair to full names
+	// whose given-name components already agree.
+	if len(tokens) < 2 {
+		return false
+	}
 	head := tokens[len(tokens)-1]
 	for _, v := range e.variants {
+		if len(v) != len(tokens) || len(v) < 2 {
+			continue
+		}
+		prefixMatches := true
+		for i := 0; i < len(tokens)-1; i++ {
+			if !strings.EqualFold(tokens[i], v[i]) {
+				prefixMatches = false
+				break
+			}
+		}
+		if !prefixMatches {
+			continue
+		}
 		vHead := v[len(v)-1]
 		if !strings.EqualFold(head, vHead) && IsLikelyTypo(head, vHead) {
 			return true
@@ -242,20 +289,26 @@ func (reg *registry) typoMatch(tokens []string, e *regEntity) bool {
 	return false
 }
 
-// isSubset checks if tokens A are a strict subset of tokens B (case-insensitive).
-func isSubset(tokensA, tokensB []string) bool {
+// isNameComponent checks whether A is a strict, ordered edge component of B.
+// Names abbreviate from the left or right ("John Smith" -> "John"/"Smith");
+// arbitrary unordered token overlap is not identity evidence.
+func isNameComponent(tokensA, tokensB []string) bool {
 	if len(tokensA) >= len(tokensB) {
 		return false
 	}
-	for _, tA := range tokensA {
-		found := false
-		for _, tB := range tokensB {
-			if strings.EqualFold(tA, tB) {
-				found = true
-				break
-			}
+	prefix := true
+	for i := range tokensA {
+		if !strings.EqualFold(tokensA[i], tokensB[i]) {
+			prefix = false
+			break
 		}
-		if !found {
+	}
+	if prefix {
+		return true
+	}
+	offset := len(tokensB) - len(tokensA)
+	for i := range tokensA {
+		if !strings.EqualFold(tokensA[i], tokensB[offset+i]) {
 			return false
 		}
 	}
@@ -401,18 +454,59 @@ func (reg *registry) toEntities() []Entity {
 	return entities
 }
 
-// pickCanonical selects the most complete name variant, preserving the
-// original casing of the first mention that used it.
+// pickCanonical scores completeness, frequency, and malformed-name penalties,
+// preserving the original casing of the first mention that used the winner.
 func pickCanonical(e *regEntity) string {
 	best := e.variants[0]
+	bestScore := canonicalScore(e, best)
 	for _, v := range e.variants[1:] {
-		if len(v) > len(best) {
+		score := canonicalScore(e, v)
+		if score > bestScore {
 			best = v
-		} else if len(v) == len(best) && len(strings.Join(v, " ")) > len(strings.Join(best, " ")) {
-			best = v
+			bestScore = score
 		}
 	}
 	return strings.Join(best, " ")
+}
+
+var resolverStopword = map[string]bool{
+	"could": true, "would": true, "should": true, "might": true, "must": true,
+	"that": true, "not": true, "be": true, "thank": true, "every": true,
+	"some": true, "many": true, "saw": true, "carried": true, "remembers": true,
+	"gives": true, "takes": true,
+}
+
+func canonicalScore(e *regEntity, variant []string) int {
+	joined := strings.ToLower(strings.Join(variant, " "))
+	frequency := 0
+	for _, mention := range e.mentions {
+		if strings.EqualFold(mention.NormalizedHead, joined) {
+			frequency++
+		}
+	}
+	score := len(variant)*1000 + frequency
+	for i, token := range variant {
+		lower := strings.ToLower(token)
+		if resolverStopword[lower] {
+			score -= 10000
+		}
+		if i > 0 && strings.EqualFold(token, variant[i-1]) {
+			score -= 10000
+		}
+	}
+	// If the entity contains both a singular and an accidental plural form,
+	// strongly prefer the singular regardless of which appeared first.
+	last := strings.ToLower(variant[len(variant)-1])
+	if strings.HasSuffix(last, "s") {
+		singular := strings.TrimSuffix(last, "s")
+		for _, other := range e.variants {
+			if len(other) == len(variant) && strings.EqualFold(other[len(other)-1], singular) {
+				score -= 5000
+				break
+			}
+		}
+	}
+	return score
 }
 
 // buildAliases constructs the alias list: all other name variants and the

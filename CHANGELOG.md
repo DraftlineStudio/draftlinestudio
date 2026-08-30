@@ -19,6 +19,20 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02407] - 2026-08-30
+
+### Fixed
+- Entity resolution no longer transitively combines established characters through a shared word; ambiguous multi-entity matches remain separate instead of creating super-characters such as the corpus's Aelin/Rowan and Maeve/Yrene clusters
+- Bare single words no longer fuzzy-merge on one edit, preventing unrelated pairs such as Mart/Mark, Bank/Bonk, and Chris/Christ from contaminating one another
+- Name-component matching is now ordered and limited to name edges rather than arbitrary token subsets, reducing family-name and faction-name collisions
+- Canonical names are selected using occurrence frequency and penalties for common grammar, repeated tokens, and accidental plurals; `Daniel Hanlon` now outranks the one-off `Daniel Hanlons`
+- Expanded sentence-grammar filtering for modal verbs, determiners, and inflected verbs that previously attached themselves to nearby names
+
+### Tests
+- Added regression cases for transitive bridge merges, bare-word fuzzy collisions, plural canonical names, and sentence grammar leaking into names
+
+---
+
 ## [0.16.02406] - 2026-08-30
 
 ### Fixed
