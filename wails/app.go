@@ -44,7 +44,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.15.02379"
+const AppVersion = "0.15.02380"
 
 // App is the main application struct bound to the frontend.
 type App struct {
@@ -1143,9 +1143,14 @@ func (a *App) callClaudeCodeCLI(system, userMsg string) types.AIRewriteResult {
 	_ = os.WriteFile(filepath.Join(claudeDir, "settings.json"),
 		[]byte(`{"mcpServers":{}}`), 0644)
 
+	// The prompt is piped via stdin rather than passed as an argv element: in
+	// print mode (-p) the CLI reads piped stdin as the prompt. This keeps
+	// manuscript-derived content out of every exec path (notably the cmd.exe
+	// .cmd-shim fallback, where argv metacharacters would be interpreted) and
+	// sidesteps the ~32K Windows command-line length limit.
 	fullPrompt := system + "\n\n" + userMsg
 	cmd := claudeExec(ctx, path,
-		"-p", fullPrompt,
+		"-p",
 		"--output-format", "stream-json",
 		"--verbose",
 		"--max-turns", "1",
@@ -1153,6 +1158,7 @@ func (a *App) callClaudeCodeCLI(system, userMsg string) types.AIRewriteResult {
 		"--dangerously-skip-permissions",
 		"--allowedTools", "",
 	)
+	cmd.Stdin = strings.NewReader(fullPrompt)
 	cmd.Dir = tempHome
 
 	nodeDir := nodeInstallBinDir()
