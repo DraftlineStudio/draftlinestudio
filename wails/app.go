@@ -44,7 +44,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.16.02416"
+const AppVersion = "0.16.02417"
 
 // App is the main application struct bound to the frontend.
 type App struct {
@@ -691,7 +691,7 @@ func (a *App) TestLocalAI(endpoint string) types.AIRewriteResult {
 }
 
 // RewriteText sends the HTML chapter content to the configured AI provider.
-// mode: "line_edit" | "expand" | "smooth"
+// mode: "line_edit" | "copy_edit" | "expand" | "smooth"
 // styleOptionsJson: JSON string of types.WritingStyleOptions (for expand/smooth modes)
 func (a *App) RewriteText(html string, mode string, styleOptionsJson string) types.AIRewriteResult {
 	logging.AI("========== RewriteText START ==========")
@@ -717,7 +717,7 @@ func (a *App) RewriteText(html string, mode string, styleOptionsJson string) typ
 
 	// Diff format: for targeted per-paragraph edits, ask the model to return ONLY
 	// changed paragraphs. This cuts output tokens by ~80% for typical chapters.
-	useDiffFormat := mode == "line_edit" || mode == "smooth"
+	useDiffFormat := mode == "line_edit" || mode == "copy_edit" || mode == "smooth"
 
 	system := ai.BuildSystemPrompt(mode, a.settings.ProseGuide, styleOpts)
 	var userMsg string

@@ -19,6 +19,13 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02417] - 2026-08-30
+
+### Fixed
+- The spell-check regression test's fetch mock now satisfies strict TypeScript checking (`as unknown as typeof fetch`), unblocking `tsc --noEmit` and the production build
+
+---
+
 ## [0.16.02416] - 2026-08-30
 
 ### Fixed
