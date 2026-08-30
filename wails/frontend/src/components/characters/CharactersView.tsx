@@ -269,6 +269,7 @@ export default function CharactersView() {
               <div className="chars-lane-head">
                 <div className="chars-lane-sticky">
                   <div className="chars-col-label" style={{ width: 200 }}>CHARACTER</div>
+                  {laneView === 'heat' && <div className="chars-col-label" style={{ width: 92 }}>ROLE</div>}
                 </div>
                 {laneView === 'grid' ? (
                   <div className="chars-cells" style={{ gridTemplateColumns: gridCols }}>
@@ -286,7 +287,7 @@ export default function CharactersView() {
                 const color = characterColor(c.name)
                 const on = c.id === selectedId
                 return (
-                  <button
+                  <div
                     key={c.id}
                     className={`chars-row${on ? ' selected' : ''}${mergeFrom === c.id ? ' merge-source' : ''}`}
                     onClick={() => pickRow(c.id)}
@@ -297,6 +298,20 @@ export default function CharactersView() {
                         <span className="chars-name">{c.name}</span>
                         <span className="chars-mentions">{c.mention_count || ''}</span>
                       </div>
+                      {laneView === 'heat' && (
+                        <select
+                          className="chars-role-select"
+                          value={c.role || 'minor'}
+                          onClick={e => e.stopPropagation()}
+                          onChange={e => updateCharacter({ ...c, role: e.target.value as CharacterRole })}
+                        >
+                          <option value="protagonist">Protagonist</option>
+                          <option value="antagonist">Antagonist</option>
+                          <option value="supporting">Supporting</option>
+                          <option value="minor">Minor</option>
+                          <option value="other">Other</option>
+                        </select>
+                      )}
                     </div>
                     {laneView === 'grid' ? (
                       <div className="chars-cells" style={{ gridTemplateColumns: gridCols }}>
@@ -326,7 +341,7 @@ export default function CharactersView() {
                         })}
                       </div>
                     )}
-                  </button>
+                  </div>
                 )
               })}
             </div>
