@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.15.02390] - 2026-08-30
+
+### Fixed
+- An autosave from a closed project can no longer affect the next project.
+
 ## [0.15.02387] - 2026-08-30
 
 ### Changed

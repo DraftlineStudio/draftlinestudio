@@ -225,6 +225,50 @@ describe('finding 1 — failed or cancelled saves block transitions', () => {
     expect(appStoreMod.useAppStore.getState().showWelcome).toBe(true)
   })
 
+  it('saveAndProceed does not discard an edit made while its save is in flight', async () => {
+    openDirtyBookWithPendingOpen()
+    const inFlight = deferred<{ success: boolean; file_path: string }>()
+    mocks.SaveBook.mockImplementationOnce(() => inFlight.promise)
+
+    const proceed = store().saveAndProceed()
+    await flushMicrotasks()
+    store().updateCurrentContent('<p>newer edit</p>')
+    inFlight.resolve(okSave())
+    await proceed
+
+    expect(store().isDirty).toBe(true)
+    expect(store().dialogs.showUnsavedWarning).toBe(true)
+    expect(store().dialogs.pendingAction).toBe('open')
+    expect(mocks.OpenBookDialog).not.toHaveBeenCalled()
+    expect(store().statusMessage).toContain('Newer edits')
+  })
+
+  it('an old autosave cannot mutate a replacement project', async () => {
+    const inFlight = deferred<{ success: boolean; file_path: string }>()
+    mocks.SaveBook.mockImplementationOnce(() => inFlight.promise)
+    const replacement = makeBook({ file_path: 'C:/tmp/replacement.draftline' })
+    replacement.metadata.title = 'Replacement'
+    mocks.OpenBookDialog.mockResolvedValue(replacement)
+
+    bookStoreMod.useBookStore.setState({ book: makeBook(), isDirty: false })
+    store().updateCurrentContent('<p>discard me</p>')
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(mocks.SaveBook).toHaveBeenCalledTimes(1)
+
+    bookStoreMod.useBookStore.setState(s => ({
+      dialogs: { ...s.dialogs, showUnsavedWarning: true, pendingAction: 'open' },
+    }))
+    await store().discardAndProceed()
+    expect(store().book?.metadata.title).toBe('Replacement')
+
+    inFlight.resolve(okSave('C:/tmp/old-project.draftline'))
+    await flushMicrotasks()
+
+    expect(store().book?.metadata.title).toBe('Replacement')
+    expect(store().book?.file_path).toBe('C:/tmp/replacement.draftline')
+    expect(store().isDirty).toBe(false)
+  })
+
   it('saveBookAs surfaces non-cancelled errors and stays silent on cancelled', async () => {
     bookStoreMod.useBookStore.setState({ book: makeBook(), isDirty: true })
     mocks.SaveBookAs.mockResolvedValue({ success: false, file_path: '', error: 'permission denied' })
