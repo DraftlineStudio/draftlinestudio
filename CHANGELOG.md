@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02403] - 2026-08-30
+
+### Fixed
+- Fixed button alignment in the Characters view.
+
 ## [0.16.02402] - 2026-08-30
 
 ### Fixed
