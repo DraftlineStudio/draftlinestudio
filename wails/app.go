@@ -44,7 +44,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.16.02422"
+const AppVersion = "0.16.02423"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -462,6 +462,8 @@ func (a *App) loadSettingsFromDisk() types.AppSettings {
 		PlotWalkerEnabled:   true,
 		CharactersLaneView:  "grid",
 		SidebarPanelWidth:   350,
+		// Open on the Writing Dashboard by default; "" means closed.
+		SidebarActiveSection: "dashboard",
 	}
 	data, err := os.ReadFile(a.settingsPath())
 	if err != nil {
