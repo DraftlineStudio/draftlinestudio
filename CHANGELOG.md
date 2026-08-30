@@ -19,6 +19,14 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.15.02382] - 2026-08-30
+
+### Fixed
+- Inline prompt (generate content) Cancel button is no longer disabled while a generation is in flight — the exact moment cancellation matters most
+- Cancelling the inline prompt via the Cancel button or the Escape key now aborts the in-flight AI request through `CancelRewrite` instead of letting it run to completion in the background
+
+---
+
 ## [0.15.02381] - 2026-08-30
 
 ### Fixed
