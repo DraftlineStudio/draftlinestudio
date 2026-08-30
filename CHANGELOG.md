@@ -2,6 +2,13 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02422] - 2026-08-30
+
+### Changed
+- Line Edit now only changes sentences with a clear problem.
+- Copy Edit now only fixes spelling, grammar, and punctuation.
+- Line Edit and Copy Edit use faster models.
+
 ## [0.16.02421] - 2026-08-30
 
 ### Fixed

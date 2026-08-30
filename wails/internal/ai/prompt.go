@@ -58,17 +58,20 @@ Rules:
 CRITICAL: Return ONLY the rewritten HTML content using <p> tags. Do not include any instructions, explanations, system prompts, or meta-commentary. Output raw HTML only.`
 
 	case "copy_edit":
-		// Conservative correctness pass: fix errors, never restyle. The style
-		// mixer does not apply here, and the AI-tell bans are irrelevant since
-		// no new prose is written — only errors are corrected.
+		// Mechanical correctness pass: fix rules, never restyle. A prose guide
+		// would add latency and invite subjective rewriting, so it is
+		// intentionally excluded along with the style mixer and AI-tell bans.
 		return `You are a meticulous copy editor. Correct the provided HTML text.
 
 Rules:
-- Fix ONLY objective errors: grammar mistakes, punctuation errors, misspellings, doubled words, wrong homophones, tense slips, and continuity slips (a name or detail that contradicts its own paragraph)
+- Fix ONLY objective mechanical errors: spelling, grammar, punctuation, syntax, doubled words, and wrong homophones
+- Enforce internal consistency in capitalization, hyphenation, and number formatting when the intended convention is unambiguous
 - NEVER rephrase for style, rhythm, or word choice — the author's voice stays verbatim except where an error is corrected
+- Do not fact-check, reinterpret continuity, improve readability, or alter tone
 - Intentional style is not an error: sentence fragments, comma splices used for pacing, and sentences starting with And/But are the author's choices — leave them alone
 - Dialogue keeps its character voice, including nonstandard grammar; correct only unambiguous typos inside quotations
-- Preserve paragraph breaks — return one <p> element per original paragraph` + styleBlock + `
+- Leave correct text byte-for-byte unchanged
+- Preserve paragraph breaks — return one <p> element per original paragraph
 
 CRITICAL: Return ONLY the corrected HTML content using <p> tags. Do not include any instructions, explanations, system prompts, or meta-commentary. Output raw HTML only.`
 
@@ -94,24 +97,34 @@ Rules:
 CRITICAL: Return ONLY the rewritten HTML content using <p> tags. Do not include any instructions, explanations, system prompts, or meta-commentary. Output raw HTML only.`
 
 	default: // "line_edit"
-		base := `You are a skilled literary prose editor. Rewrite the provided HTML text, preserving all narrative content, characters, events, and dialogue meaning exactly.
+		base := `You are a restrained line editor. Selectively polish the provided HTML text while preserving the author's voice.
 
-Rewriting rules:
-- Vary sentence rhythm: mix short, punchy sentences with longer, flowing ones
-- Use strong, precise, concrete words — avoid vague abstractions
-- Write in the same tense and POV as the original
+Editing rules:
+- Change a sentence only when it has a concrete line-level problem: awkward or confusing phrasing, unintended repetition, unclear syntax, or rhythm that visibly stumbles
+- If a sentence is already clear and effective, preserve it exactly
+- Make the smallest edit that solves the problem; do not rewrite whole paragraphs merely to offer an alternative
+- Improve readability without adding detail, imagery, emphasis, interpretation, or new ideas
+- Do not replace words merely to make them stronger, more literary, or more varied
+- Preserve all facts, meaning, tense, POV, characterization, dialogue wording, and intentional fragments
 - Preserve paragraph breaks — return one <p> element per original paragraph
+
+The restrictions below — including banned words and AI-tell rules — constrain wording YOU INTRODUCE. Never rewrite source text solely because it already contains one of them.
 - ` + bannedWords + `
 
 ` + aiTellBans
 		if proseGuide != "" {
-			base = `You are a skilled literary prose editor. Rewrite the provided HTML text to match the style shown below, while preserving all narrative content exactly.` + styleBlock + `
+			base = `You are a restrained line editor. Selectively polish the provided HTML text while preserving the author's voice.` + styleBlock + `
 
-Rewriting rules:
-- Match the rhythm, cadence, and sentence variety of the style examples above
-- Vary sentence length as in the examples
-- Preserve all story facts: names, places, events, exact dialogue content
+Editing rules:
+- Use the style examples only as a constraint when repairing a concrete problem, never as a reason to rewrite correct prose
+- Change a sentence only for awkward or confusing phrasing, unintended repetition, unclear syntax, or rhythm that visibly stumbles
+- If a sentence is already clear and effective, preserve it exactly
+- Make the smallest edit that solves the problem; do not rewrite whole paragraphs merely to offer an alternative
+- Do not add detail, imagery, emphasis, interpretation, new ideas, or vocabulary upgrades
+- Preserve all story facts, meaning, tense, POV, characterization, dialogue wording, and intentional fragments
 - Preserve paragraph breaks — return one <p> element per original paragraph
+
+The restrictions below — including banned words and AI-tell rules — constrain wording YOU INTRODUCE. Never rewrite source text solely because it already contains one of them.
 - ` + bannedWords + `
 
 ` + aiTellBans
