@@ -62,13 +62,16 @@ func IndexBook(book *types.BookData) types.IndexResult {
 
 	// Re-apply user-confirmed "same person" merges from prior sessions.
 	mergeRules := book.Analysis.EntityResolution.MergeRules
+	decisions := book.Analysis.EntityResolution.Decisions
 	entityRecords := applyMergeRules(ConvertEntitiesToRecords(result.Entities), mergeRules)
+	ApplyEntityDecisions(entityRecords, decisions)
 
 	book.Analysis.EntityResolution = &types.EntityData{
 		Mentions:       ConvertMentionsToRecords(allMentions),
 		Entities:       entityRecords,
 		SeparatedPairs: ConvertSeparatedPairsToRecords(result.SeparatedPairs),
 		MergeRules:     mergeRules,
+		Decisions:      decisions,
 		LastResolved:   time.Now().Format(time.RFC3339),
 		Version:        1,
 	}

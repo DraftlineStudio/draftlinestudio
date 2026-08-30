@@ -19,6 +19,21 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02409] - 2026-08-30
+
+### Added
+- Confirmed and rejected character-candidate decisions are now stored in entity analysis by canonical name and known aliases, allowing them to survive rebuilt entity IDs
+- Auto-detected cards now use a clearer **Not a character** action that permanently suppresses the false detection; manually created cards retain the normal Delete action
+
+### Fixed
+- Re-detecting a manuscript no longer resurrects false-positive candidates that the writer already rejected
+- Ambiguous saved decisions are skipped when their names match multiple newly resolved entities, preventing an old rule from silently changing the wrong character
+
+### Tests
+- Added coverage for accepted/rejected decision restoration across changed entity IDs and safe handling of ambiguous shared aliases
+
+---
+
 ## [0.16.02408] - 2026-08-30
 
 ### Added
