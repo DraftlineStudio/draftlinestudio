@@ -19,6 +19,22 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.15.02374] - 2026-08-30
+
+### Added
+- Integrated the local pure-Go prose/v3 statistical NLP pipeline to distinguish people from places, facilities, and organizations without generative AI or network access
+- Added real-prose regression coverage for Chicago street addresses, cross-chapter place/person name collisions, possessives, titled names, and invented science-fiction names
+
+### Changed
+- Combined NLP classifications with Draftline's deterministic honorific, possessive, alias, and address rules instead of treating either system as an infallible classifier
+- Made non-person evidence and corroboration book-wide while allowing strong person evidence to resolve genuine name/location collisions
+- Batched NLP work across a bounded concurrent worker pool so explicit full-book detection remains responsive on large manuscripts
+
+### Fixed
+- Prevented `Chicago`, `Hubbard Street`, `Ontario`, `Wells Ave`, `Lower Wacker Drive`, and their component tokens from being promoted into the cast while correctly retaining `Detective Daniel Hanlon`, `Hanlon's`, and `Mara Ionescu`
+
+---
+
 ## [0.15.02373] - 2026-08-30
 
 ### Changed

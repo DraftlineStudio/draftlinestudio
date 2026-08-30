@@ -1,7 +1,9 @@
 package indexing
 
 import (
+	"runtime"
 	"strings"
+	"sync"
 
 	"github.com/jdkato/prose/v3"
 )
@@ -39,6 +41,70 @@ func analyzeLinguisticEvidence(text string) linguisticEvidence {
 		})
 	}
 	return evidence
+}
+
+// analyzeBookLinguisticEvidence classifies bounded chapter batches concurrently.
+// prose models are immutable and shared process-wide, so batching amortizes
+// document setup while the worker limit avoids multiplying model memory.
+func analyzeBookLinguisticEvidence(chapters []string) []linguisticEvidence {
+	result := make([]linguisticEvidence, len(chapters))
+	if len(chapters) == 0 {
+		return result
+	}
+
+	workerCount := runtime.GOMAXPROCS(0)
+	if workerCount > 8 {
+		workerCount = 8
+	}
+	if workerCount > len(chapters) {
+		workerCount = len(chapters)
+	}
+
+	var workers sync.WaitGroup
+	batchSize := (len(chapters) + workerCount - 1) / workerCount
+	for start := 0; start < len(chapters); start += batchSize {
+		end := start + batchSize
+		if end > len(chapters) {
+			end = len(chapters)
+		}
+		workers.Add(1)
+		go func(start, end int) {
+			defer workers.Done()
+			analyzeChapterBatch(chapters, result, start, end)
+		}(start, end)
+	}
+	workers.Wait()
+	return result
+}
+
+func analyzeChapterBatch(chapters []string, result []linguisticEvidence, start, end int) {
+	starts := make([]int, end-start)
+	var combined strings.Builder
+	for index := start; index < end; index++ {
+		if index > start {
+			combined.WriteString("\n\n")
+		}
+		starts[index-start] = combined.Len()
+		combined.WriteString(chapters[index])
+	}
+
+	batchEvidence := analyzeLinguisticEvidence(combined.String())
+	localChapter := 0
+	for _, span := range batchEvidence.spans {
+		for localChapter+1 < len(starts) && span.start >= starts[localChapter]+len(chapters[start+localChapter]) {
+			localChapter++
+		}
+		chapterStart := starts[localChapter]
+		chapterEnd := chapterStart + len(chapters[start+localChapter])
+		if span.start < chapterStart || span.end > chapterEnd {
+			continue
+		}
+		result[start+localChapter].spans = append(result[start+localChapter].spans, linguisticSpan{
+			start: span.start - chapterStart,
+			end:   span.end - chapterStart,
+			label: span.label,
+		})
+	}
 }
 
 // classification returns the strongest prose label overlapping a candidate.
