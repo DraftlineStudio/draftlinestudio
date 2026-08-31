@@ -34,6 +34,7 @@ export const SECTION_CONFIG: { id: Exclude<GlyphSection, null>; label: string; t
   { id: 'prose', label: 'Prose', tooltip: 'Prose' },
   { id: 'pacing', label: 'Pacing', tooltip: 'Pacing' },
   { id: 'chapters', label: 'Chapters', tooltip: 'Chapters' },
+  { id: 'review', label: 'Review', tooltip: 'Worth Reviewing' },
   { id: 'issues', label: 'Issues', tooltip: 'Story Analysis' },
   { id: 'ai', label: 'AI', tooltip: 'AI Studio' },
 ]

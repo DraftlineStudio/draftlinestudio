@@ -4,6 +4,15 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02453] - 2026-08-31
+
+### Added
+- Added the Worth Reviewing analysis sidebar panel: dismissable observation cards (structure, pacing, and other kinds) with per-kind filter tabs and counts, so the list can be worked down to zero.
+- Observation cards deep-link into the editor via "Go to chapter" and can be dismissed per book; dismissals persist across analysis runs until the observation's content changes, and a "Restore dismissed" action brings them all back.
+- The Worth Reviewing rail glyph now carries a live count badge of undismissed observations.
+
+---
+
 ## [0.16.02452] - 2026-08-31
 
 ### Added
