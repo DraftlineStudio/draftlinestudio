@@ -132,3 +132,21 @@ Hub overview of the local manuscript analysis (design 3b).
 **Empty states** — no book: `tool-empty-state` "Open a project to see analysis."; book without analysis: `.an-empty` explaining local analysis after 15 s of inactivity with an "Analyze now" run button (same disabled rules).
 
 **Behaviors** — no whole-book HTML parsing or timers; all values come precomputed from `analysis.overview`, so the panel is cheap to re-render. No engine names are shown.
+
+## AI Analysis panel (`AIDetectPanel.tsx`, design 3g)
+
+Heuristic AI-detection for the whole book. Unlike the other analysis panels it does **not** read `book.analysis.story` and needs no analysis run — everything comes from the local frontend heuristics in `services/aiDetection.ts` (`analyzeText`, `analyzeAntiPatterns`, `getScoreColor`, `getAntiPatternColor`) applied to chapter HTML.
+
+**Blocks, top to bottom**
+1. **Gauge** — semicircular SVG gauge (`getScoreColor` arc) for the current editor chapter, with a 26px `{score}%` readout, an "AI signal" micro-label, a verdict line (`< 40` Reads human / `40–70` Mixed signals / `> 70` Likely AI in the matching `--status-*` color), a "{title} · current chapter" sub-line, and a three-dot threshold legend. Analysis is instant on chapter/book switch and debounced 2s while typing (the switch detector keys on book identity + section + index, so opening another book at the same location re-analyzes immediately). Chapters under 100 plain-text chars show "Not enough text in this chapter to analyze." instead of the gauge.
+2. **By chapter** — heat strip from `useBookAIScan` in book order; cell color by the same thresholds, opacity `0.35 + score/100 × 0.65`, tooltip "{title} — {score}%". Footnote counts chapters ≥ 40 ("Two chapters cross the mixed threshold." with word-number pluralization); shows "Scanning chapters…" while the scan runs.
+3. **Highest signal** — top 5 scores as `.an-chapter-row` buttons (1-based book-order position among scanned chapters, title, 64px threshold-colored bar, `{score}%`); click navigates via `goToChapter(globalIndex)` from `Analysis/shared.ts`.
+4. **Flagged passages** — for up to the two highest-scoring chapters at ≥ 40 (only once the scan is done), the single best paragraph from `scanPassages` as an `.an-card`: "Chapter {n} · {title}", score `.an-badge` (`error` > 70, else `warning`), curly-quoted `.an-serif` excerpt truncated at ~160 chars on a word boundary, "Go to chapter ›" link. Empty: "No passages currently read as AI-assisted."
+5. **AI anti-patterns** — `analyzeAntiPatterns` on the current chapter (same debounce): displayName left, "{count}× (limit {n}/ch)" right, 2px left border in `getAntiPatternColor(severity)` for over-limit rows. Empty: "No overused AI patterns detected."
+6. Closing footnote stating the score is probabilistic, not a verdict.
+
+**`services/aiScan.ts`**
+- `useBookAIScan(book)` → `{ scores: ChapterAIScore[], done }`. Scans all chapters (front_matter + body + back_matter, combined global index) in batches of 3 per `setTimeout(0)` tick; eligibility (≥ 100 plain-text chars) is checked *inside* the tick so no whole-book HTML parse ever happens synchronously. Partial results stream out per tick. Caches: a `WeakMap` per book object (reopening the panel after a completed scan is instant; a remount mid-scan restarts immediately), plus a per-identity map (`file_path` + `metadata.created`) that keeps the last complete scan on screen while a 2s-debounced re-scan runs after edits. First scan of a book identity starts immediately; re-scans (new book object, same identity) are debounced 2s.
+- `scanPassages(html, analyzeThreshold = 150)` → `[{ excerpt, score }]` sorted descending: paragraphs from `<p>` elements (fallback: blank-line split), scored with `analyzeText` when ≥ 150 chars.
+
+No localStorage keys. No new dependencies. Panel-specific styles in `aidetect.css` (`.ai-*` prefix); shared vocabulary from `analysis.css`.

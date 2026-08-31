@@ -4,6 +4,16 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02455] - 2026-08-31
+
+### Added
+- Added the AI Analysis panel to the analysis sidebar: a semicircular gauge scores the current chapter's AI signal with a plain verdict (Reads human / Mixed signals / Likely AI), refreshed instantly on chapter switch and two seconds after edits.
+- Added a whole-book AI scan that scores every chapter a few at a time in the background — the UI never blocks — with a book-order heat strip, a Highest signal top-5 list that jumps to the chapter, and completed scans cached so reopening the panel is instant.
+- Added Flagged passages: the two highest-signal chapters at or above the mixed threshold surface their single most AI-reading paragraph as a serif excerpt with a score badge and a Go-to-chapter link.
+- Added a per-chapter AI anti-pattern list (overused prose tics such as "eyes widened") with counts against per-chapter limits, plus an explicit disclaimer that the score is a probabilistic heuristic, not a verdict.
+
+---
+
 ## [0.16.02454] - 2026-08-31
 
 ### Added
