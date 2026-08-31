@@ -45,8 +45,8 @@ export default function App() {
 
   // Initialise on first load + load persisted settings and recent projects
   useEffect(() => {
-    loadSettings()
-    loadRecentProjects()
+    void loadSettings()
+    void loadRecentProjects()
   }, [])
 
   // Handle new book from welcome screen
@@ -130,14 +130,14 @@ export default function App() {
     const handler = (e: KeyboardEvent) => {
       if (!e.ctrlKey) return
       switch (e.key) {
-        case 'n': e.preventDefault(); newBook(); break
-        case 'o': e.preventDefault(); openBook(); break
+        case 'n': e.preventDefault(); void newBook(); break
+        case 'o': e.preventDefault(); void openBook(); break
         case '[': e.preventDefault(); toggleLeftPanel(); break
         case ']': e.preventDefault(); toggleRightPanel(); break
         case 's':
           e.preventDefault()
-          if (e.shiftKey) saveBookAs()
-          else saveBook()
+          if (e.shiftKey) void saveBookAs()
+          else void saveBook()
           break
       }
     }

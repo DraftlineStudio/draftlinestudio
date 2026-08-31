@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02427] - 2026-08-30
+
+### Fixed
+- Errors from background tasks are no longer silently ignored.
+
 ## [0.16.02423] - 2026-08-30
 
 ### Added

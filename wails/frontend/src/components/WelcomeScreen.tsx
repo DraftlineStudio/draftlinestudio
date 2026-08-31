@@ -190,7 +190,7 @@ export default function WelcomeScreen({ onNewBook, onNewUniverse, onOpenFile, on
                     className="recent-item-remove"
                     onClick={(e) => {
                       e.stopPropagation()
-                      removeRecentProject(project.path)
+                      void removeRecentProject(project.path)
                     }}
                     title="Remove from list"
                   >

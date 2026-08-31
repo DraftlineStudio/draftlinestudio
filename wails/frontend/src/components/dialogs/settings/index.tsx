@@ -78,10 +78,10 @@ export default function AppSettingsDialog() {
   // Check CLI status when AI section opened
   useEffect(() => {
     if (section === 'ai' && aiMode === 'claudecode' && !ccStatus && !ccChecking) {
-      handleCheckCC()
+      void handleCheckCC()
     }
     if (section === 'ai' && aiMode === 'codex' && !cxStatus && !cxChecking) {
-      handleCheckCx()
+      void handleCheckCx()
     }
   }, [section, aiMode])
 
@@ -104,11 +104,11 @@ export default function AppSettingsDialog() {
       }
     })
     const offAuth = EventsOn('claude:auth_complete', () => {
-      handleCheckCC()
+      void handleCheckCC()
       setCcSetupStep('done')
     })
     const offCxAuth = EventsOn('codex:auth_complete', () => {
-      handleCheckCx()
+      void handleCheckCx()
       setCxSetupStep('done')
     })
     return () => { offProgress(); offAuth(); offCxAuth() }
