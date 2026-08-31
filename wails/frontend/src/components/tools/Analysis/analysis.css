@@ -1,0 +1,291 @@
+/* Shared visual vocabulary for the analysis sidebar suite (Signals, Prose,
+   Pacing, Chapters, Worth Reviewing, AI Analysis). Panel-specific rules live
+   in each panel's own stylesheet; everything here is design-system generic. */
+
+/* Panel root: full-bleed column that owns its own scrolling. */
+.an-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+.slide-panel-content:has(.an-panel) {
+  padding: 0;
+  overflow: hidden;
+  gap: 0;
+}
+
+/* Micro section label — UPPERCASE, bold, letterspaced. */
+.an-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-section);
+}
+.an-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.an-label-hint {
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+/* Padded content block, optionally hairline-separated. */
+.an-block { padding: 12px; }
+.an-block + .an-block { border-top: 1px solid var(--border); }
+
+/* Freshness row: status dot + "Analyzed …" + Run again. */
+.an-freshness {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.an-freshness-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  min-width: 0;
+}
+.an-freshness-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-success);
+  flex-shrink: 0;
+}
+.an-freshness-dot.stale { background: var(--status-warning); }
+.an-freshness-dot.error { background: var(--status-error); }
+.an-run-btn {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 12px;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.an-run-btn:hover:not(:disabled) { background: var(--bg-hover); border-color: var(--app-accent); }
+.an-run-btn:disabled { opacity: 0.55; cursor: default; }
+
+/* Stat tile grid (Signals overview). */
+.an-tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.an-tile {
+  background: var(--bg-surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 9px 10px;
+}
+.an-tile-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-section);
+  margin-bottom: 4px;
+}
+.an-tile-value { font-size: 15px; font-weight: 700; }
+.an-tile-value small { font-size: 11px; font-weight: 500; color: var(--text-muted); }
+.an-tile-note { font-size: 9px; color: var(--text-muted); margin-top: 2px; }
+
+/* Card — chapter feed entries, review cards, flagged passages. */
+.an-card {
+  background: var(--bg-surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 10px 11px;
+}
+.an-card.clickable { cursor: pointer; transition: border-color 0.12s ease; }
+.an-card.clickable:hover { border-color: var(--border-strong); }
+.an-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Serif excerpt / plain-language line. */
+.an-serif {
+  font-family: 'Merriweather', Georgia, serif;
+  font-style: italic;
+  font-size: 11.5px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+
+/* Keyword / tag chip. */
+.an-chip {
+  font-size: 10px;
+  padding: 2px 7px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  color: var(--text-secondary);
+}
+.an-chip-row { display: flex; flex-wrap: wrap; gap: 5px; }
+
+/* Count badge (rail + headers). */
+.an-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--status-issue);
+  color: var(--status-badge-text);
+}
+.an-badge.error { background: var(--status-error); }
+.an-badge.warning { background: var(--status-warning); }
+
+/* Jump row — navigates to another panel or chapter. */
+.an-jump-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 2px;
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+  background: transparent;
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  width: 100%;
+  text-align: left;
+  font-size: 12px;
+  color: var(--text-secondary);
+  transition: background 0.12s ease;
+}
+.an-jump-row:hover { background: var(--bg-hover); }
+.an-jump-row .an-jump-meta { display: flex; align-items: center; gap: 6px; color: var(--text-secondary); }
+
+/* Horizontal metric bar. */
+.an-bar-track {
+  flex: 1;
+  height: 5px;
+  background: var(--bg-surface-alt);
+  border-radius: 3px;
+  overflow: hidden;
+  min-width: 0;
+}
+.an-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--app-accent);
+}
+.an-bar-fill.warning { background: var(--status-warning); }
+.an-bar-fill.error { background: var(--status-error); }
+.an-bar-fill.success { background: var(--status-success); }
+
+/* Whole-book heat strip. */
+.an-heat-strip { display: flex; gap: 2px; }
+.an-heat-cell { flex: 1; height: 14px; border-radius: 2px; min-width: 2px; }
+
+/* Segmented metric tabs. */
+.an-tabs { display: flex; gap: 4px; }
+.an-tab {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  border: none;
+  background: transparent;
+  color: var(--text-section);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.an-tab:hover { background: var(--bg-hover); color: var(--text-primary); }
+.an-tab.active { background: var(--bg-active); color: var(--text-primary); cursor: default; }
+
+/* Compact per-chapter list row (Pacing scan, AI highest-signal). */
+.an-chapter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  transition: background 0.12s ease;
+}
+.an-chapter-row:hover { background: var(--bg-hover); }
+.an-chapter-row .an-row-n {
+  font-size: 10px;
+  color: var(--text-muted);
+  width: 18px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.an-chapter-row .an-row-title {
+  font-size: 12px;
+  color: var(--text-chapter);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.an-chapter-row .an-row-value {
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* Footnote — muted explanatory line. */
+.an-footnote {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* Inline "show all / go to" text action. */
+.an-text-action {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 4px 0;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  width: 100%;
+  transition: color 0.12s ease;
+}
+.an-text-action:hover { color: var(--text-primary); }
+.an-link {
+  font-size: 10px;
+  color: var(--app-accent-text);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+.an-link:hover { text-decoration: underline; }
+
+/* Empty state inside analysis panels. */
+.an-empty {
+  padding: 24px 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}

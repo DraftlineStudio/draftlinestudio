@@ -4,6 +4,15 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02450] - 2026-08-31
+
+### Added
+- Added the analysis sidebar suite foundation from the design-center layout directions: shared cross-panel navigation (any panel or the dashboard can deep-link to another sidebar pane), per-book since-last-run analysis snapshots, dismissable-observation storage with a live rail badge, semantic status color tokens for both themes, and a shared `.an-*` visual vocabulary for tiles, cards, chips, heat strips, and jump rows.
+- Added the Prose analysis sidebar panel: a live sentence-rhythm strip for the current chapter (amber bars flag sentences past 25 words), a whole-manuscript sentence-length histogram, short/long/paragraph stats, readability scores, and a word-class breakdown bar.
+- The rhythm strip and manuscript histogram recompute at most once per 2 seconds of typing, so the panel never adds keystroke lag; the rhythm strip works even before the first analysis run, while the remaining blocks show an Analyze-now empty state until analysis exists.
+
+---
+
 ## [0.16.02449] - 2026-08-31
 
 ### Removed

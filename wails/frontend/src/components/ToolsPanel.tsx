@@ -11,11 +11,16 @@ import DashboardTab from './tools/Dashboard'
 import AiStudioTab from './tools/AIStudio'
 import { IssuesSection } from './tools/PlotWalker'
 import CharacterQuickRef from './tools/CharacterQuickRef'
+import ProsePanel from './tools/Analysis/ProsePanel'
+import { OPEN_TOOLS_SECTION_EVENT, useReviewCount } from './tools/Analysis/shared'
 
 function isSectionEnabled(section: Exclude<GlyphSection, null>, settings: AppSettings): boolean {
   if (section === 'ai') return settings.ai_enabled
   if (section === 'characters') return settings.cast_enabled
   if (section === 'issues') return settings.analysis_enabled
+  if (section === 'signals' || section === 'prose' || section === 'pacing' || section === 'chapters' || section === 'review') {
+    return settings.analysis_enabled
+  }
   return true
 }
 
@@ -28,6 +33,7 @@ export default function ToolsPanel() {
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null)
   const restoredRef = useRef(false)
   const { settings, saveSettings, loaded } = useAppStore()
+  const reviewCount = useReviewCount()
 
   // setSection persists open/closed + active pane so the sidebar survives
   // restarts and remounts (e.g. the Characters codex unmounting this panel).
@@ -106,6 +112,20 @@ export default function ToolsPanel() {
     setSection(activeSection === section ? null : section)
   }
 
+  // Cross-panel deep links: any component can open a sidebar pane by
+  // dispatching OPEN_TOOLS_SECTION_EVENT (see tools/Analysis/shared.ts).
+  useEffect(() => {
+    const handleOpenSection = (event: Event) => {
+      const section = (event as CustomEvent<Exclude<GlyphSection, null>>).detail
+      if (!section) return
+      if (!SECTION_CONFIG.some(s => s.id === section)) return
+      if (!isSectionEnabled(section, useAppStore.getState().settings)) return
+      setSection(section)
+    }
+    window.addEventListener(OPEN_TOOLS_SECTION_EVENT, handleOpenSection)
+    return () => window.removeEventListener(OPEN_TOOLS_SECTION_EVENT, handleOpenSection)
+  }, [])
+
   const visibleSections = SECTION_CONFIG.filter(section => isSectionEnabled(section.id, settings))
 
   const activeSectionConfig = activeSection ? SECTION_CONFIG.find(s => s.id === activeSection) : null
@@ -128,6 +148,7 @@ export default function ToolsPanel() {
           <div className="slide-panel-content">
             {activeSection === 'dashboard' && <DashboardTab />}
             {activeSection === 'characters' && <CharacterQuickRef />}
+            {activeSection === 'prose' && <ProsePanel />}
             {activeSection === 'issues' && <IssuesSection />}
             {activeSection === 'ai' && <AiStudioTab />}
           </div>
@@ -144,6 +165,9 @@ export default function ToolsPanel() {
             title={section.tooltip}
           >
             <GlyphIcon section={section.id} />
+            {section.id === 'review' && reviewCount > 0 && (
+              <span className="glyph-badge">{reviewCount > 9 ? '9+' : reviewCount}</span>
+            )}
           </button>
         ))}
       </div>
