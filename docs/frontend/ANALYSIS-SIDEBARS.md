@@ -116,3 +116,19 @@ localStorage `draftline.analysis.dismissed.{bookKey}` via shared.ts's `dismissOb
 
 **CSS**: panel-specific rules in `review.css` (`rv-` prefix); shared vocabulary from
 `analysis.css`. No hardcoded colors — all values are theme custom properties.
+
+## Signals panel (`SignalsPanel.tsx`, `signals.css`, prefix `sg-`)
+
+Hub overview of the local manuscript analysis (design 3b).
+
+**Layout (top to bottom)**
+1. **Freshness row** (`.an-freshness`) — status dot (success when `useAnalysisStore().state === 'current'`, error class on `'error'`, stale class otherwise), text from `formatAnalyzedStamp(analysis.last_analyzed)` ("Analyzing…" while running, "Analysis out of date" when stale), and a "Run again" `.an-run-btn` wired to `useAnalysisStore().run`, disabled while running or when `settings.analysis_enabled` is off.
+2. **Six stat tiles** (`.an-tiles`) from `book.analysis.story.overview`: Chapters, Avg. chapter words (rounded), Avg. sentence words (1 decimal), Dialogue % (1 decimal), Reading ease (with a "grade level N" note), and Tempo /100. Tempo is rounded to an integer once and that same value drives the tile, its "measured/balanced/brisk overall" note, and the one-line read, so they can never disagree at the 40/70 boundaries. Four tiles carry since-last-run deltas via `usePreviousOverview(book)` + `formatDelta`; "first run" is shown when no previous overview exists. Reading ease keeps its grade-level note and Tempo its descriptor note instead of deltas.
+3. **"In one line"** (`.an-label` + `.an-serif`) — a generated sentence: sentence-length clause (<10 short, <18 varied, else long), dialogue clause (<15% sparse, <35% moderate, else dialogue-heavy), tempo clause, em-dash, audience read from `mean_grade_level` (<6 younger than adult fiction, 6–9 mainstream, >9 dense).
+4. **Jump list** — four `.an-jump-row` buttons calling `openToolsSection('prose' | 'pacing' | 'chapters' | 'review')`; the review row shows the `useReviewCount()` count in an `.an-badge` before the chevron, hidden when 0.
+
+**Data sources** — `useBookStore(s => s.book)` (`book.analysis.story`), `useAnalysisStore` (run state + `run()`), `useAppStore` (`settings.analysis_enabled`), and shared helpers from `Analysis/shared.ts`. `usePreviousOverview` persists per-book overview history under `draftline.analysis.overview-history.<bookKey>` in localStorage (managed by shared.ts, not this panel).
+
+**Empty states** — no book: `tool-empty-state` "Open a project to see analysis."; book without analysis: `.an-empty` explaining local analysis after 15 s of inactivity with an "Analyze now" run button (same disabled rules).
+
+**Behaviors** — no whole-book HTML parsing or timers; all values come precomputed from `analysis.overview`, so the panel is cheap to re-render. No engine names are shown.

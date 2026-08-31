@@ -9,7 +9,6 @@ export type GlyphSection =
   | 'chapters'
   | 'review'
   | 'aidetect'
-  | 'issues'
   | 'ai'
   | null
 

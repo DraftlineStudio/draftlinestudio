@@ -4,6 +4,20 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02454] - 2026-08-31
+
+### Added
+- Added the Signals analysis panel as the redesigned hub of Story Analysis: freshness row with status dot and Run again, six manuscript stat tiles (chapters, avg. chapter/sentence words, dialogue %, reading ease, tempo) with since-last-run deltas, a one-line plain-language read of the manuscript, and jump rows into the Prose, Pacing, Chapters, and Worth Reviewing panels.
+- Stat tiles show "first run" until a second analysis run exists; the Worth Reviewing jump row carries a live count badge that hides at zero.
+
+### Changed
+- Analysis freshness now reads simply "Analyzed …" — engine names no longer appear anywhere in the UI.
+
+### Removed
+- Removed the old single Story Analysis pane and its styles; its overview metrics live in Signals, its observations in Worth Reviewing, and its per-chapter cards in the Chapters panel. A saved sidebar state pointing at the old pane falls back to the Writing Dashboard.
+
+---
+
 ## [0.16.02453] - 2026-08-31
 
 ### Added
