@@ -12,6 +12,7 @@ import AiStudioTab from './tools/AIStudio'
 import { IssuesSection } from './tools/PlotWalker'
 import CharacterQuickRef from './tools/CharacterQuickRef'
 import ProsePanel from './tools/Analysis/ProsePanel'
+import PacingPanel from './tools/Analysis/PacingPanel'
 import { OPEN_TOOLS_SECTION_EVENT, useReviewCount } from './tools/Analysis/shared'
 
 function isSectionEnabled(section: Exclude<GlyphSection, null>, settings: AppSettings): boolean {
@@ -149,6 +150,7 @@ export default function ToolsPanel() {
             {activeSection === 'dashboard' && <DashboardTab />}
             {activeSection === 'characters' && <CharacterQuickRef />}
             {activeSection === 'prose' && <ProsePanel />}
+            {activeSection === 'pacing' && <PacingPanel />}
             {activeSection === 'issues' && <IssuesSection />}
             {activeSection === 'ai' && <AiStudioTab />}
           </div>

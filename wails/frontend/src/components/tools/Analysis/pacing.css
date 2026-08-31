@@ -1,0 +1,53 @@
+/* Pacing panel (analysis suite, design ref 3d). Shared visual vocabulary
+   comes from analysis.css; only pacing-specific layout lives here. */
+
+/* Insight footnote under the whole-book heat strip. */
+.pacing-heat-note { margin-top: 6px; }
+
+/* Metric tab row — tighter vertical padding than a standard block, with its
+   own hairline below (the rows list that follows is not an .an-block). */
+.pacing-panel .pacing-tabs-block {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* Column header above the chapter scan list. */
+.pacing-col-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 2px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-section);
+  flex-shrink: 0;
+}
+.pacing-col-n { width: 18px; flex-shrink: 0; }
+.pacing-col-title { flex: 1; min-width: 0; }
+.pacing-col-metric { width: 76px; flex-shrink: 0; }
+.pacing-col-brk { width: 22px; text-align: right; flex-shrink: 0; }
+
+/* Chapter scan list. */
+.pacing-rows { padding: 2px 0 6px; }
+.pacing-panel .pacing-bar {
+  flex: 0 0 76px;
+  width: 76px;
+}
+.pacing-panel .an-chapter-row .an-row-value { width: 22px; }
+
+/* Sub-20-word chapters (part dividers, epigraphs) read as inert. */
+.pacing-panel .an-bar-fill.faint { background: var(--text-faint); }
+
+/* Footer sits after the non-block rows list, so it draws its own hairline.
+   Design ref uses the tighter 10px vertical padding here, not the block 12px. */
+.pacing-panel .pacing-footer {
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* Empty state spacing. */
+.pacing-panel .an-empty p { margin: 0 0 8px; }
+.pacing-panel .an-empty .an-run-btn { margin-top: 8px; }
