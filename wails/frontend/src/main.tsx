@@ -14,7 +14,7 @@ import './styles/global.css'
 import { loadDictionary } from './services/spellCheck'
 
 // Load spell check dictionary in background
-loadDictionary()
+void loadDictionary()
 
 // Disable default browser context menu everywhere (prevents WebView inspector)
 // Custom context menus are handled by individual components

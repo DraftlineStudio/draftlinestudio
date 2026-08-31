@@ -96,7 +96,7 @@ export default function NewBookWizard({ onCreated }: NewBookWizardProps) {
   }
 
   function handleKey(e: React.KeyboardEvent) {
-    if (e.key === 'Enter' && step === 'create') handleCreate()
+    if (e.key === 'Enter' && step === 'create') void handleCreate()
     if (e.key === 'Escape') cancelNewBookWizard()
   }
 

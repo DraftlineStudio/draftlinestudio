@@ -19,6 +19,14 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02427] - 2026-08-30
+
+### Fixed
+- Floating promises: added explicit `void` handling to fire-and-forget async calls so promise rejections are no longer silently swallowed. Covers `App.tsx` (settings/recent-project init, Ctrl+N/O/S keyboard shortcuts), `main.tsx` (dictionary load), `WelcomeScreen.tsx` (remove recent project), `editor/InlinePrompt.tsx` (Ctrl+Enter submit), `dialogs/NewBookWizard.tsx` (Enter to create), and `dialogs/settings/index.tsx` (CLI status checks). Behavior preserved; only rejection is made non-silent.
+- Audit ref: master-audit-report-2026-08-30 — Qodana floating-promises (fire-and-forget, non-settings).
+
+---
+
 ## [0.16.02426] - 2026-08-30
 
 ### Changed
