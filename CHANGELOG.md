@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02431] - 2026-08-30
+
+### Security
+- Limited AI provider response size.
+
 ## [0.16.02430] - 2026-08-30
 
 ### Security
