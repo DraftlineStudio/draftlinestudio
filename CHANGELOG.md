@@ -19,6 +19,14 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02436] - 2026-08-30
+
+### Fixed
+- AI subprocess (Codex/Claude) stdout/stderr draining no longer stalls the request for the full 180 s deadline on an over-long output line. The pipes were drained with a `bufio.Scanner` capped at 1–2 MB; a single line longer than the buffer made `Scan()` stop permanently, so the reader goroutine exited, the pipe stopped draining, the child blocked on write once the OS buffer filled, and `cmd.Wait()` hung until the deadline. All three subprocess readers now use a new `drainLines` helper built on `bufio.Reader.ReadString` that truncates the retained/logged portion of any line to `maxDrainLine` (2 MB) while consuming the remainder, so draining continues for the full lifetime of the pipe and the child can never block. Added `drain_test.go` covering the over-long-line regression, CRLF/empty-line parity, partial reads, and EOF without trailing newline.
+- Audit ref: fable5-2026-08-30 — Fable M5 (subprocess-longline).
+
+---
+
 ## [0.16.02435] - 2026-08-30
 
 ### Security

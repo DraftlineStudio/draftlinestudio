@@ -44,7 +44,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.16.02435"
+const AppVersion = "0.16.02436"
 
 // maxAIResponseBytes caps how much of a provider HTTP response body we will
 // read into memory. It sits comfortably above any plausible max-output-tokens
@@ -1245,14 +1245,11 @@ func (a *App) callCodexCLI(ctx context.Context, system, userMsg string, profile 
 		wg.Add(1)
 		go func(r io.ReadCloser, isErr bool) {
 			defer wg.Done()
-			scanner := bufio.NewScanner(r)
-			scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
-			for scanner.Scan() {
-				line := scanner.Text()
+			drainLines(r, func(line string) {
 				if isErr {
 					stderrBuf.WriteString(line + "\n")
 				}
-			}
+			})
 		}(p.pipe, p.errs)
 	}
 
@@ -1271,6 +1268,59 @@ func (a *App) callCodexCLI(ctx context.Context, system, userMsg string, profile 
 		return types.AIRewriteResult{Error: "Codex produced no output — check that you are signed in (Settings › AI Studio)"}
 	}
 	return types.AIRewriteResult{Result: strings.TrimSpace(string(result))}
+}
+
+// maxDrainLine caps how many bytes of a single output line are retained in
+// memory for logging/preview. Longer lines are truncated to this size but the
+// remainder is still consumed off the pipe.
+const maxDrainLine = 2 * 1024 * 1024
+
+// drainLines reads r to EOF, invoking onLine once per newline-delimited line
+// (with the trailing CR/LF stripped, matching bufio.Scanner.Text semantics).
+//
+// Unlike bufio.Scanner, it never stops on an over-long line: the retained
+// portion of each line is capped at maxDrainLine bytes and the rest of that
+// line is consumed and discarded. This guarantees the reader is drained for
+// the full lifetime of the pipe so the child process can never block writing
+// to a full stdout/stderr pipe (which would otherwise deadlock cmd.Wait()).
+func drainLines(r io.Reader, onLine func(string)) {
+	br := bufio.NewReaderSize(r, 64*1024)
+	var b strings.Builder
+	pending := false // some bytes of the current line have been seen
+	for {
+		chunk, err := br.ReadString('\n')
+		if len(chunk) > 0 {
+			pending = true
+			// Strip a single trailing LF (and preceding CR) to match Scanner.
+			end := len(chunk)
+			hasNL := chunk[end-1] == '\n'
+			if hasNL {
+				end--
+				if end > 0 && chunk[end-1] == '\r' {
+					end--
+				}
+			}
+			if remaining := maxDrainLine - b.Len(); remaining > 0 {
+				if end > remaining {
+					b.WriteString(chunk[:remaining])
+				} else {
+					b.WriteString(chunk[:end])
+				}
+			}
+			if hasNL {
+				onLine(b.String())
+				b.Reset()
+				pending = false
+			}
+		}
+		if err != nil {
+			// EOF or read error: flush any trailing line without a newline.
+			if pending {
+				onLine(b.String())
+			}
+			return
+		}
+	}
 }
 
 // readClaudeAPIKey reads the Anthropic API key stored by the Claude Code CLI.
@@ -1593,12 +1643,9 @@ func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string, pro
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			scanner := bufio.NewScanner(stdoutPipe)
-			scanner.Buffer(make([]byte, 2*1024*1024), 2*1024*1024)
 			var rawLines []string
 			streamed := false
-			for scanner.Scan() {
-				line := scanner.Text()
+			drainLines(stdoutPipe, func(line string) {
 				rawLines = append(rawLines, line)
 				// Raw stream-json lines contain prompt/manuscript-derived
 				// content. Keep them only in the opt-in debug log; never emit
@@ -1627,7 +1674,7 @@ func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string, pro
 						}
 					}
 				}
-			}
+			})
 			if resultText == "" {
 				resultText = strings.Join(rawLines, "\n")
 			}
@@ -1637,14 +1684,12 @@ func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string, pro
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			scanner := bufio.NewScanner(stderrPipe)
-			for scanner.Scan() {
-				line := scanner.Text()
+			drainLines(stderrPipe, func(line string) {
 				stderrBuf.WriteString(line + "\n")
 				// stderr may echo prompt/manuscript-derived content; keep it in
 				// the opt-in debug log only, not the screenshot-visible ai:log.
 				logging.AIContent("CLAUDE_STDERR", line)
-			}
+			})
 		}()
 	}
 
