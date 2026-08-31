@@ -19,6 +19,14 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02438] - 2026-08-31
+
+### Fixed
+- Re-indexing a book now invalidates the stored relationship graph so it can no longer reference stale entity IDs. Entity IDs (`entity-N`) are positional and get reassigned every time `IndexBook` resolves entities, but `IndexBook` never cleared `book.Analysis.Relationships` — unlike `MergeCharacterEntities` and `SplitCharacterEntity`, which both null it. As a result, after a plain re-index (e.g. after the manuscript text changed) the previously analyzed relationship edges, scenes, interactions, and events still pointed at the old numbering, silently mapping to the wrong characters or dangling entirely. `IndexBook` now sets `book.Analysis.Relationships = nil` after entity resolution, matching the merge/split behavior, so stale edges can't be read and callers re-run relationship analysis against the fresh entity IDs. Added `relationships_test.go` regression asserting that analyzing relationships, mutating the text, and re-indexing leaves `Relationships` cleared.
+- Audit ref: fable5-2026-08-30 — Fable C2 (invalidate-relationships-on-reindex).
+
+---
+
 ## [0.16.02437] - 2026-08-31
 
 ### Fixed

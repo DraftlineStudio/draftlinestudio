@@ -89,6 +89,12 @@ func IndexBook(book *types.BookData) types.IndexResult {
 		}
 	}
 
+	// Entity IDs (entity-N) are positional and get reassigned on every
+	// re-index, so any prior relationship graph now references stale/dangling
+	// entity IDs. Invalidate it (matching merge/split behavior) so stale edges
+	// can't be read.
+	book.Analysis.Relationships = nil
+
 	book.IsIndexed = true
 	book.LastIndexed = time.Now().Format(time.RFC3339)
 
