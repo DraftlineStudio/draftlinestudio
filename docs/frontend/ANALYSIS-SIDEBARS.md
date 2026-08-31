@@ -79,3 +79,40 @@ Design section 3e. A skimmable per-chapter recap of the manuscript: for each ana
 **Empty states**: no book → standard `tool-empty-state`; no analysis → `.an-empty` with an "Analyze now" `.an-run-btn` wired to `useAnalysisStore().run` (disabled while running or when `settings.analysis_enabled` is off, showing "Enable in Plugins"); analysis present but no chapter has keywords or a summary → a dedicated `.an-empty` note.
 
 **CSS**: only `chp-*` rules; overrides `.an-card-list` gap to 10px inside this panel to match the mock's feed spacing; cards are `<button>` elements normalized on top of `.an-card`.
+
+## Worth Reviewing panel (`ReviewPanel.tsx`, design 3f)
+
+Dismissable observation cards sourced from `book.analysis.story.observations`
+(`StoryAnalysisObservation[]`), filtered through `activeObservations(analysis, useDismissedSet(book))`
+from `Analysis/shared.ts`.
+
+**Layout** (top to bottom):
+- Filter block (bottom-bordered, 10px 12px): sentence-case `.an-tab` buttons — "All {n}"
+  plus one tab per observation kind present among *active* (non-dismissed) observations,
+  each labeled Capitalized with its count (e.g. "Structure 6", "Pacing 2"). Below the tabs,
+  the `.an-footnote` "Measured differences, not errors or prescriptions." The block is hidden
+  when no active observations remain.
+- `.an-card-list` of cards, each with: a 9px bold uppercase kind micro-label
+  (`--status-issue` for `structure`, `--section-back` for `pacing`, `--text-section` otherwise),
+  a 12px semibold title, an 11px secondary detail line, and an action row containing
+  "Go to chapter ›" (`.an-link`, only when `chapter_index` is defined; calls `goToChapter`)
+  and a muted "Dismiss" button.
+
+**Filter behavior**: the selected kind falls back to "All" automatically when its last card
+is dismissed (derived `effectiveFilter`, no state write during render).
+
+**Dismissals**: keyed by `observationKey(o)` (kind + title + detail), stored in
+localStorage `draftline.analysis.dismissed.{bookKey}` via shared.ts's `dismissObservation` /
+`restoreAllObservations` / `useDismissedSet` external store — so the rail badge
+(`useReviewCount`) updates live in other panels.
+
+**Empty states**:
+- No book: standard `tool-empty-state`.
+- No `analysis.story`: `.an-empty` explainer + `.an-run-btn` (Enable in Plugins / Analyzing… /
+  Analyze now, matching the other suite panels), wired to `useAnalysisStore().run`.
+- Observations exist but all dismissed: `.an-empty` "All observations dismissed." with an
+  `.an-run-btn` "Restore dismissed".
+- Analysis has zero observations: `.an-empty` "Nothing worth flagging — the manuscript reads evenly."
+
+**CSS**: panel-specific rules in `review.css` (`rv-` prefix); shared vocabulary from
+`analysis.css`. No hardcoded colors — all values are theme custom properties.
