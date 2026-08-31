@@ -44,7 +44,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.16.02429"
+const AppVersion = "0.16.02430"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -1520,17 +1520,24 @@ func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string, pro
 			scanner := bufio.NewScanner(stdoutPipe)
 			scanner.Buffer(make([]byte, 2*1024*1024), 2*1024*1024)
 			var rawLines []string
+			streamed := false
 			for scanner.Scan() {
 				line := scanner.Text()
 				rawLines = append(rawLines, line)
-				preview := line
-				if len(preview) > 100 {
-					preview = preview[:100] + "…"
-				}
-				runtime.EventsEmit(a.ctx, "ai:log", "→ "+preview)
+				// Raw stream-json lines contain prompt/manuscript-derived
+				// content. Keep them only in the opt-in debug log; never emit
+				// them to the ai:log runtime event (which can appear in
+				// screenshots). Parity with the Codex path.
+				logging.AIContent("CLAUDE_STREAM", line)
 				var obj map[string]any
 				if json.Unmarshal([]byte(line), &obj) == nil {
-					if obj["type"] == "result" {
+					switch obj["type"] {
+					case "assistant", "content_block_delta", "message_delta":
+						if !streamed {
+							streamed = true
+							runtime.EventsEmit(a.ctx, "ai:log", "Streaming…")
+						}
+					case "result":
 						if r, ok := obj["result"].(string); ok {
 							resultText = r
 						}
@@ -1538,6 +1545,9 @@ func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string, pro
 							if msg, ok := obj["result"].(string); ok {
 								stderrBuf.WriteString(msg)
 							}
+							runtime.EventsEmit(a.ctx, "ai:log", "Error")
+						} else {
+							runtime.EventsEmit(a.ctx, "ai:log", "Done")
 						}
 					}
 				}
@@ -1555,7 +1565,9 @@ func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string, pro
 			for scanner.Scan() {
 				line := scanner.Text()
 				stderrBuf.WriteString(line + "\n")
-				runtime.EventsEmit(a.ctx, "ai:log", line)
+				// stderr may echo prompt/manuscript-derived content; keep it in
+				// the opt-in debug log only, not the screenshot-visible ai:log.
+				logging.AIContent("CLAUDE_STDERR", line)
 			}
 		}()
 	}

@@ -19,6 +19,14 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02430] - 2026-08-30
+
+### Security
+- Redacted AI activity-log output for the Claude Code CLI path (`callClaudeCodeCLI` in `wails/app.go`). The subprocess stdout stream-json lines and raw stderr lines were forwarded verbatim to the `ai:log` runtime event (visible in the UI and screenshots), leaking prompt/manuscript-derived content. The path now parses the structured stream and emits only allowlisted status strings (`Streaming…`, `Done`, `Error`) to `ai:log`, at parity with the Codex path; raw stream/stderr content is kept only in the opt-in debug log via `logging.AIContent` (gated by `ai_debug_logging`). Result extraction and error handling are unchanged.
+- Audit ref: sol5.6-2026-08-30 — SEC-002 (claude-log-redaction).
+
+---
+
 ## [0.16.02429] - 2026-08-30
 
 ### Security
