@@ -85,7 +85,7 @@ export default function InlinePrompt({ onInsert, onCancel, beforeContext, afterC
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault()
-      handleSubmit()
+      void handleSubmit()
     }
   }
 
