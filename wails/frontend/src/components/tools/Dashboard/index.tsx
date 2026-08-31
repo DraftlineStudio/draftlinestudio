@@ -1,10 +1,27 @@
-// Writing Dashboard - word counts, goals, AI detection
+// Writing Dashboard — writing activity only (progress, goals, streak,
+// session rate, chapter breakdown). Analysis lives in the analysis sidebars;
+// AI detection shrinks to a jump row into its own panel.
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useBookStore } from '../../../store/bookStore'
-import { analyzeText, getScoreColor, getScoreLabel, analyzeAntiPatterns, getAntiPatternColor, type AIDetectionResult, type AntiPatternResult } from '../../../services/aiDetection'
-import { countWords, countBookWords } from '../../../utils/textUtils'
+import { analyzeText, getScoreColor } from '../../../services/aiDetection'
+import { countWords, countBookWords, getCurrentContent, htmlToText } from '../../../utils/textUtils'
+import { bookKey, openToolsSection } from '../Analysis/shared'
+import { recordTodayWords, getLastNDays, todayISO } from './history'
+import './dashboard.css'
+
+interface BreakdownRow {
+  key: string
+  label: string
+  words: number
+  muted: boolean
+}
+
+// "target 100k" / "target 800"
+function formatTargetHint(target: number): string {
+  return target >= 1000 ? `${Math.round(target / 1000)}k` : target.toString()
+}
 
 export default function DashboardTab() {
   const { book, updateWritingGoals, currentSection, currentIndex } = useBookStore(useShallow(s => ({
@@ -13,77 +30,136 @@ export default function DashboardTab() {
     currentSection: s.currentSection,
     currentIndex: s.currentIndex,
   })))
-  const [sessionStart] = useState(() => Date.now())
-  const [sessionStartWords] = useState(() => {
-    if (!book) return 0
-    return countBookWords(book)
-  })
+
+  // All hooks run unconditionally, before any early return.
   const [editingTarget, setEditingTarget] = useState(false)
   const [editingDaily, setEditingDaily] = useState(false)
   const [targetInput, setTargetInput] = useState('')
   const [dailyInput, setDailyInput] = useState('')
+  const [showAllBreakdown, setShowAllBreakdown] = useState(false)
+
+  // Re-render every 30s so "time writing" / "words / min" stay current.
+  const [, setClockTick] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setClockTick(t => t + 1), 30_000)
+    return () => clearInterval(id)
+  }, [])
+
+  // Current chapter content for the AI-detection jump row.
+  const currentContent = useMemo(
+    () => getCurrentContent(book, currentSection, currentIndex),
+    [book, currentSection, currentIndex],
+  )
+
+  // Debounced AI detection score — runs 2s after content stops changing.
+  const [aiScore, setAiScore] = useState<number | null>(null)
+  const analysisTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (analysisTimer.current) clearTimeout(analysisTimer.current)
+    if (!currentContent || currentContent.length < 100) {
+      setAiScore(null)
+      return
+    }
+    analysisTimer.current = setTimeout(() => {
+      // analyzeText needs ~100 chars of PLAIN text; HTML length overshoots
+      // (a short chapter full of tags would otherwise show a junk 50%).
+      const textLength = htmlToText(currentContent).trim().length
+      setAiScore(textLength < 100 ? null : analyzeText(currentContent).score)
+    }, 2000)
+    return () => { if (analysisTimer.current) clearTimeout(analysisTimer.current) }
+  }, [currentContent])
+
+  // Whole-book count re-parses every chapter's HTML, so memoize on the book
+  // reference — it must not re-run on unrelated store updates.
+  const totalWords = useMemo(() => (book ? countBookWords(book) : 0), [book])
+
+  // Session baseline — captured when a book first appears in this panel (and
+  // re-captured when a DIFFERENT book is opened), not at mount time: mounting
+  // with no book open must not make the whole manuscript later count as
+  // "written this session" (which would also poison the streak history).
+  const session = useRef<{ key: string; startTime: number; startWords: number } | null>(null)
+  if (book) {
+    const key = bookKey(book)
+    if (session.current?.key !== key) {
+      session.current = { key, startTime: Date.now(), startWords: totalWords }
+    }
+  }
+  const sessionStart = session.current?.startTime ?? Date.now()
+  const sessionStartWords = session.current?.startWords ?? 0
+
+  const sectionCounts = useMemo(() => {
+    const bodyCounts = (book?.body ?? []).map(ch => countWords(ch.content || ''))
+    const frontWords = (book?.front_matter ?? []).reduce((sum, ch) => sum + countWords(ch.content || ''), 0)
+    const backWords = (book?.back_matter ?? []).reduce((sum, ch) => sum + countWords(ch.content || ''), 0)
+    return { bodyCounts, frontWords, backWords }
+  }, [book])
+
+  const targetWords = book?.writing_goals?.target_word_count || 0
+  const dailyGoal = book?.writing_goals?.daily_word_goal || 0
+  const todayWords = book?.writing_goals?.words_today || 0
+  const lastWritingDate = book?.writing_goals?.last_writing_date || ''
+
+  // words_today resets on a new day (tracked by last_writing_date); until the
+  // store rolls it over, this session's words are today's words.
+  const today = todayISO()
+  const isNewDay = lastWritingDate !== today
+
+  const sessionWords = Math.max(0, totalWords - sessionStartWords)
+  const sessionMinutes = Math.floor((Date.now() - sessionStart) / 60000)
+  const displayedToday = isNewDay ? sessionWords : todayWords
+
+  // Persist today's count for the goal-streak row.
+  useEffect(() => {
+    if (!book) return
+    recordTodayWords(book, displayedToday)
+  }, [book, displayedToday, today])
+
+  const streakDays = useMemo(() => {
+    if (!book) return []
+    const days = getLastNDays(book, 7)
+    const last = days[days.length - 1]
+    if (last) last.words = Math.max(last.words, displayedToday)
+    return days
+  }, [book, displayedToday, today])
 
   if (!book) {
     return <div className="tool-empty-state">Open or create a project to see your writing dashboard.</div>
   }
 
-  // Get current chapter content for AI analysis
-  const currentContent = useMemo(() => {
-    if (currentSection === 'copyright') return book.copyright || ''
-    const arr = currentSection === 'front_matter' ? book.front_matter
-      : currentSection === 'body' ? book.body
-      : book.back_matter
-    return arr[currentIndex]?.content || ''
-  }, [book, currentSection, currentIndex])
-
-  // Debounced AI Detection - only run 2 seconds after content stops changing
-  const [aiResult, setAiResult] = useState<AIDetectionResult | null>(null)
-  const [antiPatternResult, setAntiPatternResult] = useState<AntiPatternResult | null>(null)
-  const analysisTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    if (analysisTimer.current) clearTimeout(analysisTimer.current)
-    if (!currentContent || currentContent.length < 100) {
-      setAiResult(null)
-      setAntiPatternResult(null)
-      return
-    }
-    analysisTimer.current = setTimeout(() => {
-      setAiResult(analyzeText(currentContent))
-      setAntiPatternResult(analyzeAntiPatterns(currentContent))
-    }, 2000)
-    return () => { if (analysisTimer.current) clearTimeout(analysisTimer.current) }
-  }, [currentContent])
-
-  // Calculate metrics. Whole-book count re-parses every chapter's HTML, so
-  // memoize on the book reference — it must not re-run on every unrelated store
-  // update that re-renders this tab.
-  const totalWords = useMemo(() => countBookWords(book), [book])
-  const targetWords = book.writing_goals?.target_word_count || 0
-  const dailyGoal = book.writing_goals?.daily_word_goal || 0
-  const todayWords = book.writing_goals?.words_today || 0
-  const lastWritingDate = book.writing_goals?.last_writing_date || ''
-
-  // Check if it's a new day
-  const today = new Date().toISOString().split('T')[0]
-  const isNewDay = lastWritingDate !== today
-
-  // Session stats
-  const sessionWords = Math.max(0, totalWords - sessionStartWords)
-  const sessionMinutes = Math.floor((Date.now() - sessionStart) / 60000)
-
-  // Chapter stats
+  const { bodyCounts, frontWords, backWords } = sectionCounts
   const chapters = book.body || []
-  const chapterWordCounts = useMemo(() => chapters.map(ch => countWords(ch.content || '')), [chapters])
-  const avgWordsPerChapter = chapters.length > 0
-    ? Math.round(chapterWordCounts.reduce((a, b) => a + b, 0) / chapters.length)
-    : 0
-  const shortestChapter = chapterWordCounts.length > 0 ? Math.min(...chapterWordCounts) : 0
-  const longestChapter = chapterWordCounts.length > 0 ? Math.max(...chapterWordCounts) : 0
 
-  // Progress percentages
+  // Chapter stats (body chapters only).
+  const avgWordsPerChapter = chapters.length > 0
+    ? Math.round(bodyCounts.reduce((a, b) => a + b, 0) / chapters.length)
+    : 0
+  const shortestChapter = bodyCounts.length > 0 ? Math.min(...bodyCounts) : 0
+  const longestChapter = bodyCounts.length > 0 ? Math.max(...bodyCounts) : 0
+
   const targetProgress = targetWords > 0 ? Math.min(100, (totalWords / targetWords) * 100) : 0
-  const dailyProgress = dailyGoal > 0 ? Math.min(100, ((isNewDay ? 0 : todayWords) / dailyGoal) * 100) : 0
+  const wordsToGo = Math.max(0, targetWords - totalWords)
+  const dailyProgress = dailyGoal > 0 ? Math.min(100, (displayedToday / dailyGoal) * 100) : 0
+
+  const streakCount = streakDays.filter(d => d.words > 0).length
+
+  const sessionTime = sessionMinutes < 60
+    ? `${sessionMinutes}m`
+    : `${Math.floor(sessionMinutes / 60)}h ${sessionMinutes % 60}m`
+  const wordsPerMinute = (sessionWords / Math.max(1, sessionMinutes)).toFixed(1)
+  const sessionStartLabel = new Date(sessionStart).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+
+  // Chapter breakdown: aggregate front/back matter rows around body chapters.
+  const breakdownRows: BreakdownRow[] = []
+  if ((book.front_matter || []).length > 0) {
+    breakdownRows.push({ key: 'front', label: 'Front matter', words: frontWords, muted: true })
+  }
+  chapters.forEach((ch, i) => {
+    breakdownRows.push({ key: `body-${i}`, label: `${i + 1} · ${ch.title || 'Untitled'}`, words: bodyCounts[i], muted: false })
+  })
+  if ((book.back_matter || []).length > 0) {
+    breakdownRows.push({ key: 'back', label: 'Back matter', words: backWords, muted: true })
+  }
+  const visibleRows = showAllBreakdown ? breakdownRows : breakdownRows.slice(0, 10)
 
   function handleSetTarget() {
     const num = parseInt(targetInput.replace(/,/g, ''), 10)
@@ -103,30 +179,31 @@ export default function DashboardTab() {
     setDailyInput('')
   }
 
+  function openTargetEditor() {
+    setTargetInput(targetWords > 0 ? targetWords.toString() : '')
+    setEditingTarget(true)
+  }
+
+  function openDailyEditor() {
+    setDailyInput(dailyGoal > 0 ? dailyGoal.toString() : '')
+    setEditingDaily(true)
+  }
+
   return (
-    <div className="dashboard-content">
-      {/* Manuscript Progress */}
+    <div className="dashboard-content dash-panel">
+      {/* Manuscript */}
       <div className="dashboard-section">
         <div className="dashboard-section-header">
-          <span className="dashboard-section-title">Manuscript Progress</span>
+          <span className="dashboard-section-title">Manuscript</span>
+          {targetWords > 0 && (
+            <button className="dash-hint-btn" onClick={openTargetEditor}>target {formatTargetHint(targetWords)}</button>
+          )}
         </div>
         <div className="dashboard-big-number">
           <span className="big-number">{totalWords.toLocaleString()}</span>
           <span className="big-number-label">words</span>
         </div>
-        {targetWords > 0 ? (
-          <div className="progress-bar-container">
-            <div className="progress-bar">
-              <div className="progress-bar-fill" style={{ width: `${targetProgress}%` }} />
-            </div>
-            <div className="progress-bar-labels">
-              <span>{Math.round(targetProgress)}%</span>
-              <span className="progress-target" onClick={() => { setTargetInput(targetWords.toString()); setEditingTarget(true) }}>
-                {targetWords.toLocaleString()} target
-              </span>
-            </div>
-          </div>
-        ) : editingTarget ? (
+        {editingTarget ? (
           <div className="goal-input-row">
             <input
               type="text"
@@ -139,35 +216,32 @@ export default function DashboardTab() {
             />
             <button className="goal-input-btn" onClick={handleSetTarget}>Set</button>
           </div>
+        ) : targetWords > 0 ? (
+          <div className="progress-bar-container">
+            <div className="progress-bar">
+              <div className="progress-bar-fill" style={{ width: `${targetProgress}%` }} />
+            </div>
+            <div className="progress-bar-labels">
+              <span>{Math.round(targetProgress)}%</span>
+              <button className="progress-target dash-linklike" onClick={openTargetEditor}>
+                {wordsToGo.toLocaleString()} to go
+              </button>
+            </div>
+          </div>
         ) : (
-          <button className="set-goal-btn" onClick={() => setEditingTarget(true)}>+ Set target word count</button>
+          <button className="set-goal-btn" onClick={openTargetEditor}>+ Set target word count</button>
         )}
       </div>
 
-      {/* Daily Goal */}
+      {/* Today */}
       <div className="dashboard-section">
         <div className="dashboard-section-header">
-          <span className="dashboard-section-title">Today's Writing</span>
+          <span className="dashboard-section-title">Today</span>
+          {dailyGoal > 0 && (
+            <button className="dash-hint-btn" onClick={openDailyEditor}>goal {dailyGoal.toLocaleString()}</button>
+          )}
         </div>
-        {dailyGoal > 0 ? (
-          <>
-            <div className="dashboard-stat-row">
-              <span className="stat-value">{(isNewDay ? sessionWords : todayWords).toLocaleString()}</span>
-              <span className="stat-label">/ {dailyGoal.toLocaleString()} words</span>
-            </div>
-            <div className="progress-bar-container small">
-              <div className="progress-bar">
-                <div
-                  className={`progress-bar-fill ${dailyProgress >= 100 ? 'complete' : ''}`}
-                  style={{ width: `${dailyProgress}%` }}
-                />
-              </div>
-            </div>
-            <div className="daily-goal-edit" onClick={() => { setDailyInput(dailyGoal.toString()); setEditingDaily(true) }}>
-              Edit daily goal
-            </div>
-          </>
-        ) : editingDaily ? (
+        {editingDaily ? (
           <div className="goal-input-row">
             <input
               type="text"
@@ -180,32 +254,66 @@ export default function DashboardTab() {
             />
             <button className="goal-input-btn" onClick={handleSetDaily}>Set</button>
           </div>
+        ) : dailyGoal > 0 ? (
+          <>
+            <div className="dashboard-big-number">
+              <span className="big-number">{displayedToday.toLocaleString()}</span>
+              <span className="big-number-label">of {dailyGoal.toLocaleString()} words</span>
+            </div>
+            <div className="progress-bar-container small">
+              <div className="progress-bar">
+                <div
+                  className={`progress-bar-fill ${dailyProgress >= 100 ? 'complete' : ''}`}
+                  style={{ width: `${dailyProgress}%` }}
+                />
+              </div>
+            </div>
+          </>
         ) : (
-          <button className="set-goal-btn" onClick={() => setEditingDaily(true)}>+ Set daily word goal</button>
+          <button className="set-goal-btn" onClick={openDailyEditor}>+ Set daily word goal</button>
         )}
-      </div>
-
-      {/* Session Stats */}
-      <div className="dashboard-section">
-        <div className="dashboard-section-header">
-          <span className="dashboard-section-title">This Session</span>
-        </div>
-        <div className="session-stats-grid">
-          <div className="session-stat">
-            <span className="session-stat-value">{sessionWords.toLocaleString()}</span>
-            <span className="session-stat-label">words written</span>
-          </div>
-          <div className="session-stat">
-            <span className="session-stat-value">{sessionMinutes < 60 ? `${sessionMinutes}m` : `${Math.floor(sessionMinutes/60)}h ${sessionMinutes%60}m`}</span>
-            <span className="session-stat-label">time writing</span>
-          </div>
+        <div className="dash-streak">
+          {streakDays.map(day => {
+            const isToday = day.date === today
+            const cls = isToday ? 'today' : day.words > 0 ? 'written' : ''
+            return (
+              <span
+                key={day.date}
+                className={`dash-streak-day ${cls}`}
+                title={`${day.date}: ${day.words.toLocaleString()} words`}
+              />
+            )
+          })}
+          <span className="dash-streak-caption">{streakCount} of last 7 days</span>
         </div>
       </div>
 
-      {/* Chapter Stats */}
+      {/* This session */}
       <div className="dashboard-section">
         <div className="dashboard-section-header">
-          <span className="dashboard-section-title">Chapter Stats</span>
+          <span className="dashboard-section-title">This session</span>
+          <span className="dashboard-section-hint">started {sessionStartLabel}</span>
+        </div>
+        <div className="dash-session-row">
+          <div className="dash-session-stat">
+            <div className="dash-session-value">{sessionWords.toLocaleString()}</div>
+            <div className="dash-session-label">words written</div>
+          </div>
+          <div className="dash-session-stat">
+            <div className="dash-session-value">{sessionTime}</div>
+            <div className="dash-session-label">time writing</div>
+          </div>
+          <div className="dash-session-stat">
+            <div className="dash-session-value">{wordsPerMinute}</div>
+            <div className="dash-session-label">words / min</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Chapter stats */}
+      <div className="dashboard-section">
+        <div className="dashboard-section-header">
+          <span className="dashboard-section-title">Chapter stats</span>
         </div>
         <div className="chapter-stats-list">
           <div className="chapter-stat-item">
@@ -227,141 +335,45 @@ export default function DashboardTab() {
         </div>
       </div>
 
-      {/* Quick Chapter Overview */}
+      {/* Chapter breakdown */}
       <div className="dashboard-section">
         <div className="dashboard-section-header">
-          <span className="dashboard-section-title">Chapter Breakdown</span>
+          <span className="dashboard-section-title">Chapter breakdown</span>
+          <span className="dashboard-section-hint">all sections</span>
         </div>
-        <div className="chapter-bars">
-          {chapters.map((ch, i) => {
-            const words = chapterWordCounts[i]
-            const barWidth = longestChapter > 0 ? (words / longestChapter) * 100 : 0
+        <div className="dash-bd-list">
+          {visibleRows.map(row => {
+            const barWidth = longestChapter > 0 ? Math.min(100, (row.words / longestChapter) * 100) : 0
             return (
-              <div key={i} className="chapter-bar-row" title={`${ch.title}: ${words.toLocaleString()} words`}>
-                <span className="chapter-bar-label">{ch.title.length > 15 ? ch.title.slice(0, 15) + '...' : ch.title}</span>
+              <div key={row.key} className="chapter-bar-row" title={`${row.label}: ${row.words.toLocaleString()} words`}>
+                <span className={`chapter-bar-label dash-bd-label${row.muted ? ' dash-bd-muted' : ''}`}>{row.label}</span>
                 <div className="chapter-bar-track">
                   <div className="chapter-bar-fill" style={{ width: `${barWidth}%` }} />
                 </div>
-                <span className="chapter-bar-count">{words.toLocaleString()}</span>
+                <span className="chapter-bar-count">{row.words.toLocaleString()}</span>
               </div>
             )
           })}
+          {breakdownRows.length > 10 && (
+            <button className="dash-show-toggle" onClick={() => setShowAllBreakdown(v => !v)}>
+              {showAllBreakdown ? 'Show fewer' : `Show all ${breakdownRows.length}`}
+            </button>
+          )}
         </div>
       </div>
 
-      {/* AI Detection Score */}
-      <div className="dashboard-section">
-        <div className="dashboard-section-header">
-          <span className="dashboard-section-title">AI Detection</span>
-          <span className="dashboard-section-hint">Current chapter</span>
-        </div>
-        {aiResult ? (
-          <>
-            <div className="ai-detection-score">
-              <div className="ai-detection-gauge">
-                <svg viewBox="0 0 100 50" className="ai-gauge-svg">
-                  <path
-                    d="M 10 45 A 40 40 0 0 1 90 45"
-                    fill="none"
-                    stroke="var(--bg-secondary)"
-                    strokeWidth="8"
-                    strokeLinecap="round"
-                  />
-                  <path
-                    d="M 10 45 A 40 40 0 0 1 90 45"
-                    fill="none"
-                    stroke={getScoreColor(aiResult.score)}
-                    strokeWidth="8"
-                    strokeLinecap="round"
-                    strokeDasharray={`${aiResult.score * 1.26} 126`}
-                  />
-                </svg>
-                <div className="ai-gauge-value" style={{ color: getScoreColor(aiResult.score) }}>
-                  {aiResult.score}%
-                </div>
-                <div className="ai-gauge-label">{getScoreLabel(aiResult.score)}</div>
-              </div>
-            </div>
-            <div className="ai-detection-breakdown">
-              <div className="ai-metric-row">
-                <span className="ai-metric-label">Burstiness</span>
-                <div className="ai-metric-bar">
-                  <div className="ai-metric-fill" style={{ width: `${aiResult.breakdown.burstiness}%`, background: getScoreColor(aiResult.breakdown.burstiness) }} />
-                </div>
-              </div>
-              <div className="ai-metric-row">
-                <span className="ai-metric-label">Vocabulary</span>
-                <div className="ai-metric-bar">
-                  <div className="ai-metric-fill" style={{ width: `${aiResult.breakdown.vocabularyRichness}%`, background: getScoreColor(aiResult.breakdown.vocabularyRichness) }} />
-                </div>
-              </div>
-              <div className="ai-metric-row">
-                <span className="ai-metric-label">Repetition</span>
-                <div className="ai-metric-bar">
-                  <div className="ai-metric-fill" style={{ width: `${aiResult.breakdown.repetition}%`, background: getScoreColor(aiResult.breakdown.repetition) }} />
-                </div>
-              </div>
-              <div className="ai-metric-row">
-                <span className="ai-metric-label">Variety</span>
-                <div className="ai-metric-bar">
-                  <div className="ai-metric-fill" style={{ width: `${aiResult.breakdown.sentenceVariety}%`, background: getScoreColor(aiResult.breakdown.sentenceVariety) }} />
-                </div>
-              </div>
-              <div className="ai-metric-row">
-                <span className="ai-metric-label">AI Phrases</span>
-                <div className="ai-metric-bar">
-                  <div className="ai-metric-fill" style={{ width: `${aiResult.breakdown.transitionPatterns}%`, background: getScoreColor(aiResult.breakdown.transitionPatterns) }} />
-                </div>
-              </div>
-            </div>
-            {aiResult.flags.length > 0 && (
-              <div className="ai-detection-flags">
-                {aiResult.flags.slice(0, 3).map((flag, i) => (
-                  <div key={i} className="ai-flag">{flag}</div>
-                ))}
-              </div>
-            )}
-            <div className="ai-detection-disclaimer">
-              <strong>Estimate only — not a guarantee.</strong> This heuristic analysis may produce false positives or negatives. For authoritative verification, use Pangram or GPTZero. Draftline makes no claims about the accuracy of this score.
-            </div>
-          </>
-        ) : (
-          <div className="ai-detection-empty">
-            Not enough text to analyze. Write more to see AI detection score.
-          </div>
-        )}
-      </div>
-
-      {/* Anti-Pattern Checker */}
-      {antiPatternResult && antiPatternResult.patterns.length > 0 && (
-        <div className="dashboard-section">
-          <div className="dashboard-section-header">
-            <span className="dashboard-section-title">AI Anti-Patterns</span>
-            <span className="dashboard-section-hint">
-              {antiPatternResult.overLimit.length > 0
-                ? `${antiPatternResult.overLimit.length} over limit`
-                : 'All within limits'}
-            </span>
-          </div>
-          <div className="anti-pattern-list">
-            {antiPatternResult.patterns.map((p, i) => (
-              <div
-                key={i}
-                className={`anti-pattern-item ${p.severity}`}
-                style={{ borderLeftColor: getAntiPatternColor(p.severity) }}
-              >
-                <span className="anti-pattern-name">{p.displayName}</span>
-                <span className="anti-pattern-count">
-                  {p.count}x <span className="anti-pattern-limit">(limit: {p.limitPerChapter}/ch)</span>
-                </span>
-              </div>
-            ))}
-          </div>
-          <p className="settings-hint" style={{ marginTop: 8, fontSize: 10 }}>
-            Patterns like "half-step", "eyes widened", etc. that AI tends to overuse.
-          </p>
-        </div>
-      )}
+      {/* AI detection jump row */}
+      <button className="dash-jump" onClick={() => openToolsSection('aidetect')}>
+        <span className="dash-jump-label">AI detection — current chapter</span>
+        <span className="dash-jump-meta">
+          {aiScore !== null && (
+            <span className="dash-jump-score" style={{ color: getScoreColor(aiScore) }}>{aiScore}%</span>
+          )}
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </span>
+      </button>
     </div>
   )
 }

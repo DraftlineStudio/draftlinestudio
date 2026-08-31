@@ -4,6 +4,20 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02456] - 2026-08-31
+
+### Changed
+- Redesigned the Writing Dashboard around writing activity only: renamed Manuscript and Today sections with clickable "target {n}k" / "goal {n}" hints, "{pct}%" / "{remaining} to go" progress labels, and a This session row with words written, time writing, and words / min.
+- Chapter breakdown now spans all sections: front and back matter collapse to single aggregate rows around numbered body chapters, with a "Show all {N}" / "Show fewer" toggle after 10 rows.
+
+### Added
+- Added a 7-day goal-streak row to the Today section, backed by a per-book daily word history kept locally for 60 days — green squares for days with words, accent for today.
+
+### Removed
+- Removed the dashboard's AI Detection gauge and AI Anti-Patterns sections (and their now-dead styles) in favor of a compact jump row showing the current chapter's debounced detection score and opening the dedicated AI Analysis panel.
+
+---
+
 ## [0.16.02455] - 2026-08-31
 
 ### Added
