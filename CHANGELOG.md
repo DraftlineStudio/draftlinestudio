@@ -19,6 +19,14 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02425] - 2026-08-30
+
+### Removed
+- Dead Go code: unused exported functions `NormalizeToken` and `GetNameHead` (`entityresolution/honorifics.go`), `IsTypo` (`entityresolution/levenshtein.go`), `GetNicknames` (`entityresolution/nicknames.go`), and the unused global var `CommonWords` (`indexing/patterns.go`). All verified unreferenced across the `wails/` tree including tests. Character-pipeline leftovers from the prose/v3 rewrite.
+- Audit ref: master-audit-report-2026-08-30 — Qodana `GoUnusedExportedFunction` ×4 + `GoUnusedGlobalVariable` ×1 (dead Go code).
+
+---
+
 ## [0.16.02424] - 2026-08-30
 
 ### Added
