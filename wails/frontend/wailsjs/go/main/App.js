@@ -66,6 +66,10 @@ export function GetAppVersion() {
   return window['go']['main']['App']['GetAppVersion']();
 }
 
+export function GetChapterHistory(arg1) {
+  return window['go']['main']['App']['GetChapterHistory'](arg1);
+}
+
 export function GetCharacterRelationships(arg1, arg2) {
   return window['go']['main']['App']['GetCharacterRelationships'](arg1, arg2);
 }
@@ -108,6 +112,10 @@ export function IndexBook(arg1) {
 
 export function ListBackups() {
   return window['go']['main']['App']['ListBackups']();
+}
+
+export function ListChapterHistory(arg1) {
+  return window['go']['main']['App']['ListChapterHistory'](arg1);
 }
 
 export function LoadSettings() {
@@ -160,6 +168,10 @@ export function SaveBook(arg1) {
 
 export function SaveBookAs(arg1) {
   return window['go']['main']['App']['SaveBookAs'](arg1);
+}
+
+export function SaveBookSnapshots(arg1, arg2) {
+  return window['go']['main']['App']['SaveBookSnapshots'](arg1, arg2);
 }
 
 export function SaveSettings(arg1) {

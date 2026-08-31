@@ -90,18 +90,21 @@ func Open(path string) (types.BookData, error) {
 			File  string `json:"file"`
 		} `json:"chapters,omitempty"`
 		FrontMatter []struct {
+			ID       string `json:"id,omitempty"`
 			Title    string `json:"title"`
 			Subtitle string `json:"subtitle,omitempty"`
 			Type     string `json:"type"`
 			File     string `json:"file"`
 		} `json:"front_matter,omitempty"`
 		Body []struct {
+			ID       string `json:"id,omitempty"`
 			Title    string `json:"title"`
 			Subtitle string `json:"subtitle,omitempty"`
 			Type     string `json:"type"`
 			File     string `json:"file"`
 		} `json:"body,omitempty"`
 		BackMatter []struct {
+			ID       string `json:"id,omitempty"`
 			Title    string `json:"title"`
 			Subtitle string `json:"subtitle,omitempty"`
 			Type     string `json:"type"`
@@ -153,6 +156,7 @@ func Open(path string) (types.BookData, error) {
 				Content: content,
 			})
 		}
+		EnsureBookChapterIDs(&book)
 		return book, nil
 	}
 
@@ -171,7 +175,7 @@ func Open(path string) (types.BookData, error) {
 			return types.BookData{}, err
 		}
 		book.FrontMatter = append(book.FrontMatter, types.ChapterItem{
-			Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, Content: content,
+			ID: item.ID, Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, Content: content,
 		})
 	}
 	for _, item := range raw.Body {
@@ -180,7 +184,7 @@ func Open(path string) (types.BookData, error) {
 			return types.BookData{}, err
 		}
 		book.Body = append(book.Body, types.ChapterItem{
-			Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, Content: content,
+			ID: item.ID, Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, Content: content,
 		})
 	}
 	for _, item := range raw.BackMatter {
@@ -189,9 +193,10 @@ func Open(path string) (types.BookData, error) {
 			return types.BookData{}, err
 		}
 		book.BackMatter = append(book.BackMatter, types.ChapterItem{
-			Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, Content: content,
+			ID: item.ID, Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, Content: content,
 		})
 	}
+	EnsureBookChapterIDs(&book)
 
 	// story_bible.json (optional — not present in older files)
 	if bibleData, err := ReadZipEntry(r, "story_bible.json"); err == nil {

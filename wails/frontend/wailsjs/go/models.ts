@@ -158,20 +158,6 @@ export namespace types {
 		    return a;
 		}
 	}
-	export class MergeRule {
-	    name_1: string;
-	    name_2: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new MergeRule(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.name_1 = source["name_1"];
-	        this.name_2 = source["name_2"];
-	    }
-	}
 	export class EntityDecision {
 	    names: string[];
 	    status: string;
@@ -184,6 +170,20 @@ export namespace types {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.names = source["names"];
 	        this.status = source["status"];
+	    }
+	}
+	export class MergeRule {
+	    name_1: string;
+	    name_2: string;
+
+	    static createFrom(source: any = {}) {
+	        return new MergeRule(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name_1 = source["name_1"];
+	        this.name_2 = source["name_2"];
 	    }
 	}
 	export class SeparatedPairRecord {
@@ -344,6 +344,7 @@ export namespace types {
 	    auto_theme_use_manual: boolean;
 	    auto_theme_dawn: string;
 	    auto_theme_dusk: string;
+	    activity_autosave_enabled: boolean;
 	    custom_dictionary?: string[];
 	    spell_check_enabled: boolean;
 	    grammar_check_enabled: boolean;
@@ -385,6 +386,7 @@ export namespace types {
 	        this.auto_theme_use_manual = source["auto_theme_use_manual"];
 	        this.auto_theme_dawn = source["auto_theme_dawn"];
 	        this.auto_theme_dusk = source["auto_theme_dusk"];
+	        this.activity_autosave_enabled = source["activity_autosave_enabled"];
 	        this.custom_dictionary = source["custom_dictionary"];
 	        this.spell_check_enabled = source["spell_check_enabled"];
 	        this.grammar_check_enabled = source["grammar_check_enabled"];
@@ -725,6 +727,7 @@ export namespace types {
 		}
 	}
 	export class ChapterItem {
+	    id?: string;
 	    title: string;
 	    subtitle?: string;
 	    type: string;
@@ -736,6 +739,7 @@ export namespace types {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
 	        this.title = source["title"];
 	        this.subtitle = source["subtitle"];
 	        this.type = source["type"];
@@ -824,9 +828,89 @@ export namespace types {
 		    return a;
 		}
 	}
+	export class ChapterHistoryEntry {
+	    id: string;
+	    chapter_id: string;
+	    section: string;
+	    chapter_title: string;
+	    created_at: string;
+	    reason: string;
+	    word_count: number;
+	    content_hash: string;
+	    file: string;
+
+	    static createFrom(source: any = {}) {
+	        return new ChapterHistoryEntry(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.chapter_id = source["chapter_id"];
+	        this.section = source["section"];
+	        this.chapter_title = source["chapter_title"];
+	        this.created_at = source["created_at"];
+	        this.reason = source["reason"];
+	        this.word_count = source["word_count"];
+	        this.content_hash = source["content_hash"];
+	        this.file = source["file"];
+	    }
+	}
+	export class ChapterHistorySnapshot {
+	    entry: ChapterHistoryEntry;
+	    content: string;
+
+	    static createFrom(source: any = {}) {
+	        return new ChapterHistorySnapshot(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.entry = this.convertValues(source["entry"], ChapterHistoryEntry);
+	        this.content = source["content"];
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	
-	
-	
+	export class ChapterSnapshotRequest {
+	    chapter_id: string;
+	    section: string;
+	    chapter_title: string;
+	    content: string;
+	    reason?: string;
+
+	    static createFrom(source: any = {}) {
+	        return new ChapterSnapshotRequest(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.chapter_id = source["chapter_id"];
+	        this.section = source["section"];
+	        this.chapter_title = source["chapter_title"];
+	        this.content = source["content"];
+	        this.reason = source["reason"];
+	    }
+	}
+
+
 	export class CharacterTimelineEvent {
 	    chapter: number;
 	    event_type: string;
@@ -903,6 +987,7 @@ export namespace types {
 	}
 	
 	
+
 	export class ExportOptions {
 	    includeCopyright: boolean;
 	    includeFrontMatter: boolean;

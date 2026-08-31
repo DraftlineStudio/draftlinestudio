@@ -7,7 +7,7 @@ import { DEFAULT_STYLE_OPTIONS } from '../types/draftline'
 import type { ParagraphDiff, DiffChange } from '../utils/diff'
 import { countBookWords } from '../utils/textUtils'
 
-import { NewBook, OpenBookDialog, SaveBook, SaveBookAs, OpenRecentProject, AddRecentProject, IndexBook, MergeEntities, SplitEntity } from '../../wailsjs/go/main/App'
+import { NewBook, OpenBookDialog, SaveBook, SaveBookAs, SaveBookSnapshots, OpenRecentProject, AddRecentProject, IndexBook, MergeEntities, SplitEntity } from '../../wailsjs/go/main/App'
 import { types } from '../../wailsjs/go/models'
 import { useAppStore } from './appStore'
 import { useEditorStore, type EditorInstance } from './editorStore'
@@ -17,6 +17,9 @@ import { usePlotStore } from './plotStore'
 // Auto-save debounce timer
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
 const AUTO_SAVE_DELAY = 5000
+const HISTORY_SNAPSHOT_DELAY = 10 * 60 * 1000
+let historySnapshotTimer: ReturnType<typeof setTimeout> | null = null
+const changedChapterIDs = new Set<string>()
 
 // Save serialization + staleness tracking (module-scoped, not reactive state).
 // saveRevision is bumped by scheduleAutoSave() — the funnel every dirty-marking
@@ -43,6 +46,27 @@ function beginBookSession() {
   if (autoSaveTimer) {
     clearTimeout(autoSaveTimer)
     autoSaveTimer = null
+  }
+  if (historySnapshotTimer) {
+    clearTimeout(historySnapshotTimer)
+    historySnapshotTimer = null
+  }
+  changedChapterIDs.clear()
+}
+
+function newChapterID(): string {
+  return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? `ch-${crypto.randomUUID().replace(/-/g, '')}`
+    : `ch-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+}
+
+function ensureFrontendChapterIDs(book: BookData): BookData {
+  const assign = (items: ChapterItem[]) => items.map(item => ({ ...item, id: item.id || newChapterID() }))
+  return {
+    ...book,
+    front_matter: assign(book.front_matter),
+    body: assign(book.body),
+    back_matter: assign(book.back_matter),
   }
 }
 
@@ -82,7 +106,12 @@ function performSave(kind: 'save' | 'saveAs'): Promise<SaveOutcome> {
 function scheduleAutoSave() {
   saveRevision++
   if (autoSaveTimer) clearTimeout(autoSaveTimer)
+  if (!useAppStore.getState().settings.activity_autosave_enabled) {
+    autoSaveTimer = null
+    return
+  }
   autoSaveTimer = setTimeout(async () => {
+    if (!useAppStore.getState().settings.activity_autosave_enabled) return
     const state = useBookStore.getState()
     if (state.book && state.isDirty && state.book.file_path) {
       const session = bookSession
@@ -103,6 +132,58 @@ function scheduleAutoSave() {
   }, AUTO_SAVE_DELAY)
 }
 
+function scheduleChapterHistory(chapterID?: string) {
+  if (!chapterID || !useAppStore.getState().settings.activity_autosave_enabled) return
+  changedChapterIDs.add(chapterID)
+  if (historySnapshotTimer) return
+  historySnapshotTimer = setTimeout(() => {
+    historySnapshotTimer = null
+    if (!useAppStore.getState().settings.activity_autosave_enabled) {
+      changedChapterIDs.clear()
+      return
+    }
+    const ids = new Set(changedChapterIDs)
+    changedChapterIDs.clear()
+    const state = useBookStore.getState()
+    const book = state.book
+    if (!book?.file_path || ids.size === 0) return
+    const requests = (['front_matter', 'body', 'back_matter'] as const).flatMap(section =>
+      book[section]
+        .filter(chapter => chapter.id && ids.has(chapter.id))
+        .map(chapter => ({
+          chapter_id: chapter.id!,
+          section,
+          chapter_title: chapter.title,
+          content: chapter.content,
+          reason: 'Writing session',
+        })),
+    )
+    if (requests.length === 0) return
+    const session = bookSession
+    const run = saveChain.then(async () => {
+      if (bookSession !== session || !useAppStore.getState().settings.activity_autosave_enabled) return
+      const latestBook = useBookStore.getState().book
+      if (!latestBook) return
+      try {
+        const result = await SaveBookSnapshots(latestBook as any, requests as any)
+        if (bookSession !== session) return
+        if (result.success) {
+          useBookStore.setState({ statusMessage: 'Chapter history updated' })
+        } else {
+          ids.forEach(id => changedChapterIDs.add(id))
+          useBookStore.setState({ statusMessage: `Chapter history failed: ${result.error || 'unknown error'}` })
+        }
+      } catch (e) {
+        if (bookSession === session) {
+          ids.forEach(id => changedChapterIDs.add(id))
+          useBookStore.setState({ statusMessage: `Chapter history failed: ${String(e)}` })
+        }
+      }
+    })
+    saveChain = run.catch(() => {})
+  }, HISTORY_SNAPSHOT_DELAY)
+}
+
 interface DialogState {
   showMetadata: boolean
   showNewChapter: boolean
@@ -111,6 +192,7 @@ interface DialogState {
   pendingAction: 'new' | 'open' | null
   showNewBookWizard: boolean
   showExportWizard: boolean
+  showChapterHistory: boolean
 }
 
 interface BookStore {
@@ -139,6 +221,7 @@ interface BookStore {
   openRecentBook: (path: string) => Promise<void>
   saveBook: () => Promise<void>
   saveBookAs: () => Promise<void>
+  restoreChapterHistory: (content: string) => Promise<boolean>
   closeProject: () => Promise<void>
 
   // Direct book update (for analysis results, etc.)
@@ -200,6 +283,8 @@ interface BookStore {
   closeNewChapterDialog: () => void
   openExportWizard: () => void
   closeExportWizard: () => void
+  openChapterHistory: () => void
+  closeChapterHistory: () => void
   setStatusMessage: (msg: string) => void
   closeUnsavedWarning: () => void
   saveAndProceed: () => Promise<void>
@@ -273,7 +358,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
 
   // UI state
   darkMode: true,
-  dialogs: { showMetadata: false, showNewChapter: false, newChapterSection: null, showUnsavedWarning: false, pendingAction: null, showNewBookWizard: false, showExportWizard: false },
+  dialogs: { showMetadata: false, showNewChapter: false, newChapterSection: null, showUnsavedWarning: false, pendingAction: null, showNewBookWizard: false, showExportWizard: false, showChapterHistory: false },
   leftPanelOpen: true,
   rightPanelOpen: true,
 
@@ -386,6 +471,31 @@ export const useBookStore = create<BookStore>((set, get) => ({
     // 'cancelled' (user dismissed the picker) stays silent.
   },
 
+  restoreChapterHistory: async (content) => {
+    const { book, currentSection, currentIndex } = get()
+    if (!book || currentSection === 'copyright') return false
+    const chapter = getSectionArray(book, currentSection)[currentIndex]
+    if (!chapter?.id) return false
+    if (book.file_path) {
+      const session = bookSession
+      const request = [{ chapter_id: chapter.id, section: currentSection, chapter_title: chapter.title, content: chapter.content, reason: 'Before history restore' }]
+      const run = saveChain.then(() => {
+        const latest = useBookStore.getState().book
+        if (bookSession !== session || !latest) return { success: false, file_path: '', error: 'project changed' }
+        return SaveBookSnapshots(latest as any, request as any)
+      })
+      saveChain = run.catch(() => {})
+      const result = await run
+      if (bookSession !== session || !result.success) {
+        set({ statusMessage: `Could not create restore checkpoint: ${result.error || 'unknown error'}` })
+        return false
+      }
+    }
+    get().updateCurrentContent(content)
+    set({ statusMessage: 'Previous chapter version restored — save to keep it' })
+    return true
+  },
+
   closeProject: async () => {
     const { book, isDirty } = get()
     if (book && isDirty) {
@@ -434,6 +544,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
     if (!items[currentIndex]) return
     const updated = items.map((item, i) => i === currentIndex ? { ...item, content: html } : item)
     set({ book: setSectionArray(book, currentSection, updated), isDirty: true })
+    scheduleChapterHistory(items[currentIndex].id)
     scheduleAutoSave()
   },
 
@@ -443,6 +554,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
     const items = getSectionArray(book, section)
     const updated = items.map((item, i) => i === index ? { ...item, title } : item)
     set({ book: setSectionArray(book, section, updated), isDirty: true })
+    scheduleChapterHistory(items[index]?.id)
     scheduleAutoSave()
   },
 
@@ -452,13 +564,14 @@ export const useBookStore = create<BookStore>((set, get) => ({
     const items = getSectionArray(book, section)
     const updated = items.map((item, i) => i === index ? { ...item, subtitle } : item)
     set({ book: setSectionArray(book, section, updated), isDirty: true })
+    scheduleChapterHistory(items[index]?.id)
     scheduleAutoSave()
   },
 
   addChapter: (section, item) => {
     const { book } = get()
     if (!book || section === 'copyright') return
-    const items = [...getSectionArray(book, section), item]
+    const items = [...getSectionArray(book, section), { ...item, id: item.id || newChapterID() }]
     const newBook = setSectionArray(book, section, items)
     set({ book: newBook, currentSection: section, currentIndex: items.length - 1, isDirty: true })
     scheduleAutoSave()
@@ -747,6 +860,8 @@ export const useBookStore = create<BookStore>((set, get) => ({
   closeNewChapterDialog: () => set(s => ({ dialogs: { ...s.dialogs, showNewChapter: false, newChapterSection: null } })),
   openExportWizard: () => set(s => ({ dialogs: { ...s.dialogs, showExportWizard: true } })),
   closeExportWizard: () => set(s => ({ dialogs: { ...s.dialogs, showExportWizard: false } })),
+  openChapterHistory: () => set(s => ({ dialogs: { ...s.dialogs, showChapterHistory: true } })),
+  closeChapterHistory: () => set(s => ({ dialogs: { ...s.dialogs, showChapterHistory: false } })),
   setStatusMessage: (msg) => set({ statusMessage: msg }),
 
   closeUnsavedWarning: () => set(s => ({ dialogs: { ...s.dialogs, showUnsavedWarning: false, pendingAction: null } })),
@@ -777,7 +892,8 @@ export const useBookStore = create<BookStore>((set, get) => ({
     set(s => ({ dialogs: { ...s.dialogs, showNewBookWizard: false } }))
     const section: Section = book.body.length > 0 ? 'body' : book.front_matter.length > 0 ? 'front_matter' : 'back_matter'
     beginBookSession()
-    set({ book, currentSection: section, currentIndex: 0, isDirty: true, statusMessage: `Imported: ${book.metadata.title}` })
+    const identifiedBook = ensureFrontendChapterIDs(book)
+    set({ book: identifiedBook, currentSection: section, currentIndex: 0, isDirty: true, statusMessage: `Imported: ${book.metadata.title}` })
     scheduleAutoSave()
     useAppStore.getState().setShowWelcome(false)
   },

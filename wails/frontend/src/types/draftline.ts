@@ -320,9 +320,27 @@ export interface Metadata {
 }
 
 export interface ChapterItem {
+  id?: string
   title: string
   subtitle?: string  // Optional chapter subheading
   type: string
+  content: string
+}
+
+export interface ChapterHistoryEntry {
+  id: string
+  chapter_id: string
+  section: string
+  chapter_title: string
+  created_at: string
+  reason: string
+  word_count: number
+  content_hash: string
+  file: string
+}
+
+export interface ChapterHistorySnapshot {
+  entry: ChapterHistoryEntry
   content: string
 }
 

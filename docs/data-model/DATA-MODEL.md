@@ -71,6 +71,7 @@ interface Metadata {
 ### ChapterItem
 ```typescript
 interface ChapterItem {
+  id: string       // Stable across chapter renames and reordering
   title: string
   subtitle?: string
   type: 'Chapter' | 'Prologue' | 'Epilogue' | 'Part' |
@@ -78,6 +79,12 @@ interface ChapterItem {
   content: string  // HTML content
 }
 ```
+
+### Chapter History
+
+Archive format 2.2 stores snapshot metadata in `history/index.json` and chapter HTML in `history/snapshots/`. A snapshot records the stable chapter ID, section and title at capture time, timestamp, reason, word count, and SHA-256 content hash. Identical content is not stored twice. Draftline retains at most 50 snapshots per chapter and 1,000 per project.
+
+Automatic snapshots are activity-driven: editing marks the affected chapter, and Draftline records its current content after ten minutes. An unchanged or background-idle project produces no snapshot. Ordinary saves copy unchanged history in its compressed ZIP representation.
 
 ## Story Bible
 
@@ -242,6 +249,7 @@ Stored separately in OS config directory:
 
 ```typescript
 interface AppSettings {
+  activity_autosave_enabled: boolean // paused-edit saves + automatic chapter history
   // AI Configuration
   ai_enabled: boolean
   ai_mode: 'claudecode' | 'api' | 'local'
@@ -266,7 +274,6 @@ interface AppSettings {
 
   // Other
   show_word_count: boolean
-  autosave_interval: number  // minutes, 0 = disabled
 }
 ```
 
@@ -275,8 +282,8 @@ interface AppSettings {
 The manifest includes a version field:
 ```json
 {
-  "version": "2.0",
-  "app_version": "0.12.02325",
+  "version": "2.2",
+  "app_version": "0.16.02447",
   ...
 }
 ```

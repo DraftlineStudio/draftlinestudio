@@ -13,10 +13,41 @@ type Metadata struct {
 
 // ChapterItem represents a single chapter or section in a book.
 type ChapterItem struct {
+	ID       string `json:"id,omitempty"`
 	Title    string `json:"title"`
 	Subtitle string `json:"subtitle,omitempty"` // Optional chapter subheading
 	Type     string `json:"type"`
 	Content  string `json:"content"`
+}
+
+// ChapterSnapshotRequest describes a chapter state to add to the version
+// history embedded in a .draftline archive.
+type ChapterSnapshotRequest struct {
+	ChapterID    string `json:"chapter_id"`
+	Section      string `json:"section"`
+	ChapterTitle string `json:"chapter_title"`
+	Content      string `json:"content"`
+	Reason       string `json:"reason,omitempty"`
+}
+
+// ChapterHistoryEntry is the lightweight metadata shown by the history UI.
+// Snapshot content remains in the archive until explicitly requested.
+type ChapterHistoryEntry struct {
+	ID           string `json:"id"`
+	ChapterID    string `json:"chapter_id"`
+	Section      string `json:"section"`
+	ChapterTitle string `json:"chapter_title"`
+	CreatedAt    string `json:"created_at"`
+	Reason       string `json:"reason"`
+	WordCount    int    `json:"word_count"`
+	ContentHash  string `json:"content_hash"`
+	File         string `json:"file"`
+}
+
+// ChapterHistorySnapshot includes the content for one selected history entry.
+type ChapterHistorySnapshot struct {
+	Entry   ChapterHistoryEntry `json:"entry"`
+	Content string              `json:"content"`
 }
 
 // WritingGoals tracks the author's writing progress and targets.

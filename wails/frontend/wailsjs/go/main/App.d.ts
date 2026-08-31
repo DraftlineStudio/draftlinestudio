@@ -34,6 +34,8 @@ export function GenerateInlineContent(arg1:types.InlineGenerateRequest):Promise<
 
 export function GetAppVersion():Promise<string>;
 
+export function GetChapterHistory(arg1:string):Promise<types.ChapterHistorySnapshot>;
+
 export function GetCharacterRelationships(arg1:types.BookData,arg2:string):Promise<Array<types.RelationshipRecord>>;
 
 export function GetCharacterTimeline(arg1:types.BookData,arg2:string):Promise<types.CharacterTimelineResult>;
@@ -55,6 +57,8 @@ export function ImportEPUBDialog():Promise<types.ImportResult>;
 export function IndexBook(arg1:types.BookData):Promise<types.IndexResult>;
 
 export function ListBackups():Promise<Array<types.BackupInfo>>;
+
+export function ListChapterHistory(arg1:string):Promise<Array<types.ChapterHistoryEntry>>;
 
 export function LoadSettings():Promise<types.AppSettings>;
 
@@ -81,6 +85,8 @@ export function RewriteTextCustom(arg1:string,arg2:string):Promise<types.AIRewri
 export function SaveBook(arg1:types.BookData):Promise<types.SaveResult>;
 
 export function SaveBookAs(arg1:types.BookData):Promise<types.SaveResult>;
+
+export function SaveBookSnapshots(arg1:types.BookData,arg2:Array<types.ChapterSnapshotRequest>):Promise<types.SaveResult>;
 
 export function SaveSettings(arg1:types.AppSettings):Promise<void>;
 

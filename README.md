@@ -13,7 +13,7 @@ Draftline is under active pre-1.0 development. Windows is the primary developmen
 - Character detection, entity resolution, aliases, appearances, and relationship analysis
 - Story bible, timelines, beat sheets, foreshadowing, and knowledge tracking
 - Chapter-scoped find and replace
-- Automatic local saves and rolling manuscript backups
+- Optional activity-based local saves, embedded chapter version history with side-by-side restore, and rolling manuscript backups
 - EPUB and DOCX import, with export support currently being redesigned
 - Optional AI line editing, copy editing, rewriting, and inline assistance
 - Feature switches presented through a plugin-style settings screen
@@ -99,7 +99,7 @@ The `capacitor` directory contains experimental work and is not the primary desk
 
 ## The `.draftline` format
 
-A `.draftline` project is a ZIP-based archive containing a manifest, chapter HTML, book metadata, and optional analysis and story-planning data. See the [data-model documentation](docs/data-model/DATA-MODEL.md) and [book backend documentation](docs/backend/book/BOOK.md) for details.
+A `.draftline` project is a ZIP-based archive containing a manifest, chapter HTML, book metadata, embedded chapter history, and optional analysis and story-planning data. See the [data-model documentation](docs/data-model/DATA-MODEL.md) and [book backend documentation](docs/backend/book/BOOK.md) for details.
 
 Keep independent backups of important manuscripts. Compatibility and migration behavior may still change before the first stable release.
 

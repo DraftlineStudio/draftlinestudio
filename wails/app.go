@@ -44,7 +44,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.16.02446"
+const AppVersion = "0.16.02447"
 
 // maxAIResponseBytes caps how much of a provider HTTP response body we will
 // read into memory. It sits comfortably above any plausible max-output-tokens
@@ -323,8 +323,8 @@ func (a *App) startup(ctx context.Context) {
 func (a *App) NewBook() types.BookData {
 	now := time.Now().Format(time.RFC3339)
 	a.setCurrentFile("")
-	return types.BookData{
-		Version: "2.0",
+	newBook := types.BookData{
+		Version: "2.2",
 		Metadata: types.Metadata{
 			Title:    "Untitled",
 			Created:  now,
@@ -338,6 +338,8 @@ func (a *App) NewBook() types.BookData {
 		BackMatter: []types.ChapterItem{},
 		StoryBible: types.StoryBible{Characters: []types.Character{}},
 	}
+	book.EnsureBookChapterIDs(&newBook)
+	return newBook
 }
 
 // OpenBookDialog shows the native file picker and opens the selected file.
@@ -371,6 +373,31 @@ func (a *App) SaveBook(book types.BookData) types.SaveResult {
 		return a.SaveBookAs(book)
 	}
 	return a.writeBook(book, current)
+}
+
+// SaveBookSnapshots atomically saves the current book and appends deduplicated
+// chapter snapshots to the version history embedded in its archive.
+func (a *App) SaveBookSnapshots(b types.BookData, snapshots []types.ChapterSnapshotRequest) types.SaveResult {
+	current := a.getCurrentFile()
+	if current == "" {
+		return types.SaveResult{Success: false, Error: "save the project before creating version history"}
+	}
+	result := book.WriteWithSnapshots(current, b, AppVersion, snapshots)
+	if result.Success {
+		a.setCurrentFile(current)
+	}
+	return result
+}
+
+// ListChapterHistory returns snapshot metadata for one stable chapter ID.
+func (a *App) ListChapterHistory(chapterID string) ([]types.ChapterHistoryEntry, error) {
+	return book.ListChapterHistory(a.getCurrentFile(), chapterID)
+}
+
+// GetChapterHistory returns one snapshot after resolving it through the
+// archive index; callers cannot use the ID as an arbitrary archive path.
+func (a *App) GetChapterHistory(snapshotID string) (types.ChapterHistorySnapshot, error) {
+	return book.GetChapterHistorySnapshot(a.getCurrentFile(), snapshotID)
 }
 
 // SaveBookAs shows the native save dialog.
@@ -520,20 +547,21 @@ func (a *App) settingsPath() string {
 // plaintext API key, which only startup's migration may see).
 func (a *App) loadSettingsFromDisk() types.AppSettings {
 	defaults := types.AppSettings{
-		AIEnabled:           false,
-		DarkMode:            true,
-		ThemeMode:           "dark",
-		AutoThemeUseManual:  true,
-		AutoThemeDawn:       "06:30",
-		AutoThemeDusk:       "19:00",
-		CustomDictionary:    []string{},
-		SpellCheckEnabled:   true,
-		GrammarCheckEnabled: true,
-		CastEnabled:         true,
-		StoryBibleEnabled:   true,
-		PlotWalkerEnabled:   true,
-		CharactersLaneView:  "grid",
-		SidebarPanelWidth:   350,
+		AIEnabled:               false,
+		DarkMode:                true,
+		ThemeMode:               "dark",
+		AutoThemeUseManual:      true,
+		AutoThemeDawn:           "06:30",
+		AutoThemeDusk:           "19:00",
+		ActivityAutoSaveEnabled: true,
+		CustomDictionary:        []string{},
+		SpellCheckEnabled:       true,
+		GrammarCheckEnabled:     true,
+		CastEnabled:             true,
+		StoryBibleEnabled:       true,
+		PlotWalkerEnabled:       true,
+		CharactersLaneView:      "grid",
+		SidebarPanelWidth:       350,
 		// Open on the Writing Dashboard by default; "" means closed.
 		SidebarActiveSection: "dashboard",
 	}

@@ -29,6 +29,8 @@ export interface ApplicationSectionProps {
   setAutoThemeDawn: (v: string) => void
   autoThemeDusk: string
   setAutoThemeDusk: (v: string) => void
+  activityAutoSaveEnabled: boolean
+  setActivityAutoSaveEnabled: (v: boolean) => void
   onBrowse: () => void
 }
 

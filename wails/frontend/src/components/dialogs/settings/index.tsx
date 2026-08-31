@@ -34,6 +34,7 @@ export default function AppSettingsDialog() {
   const [autoThemeUseManual, setAutoThemeUseManual] = useState(settings.auto_theme_use_manual)
   const [autoThemeDawn, setAutoThemeDawn] = useState(settings.auto_theme_dawn)
   const [autoThemeDusk, setAutoThemeDusk] = useState(settings.auto_theme_dusk)
+  const [activityAutoSaveEnabled, setActivityAutoSaveEnabled] = useState(settings.activity_autosave_enabled)
   const [spellCheckEnabled, setSpellCheckEnabled] = useState(settings.spell_check_enabled)
   const [grammarCheckEnabled, setGrammarCheckEnabled] = useState(settings.grammar_check_enabled)
   const [castEnabled, setCastEnabled] = useState(settings.cast_enabled)
@@ -230,6 +231,7 @@ export default function AppSettingsDialog() {
       auto_theme_use_manual: autoThemeUseManual,
       auto_theme_dawn: autoThemeDawn,
       auto_theme_dusk: autoThemeDusk,
+      activity_autosave_enabled: activityAutoSaveEnabled,
       spell_check_enabled: spellCheckEnabled,
       grammar_check_enabled: grammarCheckEnabled,
       cast_enabled: castEnabled,
@@ -329,6 +331,7 @@ export default function AppSettingsDialog() {
                 autoThemeUseManual={autoThemeUseManual} setAutoThemeUseManual={setAutoThemeUseManual}
                 autoThemeDawn={autoThemeDawn} setAutoThemeDawn={setAutoThemeDawn}
                 autoThemeDusk={autoThemeDusk} setAutoThemeDusk={setAutoThemeDusk}
+                activityAutoSaveEnabled={activityAutoSaveEnabled} setActivityAutoSaveEnabled={setActivityAutoSaveEnabled}
                 onBrowse={handleBrowse}
               />
             )}

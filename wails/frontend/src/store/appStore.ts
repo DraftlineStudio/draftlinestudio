@@ -15,6 +15,7 @@ export interface AppSettings {
   auto_theme_use_manual: boolean
   auto_theme_dawn: string
   auto_theme_dusk: string
+  activity_autosave_enabled: boolean
   custom_dictionary: string[]
   spell_check_enabled: boolean
   grammar_check_enabled: boolean
@@ -80,6 +81,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   auto_theme_use_manual: true,
   auto_theme_dawn: '06:30',
   auto_theme_dusk: '19:00',
+  activity_autosave_enabled: true,
   custom_dictionary: [],
   spell_check_enabled: true,
   grammar_check_enabled: true,
