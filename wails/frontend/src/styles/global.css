@@ -61,6 +61,14 @@
   --section-front: #6699FF;
   --section-body:  #57A874;
   --section-back:  #A07ACA;
+
+  /* Semantic status (design-system tokens, same in both themes) */
+  --status-success:  #57A874;
+  --status-warning:  #E5C07B;
+  --status-error:    #E06C75;
+  --status-issue:    #f59e0b;
+  --status-complete: #4ade80;
+  --status-badge-text: #1A1B1E;
 }
 
 /* ===== DESIGN TOKENS — Light ===== */
@@ -117,6 +125,14 @@
   --section-front: #2962FF;
   --section-body:  #2E7D32;
   --section-back:  #6A1B9A;
+
+  /* Semantic status — slightly darker for light-surface legibility */
+  --status-success:  #2E7D32;
+  --status-warning:  #B58A2A;
+  --status-error:    #C24853;
+  --status-issue:    #B26A00;
+  --status-complete: #2E7D32;
+  --status-badge-text: #FFFFFF;
 }
 
 /* ===== THEME TRANSITION (auto theme mode) ===== */
@@ -1591,6 +1607,7 @@ html, body, #root {
 }
 
 .glyph-btn {
+  position: relative;
   width: 36px;
   height: 36px;
   display: flex;
@@ -1602,6 +1619,22 @@ html, body, #root {
   color: var(--text-muted);
   cursor: pointer;
   transition: background 0.12s, color 0.12s;
+}
+.glyph-badge {
+  position: absolute;
+  top: 2px;
+  right: 1px;
+  min-width: 13px;
+  height: 13px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: var(--status-issue);
+  color: var(--status-badge-text);
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 13px;
+  text-align: center;
+  pointer-events: none;
 }
 .glyph-btn:hover {
   background: var(--bg-hover);

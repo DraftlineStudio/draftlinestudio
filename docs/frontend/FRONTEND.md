@@ -29,6 +29,10 @@ frontend/src/
 │   │   │   └── index.tsx       # Word counts, goals, session stats
 │   │   ├── AIStudio/
 │   │   │   └── index.tsx       # AI modes, style mixer, streaming
+│   │   ├── Analysis/           # Analysis sidebar suite (see ANALYSIS-SIDEBARS.md)
+│   │   │   ├── shared.ts       # Cross-panel nav, deltas, dismissals
+│   │   │   ├── analysis.css    # Shared .an-* visual vocabulary
+│   │   │   └── *Panel.tsx      # One component + css per panel
 │   │   └── PlotWalker/
 │   │       └── index.tsx       # Story Analysis viewer
 │   └── dialogs/
@@ -97,6 +101,7 @@ Slim router that displays feature modules based on active glyph selection and th
 Each feature is isolated in its own folder:
 - **Dashboard/** - Word counts, writing goals, session stats, AI detection
 - **AIStudio/** - Rewrite modes, style mixer, streaming output, setup guidance
+- **Analysis/** - The analysis sidebar suite (Prose, and siblings as they land) — see `docs/frontend/ANALYSIS-SIDEBARS.md`
 - **PlotWalker/** - Story Analysis viewer (manuscript signals, observations, per-chapter cards)
 
 The Story Bible (plot notes, timeline) and Plot Walker planning tools (beat sheet,
