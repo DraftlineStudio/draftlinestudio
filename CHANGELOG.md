@@ -19,6 +19,14 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02431] - 2026-08-30
+
+### Security
+- Bounded AI provider response reads. The OpenAI, Gemini, Grok, Anthropic error-body, and local-endpoint paths in `wails/app.go` previously read provider HTTP response bodies with unbounded `io.ReadAll` (and the local endpoint decoded an unbounded JSON body), allowing a hostile or malfunctioning endpoint to exhaust memory with an arbitrarily large body. Each read now goes through a new `readAIResponseBody` helper that caps the body at 16 MB (`maxAIResponseBytes`, comfortably above max-output-tokens payloads) via `io.LimitReader` and returns a clear "response too large" error on overflow. The streaming Anthropic success path already used a bounded `bufio.Scanner` and is unchanged.
+- Audit ref: sol5.6-2026-08-30 — SEC-007 (bound-ai-reads).
+
+---
+
 ## [0.16.02430] - 2026-08-30
 
 ### Security

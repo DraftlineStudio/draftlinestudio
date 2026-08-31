@@ -44,7 +44,27 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.16.02430"
+const AppVersion = "0.16.02431"
+
+// maxAIResponseBytes caps how much of a provider HTTP response body we will
+// read into memory. It sits comfortably above any plausible max-output-tokens
+// payload while preventing a hostile or malfunctioning endpoint from exhausting
+// memory via an unbounded body (audit Sol SEC-007).
+const maxAIResponseBytes = 16 << 20 // 16 MB
+
+// readAIResponseBody reads a provider response body up to maxAIResponseBytes.
+// If the body exceeds the cap it returns a clear "response too large" error
+// instead of buffering it all.
+func readAIResponseBody(r io.Reader) ([]byte, error) {
+	body, err := io.ReadAll(io.LimitReader(r, maxAIResponseBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(body) > maxAIResponseBytes {
+		return nil, fmt.Errorf("response too large (exceeds %d bytes)", maxAIResponseBytes)
+	}
+	return body, nil
+}
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -1252,7 +1272,7 @@ func (a *App) streamAnthropic(ctx context.Context, apiKey, model, system, userMs
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != 200 {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := readAIResponseBody(resp.Body)
 		var apiErr struct {
 			Error struct {
 				Message string `json:"message"`
@@ -1630,7 +1650,11 @@ func (a *App) callLocalAI(ctx context.Context, system, userMsg string) types.AIR
 		} `json:"choices"`
 		Error struct{ Message string } `json:"error"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	body, err := readAIResponseBody(resp.Body)
+	if err != nil {
+		return types.AIRewriteResult{Error: err.Error()}
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
 		return types.AIRewriteResult{Error: "failed to parse response: " + err.Error()}
 	}
 	if result.Error.Message != "" {
@@ -1677,7 +1701,10 @@ func (a *App) callOpenAI(ctx context.Context, system, userMsg string, profile ai
 		return types.AIRewriteResult{Error: err.Error()}
 	}
 	defer func() { _ = resp.Body.Close() }()
-	body, _ := io.ReadAll(resp.Body)
+	body, err := readAIResponseBody(resp.Body)
+	if err != nil {
+		return types.AIRewriteResult{Error: err.Error()}
+	}
 
 	var result struct {
 		Choices []struct {
@@ -1738,7 +1765,10 @@ func (a *App) callGemini(ctx context.Context, system, userMsg string, profile ai
 		return types.AIRewriteResult{Error: "Failed to connect to Gemini API: " + err.Error()}
 	}
 	defer func() { _ = resp.Body.Close() }()
-	body, _ := io.ReadAll(resp.Body)
+	body, err := readAIResponseBody(resp.Body)
+	if err != nil {
+		return types.AIRewriteResult{Error: err.Error()}
+	}
 
 	var result struct {
 		Candidates []struct {
@@ -1792,7 +1822,10 @@ func (a *App) callGrok(ctx context.Context, system, userMsg string, profile aiRe
 		return types.AIRewriteResult{Error: "Failed to connect to Grok API: " + err.Error()}
 	}
 	defer func() { _ = resp.Body.Close() }()
-	body, _ := io.ReadAll(resp.Body)
+	body, err := readAIResponseBody(resp.Body)
+	if err != nil {
+		return types.AIRewriteResult{Error: err.Error()}
+	}
 
 	var result struct {
 		Choices []struct {
