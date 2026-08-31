@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02449] - 2026-08-31
+
+### Removed
+- Removed the Plot Notes, Timeline, Beat Sheet, Foreshadowing Ledger, and Knowledge Matrix sidebars.
+
 ## [0.16.02448] - 2026-08-31
 
 ### Added

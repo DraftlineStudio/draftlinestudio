@@ -4,8 +4,6 @@ export type FeatureSettingKey =
   | 'spell_check_enabled'
   | 'grammar_check_enabled'
   | 'cast_enabled'
-  | 'story_bible_enabled'
-  | 'plot_walker_enabled'
   | 'analysis_enabled'
   | 'ai_enabled'
 
@@ -42,18 +40,6 @@ export const FEATURE_REGISTRY: DraftlineFeature[] = [
     vendor: 'Draftline', version: '1.0', category: 'Story tools', monogram: 'Ch', accent: '#ba6ed6', bundled: true,
     description: 'Character codex: entity indexing, chapter presence, and relationship insight.',
     capabilities: ['analysis.characters', 'analysis.relationships'], resourceProfile: 'light',
-  },
-  {
-    id: 'draftline.story-bible', settingKey: 'story_bible_enabled', name: 'Story Bible',
-    vendor: 'Draftline', version: '1.0', category: 'Story tools', monogram: 'Sb', accent: '#4fa879', bundled: true,
-    description: 'Plot notes and a timeline that stay beside the manuscript.',
-    capabilities: ['workspace.story-bible'], resourceProfile: 'tiny',
-  },
-  {
-    id: 'draftline.plot-walker', settingKey: 'plot_walker_enabled', name: 'Plot Walker',
-    vendor: 'Draftline', version: '1.0', category: 'Story tools', monogram: 'Pw', accent: '#d39a45', bundled: true,
-    description: 'Beat sheets, foreshadowing, knowledge tracking, and story issue review.',
-    capabilities: ['workspace.plot', 'analysis.viewer'], resourceProfile: 'tiny',
   },
   {
     id: 'draftline.story-analysis', settingKey: 'analysis_enabled', name: 'Story Analysis',
