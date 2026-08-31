@@ -19,6 +19,13 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02424] - 2026-08-30
+
+### Added
+- Three code-audit reports under `docs/ai-audit/`: an independent Fable 5 pass, a consolidated master report cross-referencing Fable 5 + GPT-5.6 Sol + a Qodana static-analysis run, and Sol's own report. The 182 MB Qodana SARIF is intentionally not tracked (history bloat); its findings are distilled in the master report
+
+---
+
 ## [0.16.02423] - 2026-08-30
 
 ### Added
