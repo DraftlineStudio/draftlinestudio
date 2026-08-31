@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02434] - 2026-08-30
+
+### Fixed
+- Chapters that fail to load now show an error instead of opening empty.
+
 ## [0.16.02433] - 2026-08-30
 
 ### Fixed
