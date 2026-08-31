@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02430] - 2026-08-30
+
+### Security
+- The AI activity log no longer shows manuscript text from Claude Code.
+
 ## [0.16.02429] - 2026-08-30
 
 ### Security
