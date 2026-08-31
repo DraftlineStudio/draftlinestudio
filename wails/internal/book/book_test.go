@@ -203,6 +203,45 @@ func TestOpenFailsOnOversizedChapterEntry(t *testing.T) {
 	}
 }
 
+func TestOpenRejectsManifestReferenceAmplification(t *testing.T) {
+	isolateConfigDir(t)
+	path := filepath.Join(t.TempDir(), "amplified.draftline")
+
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := zip.NewWriter(f)
+
+	// A single valid body entry, referenced an absurd number of times.
+	bw, _ := w.Create("body/000.html")
+	_, _ = bw.Write([]byte("<p>chapter</p>"))
+
+	var b strings.Builder
+	b.WriteString(`{"version":"2.0","body":[`)
+	refs := MaxManifestRefs + 1
+	for i := 0; i < refs; i++ {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		b.WriteString(`{"title":"C","type":"chapter","file":"body/000.html"}`)
+	}
+	b.WriteString(`]}`)
+
+	mw, _ := w.Create("manifest.json")
+	_, _ = mw.Write([]byte(b.String()))
+	_ = w.Close()
+	_ = f.Close()
+
+	_, err = Open(path)
+	if err == nil {
+		t.Fatal("expected rejection of manifest with excessive references")
+	}
+	if !strings.Contains(err.Error(), "limit") {
+		t.Fatalf("error should mention the reference limit, got: %v", err)
+	}
+}
+
 func TestOpenRejectsZipBomb(t *testing.T) {
 	isolateConfigDir(t)
 	path := filepath.Join(t.TempDir(), "bomb.draftline")

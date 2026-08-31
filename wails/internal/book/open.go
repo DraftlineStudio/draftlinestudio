@@ -11,23 +11,56 @@ import (
 	"draftline/internal/ziputil"
 )
 
+const (
+	// MaxManifestRefs caps the combined number of chapter/section references a
+	// manifest may declare. ziputil bounds the ZIP's entry count and byte size,
+	// but a manifest can reference the same valid entry an unbounded number of
+	// times, loading it into memory on each reference and bypassing the
+	// archive-level aggregate bound. 5000 is far beyond any real manuscript.
+	MaxManifestRefs = 5000
+	// MaxTotalLoadedBytes caps the cumulative decompressed content actually
+	// loaded across one open operation. This closes the amplification gap where
+	// N references to a single large-but-legal entry multiply memory use.
+	MaxTotalLoadedBytes = ziputil.MaxTotalSize
+)
+
 // ReadZipEntry reads a named entry from a ZIP archive, enforcing size limits.
 func ReadZipEntry(r *zip.ReadCloser, name string) ([]byte, error) {
 	return ziputil.ReadNamed(r.File, name, false)
+}
+
+// byteBudget tracks cumulative decompressed bytes loaded across one open
+// operation and fails once the aggregate exceeds MaxTotalLoadedBytes. A single
+// entry is individually bounded by ziputil, but repeated references to the same
+// entry are not, so the budget must be enforced at the aggregate level.
+type byteBudget struct {
+	used int64
+}
+
+func (b *byteBudget) add(n int) error {
+	b.used += int64(n)
+	if b.used > MaxTotalLoadedBytes {
+		return fmt.Errorf("archive references more than %d bytes of content when expanded (limit exceeded)", MaxTotalLoadedBytes)
+	}
+	return nil
 }
 
 // readChapterContent reads a manifest-referenced chapter entry. A missing,
 // oversized, or otherwise unreadable entry is a hard error rather than an empty
 // chapter: silently substituting empty content would let a subsequent autosave
 // overwrite the (still intact) source with nothing. The error names the chapter
-// and file, and distinguishes an absent entry from a read/size failure.
-func readChapterContent(r *zip.ReadCloser, title, file string) (string, error) {
+// and file, and distinguishes an absent entry from a read/size failure. The
+// running budget guards against reference amplification across the whole open.
+func readChapterContent(r *zip.ReadCloser, title, file string, budget *byteBudget) (string, error) {
 	content, err := ReadZipEntry(r, file)
 	if err != nil {
 		if errors.Is(err, ziputil.ErrEntryNotFound) {
 			return "", fmt.Errorf("chapter %q references entry %q which is missing from the archive", title, file)
 		}
 		return "", fmt.Errorf("chapter %q entry %q could not be read: %w", title, file, err)
+	}
+	if err := budget.add(len(content)); err != nil {
+		return "", err
 	}
 	return string(content), nil
 }
@@ -84,6 +117,16 @@ func Open(path string) (types.BookData, error) {
 		return types.BookData{}, fmt.Errorf("failed to parse manifest: %w", err)
 	}
 
+	// Bound the combined number of manifest references before loading any
+	// content. Without this, a small manifest can reference the same valid
+	// entry thousands of times and amplify memory use far beyond the ZIP's
+	// own entry/size limits.
+	totalRefs := len(raw.Chapters) + len(raw.FrontMatter) + len(raw.Body) + len(raw.BackMatter)
+	if totalRefs > MaxManifestRefs {
+		return types.BookData{}, fmt.Errorf("manifest declares %d chapter/section references (limit %d)", totalRefs, MaxManifestRefs)
+	}
+	budget := &byteBudget{}
+
 	book := types.BookData{
 		Version:      raw.Version,
 		Metadata:     raw.Metadata,
@@ -100,7 +143,7 @@ func Open(path string) (types.BookData, error) {
 	// v1.0 migration: chapters/ -> body/
 	if raw.Version == "1.0" {
 		for _, ch := range raw.Chapters {
-			content, err := readChapterContent(r, ch.Title, ch.File)
+			content, err := readChapterContent(r, ch.Title, ch.File, budget)
 			if err != nil {
 				return types.BookData{}, err
 			}
@@ -123,7 +166,7 @@ func Open(path string) (types.BookData, error) {
 	}
 
 	for _, item := range raw.FrontMatter {
-		content, err := readChapterContent(r, item.Title, item.File)
+		content, err := readChapterContent(r, item.Title, item.File, budget)
 		if err != nil {
 			return types.BookData{}, err
 		}
@@ -132,7 +175,7 @@ func Open(path string) (types.BookData, error) {
 		})
 	}
 	for _, item := range raw.Body {
-		content, err := readChapterContent(r, item.Title, item.File)
+		content, err := readChapterContent(r, item.Title, item.File, budget)
 		if err != nil {
 			return types.BookData{}, err
 		}
@@ -141,7 +184,7 @@ func Open(path string) (types.BookData, error) {
 		})
 	}
 	for _, item := range raw.BackMatter {
-		content, err := readChapterContent(r, item.Title, item.File)
+		content, err := readChapterContent(r, item.Title, item.File, budget)
 		if err != nil {
 			return types.BookData{}, err
 		}

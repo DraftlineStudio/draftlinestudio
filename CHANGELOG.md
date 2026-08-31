@@ -19,6 +19,14 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02435] - 2026-08-30
+
+### Security
+- Cap manifest reference amplification when opening a `.draftline` archive. `ziputil` bounds the ZIP's entry count and per-entry/aggregate declared size, but a manifest could reference the same valid entry an unbounded number of times, loading its decompressed content into memory on each reference and bypassing the intended aggregate memory bound (a small archive amplifying to gigabytes). `Open` in `wails/internal/book/open.go` now rejects manifests declaring more than `MaxManifestRefs` (5000) combined chapter/section references before loading any content, and tracks cumulative decompressed bytes across the whole open operation via a running budget, erroring once the total exceeds `MaxTotalLoadedBytes` (500 MB). Added `book_test.go` coverage for a manifest with an absurd number of references.
+- Audit ref: master-audit-report-2026-08-30 — Sol REL-003 (cap-manifest-refs).
+
+---
+
 ## [0.16.02434] - 2026-08-30
 
 ### Fixed
