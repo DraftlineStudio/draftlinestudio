@@ -4,6 +4,14 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02445] - 2026-08-31
+
+### Added
+- Licensed Draftline under the MIT License.
+- Added a root project README covering Draftline's purpose and features, local-versus-AI privacy boundaries, source-build and test commands, repository layout, `.draftline` files, linear build versioning, and the official `draftline.ink` website.
+
+---
+
 ## [0.16.02444] - 2026-08-31
 
 ### Changed
