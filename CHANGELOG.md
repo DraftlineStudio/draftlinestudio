@@ -4,6 +4,21 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02443] - 2026-08-31
+
+### Added
+- Structural round-trip tests for the `internal/export` package, which
+  previously had only `helpers_test.go` while `docx.go`, `epub.go`, `pdf.go`,
+  and `print.go` were untested. New `export_test.go` exports a small book to
+  each format and validates: the DOCX archive is a valid zip carrying the
+  mandatory OOXML parts, with chapter text and metadata escaped exactly once
+  (no double-escaping, no raw `&`); the EPUB archive leads with a stored
+  `mimetype` entry and its `content.opf` / chapter XHTML carry correctly
+  escaped titles and verbatim body entities; and both the PDF and print PDF
+  exports produce a parseable `%PDF...%%EOF` envelope whose startxref, xref
+  object count, trailer `/Size`, and actual object markers all agree.
+  Audit ref: consensus finding J / Sol QA-001.
+
 ## [0.16.02442] - 2026-08-31
 
 ### Changed
