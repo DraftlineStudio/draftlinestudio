@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"testing"
 )
 
@@ -27,7 +28,7 @@ func TestAcquireAISerializes(t *testing.T) {
 
 	// CancelRewrite cancels the live context but does NOT free the slot.
 	app.CancelRewrite()
-	if ctx1.Err() != context.Canceled {
+	if !errors.Is(ctx1.Err(), context.Canceled) {
 		t.Fatal("CancelRewrite should cancel the live context")
 	}
 	if _, _, ok := app.acquireAI(); ok {
