@@ -19,6 +19,14 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02426] - 2026-08-30
+
+### Changed
+- Go idiom nits: `ziputil.ReadEntry` now uses `defer func() { _ = rc.Close() }()` to match the codebase's explicit-ignore idiom, and `app_test.go` compares the cancelled context error with `errors.Is(..., context.Canceled)` instead of `==`.
+- Audit ref: master-audit-report-2026-08-30 — Qodana `GoUnhandledErrorResult` (`ziputil/ziputil.go:58`) + `GoDirectComparisonOfErrors` (`app_test.go:30`).
+
+---
+
 ## [0.16.02425] - 2026-08-30
 
 ### Removed
