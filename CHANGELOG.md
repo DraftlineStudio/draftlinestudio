@@ -19,6 +19,14 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02434] - 2026-08-30
+
+### Fixed
+- Surface chapter read errors instead of silently opening empty chapters. `Open` in `wails/internal/book/open.go` read each manifest-referenced chapter with `content, _ := ReadZipEntry(...)`, so a missing, oversized, or corrupt entry became an empty chapter — which a subsequent autosave could then persist over the still-intact source, causing data loss. `Open` now fails with a precise error naming the offending chapter title and file, distinguishing an absent entry from a size/read failure (new `ziputil.ErrEntryNotFound` sentinel + `errors.Is`). Genuinely-optional, rebuildable files (`analysis.json`, `story_bible.json`, beat sheet, etc.) remain optional; `copyright.html` is tolerated when absent but no longer silently dropped on a read error. Added `book_test.go` cases covering a manifest that references a missing entry and one that references an oversized entry.
+- Audit ref: master-audit-report-2026-08-30 — Consensus D / Sol REL-001 (surface-chapter-read-errors).
+
+---
+
 ## [0.16.02433] - 2026-08-30
 
 ### Fixed
