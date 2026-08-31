@@ -44,7 +44,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.16.02428"
+const AppVersion = "0.16.02429"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -613,8 +613,14 @@ func (a *App) recentProjectsPath() string {
 		configDir = "."
 	}
 	dir := filepath.Join(configDir, "draftline")
-	_ = os.MkdirAll(dir, 0755)
-	return filepath.Join(dir, "recent_projects.json")
+	_ = os.MkdirAll(dir, 0700)
+	// Best-effort: tighten an existing directory created by an older version.
+	_ = os.Chmod(dir, 0700)
+	path := filepath.Join(dir, "recent_projects.json")
+	// Best-effort: tighten an existing recent-projects file written with
+	// looser permissions by an older version. Ignore errors.
+	_ = os.Chmod(path, 0600)
+	return path
 }
 
 // GetRecentProjects returns the list of recently opened projects.
@@ -655,7 +661,7 @@ func (a *App) AddRecentProject(project types.RecentProject) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(a.recentProjectsPath(), data, 0644)
+	return fsutil.WriteFileAtomic(a.recentProjectsPath(), data, 0600)
 }
 
 // RemoveRecentProject removes a project from the recent list by path.
@@ -671,12 +677,12 @@ func (a *App) RemoveRecentProject(path string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(a.recentProjectsPath(), data, 0644)
+	return fsutil.WriteFileAtomic(a.recentProjectsPath(), data, 0600)
 }
 
 // ClearRecentProjects removes all projects from the recent list.
 func (a *App) ClearRecentProjects() error {
-	return os.WriteFile(a.recentProjectsPath(), []byte("[]"), 0644)
+	return fsutil.WriteFileAtomic(a.recentProjectsPath(), []byte("[]"), 0600)
 }
 
 // OpenRecentProject opens a project from the recent list by path.

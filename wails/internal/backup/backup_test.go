@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -80,6 +81,37 @@ func TestRestoreRoundTrip(t *testing.T) {
 	data, _ = os.ReadFile(backups[0].Path)
 	if string(data) != "modified" {
 		t.Fatalf("pre-restore backup content: %q", data)
+	}
+}
+
+func TestCreateUsesOwnerOnlyPermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix permission bits are not enforced on Windows")
+	}
+	isolateConfigDir(t)
+	path := filepath.Join(t.TempDir(), "book.draftline")
+	writeProject(t, path, "secret manuscript")
+	if err := Create(path); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	dir := Dir(path)
+	dirInfo, err := os.Stat(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := dirInfo.Mode().Perm(); got != 0700 {
+		t.Fatalf("backup dir perms = %o, want 0700", got)
+	}
+
+	for _, name := range []string{"backup.1.draftline", "info.json"} {
+		info, err := os.Stat(filepath.Join(dir, name))
+		if err != nil {
+			t.Fatalf("stat %s: %v", name, err)
+		}
+		if got := info.Mode().Perm(); got != 0600 {
+			t.Fatalf("%s perms = %o, want 0600", name, got)
+		}
 	}
 }
 
