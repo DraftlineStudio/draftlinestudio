@@ -24,6 +24,8 @@ Draftline stores manuscripts locally in `.draftline` project files. Spelling, gr
 
 AI features are optional and disabled until configured. When an AI feature is used, the selected manuscript text and its editing instructions are sent to the provider or command-line tool selected in Settings. Supported paths include local endpoints, provider APIs, Claude Code, and OpenAI Codex. Those services have their own privacy and data-retention policies.
 
+Draftline installs and runs tested, version-pinned Claude Code and Codex CLI releases from its local application-data directory. AI editing requests run in disposable workspaces with model-facing shell, filesystem, browser, application, and sub-agent tools disabled. Global CLI installations on `PATH` are not used by Draftline.
+
 AI debug logging is opt-in because its logs can contain prompts and manuscript text. Draftline also creates local rolling backups containing the complete manuscript.
 
 ## Technology
