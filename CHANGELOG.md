@@ -19,6 +19,14 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02428] - 2026-08-30
+
+### Changed
+- Removed dead CSS from `frontend/src/styles/global.css`: the replaced character-card story-bible UI (`.character-card*`, `.character-role*`, `.char-field*`, `.char-attr`, `.character-attributes`, `.character-auto-badge`, `.character-aliases*`, `.alias-tag`/`.alias-more`, `.aliases-label`, `.character-badges`, `.character-stats*`/`.character-stat`, `.chapter-mention*`, `.characters-header/stats/count/actions/sort`, `.sort-label`, `.sort-btn`, `.character-form*`, `.character-highlight-btn`, `.character-name/-desc-preview/-expanded/-card-actions`), the old diff-view block (`.diff-view`, `.diff-controls`, `.diff-count`, `.diff-para*`, `.diff-insert`, `.diff-delete`, `.diff-apply-row`, `.diff-nav-controls`), `.scope-toggle`/`.scope-btn`, `.voice-findings`, `.story-bible-subnav`/`.bible-nav-btn`, and `.book-analysis-modal`/`.analysis-finding*`. Each selector was grep-confirmed to have zero references across all `.tsx` files before removal; still-live neighbors (`.bible-add-btn`, `.beat-card`, `.foreshadow-card`, `.wizard-choice-tile`, `.tool-card`, `.ai-run-btn`, `.knowledge-matrix`, `.character-highlight`, `.chars-sort-label`) were preserved.
+- Audit ref: master-audit-report-2026-08-30 — finding H (Dead CSS in global.css, CssUnusedSymbol ×196).
+
+---
+
 ## [0.16.02427] - 2026-08-30
 
 ### Fixed
