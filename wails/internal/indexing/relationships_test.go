@@ -156,3 +156,48 @@ func TestAnalyzeBook_EndToEnd(t *testing.T) {
 		t.Error("non-deterministic relationship identity across runs")
 	}
 }
+
+// Entity IDs (entity-N) are positional and get reassigned on re-index, so any
+// previously analyzed relationship graph references stale/dangling entity IDs
+// after the text changes. IndexBook must invalidate book.Analysis.Relationships
+// (like merge/split do) so callers can't read the stale edges. Regression for
+// Fable audit finding C2 (invalidate-relationships-on-reindex).
+func TestIndexBook_InvalidatesRelationshipsOnReindex(t *testing.T) {
+	book := types.BookData{
+		Body: []types.ChapterItem{
+			{
+				Title: "Chapter 1",
+				Type:  "chapter",
+				Content: `<p>Marcus Webb entered the bar. Detective Clara was already there.</p>` +
+					`<p>"You're late," Clara said. Marcus shrugged. "Traffic," Marcus said to Clara.</p>`,
+			},
+		},
+	}
+
+	if result := IndexBook(&book); !result.Success {
+		t.Fatalf("IndexBook failed: %s", result.Error)
+	}
+
+	// Analyze relationships and store them on the book, as app.go does.
+	analyzer := NewRelationshipAnalyzer()
+	relData, err := analyzer.AnalyzeBook(book)
+	if err != nil {
+		t.Fatalf("AnalyzeBook failed: %v", err)
+	}
+	book.Analysis.Relationships = relData
+	if book.Analysis.Relationships == nil {
+		t.Fatal("precondition failed: relationships not stored on book")
+	}
+
+	// Mutate the text: a new character shifts entity numbering, so any edge
+	// carried over from the prior graph would now point at the wrong entity.
+	book.Body[0].Content += `<p>Sergeant Nolan arrived and spoke with Marcus and Clara.</p>`
+
+	// Re-index. Relationships must be cleared, not left pointing at old IDs.
+	if result := IndexBook(&book); !result.Success {
+		t.Fatalf("second IndexBook failed: %s", result.Error)
+	}
+	if book.Analysis.Relationships != nil {
+		t.Errorf("re-index left stale relationship graph: %+v", book.Analysis.Relationships)
+	}
+}
