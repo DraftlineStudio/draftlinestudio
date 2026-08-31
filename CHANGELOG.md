@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02455] - 2026-08-31
+
+### Added
+- Added the AI Analysis panel with a chapter score, whole-book scan, and flagged passages.
+
 ## [0.16.02454] - 2026-08-31
 
 ### Added
