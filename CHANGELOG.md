@@ -19,6 +19,14 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02437] - 2026-08-31
+
+### Fixed
+- Dialogue detection now works on real (curly-quoted) manuscripts. `findDialogueRanges` in the relationship co-occurrence indexer had a broken quote table: its first two entries were duplicate straight double-quotes `"`, the curly double pair U+201C/U+201D was absent entirely, and straight single-quote `'` was treated as a dialogue delimiter. On any manuscript typeset with curly quotes, dialogue detection therefore found nothing and produced no directed dialogue interactions, while apostrophes in possessives/contractions ("Kira's") fabricated phantom dialogue spans. The table now recognizes straight double `"`, curly double `“ ”`, and guillemets `« »`, aligned with the mention scanner's `isQuoteInitial`; single quotes are excluded so apostrophes can no longer be mistaken for dialogue delimiters. Added `relationships_test.go` cases asserting a directed dialogue interaction is produced from curly-quoted dialogue and that apostrophes yield no dialogue ranges.
+- Audit ref: fable5-2026-08-30 — Fable C4 (curly-quote-dialogue).
+
+---
+
 ## [0.16.02436] - 2026-08-30
 
 ### Fixed
