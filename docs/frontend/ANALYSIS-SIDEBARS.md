@@ -65,3 +65,17 @@ Tempo-by-chapter view of the manuscript.
 **Data:** `useBookStore(s => s.book).analysis?.story.chapters` (`ChapterAnalysis[]`). Insight and per-metric stats (max/mean/σ) are memoized on `chapters`/active metric. No whole-book HTML parsing, no debounced live analysis, no localStorage keys.
 
 **Empty states:** no book → `tool-empty-state` "Open a project to see analysis."; book without analysis (or zero analyzed chapters) → `.an-empty` explainer with an "Analyze now" `.an-run-btn` wired to `useAnalysisStore().run`, disabled while running or when `settings.analysis_enabled` is off.
+
+## Chapters panel (`ChaptersPanel.tsx`, `chapters-panel.css`)
+
+Design section 3e. A skimmable per-chapter recap of the manuscript: for each analyzed chapter, a clickable card with its number and title, a meta line (`{word_count} words · {scenes} scenes · {breaks} breaks`, pluralized, scenes = scene_break_count + 1), the extractive summary in Merriweather italic (`.an-serif`), and up to 6 keyword chips (`.an-chip`).
+
+**Data**: `useBookStore(s => s.book).analysis?.story.chapters` (`ChapterAnalysis[]`). Chapters with neither keywords nor an extractive summary (part dividers) are filtered out *after* numbering, so card numbers always match a chapter's 1-based position among analyzable chapters. Keywords come from `ChapterAnalysis.keywords[].term`; summaries from `extractive_summary`. All derivation is memoized on the analysis object; no live text parsing occurs in this panel.
+
+**Navigation**: card click calls `goToChapter(chapter.chapter_index)` from `Analysis/shared.ts` (combined front/body/back index space).
+
+**Behaviors**: first 8 cards shown, then an `.an-text-action` toggling "Show all {N} chapters" / "Show fewer" (component state, not persisted). No localStorage keys.
+
+**Empty states**: no book → standard `tool-empty-state`; no analysis → `.an-empty` with an "Analyze now" `.an-run-btn` wired to `useAnalysisStore().run` (disabled while running or when `settings.analysis_enabled` is off, showing "Enable in Plugins"); analysis present but no chapter has keywords or a summary → a dedicated `.an-empty` note.
+
+**CSS**: only `chp-*` rules; overrides `.an-card-list` gap to 10px inside this panel to match the mock's feed spacing; cards are `<button>` elements normalized on top of `.an-card`.
