@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import {
   DndContext,
   closestCenter,
@@ -19,7 +20,7 @@ import { useBookStore } from '../store/bookStore'
 import type { Section } from '../types/draftline'
 import { FRONT_MATTER_TYPES, BODY_TYPES, BACK_MATTER_TYPES } from '../types/draftline'
 import ContextMenu, { ContextMenuItem } from './ContextMenu'
-import { countWords } from '../utils/textUtils'
+import { countBookWords } from '../utils/textUtils'
 
 interface SortableItemProps {
   id: string
@@ -217,7 +218,17 @@ interface SectionListProps {
 }
 
 function SectionList({ section, label, types: _types }: SectionListProps) {
-  const { book, currentSection, currentIndex, setCurrentChapter, deleteChapter, moveChapter, openNewChapterDialog, updateChapterTitle, updateChapterSubtitle } = useBookStore()
+  const { book, currentSection, currentIndex, setCurrentChapter, deleteChapter, moveChapter, openNewChapterDialog, updateChapterTitle, updateChapterSubtitle } = useBookStore(useShallow(s => ({
+    book: s.book,
+    currentSection: s.currentSection,
+    currentIndex: s.currentIndex,
+    setCurrentChapter: s.setCurrentChapter,
+    deleteChapter: s.deleteChapter,
+    moveChapter: s.moveChapter,
+    openNewChapterDialog: s.openNewChapterDialog,
+    updateChapterTitle: s.updateChapterTitle,
+    updateChapterSubtitle: s.updateChapterSubtitle,
+  })))
   if (!book) return null
 
   const items = section === 'front_matter' ? book.front_matter
@@ -274,15 +285,19 @@ function SectionList({ section, label, types: _types }: SectionListProps) {
 }
 
 export default function ChapterPanel() {
-  const { book, currentSection, setCurrentChapter, leftPanelOpen, toggleLeftPanel } = useBookStore()
+  const { book, currentSection, setCurrentChapter, leftPanelOpen, toggleLeftPanel } = useBookStore(useShallow(s => ({
+    book: s.book,
+    currentSection: s.currentSection,
+    setCurrentChapter: s.setCurrentChapter,
+    leftPanelOpen: s.leftPanelOpen,
+    toggleLeftPanel: s.toggleLeftPanel,
+  })))
 
-  const allContent = book ? [
-    book.copyright,
-    ...book.front_matter.map((c) => c.content),
-    ...book.body.map((c) => c.content),
-    ...book.back_matter.map((c) => c.content),
-  ] : []
-  const totalWords = allContent.reduce((sum, html) => sum + countWords(html || ''), 0)
+  // Whole-book recount re-parses every chapter's HTML; memoize on the book
+  // reference so it only runs when content changes, not on unrelated store
+  // updates (isDirty / statusMessage / isAutoSaving) that used to re-render this
+  // panel via a bare store subscription.
+  const totalWords = useMemo(() => (book ? countBookWords(book) : 0), [book])
 
   return (
     <div className={`chapter-panel${leftPanelOpen ? '' : ' collapsed'}`}>

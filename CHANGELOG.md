@@ -4,6 +4,20 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02442] - 2026-08-31
+
+### Changed
+- Stopped the per-keystroke whole-book word recount on the renderer thread.
+  `StatusBar`, `ChapterPanel`, and the writing `Dashboard` previously re-parsed
+  and re-counted every chapter's HTML on every render, and `ChapterPanel` /
+  `Dashboard` re-rendered on every unrelated store update (isDirty,
+  statusMessage, isAutoSaving toggles) via bare `useBookStore()` subscriptions.
+  Those two components now subscribe through narrow `useShallow` selectors, and
+  all three memoize `countBookWords` / per-chapter counts on the book reference
+  so the scan only runs when content actually changes. Counts still update after
+  every edit; behavior is otherwise identical.
+  Audit ref: consensus finding E/F "no-wholebook-recount-on-typing" / Sol PERF-001.
+
 ## [0.16.02441] - 2026-08-31
 
 ### Changed
