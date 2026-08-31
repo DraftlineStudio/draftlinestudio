@@ -4,6 +4,18 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02446] - 2026-08-31
+
+### Security
+- Converted Claude Code and Codex editing subprocesses into text-only execution paths. Claude receives an explicitly empty tool list with safe mode, slash commands and MCP discovery disabled. Codex ignores user configuration and project rules, disables its shell plus browser, filesystem-adjacent, application, image, skill, hook, and sub-agent capabilities, inherits no shell environment, and retains a disposable empty workspace with a read-only fallback sandbox.
+- Prevented raw Claude stdout/stderr or fallback stream JSON from reaching the visible result and error panes. Failures now return only fixed, allowlisted authentication, rate-limit, model, or generic diagnostics.
+- Draftline now ignores arbitrary global Claude/Codex executables on `PATH` and runs only exact-version managed installations (`Claude Code 2.1.251`, `Codex CLI 0.151.0`). Managed runtimes live separately in the platform-local `draftline/ai/claude` and `draftline/ai/codex` directories, with shared pinned Node tooling under `draftline/ai/node`.
+
+### Documentation
+- Reclassified automatic character indexing on open as intended, advertised product behavior rather than an audit defect.
+
+---
+
 ## [0.16.02445] - 2026-08-31
 
 ### Added

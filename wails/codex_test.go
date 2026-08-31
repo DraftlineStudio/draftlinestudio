@@ -18,9 +18,14 @@ func TestCodexExecArgs(t *testing.T) {
 	if strings.Contains(joined, "-m ") {
 		t.Fatalf("model flag present without override: %v", args)
 	}
-	for _, want := range []string{"exec", "--skip-git-repo-check", "--sandbox", "read-only", "--ephemeral", "--color", "never", "--json", "--output-last-message"} {
+	for _, want := range []string{"exec", "--skip-git-repo-check", "--ignore-user-config", "--ignore-rules", "--strict-config", "--sandbox", "read-only", "--ask-for-approval", "never", "--ephemeral", "--color", "never", "--json", "--output-last-message"} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("missing %q in %v", want, args)
+		}
+	}
+	for _, feature := range []string{"shell_tool", "unified_exec", "view_image", "apps", "browser_use", "computer_use", "image_generation", "multi_agent", "skill_search", "hooks"} {
+		if !strings.Contains(joined, "--disable "+feature) {
+			t.Fatalf("capability %q was not disabled in %v", feature, args)
 		}
 	}
 
@@ -34,6 +39,33 @@ func TestCodexExecArgs(t *testing.T) {
 	}
 	if !strings.Contains(joined, `model_reasoning_effort="low"`) {
 		t.Fatalf("lightweight request did not lower Codex reasoning effort: %v", withModel)
+	}
+}
+
+func TestClaudeCodeExecArgsDisableAllTools(t *testing.T) {
+	args := claudeCodeExecArgs("claude-haiku", true)
+	joined := strings.Join(args, " ")
+	for _, want := range []string{"--safe-mode", "--disable-slash-commands", "--strict-mcp-config", "--tools", "--permission-mode dontAsk", "--no-session-persistence", "--effort low"} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("missing %q in %v", want, args)
+		}
+	}
+	for i := range args {
+		if args[i] == "--tools" {
+			if i+1 >= len(args) || args[i+1] != "" {
+				t.Fatalf("Claude tool list is not explicitly empty: %v", args)
+			}
+			return
+		}
+	}
+	t.Fatal("Claude --tools flag missing")
+}
+
+func TestClaudeFailureMessageDoesNotEchoPrompt(t *testing.T) {
+	stderr := "Error: request failed while processing PRIVATE MANUSCRIPT CONTENT"
+	message := claudeFailureMessage(stderr, errors.New("exit status 1"))
+	if strings.Contains(message, "PRIVATE MANUSCRIPT") {
+		t.Fatalf("prompt leaked into Claude error message: %q", message)
 	}
 }
 

@@ -44,7 +44,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.16.02445"
+const AppVersion = "0.16.02446"
 
 // maxAIResponseBytes caps how much of a provider HTTP response body we will
 // read into memory. It sits comfortably above any plausible max-output-tokens
@@ -1052,11 +1052,25 @@ func codexExecArgs(model, lastMessageFile string, lightweight bool) []string {
 	args := []string{
 		"exec",
 		"--skip-git-repo-check", // temp workdir is not a git repo
+		"--ignore-user-config",
+		"--ignore-rules",
+		"--strict-config",
 		"--sandbox", "read-only",
+		"--ask-for-approval", "never",
+		"--config", `shell_environment_policy.inherit="none"`,
 		"--ephemeral",
 		"--color", "never",
 		"--json",
 		"--output-last-message", lastMessageFile,
+	}
+	// Draftline needs text transformation, not an agent. Disable every stable
+	// capability-bearing feature exposed by the pinned Codex CLI so manuscript
+	// content cannot induce shell, file, browser, app, or sub-agent activity.
+	for _, feature := range []string{
+		"shell_tool", "unified_exec", "view_image", "apps", "browser_use",
+		"computer_use", "image_generation", "multi_agent", "skill_search", "hooks",
+	} {
+		args = append(args, "--disable", feature)
 	}
 	if lightweight {
 		args = append(args, "--config", `model_reasoning_effort="low"`)
@@ -1065,6 +1079,43 @@ func codexExecArgs(model, lastMessageFile string, lightweight bool) []string {
 		args = append(args, "-m", model)
 	}
 	return append(args, "-")
+}
+
+func claudeCodeExecArgs(model string, lightweight bool) []string {
+	args := []string{
+		"-p",
+		"--output-format", "stream-json",
+		"--verbose",
+		"--max-turns", "1",
+		"--model", model,
+		"--safe-mode",
+		"--disable-slash-commands",
+		"--strict-mcp-config",
+		"--mcp-config", `{}`,
+		"--tools", "",
+		"--permission-mode", "dontAsk",
+		"--no-session-persistence",
+	}
+	if lightweight {
+		args = append(args, "--effort", "low")
+	}
+	return args
+}
+
+func claudeFailureMessage(stderr string, runErr error) string {
+	lower := strings.ToLower(stderr)
+	switch {
+	case strings.Contains(lower, "401"), strings.Contains(lower, "403"), strings.Contains(lower, "auth"):
+		return "Claude authentication failed. Sign in again from Settings › AI Studio."
+	case strings.Contains(lower, "rate limit"), strings.Contains(lower, "429"):
+		return "Claude rate limit reached. Wait a moment and try again."
+	case strings.Contains(lower, "model") && (strings.Contains(lower, "not found") || strings.Contains(lower, "not supported")):
+		return "Claude rejected the selected model. Check the model setting and try again."
+	case runErr != nil:
+		return "Claude request failed (" + runErr.Error() + "). Check your Claude sign-in and connection."
+	default:
+		return "Claude request failed. Check your Claude sign-in and connection."
+	}
 }
 
 // codexModelOverride prevents the shared legacy ai_model setting from leaking
@@ -1589,19 +1640,7 @@ func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string, pro
 	// .cmd-shim fallback, where argv metacharacters would be interpreted) and
 	// sidesteps the ~32K Windows command-line length limit.
 	fullPrompt := system + "\n\n" + userMsg
-	claudeArgs := []string{
-		"-p",
-		"--output-format", "stream-json",
-		"--verbose",
-		"--max-turns", "1",
-		"--model", model,
-		"--dangerously-skip-permissions",
-		"--allowedTools", "",
-	}
-	if profile.lightweight {
-		claudeArgs = append(claudeArgs, "--effort", "low")
-	}
-	claudeArgs = append(claudeArgs, "--no-session-persistence")
+	claudeArgs := claudeCodeExecArgs(model, profile.lightweight)
 	cmd := claudeExec(ctx, path, claudeArgs...)
 	cmd.Stdin = strings.NewReader(fullPrompt)
 	cmd.Dir = tempHome
@@ -1643,10 +1682,8 @@ func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string, pro
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			var rawLines []string
 			streamed := false
 			drainLines(stdoutPipe, func(line string) {
-				rawLines = append(rawLines, line)
 				// Raw stream-json lines contain prompt/manuscript-derived
 				// content. Keep them only in the opt-in debug log; never emit
 				// them to the ai:log runtime event (which can appear in
@@ -1675,9 +1712,6 @@ func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string, pro
 					}
 				}
 			})
-			if resultText == "" {
-				resultText = strings.Join(rawLines, "\n")
-			}
 		}()
 	}
 	if stderrPipeErr == nil {
@@ -1697,17 +1731,16 @@ func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string, pro
 	wg.Wait()
 
 	if runErr != nil {
-		errMsg := strings.TrimSpace(stderrBuf.String())
-		if errMsg == "" {
-			errMsg = runErr.Error()
-		}
 		if errors.Is(ctx.Err(), context.Canceled) {
 			return types.AIRewriteResult{Error: "cancelled"}
 		}
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			return types.AIRewriteResult{Error: "timed out — try a shorter chapter or check your Claude Code connection"}
 		}
-		return types.AIRewriteResult{Error: errMsg}
+		return types.AIRewriteResult{Error: claudeFailureMessage(stderrBuf.String(), runErr)}
+	}
+	if strings.TrimSpace(resultText) == "" {
+		return types.AIRewriteResult{Error: "Claude produced no output — check that you are signed in (Settings › AI Studio)"}
 	}
 	return types.AIRewriteResult{Result: strings.TrimSpace(resultText)}
 }

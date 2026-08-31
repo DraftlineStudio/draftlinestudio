@@ -11,6 +11,28 @@ import (
 	"testing"
 )
 
+func TestInstalledNpmPackageVersion(t *testing.T) {
+	prefix := t.TempDir()
+	parts := []string{prefix}
+	if goruntime.GOOS != "windows" {
+		parts = append(parts, "lib")
+	}
+	parts = append(parts, "node_modules", "@openai", "codex")
+	pkgDir := filepath.Join(parts...)
+	if err := os.MkdirAll(pkgDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(pkgDir, "package.json"), []byte(`{"version":"0.151.0"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if got := installedNpmPackageVersion(prefix, "@openai", "codex"); got != "0.151.0" {
+		t.Fatalf("installed version = %q", got)
+	}
+	if got := installedNpmPackageVersion(prefix, "missing"); got != "" {
+		t.Fatalf("missing package returned version %q", got)
+	}
+}
+
 func TestSecurePath(t *testing.T) {
 	dest := t.TempDir()
 	cases := []struct {
