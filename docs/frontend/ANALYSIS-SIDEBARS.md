@@ -150,3 +150,19 @@ Heuristic AI-detection for the whole book. Unlike the other analysis panels it d
 - `scanPassages(html, analyzeThreshold = 150)` → `[{ excerpt, score }]` sorted descending: paragraphs from `<p>` elements (fallback: blank-line split), scored with `analyzeText` when ≥ 150 chars.
 
 No localStorage keys. No new dependencies. Panel-specific styles in `aidetect.css` (`.ai-*` prefix); shared vocabulary from `analysis.css`.
+
+## Writing Dashboard (redesigned)
+
+**Component:** `wails/frontend/src/components/tools/Dashboard/index.tsx` (+ `dashboard.css`, `history.ts`). Root classes `dashboard-content dash-panel`; reuses the existing `dashboard-*` / `big-number` / `progress-bar*` / `chapter-bar-*` / `goal-input*` classes from global.css, with new panel-specific styles prefixed `dash-` in `dashboard.css`.
+
+**What it shows (top to bottom):**
+- **Manuscript** — total book words (memoized `countBookWords` keyed on the `book` reference), hint button "target {n}k" when a target is set, progress bar with "{pct}%" left and "{remaining} to go" right (both hint and right label open the target editor; the set/edit input flows are unchanged from the old dashboard).
+- **Today** — hint "goal {n}", big number "{today} / of {goal} words", small progress bar, plus a goal-streak row: seven 8px squares (last 7 days, oldest to newest; `--status-complete` for days with words, `--app-accent` for today, bordered `--bg-surface-alt` otherwise) captioned "{count} of last 7 days". `words_today` lives in `book.writing_goals` and is treated as reset on a new day via `last_writing_date`; on a new day the session word delta stands in for it.
+- **This session** — hint "started {h:MM AM/PM}"; three stats: words written, time writing, words / min (`sessionWords / max(1, sessionMinutes)`, 1 decimal). The session baseline (word count + start time) is captured when a book first appears in the panel and re-captured per `bookKey` when a different book is opened; a 30s interval tick keeps the time-based stats fresh.
+- **Chapter stats** — unchanged (Chapters / Avg. length / Shortest / Longest, body chapters only).
+- **Chapter breakdown** — hint "all sections"; aggregate muted "Front matter" row, then "{n} · {title}" per body chapter, then aggregate "Back matter" row; bars normalized to the longest body chapter; first 10 rows then a "Show all {N}" / "Show fewer" toggle.
+- **AI detection jump row** — borderless bottom row "AI detection — current chapter" with the current chapter's score ("{score}%", colored by `getScoreColor`), computed by `analyzeText` 2s after the chapter content stops changing and omitted when the chapter has under 100 characters of plain text (`htmlToText` length, not HTML length). Clicking dispatches `openToolsSection('aidetect')` from `Analysis/shared.ts`.
+
+**localStorage:** `draftline.writing-history.{bookKey(book)}` — a `{ "YYYY-MM-DD": words }` map maintained by `history.ts` (`recordTodayWords` upserts today's max and prunes entries older than 60 days; `getLastNDays` returns the last N days oldest-first with missing days as 0). Dates are LOCAL calendar days, not UTC, so streak squares flip at the writer's midnight. Entries are never lowered within a day.
+
+**Empty state:** no book → `tool-empty-state` "Open or create a project to see your writing dashboard." (dashboard-specific wording kept from the previous component; the generic "…to see analysis." copy does not apply here).

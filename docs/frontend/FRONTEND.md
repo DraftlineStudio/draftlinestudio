@@ -25,8 +25,10 @@ frontend/src/
 │   │   ├── constants.ts        # SECTION_CONFIG, AI_MODES
 │   │   ├── types.ts            # GlyphSection, AIMode, AIState
 │   │   ├── GlyphIcon.tsx       # Glyph bar icons
-│   │   ├── Dashboard/
-│   │   │   └── index.tsx       # Word counts, goals, session stats
+│   │   ├── Dashboard/          # Writing activity (redesigned 0.16.02456)
+│   │   │   ├── index.tsx       # Progress, goals, streak, session, breakdown
+│   │   │   ├── dashboard.css   # dash-* styles for the redesign
+│   │   │   └── history.ts      # Per-book daily word history (localStorage)
 │   │   ├── AIStudio/
 │   │   │   └── index.tsx       # AI modes, style mixer, streaming
 │   │   └── Analysis/           # Analysis sidebar suite (see ANALYSIS-SIDEBARS.md)
@@ -97,7 +99,7 @@ Slim router that displays feature modules based on active glyph selection and th
 
 ### tools/ Feature Modules
 Each feature is isolated in its own folder:
-- **Dashboard/** - Word counts, writing goals, session stats, AI detection
+- **Dashboard/** - Writing activity only (progress, daily goal + 7-day streak, session rate, chapter breakdown); AI detection is a jump row into the AI Analysis panel (see `ANALYSIS-SIDEBARS.md`)
 - **AIStudio/** - Rewrite modes, style mixer, streaming output, setup guidance
 - **Analysis/** - The analysis sidebar suite (Signals, Prose, Pacing, Chapters, Worth Reviewing, AI Analysis) — see `docs/frontend/ANALYSIS-SIDEBARS.md`. The old single Story Analysis pane (`PlotWalker/`) was replaced by this suite in 0.16.02454.
 
