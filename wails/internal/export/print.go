@@ -441,9 +441,6 @@ func (p *printPDFWriter) build() []byte {
 		p.pageContents = append(p.pageContents, "")
 	}
 
-	var buf bytes.Buffer
-	buf.WriteString("%PDF-1.4\n")
-
 	numPages := len(p.pageContents)
 	pageObjIDs := make([]int, numPages)
 	nextObjID := 5
@@ -453,24 +450,30 @@ func (p *printPDFWriter) build() []byte {
 		nextObjID += 2
 	}
 
+	// Collect all object bodies in ID order so we can record true byte
+	// offsets as each object is written (required for a valid xref table).
+	var objects []string
+
 	// Object 1: Catalog
-	buf.WriteString("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n")
+	objects = append(objects, "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n")
 
 	// Object 2: Pages
-	buf.WriteString("2 0 obj\n<< /Type /Pages /Kids [")
+	var pagesObj strings.Builder
+	pagesObj.WriteString("2 0 obj\n<< /Type /Pages /Kids [")
 	for i, id := range pageObjIDs {
 		if i > 0 {
-			buf.WriteString(" ")
+			pagesObj.WriteString(" ")
 		}
-		buf.WriteString(fmt.Sprintf("%d 0 R", id))
+		pagesObj.WriteString(fmt.Sprintf("%d 0 R", id))
 	}
-	buf.WriteString(fmt.Sprintf("] /Count %d >>\nendobj\n", numPages))
+	pagesObj.WriteString(fmt.Sprintf("] /Count %d >>\nendobj\n", numPages))
+	objects = append(objects, pagesObj.String())
 
 	// Object 3: Font (Helvetica)
-	buf.WriteString("3 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n")
+	objects = append(objects, "3 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n")
 
 	// Object 4: Bold Font (Helvetica-Bold)
-	buf.WriteString("4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>\nendobj\n")
+	objects = append(objects, "4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>\nendobj\n")
 
 	// Pages and content streams
 	for i, content := range p.pageContents {
@@ -553,25 +556,37 @@ func (p *printPDFWriter) build() []byte {
 		}
 
 		// Page object
-		buf.WriteString(fmt.Sprintf("%d 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %.2f %.2f] /Contents %d 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>\nendobj\n",
+		objects = append(objects, fmt.Sprintf("%d 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %.2f %.2f] /Contents %d 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>\nendobj\n",
 			pageObjID, p.pageWidth, p.pageHeight, contentObjID))
 
 		// Content stream
-		buf.WriteString(fmt.Sprintf("%d 0 obj\n<< /Length %d >>\nstream\n%sendstream\nendobj\n",
+		objects = append(objects, fmt.Sprintf("%d 0 obj\n<< /Length %d >>\nstream\n%sendstream\nendobj\n",
 			contentObjID, len(finalContent), finalContent))
 	}
 
-	// Xref and trailer
+	// Write header and all objects, recording the true byte offset of each
+	// object so the xref table points exactly at its "N 0 obj" marker.
+	var buf bytes.Buffer
+	buf.WriteString("%PDF-1.4\n")
+
+	offsets := make([]int, len(objects))
+	for i, obj := range objects {
+		offsets[i] = buf.Len()
+		buf.WriteString(obj)
+	}
+
+	// Xref and trailer with accurate offsets
+	xrefOffset := buf.Len()
 	buf.WriteString("xref\n")
 	buf.WriteString(fmt.Sprintf("0 %d\n", nextObjID))
 	buf.WriteString("0000000000 65535 f \n")
-	for i := 1; i < nextObjID; i++ {
-		buf.WriteString(fmt.Sprintf("%010d 00000 n \n", i*100))
+	for _, offset := range offsets {
+		buf.WriteString(fmt.Sprintf("%010d 00000 n \n", offset))
 	}
 	buf.WriteString("trailer\n")
 	buf.WriteString(fmt.Sprintf("<< /Size %d /Root 1 0 R >>\n", nextObjID))
 	buf.WriteString("startxref\n")
-	buf.WriteString(fmt.Sprintf("%d\n", buf.Len()-20))
+	buf.WriteString(fmt.Sprintf("%d\n", xrefOffset))
 	buf.WriteString("%%EOF\n")
 
 	return buf.Bytes()

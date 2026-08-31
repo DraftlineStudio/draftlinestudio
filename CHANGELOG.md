@@ -4,6 +4,19 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02440] - 2026-08-31
+
+### Fixed
+- Print-ready PDF export (`internal/export/print.go`) now writes a correct
+  cross-reference table. Previously object offsets were fabricated as `i*100`
+  and `startxref` as `buf.Len()-20`, producing structurally invalid PDFs that
+  strict readers and print shops could reject. Object bodies are now buffered in
+  ID order and their true byte offsets recorded as each is written, mirroring
+  `pdf.go`, and `startxref` points at the real `xref` keyword. Added
+  `TestPrintPDFXrefOffsets`, which parses the emitted xref/startxref and asserts
+  every entry offset lands on its `N 0 obj` marker.
+  (audit ref: Fable5 M7)
+
 ## [0.16.02439] - 2026-08-31
 
 ### Fixed
