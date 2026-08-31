@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   OpenBookDialog: vi.fn(),
   SaveBook: vi.fn(),
   SaveBookAs: vi.fn(),
+  SaveBookSnapshots: vi.fn(),
   OpenRecentProject: vi.fn(),
   AddRecentProject: vi.fn(),
   IndexBook: vi.fn(),
@@ -81,6 +82,38 @@ beforeEach(async () => {
   vi.useFakeTimers()
   bookStoreMod = await import('../bookStore')
   appStoreMod = await import('../appStore')
+})
+
+describe('activity-based saving and chapter history', () => {
+  it('does not autosave when activity-based saving is disabled', async () => {
+    appStoreMod.useAppStore.setState(s => ({ settings: { ...s.settings, activity_autosave_enabled: false } }))
+    bookStoreMod.useBookStore.setState({ book: makeBook(), isDirty: false })
+
+    store().updateCurrentContent('<p>manual only</p>')
+    await vi.advanceTimersByTimeAsync(15 * 60 * 1000)
+
+    expect(mocks.SaveBook).not.toHaveBeenCalled()
+    expect(mocks.SaveBookSnapshots).not.toHaveBeenCalled()
+    expect(store().isDirty).toBe(true)
+  })
+
+  it('snapshots only a changed chapter after ten minutes of writing activity', async () => {
+    mocks.SaveBook.mockResolvedValue(okSave())
+    mocks.SaveBookSnapshots.mockResolvedValue(okSave())
+    const book = makeBook({ body: [{ id: 'ch-one', title: 'Chapter 1', type: 'chapter', content: '<p>original</p>' }] })
+    bookStoreMod.useBookStore.setState({ book, isDirty: false })
+
+    store().updateCurrentContent('<p>changed</p>')
+    await vi.advanceTimersByTimeAsync(5_000)
+    expect(mocks.SaveBookSnapshots).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(9 * 60 * 1000 + 55_000)
+    await flushMicrotasks()
+    expect(mocks.SaveBookSnapshots).toHaveBeenCalledTimes(1)
+    expect(mocks.SaveBookSnapshots.mock.calls[0][1]).toEqual([
+      expect.objectContaining({ chapter_id: 'ch-one', content: '<p>changed</p>' }),
+    ])
+  })
 })
 
 afterEach(() => {

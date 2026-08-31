@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02447] - 2026-08-31
+
+### Added
+- Added chapter version history inside the project file.
+- Added File > Chapter History with comparison and restore.
+
 ## [0.16.02446] - 2026-08-31
 
 ### Security

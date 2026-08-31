@@ -3,21 +3,22 @@ package types
 // AppSettings contains user preferences and configuration.
 type AppSettings struct {
 	// Application
-	DefaultAuthor       string   `json:"default_author"`
-	DefaultPublisher    string   `json:"default_publisher"`
-	DefaultCopyright    string   `json:"default_copyright"`
-	DefaultSaveDir      string   `json:"default_save_dir"`
-	DarkMode            bool     `json:"dark_mode"`
-	ThemeMode           string   `json:"theme_mode"` // "light" | "dark" | "auto"
-	AutoThemeUseManual  bool     `json:"auto_theme_use_manual"`
-	AutoThemeDawn       string   `json:"auto_theme_dawn"` // "HH:MM" format
-	AutoThemeDusk       string   `json:"auto_theme_dusk"` // "HH:MM" format
-	CustomDictionary    []string `json:"custom_dictionary,omitempty"`
-	SpellCheckEnabled   bool     `json:"spell_check_enabled"`
-	GrammarCheckEnabled bool     `json:"grammar_check_enabled"`
-	CastEnabled         bool     `json:"cast_enabled"`
-	StoryBibleEnabled   bool     `json:"story_bible_enabled"`
-	PlotWalkerEnabled   bool     `json:"plot_walker_enabled"`
+	DefaultAuthor           string   `json:"default_author"`
+	DefaultPublisher        string   `json:"default_publisher"`
+	DefaultCopyright        string   `json:"default_copyright"`
+	DefaultSaveDir          string   `json:"default_save_dir"`
+	DarkMode                bool     `json:"dark_mode"`
+	ThemeMode               string   `json:"theme_mode"` // "light" | "dark" | "auto"
+	AutoThemeUseManual      bool     `json:"auto_theme_use_manual"`
+	AutoThemeDawn           string   `json:"auto_theme_dawn"` // "HH:MM" format
+	AutoThemeDusk           string   `json:"auto_theme_dusk"` // "HH:MM" format
+	ActivityAutoSaveEnabled bool     `json:"activity_autosave_enabled"`
+	CustomDictionary        []string `json:"custom_dictionary,omitempty"`
+	SpellCheckEnabled       bool     `json:"spell_check_enabled"`
+	GrammarCheckEnabled     bool     `json:"grammar_check_enabled"`
+	CastEnabled             bool     `json:"cast_enabled"`
+	StoryBibleEnabled       bool     `json:"story_bible_enabled"`
+	PlotWalkerEnabled       bool     `json:"plot_walker_enabled"`
 	// CharactersLaneView remembers the codex lane style: "grid" | "heat".
 	CharactersLaneView string `json:"characters_lane_view"`
 	// AI
@@ -32,8 +33,8 @@ type AppSettings struct {
 	// HasAPIKey tells the frontend whether a key is stored, without exposing it.
 	HasAPIKey bool `json:"has_api_key"`
 	// AIDebugLogging opts in to writing prompts/manuscript text to local logs.
-	AIDebugLogging bool   `json:"ai_debug_logging"`
-	AIModel        string `json:"ai_model"`
+	AIDebugLogging  bool   `json:"ai_debug_logging"`
+	AIModel         string `json:"ai_model"`
 	AILocalEndpoint string `json:"ai_local_endpoint"` // e.g. http://localhost:11434/v1
 	AILocalModel    string `json:"ai_local_model"`
 	ProseGuide      string `json:"prose_guide"`

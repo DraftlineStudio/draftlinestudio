@@ -8,6 +8,9 @@
 - `manifest.json` - Project metadata and chapter index
 - `copyright.html` - Copyright page content
 - `story_bible.json` - Character and world data
+- `analysis.json` - Entity and relationship analysis (optional/rebuildable)
+- `history/index.json` - Chapter snapshot metadata (optional, format 2.2+)
+- `history/snapshots/*.html` - Deduplicated chapter versions (optional)
 - `beat_sheet.json` - Plot structure beats (optional)
 - `foreshadowing.json` - Setup/payoff tracking (optional)
 - `knowledge_matrix.json` - Character knowledge states (optional)
@@ -24,6 +27,7 @@ Reads a `.draftline` file and returns the complete BookData structure.
 - v1.0 → v2.0 migration (old `chapters/` → new `body/`)
 - Missing optional files (story_bible, beat_sheet, etc.)
 - Character array initialization
+- Stable chapter-ID assignment for legacy archives
 
 ### Write(path string, book types.BookData, appVersion string) types.SaveResult
 Writes a BookData structure to a `.draftline` file.
@@ -32,12 +36,19 @@ Writes a BookData structure to a `.draftline` file.
 - Creates backup before overwriting (via backup.Create)
 - Updates `metadata.modified` timestamp
 - Writes all chapters and optional data files
+- Preserves embedded chapter history as compressed ZIP entries
 - Returns SaveResult with success/error status
 
 ### ReadZipEntry(r *zip.ReadCloser, name string) ([]byte, error)
 Helper to read a named entry from an open ZIP archive.
 
-## Version History
+### WriteWithSnapshots(path string, book types.BookData, appVersion string, snapshots []types.ChapterSnapshotRequest) types.SaveResult
 
-- **2.0** - Current format with front_matter/body/back_matter sections
+Atomically saves the book and adds deduplicated, bounded chapter snapshots to the archive. `ListChapterHistory` reads metadata for a stable chapter ID; `GetChapterHistorySnapshot` resolves one indexed snapshot and returns its HTML.
+
+## Archive Format Versions
+
+- **2.2** - Stable chapter IDs and embedded chapter version history
+- **2.1** - Persisted entity and relationship analysis
+- **2.0** - Front-matter/body/back-matter sections
 - **1.0** - Legacy format with single `chapters/` directory

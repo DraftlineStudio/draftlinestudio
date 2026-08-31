@@ -11,6 +11,7 @@ export default function ApplicationSection({
   autoThemeUseManual, setAutoThemeUseManual,
   autoThemeDawn, setAutoThemeDawn,
   autoThemeDusk, setAutoThemeDusk,
+  activityAutoSaveEnabled, setActivityAutoSaveEnabled,
   onBrowse,
 }: ApplicationSectionProps) {
   return (
@@ -117,6 +118,21 @@ export default function ApplicationSection({
         <div className="settings-path-row">
           <input className="dialog-input" value={saveDir} onChange={e => setSaveDir(e.target.value)} placeholder="Leave blank to use system default" />
           <button className="dialog-btn settings-browse-btn" onClick={onBrowse}>Browse…</button>
+        </div>
+      </div>
+      <div className="settings-section-label">Saving &amp; Recovery</div>
+      <div className="dialog-field">
+        <label className="settings-toggle">
+          <input
+            type="checkbox"
+            checked={activityAutoSaveEnabled}
+            onChange={e => setActivityAutoSaveEnabled(e.target.checked)}
+          />
+          <span className="settings-toggle-track"><span className="settings-toggle-thumb" /></span>
+          <span className="settings-toggle-label">Activity-based saving</span>
+        </label>
+        <div className="settings-hint">
+          Saves paused edits and records changed chapter versions during active writing. When disabled, Draftline saves only when you ask it to.
         </div>
       </div>
     </>

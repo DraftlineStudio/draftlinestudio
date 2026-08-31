@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useCallback, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useBookStore } from './store/bookStore'
 import { useAppStore } from './store/appStore'
@@ -19,6 +19,8 @@ import NewUniverseWizard from './components/dialogs/NewUniverseWizard'
 import UnsavedChangesDialog from './components/dialogs/UnsavedChangesDialog'
 import AppSettingsDialog from './components/dialogs/AppSettingsDialog'
 import ExportWizard from './components/dialogs/ExportWizard'
+
+const ChapterHistoryDialog = lazy(() => import('./components/dialogs/ChapterHistoryDialog'))
 
 export default function App() {
   const { hasBook, bookTitle, bookFilePath, newBook, openBook, openRecentBook, saveBook, saveBookAs, dialogs, initBook, setDarkMode, toggleLeftPanel, toggleRightPanel, viewMode, setViewMode } = useBookStore(useShallow(s => ({
@@ -195,6 +197,7 @@ export default function App() {
       {showNewUniverse && <NewUniverseWizard />}
       {dialogs.showUnsavedWarning && <UnsavedChangesDialog />}
       {dialogs.showExportWizard && <ExportWizard />}
+      {dialogs.showChapterHistory && <Suspense fallback={null}><ChapterHistoryDialog /></Suspense>}
       {showSettings && <AppSettingsDialog />}
     </div>
   )

@@ -10,7 +10,7 @@ interface TitleBarProps {
 }
 
 export default function TitleBar({ minimal = false }: TitleBarProps) {
-  const { book, newBook, openBook, saveBook, saveBookAs, openMetadataDialog, openExportWizard, closeProject } = useBookStore()
+  const { book, currentSection, newBook, openBook, saveBook, saveBookAs, openMetadataDialog, openExportWizard, openChapterHistory, closeProject } = useBookStore()
   const { settings, openSettings } = useAppStore()
   const [dropOpen, setDropOpen] = useState(false)
   const [dropPos, setDropPos] = useState({ top: 0, left: 0 })
@@ -86,6 +86,13 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
           <line x1="9.5" y1="9" x2="11.5" y2="9" /><line x1="10.5" y1="8" x2="10.5" y2="10" />
         </svg>
         <span>Save As…</span><kbd>Ctrl+Shift+S</kbd>
+      </button>
+
+      <button className="titlebar-dropdown-item" onClick={() => run(openChapterHistory)} disabled={!book || currentSection === 'copyright'}>
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3">
+          <path d="M2.2 4.2A5 5 0 1 1 1.5 7"/><path d="M1 2v3.5h3.5"/><path d="M6.5 3.5V7l2.2 1.3"/>
+        </svg>
+        <span>Chapter History…</span>
       </button>
 
       <div className="titlebar-dropdown-sep" />
