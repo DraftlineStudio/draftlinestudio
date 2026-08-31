@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02452] - 2026-08-31
+
+### Added
+- Added the Chapters panel with keywords and summaries for each chapter.
+
 ## [0.16.02451] - 2026-08-31
 
 ### Added
