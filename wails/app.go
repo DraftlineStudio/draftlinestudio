@@ -35,16 +35,16 @@ import (
 
 // ListBackups returns available backups for the current file.
 func (a *App) ListBackups() []types.BackupInfo {
-	return backup.List(a.currentFile)
+	return backup.List(a.getCurrentFile())
 }
 
 // RestoreBackup restores a backup by number (1 = most recent, 5 = oldest).
 func (a *App) RestoreBackup(number int) types.SaveResult {
-	return backup.Restore(a.currentFile, number)
+	return backup.Restore(a.getCurrentFile(), number)
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.16.02431"
+const AppVersion = "0.16.02432"
 
 // maxAIResponseBytes caps how much of a provider HTTP response body we will
 // read into memory. It sits comfortably above any plausible max-output-tokens
@@ -78,9 +78,16 @@ func rewriteRequestProfile(mode string) aiRequestProfile {
 
 // App is the main application struct bound to the frontend.
 type App struct {
-	ctx           context.Context
-	currentFile   string
-	settings      types.AppSettings
+	ctx context.Context
+
+	// stateMu guards currentFile and settings, which are read and written from
+	// multiple Wails-bound goroutines (open/save/import paths, AI dispatch,
+	// getters). Critical sections stay small: callers snapshot the values they
+	// need under the lock and release it before doing any I/O or HTTP work.
+	stateMu     sync.RWMutex
+	currentFile string
+	settings    types.AppSettings
+
 	cancelMu      sync.Mutex
 	cancelRewrite context.CancelFunc // non-nil while a rewrite is in progress
 	aiBusy        bool               // true while the single AI-request slot is held
@@ -98,6 +105,50 @@ type App struct {
 // GetAppVersion returns the current application version string.
 func (a *App) GetAppVersion() string {
 	return AppVersion
+}
+
+// getSettings returns a consistent snapshot of the current settings. Callers
+// that read several fields should snapshot once and read from the copy so a
+// concurrent SaveSettings can't tear the read across fields.
+func (a *App) getSettings() types.AppSettings {
+	a.stateMu.RLock()
+	defer a.stateMu.RUnlock()
+	return a.settings
+}
+
+// setSettings replaces the in-memory settings under the state lock.
+func (a *App) setSettings(s types.AppSettings) {
+	a.stateMu.Lock()
+	a.settings = s
+	a.stateMu.Unlock()
+}
+
+// getCurrentFile returns the current file path under the state lock.
+func (a *App) getCurrentFile() string {
+	a.stateMu.RLock()
+	defer a.stateMu.RUnlock()
+	return a.currentFile
+}
+
+// setCurrentFile updates the current file path under the state lock.
+func (a *App) setCurrentFile(path string) {
+	a.stateMu.Lock()
+	a.currentFile = path
+	a.stateMu.Unlock()
+}
+
+// setLegacyAPIKey writes the plaintext fallback key under the API-key lock.
+func (a *App) setLegacyAPIKey(key string) {
+	a.apiKeyMu.Lock()
+	a.legacyAPIKey = key
+	a.apiKeyMu.Unlock()
+}
+
+// getLegacyAPIKey reads the plaintext fallback key under the API-key lock.
+func (a *App) getLegacyAPIKey() string {
+	a.apiKeyMu.Lock()
+	defer a.apiKeyMu.Unlock()
+	return a.legacyAPIKey
 }
 
 // CancelRewrite aborts any in-progress AI rewrite call.
@@ -260,18 +311,18 @@ func (a *App) startup(ctx context.Context) {
 				log.Printf("failed to strip migrated API key from settings.json: %v", werr)
 			}
 		} else {
-			a.legacyAPIKey = raw.AIAPIKey
+			a.setLegacyAPIKey(raw.AIAPIKey)
 		}
 	}
 	raw.AIAPIKey = ""
-	a.settings = raw
+	a.setSettings(raw)
 	logging.SetEnabled(raw.AIDebugLogging)
 }
 
 // NewBook returns an empty types.BookData struct with defaults.
 func (a *App) NewBook() types.BookData {
 	now := time.Now().Format(time.RFC3339)
-	a.currentFile = ""
+	a.setCurrentFile("")
 	return types.BookData{
 		Version: "2.0",
 		Metadata: types.Metadata{
@@ -293,7 +344,7 @@ func (a *App) NewBook() types.BookData {
 func (a *App) OpenBookDialog() (types.BookData, error) {
 	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title:            "Open Draftline Project",
-		DefaultDirectory: a.settings.DefaultSaveDir,
+		DefaultDirectory: a.getSettings().DefaultSaveDir,
 		Filters: []runtime.FileFilter{
 			{DisplayName: "Draftline Files (*.draftline)", Pattern: "*.draftline"},
 		},
@@ -309,16 +360,17 @@ func (a *App) openBook(path string) (types.BookData, error) {
 	if err != nil {
 		return types.BookData{}, err
 	}
-	a.currentFile = path
+	a.setCurrentFile(path)
 	return b, nil
 }
 
 // SaveBook saves to the current file path, or invokes SaveBookAs if unsaved.
 func (a *App) SaveBook(book types.BookData) types.SaveResult {
-	if a.currentFile == "" {
+	current := a.getCurrentFile()
+	if current == "" {
 		return a.SaveBookAs(book)
 	}
-	return a.writeBook(book, a.currentFile)
+	return a.writeBook(book, current)
 }
 
 // SaveBookAs shows the native save dialog.
@@ -330,7 +382,7 @@ func (a *App) SaveBookAs(book types.BookData) types.SaveResult {
 	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
 		Title:            "Save Draftline Project",
 		DefaultFilename:  defaultName + ".draftline",
-		DefaultDirectory: a.settings.DefaultSaveDir,
+		DefaultDirectory: a.getSettings().DefaultSaveDir,
 		Filters: []runtime.FileFilter{
 			{DisplayName: "Draftline Files (*.draftline)", Pattern: "*.draftline"},
 		},
@@ -346,7 +398,7 @@ func (a *App) SaveBookAs(book types.BookData) types.SaveResult {
 
 // GetCurrentFile returns the path of the currently open file.
 func (a *App) GetCurrentFile() string {
-	return a.currentFile
+	return a.getCurrentFile()
 }
 
 // ── Export Functions ─────────────────────────────────────────────────────────
@@ -519,14 +571,14 @@ func (a *App) writeSettingsFile(settings types.AppSettings) error {
 func (a *App) SaveSettings(settings types.AppSettings) error {
 	// Never trust a key from the frontend; keys arrive via SetAPIKey only.
 	settings.AIAPIKey = ""
-	a.settings = settings
+	a.setSettings(settings)
 	logging.SetEnabled(settings.AIDebugLogging)
 
 	onDisk := settings
-	if a.legacyAPIKey != "" {
+	if legacy := a.getLegacyAPIKey(); legacy != "" {
 		// Keyring unavailable on this machine: keep the stored key so a
 		// settings round-trip doesn't wipe it.
-		onDisk.AIAPIKey = a.legacyAPIKey
+		onDisk.AIAPIKey = legacy
 	}
 	return a.writeSettingsFile(onDisk)
 }
@@ -547,16 +599,16 @@ func (a *App) SetAPIKey(key string) error {
 	}
 	if err := keyring.Set(keyringService, keyringAccount, key); err != nil {
 		log.Printf("keyring unavailable (%v); storing key in settings.json", err)
-		a.legacyAPIKey = key
+		a.setLegacyAPIKey(key)
 		a.setCachedKey(key)
-		onDisk := a.settings
+		onDisk := a.getSettings()
 		onDisk.AIAPIKey = key
 		return a.writeSettingsFile(onDisk)
 	}
-	a.legacyAPIKey = ""
+	a.setLegacyAPIKey("")
 	a.setCachedKey(key)
 	// Make sure no plaintext copy lingers on disk.
-	onDisk := a.settings
+	onDisk := a.getSettings()
 	onDisk.AIAPIKey = ""
 	return a.writeSettingsFile(onDisk)
 }
@@ -575,9 +627,9 @@ func (a *App) ClearAPIKey() error {
 	if delErr != nil && errors.Is(delErr, keyring.ErrNotFound) {
 		delErr = nil
 	}
-	a.legacyAPIKey = ""
+	a.setLegacyAPIKey("")
 	a.setCachedKey("")
-	onDisk := a.settings
+	onDisk := a.getSettings()
 	onDisk.AIAPIKey = ""
 	if err := a.writeSettingsFile(onDisk); err != nil {
 		return err
@@ -732,11 +784,12 @@ func (a *App) TestLocalAI(endpoint string) types.AIRewriteResult {
 // mode: "line_edit" | "copy_edit" | "expand" | "smooth"
 // styleOptionsJson: JSON string of types.WritingStyleOptions (for expand/smooth modes)
 func (a *App) RewriteText(html string, mode string, styleOptionsJson string) types.AIRewriteResult {
+	s := a.getSettings()
 	logging.AI("========== RewriteText START ==========")
-	logging.AI("mode=%s ai_mode=%s provider=%s", mode, a.settings.AIMode, a.settings.AIProvider)
+	logging.AI("mode=%s ai_mode=%s provider=%s", mode, s.AIMode, s.AIProvider)
 	logging.AIContent("INPUT_HTML", html)
 
-	if !a.settings.AIEnabled {
+	if !s.AIEnabled {
 		logging.AI("ERROR: AI features disabled")
 		return types.AIRewriteResult{Error: "AI features are disabled — enable them in App Settings"}
 	}
@@ -757,7 +810,7 @@ func (a *App) RewriteText(html string, mode string, styleOptionsJson string) typ
 	// changed paragraphs. This cuts output tokens by ~80% for typical chapters.
 	useDiffFormat := mode == "line_edit" || mode == "copy_edit" || mode == "smooth"
 
-	system := ai.BuildSystemPrompt(mode, a.settings.ProseGuide, styleOpts)
+	system := ai.BuildSystemPrompt(mode, s.ProseGuide, styleOpts)
 	var userMsg string
 
 	switch {
@@ -788,11 +841,12 @@ func (a *App) RewriteText(html string, mode string, styleOptionsJson string) typ
 
 // RewriteTextCustom applies a custom user prompt to rewrite text.
 func (a *App) RewriteTextCustom(text string, prompt string) types.AIRewriteResult {
+	s := a.getSettings()
 	logging.AI("========== RewriteTextCustom START ==========")
-	logging.AI("prompt=%s ai_mode=%s provider=%s", prompt, a.settings.AIMode, a.settings.AIProvider)
+	logging.AI("prompt=%s ai_mode=%s provider=%s", prompt, s.AIMode, s.AIProvider)
 	logging.AIContent("INPUT_TEXT", text)
 
-	if !a.settings.AIEnabled {
+	if !s.AIEnabled {
 		logging.AI("ERROR: AI features disabled")
 		return types.AIRewriteResult{Error: "AI features are disabled — enable them in App Settings"}
 	}
@@ -834,7 +888,8 @@ CRITICAL: Return ONLY the revised text content. Do not include any instructions,
 
 // GenerateInlineContent generates new content based on context and instruction
 func (a *App) GenerateInlineContent(req types.InlineGenerateRequest) types.AIRewriteResult {
-	if !a.settings.AIEnabled {
+	s := a.getSettings()
+	if !s.AIEnabled {
 		return types.AIRewriteResult{Error: "AI features are disabled — enable them in App Settings"}
 	}
 	if req.Instruction == "" {
@@ -849,8 +904,8 @@ func (a *App) GenerateInlineContent(req types.InlineGenerateRequest) types.AIRew
 
 	// Build style guide section if configured
 	styleBlock := ""
-	if a.settings.ProseGuide != "" {
-		styleBlock = "\n\nSTYLE GUIDE — match the rhythm, vocabulary, and voice of these examples:\n---\n" + a.settings.ProseGuide + "\n---"
+	if s.ProseGuide != "" {
+		styleBlock = "\n\nSTYLE GUIDE — match the rhythm, vocabulary, and voice of these examples:\n---\n" + s.ProseGuide + "\n---"
 	}
 
 	banned := "BANNED words and phrases: tapestry, testament, navigate, delve, underscore, myriad, realm, crucial, pivotal, journey, beacon, vibrant, game-changer"
@@ -1133,7 +1188,7 @@ func (a *App) callCodexCLI(ctx context.Context, system, userMsg string, profile 
 	}
 
 	lastMsg := filepath.Join(tempHome, "last-message.txt")
-	model := codexModelOverride(a.settings.AIModel)
+	model := codexModelOverride(a.getSettings().AIModel)
 	if profile.lightweight {
 		model = resolveCodexLightweightModel(realHome)
 		if model != "" {
@@ -1343,21 +1398,22 @@ func (a *App) dispatchAI(system, userMsg string, profile aiRequestProfile) types
 	}
 	defer release()
 
-	switch a.settings.AIMode {
+	s := a.getSettings()
+	switch s.AIMode {
 	case "claudecode":
 		return a.callClaudeCode(ctx, system, userMsg, profile)
 	case "codex":
 		return a.callCodexCLI(ctx, system, userMsg, profile)
 	case "local":
-		if a.settings.AILocalEndpoint == "" {
+		if s.AILocalEndpoint == "" {
 			return types.AIRewriteResult{Error: "no local endpoint configured — set it in App Settings"}
 		}
 		return a.callLocalAI(ctx, system, userMsg)
 	default: // "api"
-		if a.settings.AIProvider == "" || a.getAPIKey() == "" {
+		if s.AIProvider == "" || a.getAPIKey() == "" {
 			return types.AIRewriteResult{Error: "no API provider configured — add your key in App Settings"}
 		}
-		switch a.settings.AIProvider {
+		switch s.AIProvider {
 		case "claude":
 			return a.callClaude(ctx, system, userMsg, profile)
 		case "openai":
@@ -1367,7 +1423,7 @@ func (a *App) dispatchAI(system, userMsg string, profile aiRequestProfile) types
 		case "grok":
 			return a.callGrok(ctx, system, userMsg, profile)
 		default:
-			return types.AIRewriteResult{Error: "unknown provider: " + a.settings.AIProvider}
+			return types.AIRewriteResult{Error: "unknown provider: " + s.AIProvider}
 		}
 	}
 }
@@ -1414,8 +1470,8 @@ func (a *App) acquireAI() (ctx context.Context, release func(), ok bool) {
 // resolveAIModel returns the configured model name, falling back to the
 // provider's default when none is set.
 func (a *App) resolveAIModel(defaultModel string) string {
-	if a.settings.AIModel != "" {
-		return a.settings.AIModel
+	if model := a.getSettings().AIModel; model != "" {
+		return model
 	}
 	return defaultModel
 }
@@ -1614,7 +1670,8 @@ func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string, pro
 // extractHTMLParagraphs returns each <p>...</p> element from HTML as a full tag string.
 
 func (a *App) callLocalAI(ctx context.Context, system, userMsg string) types.AIRewriteResult {
-	model := a.settings.AILocalModel
+	s := a.getSettings()
+	model := s.AILocalModel
 	if model == "" {
 		model = "llama3"
 	}
@@ -1626,7 +1683,7 @@ func (a *App) callLocalAI(ctx context.Context, system, userMsg string) types.AIR
 		"model":    model,
 		"messages": []msg{{Role: "system", Content: system}, {Role: "user", Content: userMsg}},
 	})
-	endpoint := strings.TrimRight(a.settings.AILocalEndpoint, "/") + "/chat/completions"
+	endpoint := strings.TrimRight(s.AILocalEndpoint, "/") + "/chat/completions"
 	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewReader(reqBody))
 	if err != nil {
 		return types.AIRewriteResult{Error: err.Error()}
@@ -1852,7 +1909,7 @@ func (a *App) callGrok(ctx context.Context, system, userMsg string, profile aiRe
 func (a *App) writeBook(b types.BookData, path string) types.SaveResult {
 	result := book.Write(path, b, AppVersion)
 	if result.Success {
-		a.currentFile = path
+		a.setCurrentFile(path)
 	}
 	return result
 }

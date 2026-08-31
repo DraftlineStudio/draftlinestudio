@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02432] - 2026-08-30
+
+### Fixed
+- Fixed race conditions in shared backend state.
+
 ## [0.16.02431] - 2026-08-30
 
 ### Security
