@@ -1,6 +1,6 @@
 // Constants for ToolsPanel and its sub-components
 
-import type { WritingStyleOptions, BeatType } from '../../types/draftline'
+import type { WritingStyleOptions } from '../../types/draftline'
 import type { GlyphSection, AIMode } from './types'
 
 // AI mode options for the AI Studio
@@ -31,31 +31,6 @@ export const INTENSITY_LABELS = ['Off', 'Subtle', 'Moderate', 'Heavy']
 export const SECTION_CONFIG: { id: Exclude<GlyphSection, null>; label: string; tooltip: string }[] = [
   { id: 'dashboard', label: 'Dashboard', tooltip: 'Writing Dashboard' },
   { id: 'characters', label: 'Characters', tooltip: 'Characters' },
-  { id: 'plot', label: 'Plot', tooltip: 'Plot Notes' },
-  { id: 'timeline', label: 'Timeline', tooltip: 'Story Timeline' },
-  { id: 'beats', label: 'Beats', tooltip: 'Beat Sheet' },
-  { id: 'foreshadow', label: 'Foreshadow', tooltip: 'Foreshadowing Ledger' },
-  { id: 'knowledge', label: 'Knowledge', tooltip: 'Knowledge Matrix' },
   { id: 'issues', label: 'Issues', tooltip: 'Story Analysis' },
   { id: 'ai', label: 'AI', tooltip: 'AI Studio' },
-]
-
-// Beat types for the Beat Sheet (Save the Cat structure)
-export const BEAT_TYPES: { value: BeatType | string; label: string }[] = [
-  { value: 'opening_image', label: 'Opening Image' },
-  { value: 'theme_stated', label: 'Theme Stated' },
-  { value: 'setup', label: 'Setup' },
-  { value: 'catalyst', label: 'Catalyst' },
-  { value: 'debate', label: 'Debate' },
-  { value: 'break_into_two', label: 'Break into Two' },
-  { value: 'b_story', label: 'B Story' },
-  { value: 'fun_and_games', label: 'Fun & Games' },
-  { value: 'midpoint', label: 'Midpoint' },
-  { value: 'bad_guys_close_in', label: 'Bad Guys Close In' },
-  { value: 'all_is_lost', label: 'All Is Lost' },
-  { value: 'dark_night', label: 'Dark Night' },
-  { value: 'break_into_three', label: 'Break into Three' },
-  { value: 'finale', label: 'Finale' },
-  { value: 'final_image', label: 'Final Image' },
-  { value: 'custom', label: 'Custom' },
 ]

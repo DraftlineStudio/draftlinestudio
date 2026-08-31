@@ -4,6 +4,15 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02449] - 2026-08-31
+
+### Removed
+- Retired the unused planning sidebars ahead of the analysis sidebar redesign: Plot Notes, Story Timeline, Beat Sheet, Foreshadowing Ledger, and Knowledge Matrix no longer appear on the tools rail, and the Story Bible / Plot Walker plugin cards were removed from Settings → Plugins. The Story Analysis pane remains and is now gated by the Story Analysis plugin instead of Plot Walker.
+- Removed the retired panels' components and dead CSS. The `.draftline` file-format fields (`beat_sheet`, `foreshadowing`, `knowledge_matrix`, `story_bible` plot notes/timeline), their store reducers, and the Go `story_bible_enabled`/`plot_walker_enabled` settings keys are all retained, so existing project and settings files round-trip unchanged.
+- A saved sidebar state pointing at a retired section falls back to the Writing Dashboard on next launch.
+
+---
+
 ## [0.16.02448] - 2026-08-31
 
 ### Added

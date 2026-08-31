@@ -38,8 +38,6 @@ export default function AppSettingsDialog() {
   const [spellCheckEnabled, setSpellCheckEnabled] = useState(settings.spell_check_enabled)
   const [grammarCheckEnabled, setGrammarCheckEnabled] = useState(settings.grammar_check_enabled)
   const [castEnabled, setCastEnabled] = useState(settings.cast_enabled)
-  const [storyBibleEnabled, setStoryBibleEnabled] = useState(settings.story_bible_enabled)
-  const [plotWalkerEnabled, setPlotWalkerEnabled] = useState(settings.plot_walker_enabled)
   const [analysisEnabled, setAnalysisEnabled] = useState(settings.analysis_enabled)
 
   // AI state
@@ -236,8 +234,6 @@ export default function AppSettingsDialog() {
       spell_check_enabled: spellCheckEnabled,
       grammar_check_enabled: grammarCheckEnabled,
       cast_enabled: castEnabled,
-      story_bible_enabled: storyBibleEnabled,
-      plot_walker_enabled: plotWalkerEnabled,
       analysis_enabled: analysisEnabled,
       ai_enabled: aiEnabled,
       ai_mode: aiMode,
@@ -263,8 +259,6 @@ export default function AppSettingsDialog() {
     spell_check_enabled: spellCheckEnabled,
     grammar_check_enabled: grammarCheckEnabled,
     cast_enabled: castEnabled,
-    story_bible_enabled: storyBibleEnabled,
-    plot_walker_enabled: plotWalkerEnabled,
     analysis_enabled: analysisEnabled,
     ai_enabled: aiEnabled,
   }
@@ -274,8 +268,6 @@ export default function AppSettingsDialog() {
       spell_check_enabled: setSpellCheckEnabled,
       grammar_check_enabled: setGrammarCheckEnabled,
       cast_enabled: setCastEnabled,
-      story_bible_enabled: setStoryBibleEnabled,
-      plot_walker_enabled: setPlotWalkerEnabled,
       analysis_enabled: setAnalysisEnabled,
       ai_enabled: setAiEnabled,
     }
