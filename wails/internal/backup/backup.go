@@ -30,7 +30,11 @@ func Dir(filePath string) string {
 	hash := sha256.Sum256([]byte(filepath.Clean(filePath)))
 	hashStr := hex.EncodeToString(hash[:8]) // First 8 bytes = 16 hex chars
 	dir := filepath.Join(configDir, "draftline", "backups", hashStr)
-	_ = os.MkdirAll(dir, 0755)
+	// Backups may contain the full manuscript; keep them owner-only.
+	_ = os.MkdirAll(dir, 0700)
+	// Best-effort: tighten an existing directory created by an older version
+	// with looser permissions. Ignore errors (e.g. Windows, permission).
+	_ = os.Chmod(dir, 0700)
 	return dir
 }
 
@@ -71,7 +75,7 @@ func Create(filePath string) error {
 	}
 
 	backupPath := filepath.Join(backupDir, "backup.1.draftline")
-	if err := fsutil.WriteFileAtomic(backupPath, src, 0644); err != nil {
+	if err := fsutil.WriteFileAtomic(backupPath, src, 0600); err != nil {
 		return err
 	}
 
@@ -82,7 +86,7 @@ func Create(filePath string) error {
 		"last_backup":   time.Now().Format(time.RFC3339),
 	}
 	metaBytes, _ := json.MarshalIndent(meta, "", "  ")
-	if err := fsutil.WriteFileAtomic(metaPath, metaBytes, 0644); err != nil {
+	if err := fsutil.WriteFileAtomic(metaPath, metaBytes, 0600); err != nil {
 		log.Printf("backup metadata write failed for %s: %v", filePath, err)
 	}
 

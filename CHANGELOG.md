@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02429] - 2026-08-30
+
+### Security
+- Backups and the recent projects list are now readable only by the current user.
+
 ## [0.16.02427] - 2026-08-30
 
 ### Fixed
