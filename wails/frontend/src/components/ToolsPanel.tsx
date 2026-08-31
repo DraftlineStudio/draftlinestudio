@@ -37,7 +37,7 @@ export default function ToolsPanel() {
   // restarts and remounts (e.g. the Characters codex unmounting this panel).
   const setSection = (next: GlyphSection) => {
     setActiveSection(next)
-    saveSettings({ sidebar_active_section: next ?? '' })
+    void saveSettings({ sidebar_active_section: next ?? '' })
   }
 
   // Restore the saved sidebar state once settings are loaded. An invalid or
@@ -95,8 +95,8 @@ export default function ToolsPanel() {
       setIsResizing(false)
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
-      // Save width to settings
-      saveSettings({ sidebar_panel_width: panelWidth })
+      // Save width to settings (serialized through the store's save chain)
+      void saveSettings({ sidebar_panel_width: panelWidth })
     }
 
     document.addEventListener('mousemove', handleMouseMove)

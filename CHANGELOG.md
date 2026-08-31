@@ -19,6 +19,14 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02433] - 2026-08-30
+
+### Fixed
+- Serialized backend settings writes. `saveSettings` in `wails/frontend/src/store/appStore.ts` fired `SaveSettings(next)` with no ordering, so concurrent callers (sidebar width, `sidebar_active_section`, lane view, `ai_mode`/`ai_model`, `custom_dictionary`) could have their backend writes land out of order and drop a setting (lost update). Each call now merges into in-memory state synchronously and chains the backend `SaveSettings` through a module-scoped `saveChain` promise (mirroring `bookStore`'s save serialization), snapshotting the newest merged state inside each chained write so writes are ordered and no patch is lost. `saveSettings` now returns the chained promise; the previously-floating callers in `ToolsPanel.tsx` and `CharactersView.tsx` explicitly discard it.
+- Audit ref: fable5-2026-08-30 — M2 (serialize-savesettings).
+
+---
+
 ## [0.16.02432] - 2026-08-30
 
 ### Fixed

@@ -64,6 +64,12 @@ interface AppStore {
   setShowNewUniverse: (show: boolean) => void
 }
 
+// saveChain serializes all backend SaveSettings writes so two rapid
+// saveSettings calls can never interleave (and drop a setting) on the Go side.
+// Each call merges into in-memory state synchronously, then chains the backend
+// write; the chained write always snapshots the newest merged state.
+let saveChain: Promise<void> = Promise.resolve()
+
 const DEFAULT_SETTINGS: AppSettings = {
   default_author: '',
   default_publisher: '',
@@ -127,14 +133,22 @@ export const useAppStore = create<AppStore>((set, get) => ({
     }
   },
 
-  saveSettings: async (patch) => {
-    const next = { ...get().settings, ...patch }
-    set({ settings: next })
-    try {
-      await SaveSettings(next)
-    } catch (e) {
-      console.error('Failed to save settings:', e)
-    }
+  saveSettings: (patch) => {
+    // Merge into in-memory state synchronously so callers (and later saves)
+    // always see the newest settings immediately.
+    set({ settings: { ...get().settings, ...patch } })
+    // Chain the backend write. Snapshot the latest merged state INSIDE the
+    // chained callback so a queued save always persists the newest values,
+    // and writes are ordered — no lost update from interleaving.
+    const run = saveChain.then(async () => {
+      try {
+        await SaveSettings(get().settings)
+      } catch (e) {
+        console.error('Failed to save settings:', e)
+      }
+    })
+    saveChain = run
+    return run
   },
 
   openSettings: () => set({ showSettings: true }),
