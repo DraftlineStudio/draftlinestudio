@@ -4,6 +4,15 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02451] - 2026-08-31
+
+### Added
+- Added a Pacing panel to the analysis sidebar suite: a whole-book tempo heat strip (brighter = faster) with an auto-generated sag note when a stretch of 3+ chapters runs at least 12 tempo points below the book average.
+- Added a per-chapter pacing scan list switchable between Tempo, Dialogue, Ease, and Length, with a scene-break column; clicking a row jumps the editor to that chapter.
+- Pacing bars highlight outlier chapters (more than 1.5 standard deviations from the mean) in amber; chapters under 20 words render faint and are excluded from the statistics.
+
+---
+
 ## [0.16.02450] - 2026-08-31
 
 ### Added

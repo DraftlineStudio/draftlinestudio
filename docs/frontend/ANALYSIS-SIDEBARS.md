@@ -50,3 +50,18 @@ Design section 3c "Prose expanded". Five `.an-block` sections, top to bottom:
 **Empty states:** no book → standard `tool-empty-state`; book but no `analysis.story` → rhythm block stays live, followed by the standard `.an-empty` + `.an-run-btn` "Analyze now" block (disabled while running or when the analysis plugin is off).
 
 No localStorage keys. Shared helpers used: `aggregateWordClasses`, `bookKey`.
+
+## Pacing panel (`PacingPanel.tsx`, `pacing.css`) — design ref 3d
+
+Tempo-by-chapter view of the manuscript.
+
+**What it shows, top to bottom:**
+1. **The whole book** — a heat strip with one cell per analyzed chapter, background `var(--app-accent)` at opacity `0.35 + (tempo_score/100)*0.65` (brighter = faster). Chapters with `tempo_score` 0 or under 20 words render as `var(--text-faint)`. Each cell has a `"{n} · {title} — {tempo_score}"` tooltip. Below it, an insight footnote: the panel finds the contiguous window of 3+ analyzable chapters with the lowest mean tempo (prefix-sum scan) and, if that window sits at least 12 points below the book mean, appends "The pace sags around chapters {start}–{end}." to "Brighter is faster."
+2. **Metric tabs** — Tempo / Dialogue / Ease / Length switch which `ChapterAnalysis` field the list plots (`tempo_score`, `dialogue_percent`, `reading_ease`, `word_count`). Local `useState`, not persisted.
+3. **Column header** — 9px uppercase micro-labels: blank 18px / Chapter / metric name 76px / Brk 22px.
+4. **Chapter rows** (`.an-chapter-row` buttons) — 1-based number, title (fallback "Chapter {n}"), 76px bar normalized to the metric max (min 2% width), and `scene_break_count` (em dash for sub-20-word chapters). Bar turns `var(--status-warning)` when the chapter's metric is more than 1.5σ from the mean of analyzable chapters (sub-20-word chapters excluded from mean/σ and never flagged; their bars render faint). Click navigates via `goToChapter(chapter.chapter_index)` from `Analysis/shared.ts`.
+5. **Footer** — "Brk = scene breaks · {total} across the manuscript · amber bars are outliers".
+
+**Data:** `useBookStore(s => s.book).analysis?.story.chapters` (`ChapterAnalysis[]`). Insight and per-metric stats (max/mean/σ) are memoized on `chapters`/active metric. No whole-book HTML parsing, no debounced live analysis, no localStorage keys.
+
+**Empty states:** no book → `tool-empty-state` "Open a project to see analysis."; book without analysis (or zero analyzed chapters) → `.an-empty` explainer with an "Analyze now" `.an-run-btn` wired to `useAnalysisStore().run`, disabled while running or when `settings.analysis_enabled` is off.
