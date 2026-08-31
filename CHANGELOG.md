@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02456] - 2026-08-31
+
+### Changed
+- Redesigned the Writing Dashboard around manuscript, daily, and session progress.
+
+### Added
+- Added a 7-day writing streak.
+
 ## [0.16.02455] - 2026-08-31
 
 ### Added
