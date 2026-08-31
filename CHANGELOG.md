@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02440] - 2026-08-31
+
+### Fixed
+- Fixed invalid print-ready PDF files.
+
 ## [0.16.02439] - 2026-08-31
 
 ### Fixed
