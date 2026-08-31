@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02454] - 2026-08-31
+
+### Added
+- Added the Signals panel with manuscript stats and changes since the last run.
+
 ## [0.16.02453] - 2026-08-31
 
 ### Added
