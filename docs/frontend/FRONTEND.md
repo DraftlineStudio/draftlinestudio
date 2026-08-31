@@ -106,7 +106,9 @@ Each feature is isolated in its own folder:
 
 Spelling and grammar are independent bundled features managed from **Settings > Plugins**. Spelling checks remain local; broad typo suggestions use a prewarmed, length-indexed bounded search in a web worker to avoid both main-thread blocking and first-use delays. Dictionary lookup canonicalizes typographic apostrophes while preserving manuscript typography in replacement suggestions. Confirmed character names and aliases form a transient project lexicon, separate from the writer's persistent custom dictionary. Grammar checks use deterministic local rules and distinguish grammar diagnostics from optional style guidance.
 
-The bundled feature catalog lives in `features/registry.ts`. The registry separates feature identity and metadata from its persisted setting key, providing the foundation for a future community-plugin catalog.
+The bundled feature catalog lives in `features/registry.ts`. Stable IDs, capabilities, categories, resource profiles, and persisted setting keys provide the client contract for future community analysis packs. The Marketplace tab currently previews this boundary; package discovery and installation require the signed catalog and installer described in `docs/architecture/PLUGIN-SYSTEM.md`.
+
+`AnalysisCoordinator.tsx` keeps manuscript-scale work off the typing path. Content mutations increment a lightweight revision, mark Characters/Story/Pacing stale, and reset a 15-second idle timer. `analysisStore.ts` runs the consolidated Wails analysis call, rejects results if a newer revision exists, and consumes `analysis:progress` events for the bottom status bar. The Story Analysis pane reads persisted results from `book.analysis.story`.
 
 ## State Management
 

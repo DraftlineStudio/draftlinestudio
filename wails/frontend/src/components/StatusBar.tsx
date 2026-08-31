@@ -3,6 +3,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { useBookStore } from '../store/bookStore'
 import { analyzeText, getScoreColor, getScoreLabel, type AIDetectionResult } from '../services/aiDetection'
 import { countBookWords, getCurrentContent } from '../utils/textUtils'
+import { useAnalysisStore } from '../store/analysisStore'
 
 export default function StatusBar() {
   const { book, isDirty, isAutoSaving, statusMessage, currentSection, currentIndex } = useBookStore(useShallow(s => ({
@@ -19,6 +20,14 @@ export default function StatusBar() {
   const words = useMemo(() => (book ? countBookWords(book) : 0), [book])
   const filePath = book?.file_path || null
   const fileName = filePath ? filePath.split(/[\\/]/).pop() : null
+  const analysis = useAnalysisStore(useShallow(s => ({
+    state: s.state,
+    progress: s.progress,
+    message: s.message,
+    modules: s.modules,
+    error: s.error,
+    run: s.run,
+  })))
 
   // Get current chapter content for AI detection
   const currentContent = getCurrentContent(book, currentSection, currentIndex)
@@ -64,7 +73,31 @@ export default function StatusBar() {
         <span className="statusbar-file">{fileName ? fileName : 'Unsaved'}</span>
         {statusMessage && <span className="statusbar-message">{statusMessage}</span>}
       </div>
+      {book && analysis.state === 'running' && (
+        <div className="statusbar-analysis-progress" title={analysis.message}>
+          <span>{analysis.message}</span>
+          <div className="statusbar-analysis-track" aria-label={`${analysis.progress}% complete`}>
+            <div style={{ width: `${analysis.progress}%` }} />
+          </div>
+          <span className="statusbar-analysis-percent">{Math.round(analysis.progress)}%</span>
+        </div>
+      )}
       <div className="statusbar-right">
+        {book && analysis.state !== 'idle' && (
+          <button
+            className="statusbar-analysis-modules"
+            onClick={() => void analysis.run()}
+            disabled={analysis.state === 'running'}
+            title={analysis.state === 'error' ? analysis.error : analysis.state === 'stale' ? 'Analysis is out of date; click to run now' : 'Story analysis is current'}
+          >
+            {(['characters', 'story', 'pacing'] as const).map(module => (
+              <span className="statusbar-analysis-module" key={module}>
+                <i className={`analysis-state-dot ${analysis.modules[module]}`} />
+                {module === 'characters' ? 'Characters' : module === 'story' ? 'Story' : 'Pacing'}
+              </span>
+            ))}
+          </button>
+        )}
         {aiResult && (
           <div
             className="statusbar-ai-score"

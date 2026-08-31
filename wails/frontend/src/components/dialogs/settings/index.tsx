@@ -40,6 +40,7 @@ export default function AppSettingsDialog() {
   const [castEnabled, setCastEnabled] = useState(settings.cast_enabled)
   const [storyBibleEnabled, setStoryBibleEnabled] = useState(settings.story_bible_enabled)
   const [plotWalkerEnabled, setPlotWalkerEnabled] = useState(settings.plot_walker_enabled)
+  const [analysisEnabled, setAnalysisEnabled] = useState(settings.analysis_enabled)
 
   // AI state
   const [aiEnabled, setAiEnabled]         = useState(settings.ai_enabled)
@@ -237,6 +238,7 @@ export default function AppSettingsDialog() {
       cast_enabled: castEnabled,
       story_bible_enabled: storyBibleEnabled,
       plot_walker_enabled: plotWalkerEnabled,
+      analysis_enabled: analysisEnabled,
       ai_enabled: aiEnabled,
       ai_mode: aiMode,
       ai_provider: provider,
@@ -263,6 +265,7 @@ export default function AppSettingsDialog() {
     cast_enabled: castEnabled,
     story_bible_enabled: storyBibleEnabled,
     plot_walker_enabled: plotWalkerEnabled,
+    analysis_enabled: analysisEnabled,
     ai_enabled: aiEnabled,
   }
 
@@ -273,6 +276,7 @@ export default function AppSettingsDialog() {
       cast_enabled: setCastEnabled,
       story_bible_enabled: setStoryBibleEnabled,
       plot_walker_enabled: setPlotWalkerEnabled,
+      analysis_enabled: setAnalysisEnabled,
       ai_enabled: setAiEnabled,
     }
     setters[key](enabled)

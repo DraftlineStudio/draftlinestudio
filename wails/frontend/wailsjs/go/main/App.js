@@ -10,6 +10,10 @@ export function AddRecentProject(arg1) {
   return window['go']['main']['App']['AddRecentProject'](arg1);
 }
 
+export function AnalyzeBook(arg1) {
+  return window['go']['main']['App']['AnalyzeBook'](arg1);
+}
+
 export function AnalyzeRelationships(arg1) {
   return window['go']['main']['App']['AnalyzeRelationships'](arg1);
 }

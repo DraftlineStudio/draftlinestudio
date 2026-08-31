@@ -30,6 +30,7 @@ const mocks = vi.hoisted(() => ({
   IndexBook: vi.fn(),
   MergeEntities: vi.fn(),
   SplitEntity: vi.fn(),
+  AnalyzeBook: vi.fn(),
   // appStore.ts imports (bookStore imports appStore)
   LoadSettings: vi.fn(),
   SaveSettings: vi.fn(),
@@ -113,6 +114,35 @@ describe('activity-based saving and chapter history', () => {
     expect(mocks.SaveBookSnapshots.mock.calls[0][1]).toEqual([
       expect.objectContaining({ chapter_id: 'ch-one', content: '<p>changed</p>' }),
     ])
+  })
+})
+
+describe('background analysis revision safety', () => {
+  it('discards analysis results that finish after newer prose edits', async () => {
+    const original = makeBook()
+    const analyzed = makeBook({ analysis: { story: {
+      content_hash: 'old', engine: 'prose-v3', last_analyzed: 'now', version: 1,
+      overview: {
+        chapter_count: 1, word_count: 1, sentence_count: 1, paragraph_count: 1,
+        average_chapter_words: 1, average_sentence_words: 1, dialogue_percent: 0,
+        reading_ease: 1, mean_grade_level: 1, tempo_score: 50,
+      },
+      chapters: [], observations: [],
+    } } })
+    const inFlight = deferred<{ success: boolean; error?: string; book: BookData }>()
+    mocks.AnalyzeBook.mockImplementationOnce(() => inFlight.promise)
+    bookStoreMod.useBookStore.setState({ book: original, currentSection: 'body', currentIndex: 0, analysisRevision: 0 })
+    const analysisStoreMod = await import('../analysisStore')
+
+    const run = analysisStoreMod.useAnalysisStore.getState().run()
+    await flushMicrotasks()
+    store().updateCurrentContent('<p>newer prose</p>')
+    inFlight.resolve({ success: true, book: analyzed })
+    await run
+
+    expect(store().book?.body[0].content).toBe('<p>newer prose</p>')
+    expect(store().book?.analysis?.story).toBeUndefined()
+    expect(analysisStoreMod.useAnalysisStore.getState().state).toBe('stale')
   })
 })
 

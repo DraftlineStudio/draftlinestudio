@@ -22,6 +22,7 @@ export interface AppSettings {
   cast_enabled: boolean
   story_bible_enabled: boolean
   plot_walker_enabled: boolean
+  analysis_enabled: boolean
   // AI
   ai_enabled: boolean
   ai_mode: 'claudecode' | 'codex' | 'api' | 'local'
@@ -88,6 +89,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   cast_enabled: true,
   story_bible_enabled: true,
   plot_walker_enabled: true,
+  analysis_enabled: true,
   ai_enabled: false,
   ai_mode: 'claudecode',
   ai_provider: '',

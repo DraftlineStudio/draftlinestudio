@@ -4,6 +4,21 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02448] - 2026-08-31
+
+### Added
+- Added bundled local Story Analysis powered by the existing Prose v3 runtime. Draftline now persists per-chapter word, sentence, paragraph, scene-break, dialogue, readability, part-of-speech, keyword, extractive-summary, and descriptive tempo measurements in `analysis.json` without downloading another model or overwriting author-owned planning data.
+- Added an activity-aware analysis coordinator. Opening a project schedules analysis, manuscript edits mark Characters, Story, and Pacing as stale, and 15 seconds without another edit starts a consolidated character, relationship, story-structure, and pacing pass. Results from a run that overlaps newer edits are discarded instead of replacing the newer manuscript.
+- Added JetBrains-style analysis feedback to the bottom status bar: the active phase/chapter and progress track appear in the center, while compact green/yellow/red module indicators report current, stale, or failed results and can be clicked to run immediately.
+- Replaced Plot Walker's placeholder Story Analysis pane with manuscript overview metrics, evidence-based review observations, and per-chapter tempo, keywords, and extractive summaries.
+- Added `draftline.story-analysis` to the bundled plugin catalog and introduced capability/resource-profile metadata as the client-side contract for future analysis packs. The Marketplace preview and `docs/architecture/PLUGIN-SYSTEM.md` specify signed, data-only model packs, immutable Hugging Face artifacts, checksums, resource disclosure, atomic rollback, and a no-arbitrary-code boundary.
+
+### Changed
+- Automatic analysis now owns automatic character indexing on project open, preventing the old standalone index request from racing the consolidated pipeline.
+- Story-analysis work runs only after inactivity or an explicit request; manuscript-scale NLP remains off the typing path.
+
+---
+
 ## [0.16.02447] - 2026-08-31
 
 ### Added

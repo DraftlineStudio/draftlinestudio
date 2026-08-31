@@ -86,6 +86,10 @@ func TestWriteOpenPersistsAnalysisAndCorrections(t *testing.T) {
 			Version: 1,
 			Events:  []types.CharacterEvent{{ID: "manual-1", CharacterIDs: []string{"entity-1"}, Description: "Pinned event"}},
 		},
+		Story: &types.StoryAnalysisData{
+			Version: 1, Engine: "prose-v3", ContentHash: "abc123",
+			Chapters: []types.ChapterAnalysis{{ChapterID: "chapter-1", Title: "Chapter One", WordCount: 42}},
+		},
 	}
 
 	if res := Write(path, b, "test-version"); !res.Success {
@@ -103,6 +107,9 @@ func TestWriteOpenPersistsAnalysisAndCorrections(t *testing.T) {
 	}
 	if got.Analysis.Relationships == nil || len(got.Analysis.Relationships.Events) != 1 {
 		t.Fatal("relationship analysis or manual events did not survive round trip")
+	}
+	if got.Analysis.Story == nil || got.Analysis.Story.ContentHash != "abc123" || len(got.Analysis.Story.Chapters) != 1 {
+		t.Fatal("story analysis did not survive round trip")
 	}
 }
 

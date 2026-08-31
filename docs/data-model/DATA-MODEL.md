@@ -86,6 +86,12 @@ Archive format 2.2 stores snapshot metadata in `history/index.json` and chapter 
 
 Automatic snapshots are activity-driven: editing marks the affected chapter, and Draftline records its current content after ten minutes. An unchanged or background-idle project produces no snapshot. Ordinary saves copy unchanged history in its compressed ZIP representation.
 
+### Derived Story Analysis
+
+`analysis.json` stores rebuildable analysis separately from author-owned manuscript and planning data. Its `story` object contains an engine/version identifier, manuscript content hash, timestamp, aggregate metrics, per-chapter metrics, and evidence-based observations. Current built-in metrics include sentence and paragraph structure, dialogue density, readability, part-of-speech ratios, keywords, an extractive summary, and a descriptive tempo signal.
+
+Editing prose marks Characters, Story, and Pacing analysis stale. After 15 seconds without another edit, Draftline runs the local pipeline and persists the new derived results on the next save. A result produced from an older frontend revision is discarded, so background analysis cannot replace newer author text.
+
 ## Story Bible
 
 ### StoryBible
