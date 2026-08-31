@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02448] - 2026-08-31
+
+### Added
+- Added local story analysis that runs while you are idle.
+- Added analysis progress and status to the status bar.
+
 ## [0.16.02447] - 2026-08-31
 
 ### Added

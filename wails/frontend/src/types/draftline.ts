@@ -273,10 +273,70 @@ export interface RelationshipGraphData {
 export interface AnalysisData {
   entity_resolution?: EntityData
   relationships?: RelationshipData
+  story?: StoryAnalysisData
   // Future analysis types:
   // plot_analysis?: PlotAnalysisData
   // theme_analysis?: ThemeAnalysisData
   version?: number
+}
+
+export interface TermCount {
+  term: string
+  count: number
+}
+
+export interface ChapterAnalysis {
+  chapter_id?: string
+  chapter_index: number
+  title: string
+  word_count: number
+  sentence_count: number
+  paragraph_count: number
+  scene_break_count: number
+  dialogue_percent: number
+  average_sentence_words: number
+  average_paragraph_words: number
+  reading_ease: number
+  mean_grade_level: number
+  mean_word_length: number
+  short_sentence_percent: number
+  long_sentence_percent: number
+  verb_percent: number
+  adverb_percent: number
+  adjective_percent: number
+  tempo_score: number
+  tempo_label: 'measured' | 'balanced' | 'brisk' | string
+  keywords?: TermCount[]
+  extractive_summary?: string
+}
+
+export interface StoryAnalysisObservation {
+  kind: 'structure' | 'pacing' | string
+  level: 'notice' | string
+  title: string
+  detail: string
+  chapter_index?: number
+}
+
+export interface StoryAnalysisData {
+  content_hash: string
+  engine: string
+  last_analyzed: string
+  overview: {
+    chapter_count: number
+    word_count: number
+    sentence_count: number
+    paragraph_count: number
+    average_chapter_words: number
+    average_sentence_words: number
+    dialogue_percent: number
+    reading_ease: number
+    mean_grade_level: number
+    tempo_score: number
+  }
+  chapters: ChapterAnalysis[]
+  observations?: StoryAnalysisObservation[]
+  version: number
 }
 
 export interface WritingGoals {

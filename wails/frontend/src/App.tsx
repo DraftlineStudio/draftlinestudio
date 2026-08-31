@@ -12,6 +12,7 @@ import EditorPanel from './components/EditorPanel'
 import CharactersView from './components/characters/CharactersView'
 import ToolsPanel from './components/ToolsPanel'
 import StatusBar from './components/StatusBar'
+import AnalysisCoordinator from './components/AnalysisCoordinator'
 import MetadataDialog from './components/dialogs/MetadataDialog'
 import NewChapterDialog from './components/dialogs/NewChapterDialog'
 import NewBookWizard from './components/dialogs/NewBookWizard'
@@ -189,6 +190,7 @@ export default function App() {
         {viewMode !== 'cast' && <ToolsPanel />}
       </div>
       <StatusBar />
+      <AnalysisCoordinator />
       {dialogs.showMetadata && <MetadataDialog />}
       {dialogs.showNewChapter && dialogs.newChapterSection && (
         <NewChapterDialog section={dialogs.newChapterSection} />

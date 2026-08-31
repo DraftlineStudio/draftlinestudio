@@ -203,6 +203,7 @@ interface BookStore {
   isDirty: boolean
   isAutoSaving: boolean
   isIndexing: boolean
+  analysisRevision: number
   statusMessage: string
 
   // UI state
@@ -354,6 +355,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
   isDirty: false,
   isAutoSaving: false,
   isIndexing: false,
+  analysisRevision: 0,
   statusMessage: 'Ready',
 
   // UI state
@@ -395,7 +397,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
   },
 
   openBook: async () => {
-    const { isDirty, indexBook } = get()
+    const { isDirty } = get()
     if (isDirty) {
       set(s => ({ dialogs: { ...s.dialogs, showUnsavedWarning: true, pendingAction: 'open' } }))
       return
@@ -405,7 +407,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
       if (!book?.version) return
       const section: Section = book.body.length > 0 ? 'body' : 'front_matter'
       beginBookSession()
-      set({ book, currentSection: section, currentIndex: 0, isDirty: false, statusMessage: `Opened: ${book.metadata.title}` })
+      set({ book, currentSection: section, currentIndex: 0, isDirty: false, analysisRevision: 0, statusMessage: `Opened: ${book.metadata.title}` })
       useEditorStore.getState().clearPendingDiff()
       if (book.file_path) {
         const wordCount = countBookWords(book)
@@ -415,14 +417,13 @@ export const useBookStore = create<BookStore>((set, get) => ({
           lastOpened: new Date().toISOString(), stats: { chapters: chapterCount, words: wordCount }
         }))
       }
-      if (!book.is_indexed) setTimeout(() => indexBook(), 500)
     } catch (e) {
       set({ statusMessage: `Error opening file: ${e}` })
     }
   },
 
   openRecentBook: async (path: string) => {
-    const { isDirty, indexBook } = get()
+    const { isDirty } = get()
     if (isDirty) {
       set(s => ({ dialogs: { ...s.dialogs, showUnsavedWarning: true, pendingAction: 'open' } }))
       return
@@ -432,7 +433,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
       if (!book?.version) return
       const section: Section = book.body.length > 0 ? 'body' : 'front_matter'
       beginBookSession()
-      set({ book, currentSection: section, currentIndex: 0, isDirty: false, statusMessage: `Opened: ${book.metadata.title}` })
+      set({ book, currentSection: section, currentIndex: 0, isDirty: false, analysisRevision: 0, statusMessage: `Opened: ${book.metadata.title}` })
       useEditorStore.getState().clearPendingDiff()
       const wordCount = countBookWords(book)
       const chapterCount = book.front_matter.length + book.body.length + book.back_matter.length
@@ -440,7 +441,6 @@ export const useBookStore = create<BookStore>((set, get) => ({
         type: 'book', path: book.file_path || path, name: book.metadata.title || 'Untitled',
         lastOpened: new Date().toISOString(), stats: { chapters: chapterCount, words: wordCount }
       }))
-      if (!book.is_indexed) setTimeout(() => indexBook(), 500)
     } catch (e) {
       set({ statusMessage: `Error opening file: ${e}` })
     }
@@ -514,7 +514,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
       }
     }
     beginBookSession()
-    set({ book: null, currentSection: 'body', currentIndex: 0, isDirty: false, statusMessage: '' })
+    set({ book: null, currentSection: 'body', currentIndex: 0, isDirty: false, analysisRevision: 0, statusMessage: '' })
     useEditorStore.getState().clearPendingDiff()
     useAppStore.getState().setShowWelcome(true)
   },
@@ -536,14 +536,14 @@ export const useBookStore = create<BookStore>((set, get) => ({
     const { book, currentSection, currentIndex } = get()
     if (!book) return
     if (currentSection === 'copyright') {
-      set({ book: { ...book, copyright: html }, isDirty: true })
+      set(state => ({ book: { ...book, copyright: html }, isDirty: true, analysisRevision: state.analysisRevision + 1 }))
       scheduleAutoSave()
       return
     }
     const items = getSectionArray(book, currentSection)
     if (!items[currentIndex]) return
     const updated = items.map((item, i) => i === currentIndex ? { ...item, content: html } : item)
-    set({ book: setSectionArray(book, currentSection, updated), isDirty: true })
+    set(state => ({ book: setSectionArray(book, currentSection, updated), isDirty: true, analysisRevision: state.analysisRevision + 1 }))
     scheduleChapterHistory(items[currentIndex].id)
     scheduleAutoSave()
   },
@@ -553,7 +553,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
     if (!book || section === 'copyright') return
     const items = getSectionArray(book, section)
     const updated = items.map((item, i) => i === index ? { ...item, title } : item)
-    set({ book: setSectionArray(book, section, updated), isDirty: true })
+    set(state => ({ book: setSectionArray(book, section, updated), isDirty: true, analysisRevision: state.analysisRevision + 1 }))
     scheduleChapterHistory(items[index]?.id)
     scheduleAutoSave()
   },
@@ -563,7 +563,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
     if (!book || section === 'copyright') return
     const items = getSectionArray(book, section)
     const updated = items.map((item, i) => i === index ? { ...item, subtitle } : item)
-    set({ book: setSectionArray(book, section, updated), isDirty: true })
+    set(state => ({ book: setSectionArray(book, section, updated), isDirty: true, analysisRevision: state.analysisRevision + 1 }))
     scheduleChapterHistory(items[index]?.id)
     scheduleAutoSave()
   },
@@ -573,7 +573,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
     if (!book || section === 'copyright') return
     const items = [...getSectionArray(book, section), { ...item, id: item.id || newChapterID() }]
     const newBook = setSectionArray(book, section, items)
-    set({ book: newBook, currentSection: section, currentIndex: items.length - 1, isDirty: true })
+    set(state => ({ book: newBook, currentSection: section, currentIndex: items.length - 1, isDirty: true, analysisRevision: state.analysisRevision + 1 }))
     scheduleAutoSave()
   },
 
@@ -590,7 +590,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
     } else if (section === currentSection && index < currentIndex) {
       newIndex = currentIndex - 1
     }
-    set({ book: newBook, currentIndex: Math.min(newIndex, updated.length - 1), isDirty: true })
+    set(state => ({ book: newBook, currentIndex: Math.min(newIndex, updated.length - 1), isDirty: true, analysisRevision: state.analysisRevision + 1 }))
     scheduleAutoSave()
   },
 
@@ -606,7 +606,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
       else if (from < currentIndex && to >= currentIndex) newIndex = currentIndex - 1
       else if (from > currentIndex && to <= currentIndex) newIndex = currentIndex + 1
     }
-    set({ book: setSectionArray(book, section, items), currentIndex: newIndex, isDirty: true })
+    set(state => ({ book: setSectionArray(book, section, items), currentIndex: newIndex, isDirty: true, analysisRevision: state.analysisRevision + 1 }))
     scheduleAutoSave()
   },
 
@@ -620,7 +620,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
   updateCopyright: (html) => {
     const { book } = get()
     if (!book) return
-    set({ book: { ...book, copyright: html }, isDirty: true })
+    set(state => ({ book: { ...book, copyright: html }, isDirty: true, analysisRevision: state.analysisRevision + 1 }))
     scheduleAutoSave()
   },
 
@@ -870,7 +870,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
     try {
       const book: BookData = await NewBook()
       beginBookSession()
-      set({ book, currentSection: 'body', currentIndex: 0, isDirty: false, statusMessage: 'Ready' })
+      set({ book, currentSection: 'body', currentIndex: 0, isDirty: false, analysisRevision: 0, statusMessage: 'Ready' })
     } catch (e) {
       console.error('initBook failed:', e)
     }
@@ -882,7 +882,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
       const book: BookData = await NewBook()
       const merged: BookData = { ...book, metadata: { ...book.metadata, title: title || 'Untitled', author, publisher } }
       beginBookSession()
-      set({ book: merged, currentSection: 'body', currentIndex: 0, isDirty: false, statusMessage: 'New project created' })
+      set({ book: merged, currentSection: 'body', currentIndex: 0, isDirty: false, analysisRevision: 0, statusMessage: 'New project created' })
     } catch (e) {
       set({ statusMessage: `Error: ${e}` })
     }
@@ -893,7 +893,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
     const section: Section = book.body.length > 0 ? 'body' : book.front_matter.length > 0 ? 'front_matter' : 'back_matter'
     beginBookSession()
     const identifiedBook = ensureFrontendChapterIDs(book)
-    set({ book: identifiedBook, currentSection: section, currentIndex: 0, isDirty: true, statusMessage: `Imported: ${book.metadata.title}` })
+    set({ book: identifiedBook, currentSection: section, currentIndex: 0, isDirty: true, analysisRevision: 0, statusMessage: `Imported: ${book.metadata.title}` })
     scheduleAutoSave()
     useAppStore.getState().setShowWelcome(false)
   },
@@ -931,7 +931,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
         if (!opened?.version) return
         const section: Section = opened.body.length > 0 ? 'body' : 'front_matter'
         beginBookSession()
-        set({ book: opened, currentSection: section, currentIndex: 0, isDirty: false, statusMessage: `Opened: ${opened.metadata.title}` })
+        set({ book: opened, currentSection: section, currentIndex: 0, isDirty: false, analysisRevision: 0, statusMessage: `Opened: ${opened.metadata.title}` })
       } catch (e) { set({ statusMessage: `Error opening file: ${e}` }) }
     }
   },
@@ -949,7 +949,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
         if (!opened?.version) return
         const section: Section = opened.body.length > 0 ? 'body' : 'front_matter'
         beginBookSession()
-        set({ book: opened, currentSection: section, currentIndex: 0, isDirty: false, statusMessage: `Opened: ${opened.metadata.title}` })
+        set({ book: opened, currentSection: section, currentIndex: 0, isDirty: false, analysisRevision: 0, statusMessage: `Opened: ${opened.metadata.title}` })
       } catch (e) { set({ statusMessage: `Error opening file: ${e}` }) }
     }
   },

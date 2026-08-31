@@ -44,7 +44,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.16.02447"
+const AppVersion = "0.16.02448"
 
 // maxAIResponseBytes caps how much of a provider HTTP response body we will
 // read into memory. It sits comfortably above any plausible max-output-tokens
@@ -232,6 +232,49 @@ func (a *App) AnalyzeRelationships(book types.BookData) types.RelationshipAnalys
 		ScenesDetected:     len(relData.Scenes),
 		InteractionsFound:  len(relData.Interactions),
 		RelationshipsBuilt: len(relData.Relationships),
+	}
+}
+
+// AnalyzeBook runs the bundled local analysis pipeline as one coherent job.
+// The frontend receives progress events for the JetBrains-style status bar and
+// one final BookData value, avoiding intermediate whole-book replacements.
+func (a *App) AnalyzeBook(bookData types.BookData) types.FullAnalysisResult {
+	chapterCount := len(indexing.AllChapters(&bookData))
+	a.emitAnalysisProgress(types.StoryAnalysisProgress{
+		Phase: "characters", Message: fmt.Sprintf("Analyzing characters across %d chapters", chapterCount),
+		Current: 0, Total: chapterCount, Percent: 5,
+	})
+
+	indexResult := indexing.IndexBook(&bookData)
+	if !indexResult.Success {
+		return types.FullAnalysisResult{Success: false, Error: indexResult.Error}
+	}
+	bookData = indexResult.Book
+
+	a.emitAnalysisProgress(types.StoryAnalysisProgress{
+		Phase: "relationships", Message: "Mapping confirmed character relationships",
+		Current: 1, Total: 1, Percent: 45,
+	})
+	analyzer := indexing.NewRelationshipAnalyzer()
+	relationships, err := analyzer.AnalyzeBook(bookData)
+	if err != nil {
+		return types.FullAnalysisResult{Success: false, Error: err.Error()}
+	}
+	bookData.Analysis.Relationships = relationships
+
+	bookData.Analysis.Story = indexing.AnalyzeStory(&bookData, a.emitAnalysisProgress)
+	if bookData.Analysis.Version < 2 {
+		bookData.Analysis.Version = 2
+	}
+	a.emitAnalysisProgress(types.StoryAnalysisProgress{
+		Phase: "complete", Message: "Story analysis current", Current: chapterCount, Total: chapterCount, Percent: 100,
+	})
+	return types.FullAnalysisResult{Success: true, Book: bookData}
+}
+
+func (a *App) emitAnalysisProgress(progress types.StoryAnalysisProgress) {
+	if a.ctx != nil {
+		runtime.EventsEmit(a.ctx, "analysis:progress", progress)
 	}
 }
 
@@ -560,6 +603,7 @@ func (a *App) loadSettingsFromDisk() types.AppSettings {
 		CastEnabled:             true,
 		StoryBibleEnabled:       true,
 		PlotWalkerEnabled:       true,
+		AnalysisEnabled:         true,
 		CharactersLaneView:      "grid",
 		SidebarPanelWidth:       350,
 		// Open on the Writing Dashboard by default; "" means closed.
