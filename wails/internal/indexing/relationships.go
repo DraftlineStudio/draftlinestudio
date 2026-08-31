@@ -44,6 +44,10 @@ func (ra *RelationshipAnalyzer) AnalyzeBook(book types.BookData) (*types.Relatio
 	allScenes := []types.SceneRecord{}
 	allInteractions := []types.InteractionRecord{}
 
+	// Group all mentions by chapter in a single O(M) pass. Filtering per
+	// chapter instead rescanned every mention once per chapter — O(C×M).
+	mentionsByChapter := groupMentionsByChapter(entityData.Mentions)
+
 	for chIdx, chapter := range AllChapters(&book) {
 		chapterText := ""
 		if ShouldAnalyzeChapter(chapter) {
@@ -54,7 +58,7 @@ func (ra *RelationshipAnalyzer) AnalyzeBook(book types.BookData) (*types.Relatio
 		scenes := DetectScenes(chapterText, chIdx)
 
 		// Get mentions for this chapter
-		chapterMentions := filterMentionsByChapter(entityData.Mentions, chIdx)
+		chapterMentions := mentionsByChapter[chIdx]
 
 		// Populate character IDs for each scene
 		for i := range scenes {
@@ -92,13 +96,12 @@ func (ra *RelationshipAnalyzer) AnalyzeBook(book types.BookData) (*types.Relatio
 	}, nil
 }
 
-// filterMentionsByChapter returns mentions that belong to a specific chapter.
-func filterMentionsByChapter(mentions []types.MentionRecord, chapterIndex int) []types.MentionRecord {
-	result := []types.MentionRecord{}
+// groupMentionsByChapter buckets mentions by their chapter index in one pass,
+// preserving document order within each bucket.
+func groupMentionsByChapter(mentions []types.MentionRecord) map[int][]types.MentionRecord {
+	result := make(map[int][]types.MentionRecord)
 	for _, m := range mentions {
-		if m.Chapter == chapterIndex {
-			result = append(result, m)
-		}
+		result[m.Chapter] = append(result[m.Chapter], m)
 	}
 	return result
 }
@@ -111,6 +114,13 @@ func (ra *RelationshipAnalyzer) detectCharacterEvents(
 ) []types.CharacterEvent {
 	events := []types.CharacterEvent{}
 	entityData := book.Analysis.EntityResolution
+
+	// Prebuild entityID -> canonical name once. Scanning all entities per
+	// relationship to find both endpoints' names was ~O(R×E).
+	canonicalByID := make(map[string]string, len(entityData.Entities))
+	for _, entity := range entityData.Entities {
+		canonicalByID[entity.ID] = entity.Canonical
+	}
 
 	// Track first appearance of each character
 	firstAppearance := make(map[string]int)
@@ -141,16 +151,8 @@ func (ra *RelationshipAnalyzer) detectCharacterEvents(
 	// Create "first meeting" events for relationships
 	for _, rel := range relationships {
 		// Find character names
-		char1Name := ""
-		char2Name := ""
-		for _, entity := range entityData.Entities {
-			if entity.ID == rel.Character1ID {
-				char1Name = entity.Canonical
-			}
-			if entity.ID == rel.Character2ID {
-				char2Name = entity.Canonical
-			}
-		}
+		char1Name := canonicalByID[rel.Character1ID]
+		char2Name := canonicalByID[rel.Character2ID]
 
 		// Only create meeting event if relationship is significant
 		if rel.InteractionCount >= 2 {

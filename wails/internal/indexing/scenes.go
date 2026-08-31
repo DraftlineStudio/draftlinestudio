@@ -12,6 +12,24 @@ import (
 // Scene detection operates on stripped text (see StripHTML), the same
 // coordinate space as mention offsets.
 
+// Regexes are compiled once at package load. Recompiling them per chapter
+// (which DetectScenes is called for) was a measurable indexing cost on large
+// books.
+var (
+	paragraphSplitRe = regexp.MustCompile(`\n\s*\n`)
+
+	sceneBreakRes = []*regexp.Regexp{
+		regexp.MustCompile(`\n\s*\*\s*\*\s*\*\s*\n`), // * * *
+		regexp.MustCompile(`\n\s*#\s*#\s*#\s*\n`),    // # # #
+		regexp.MustCompile(`\n\s*-\s*-\s*-\s*\n`),    // - - -
+		regexp.MustCompile(`\n\s*\*{3,}\s*\n`),       // ***
+		regexp.MustCompile(`\n\s*#{3,}\s*\n`),        // ###
+		regexp.MustCompile(`\n\s*-{3,}\s*\n`),        // ---
+		regexp.MustCompile(`\n\s*~\s*~\s*~\s*\n`),    // ~ ~ ~
+		regexp.MustCompile(`\n\s*\.\s*\.\s*\.\s*\n`), // . . .
+	}
+)
+
 // ParagraphInfo holds information about a detected paragraph.
 type ParagraphInfo struct {
 	Text        string
@@ -59,7 +77,7 @@ func DetectScenes(text string, chapterIndex int) []types.SceneRecord {
 func splitIntoParagraphs(text string) []ParagraphInfo {
 	paragraphs := []ParagraphInfo{}
 
-	parts := regexp.MustCompile(`\n\s*\n`).Split(text, -1)
+	parts := paragraphSplitRe.Split(text, -1)
 	offset := 0
 
 	for _, part := range parts {
@@ -90,19 +108,7 @@ func splitIntoParagraphs(text string) []ParagraphInfo {
 func detectSceneBreaks(text string) []int {
 	offsets := []int{}
 
-	patterns := []string{
-		`\n\s*\*\s*\*\s*\*\s*\n`, // * * *
-		`\n\s*#\s*#\s*#\s*\n`,    // # # #
-		`\n\s*-\s*-\s*-\s*\n`,    // - - -
-		`\n\s*\*{3,}\s*\n`,       // ***
-		`\n\s*#{3,}\s*\n`,        // ###
-		`\n\s*-{3,}\s*\n`,        // ---
-		`\n\s*~\s*~\s*~\s*\n`,    // ~ ~ ~
-		`\n\s*\.\s*\.\s*\.\s*\n`, // . . .
-	}
-
-	for _, pattern := range patterns {
-		re := regexp.MustCompile(pattern)
+	for _, re := range sceneBreakRes {
 		for _, match := range re.FindAllStringIndex(text, -1) {
 			offsets = append(offsets, match[0])
 		}
