@@ -11,6 +11,8 @@ const changedParagraph: ParagraphDiff = {
   hasChanges: true,
   originalText: 'old',
   revisedText: 'new',
+  originalHtml: '<p>old</p>',
+  revisedHtml: '<p>new</p>',
 }
 
 beforeEach(async () => {
