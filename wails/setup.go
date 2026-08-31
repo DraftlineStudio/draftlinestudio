@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -59,21 +60,28 @@ const (
 
 // ── Path helpers ────────────────────────────────────────────────────────────
 
-func draftlineDataDir() string {
-	dir, _ := os.UserConfigDir()
-	p := filepath.Join(dir, "draftline")
-	_ = os.MkdirAll(p, 0755)
+func draftlineAIToolsDir() string {
+	dir, err := os.UserCacheDir()
+	if err != nil || dir == "" {
+		dir, _ = os.UserConfigDir()
+	}
+	p := filepath.Join(dir, "draftline", "ai")
+	_ = os.MkdirAll(p, 0700)
+	_ = os.Chmod(p, 0700)
 	return p
 }
 
 // nodeInstallDir is where Draftline extracts a portable Node.js distribution.
 func nodeInstallDir() string {
-	return filepath.Join(draftlineDataDir(), "node")
+	return filepath.Join(draftlineAIToolsDir(), "node")
 }
 
-// npmGlobalDir is where we install npm global packages (including claude).
-func npmGlobalDir() string {
-	return filepath.Join(draftlineDataDir(), "npm-global")
+func claudeInstallDir() string {
+	return filepath.Join(draftlineAIToolsDir(), "claude")
+}
+
+func codexInstallDir() string {
+	return filepath.Join(draftlineAIToolsDir(), "codex")
 }
 
 // nodeInstallBinDir is the directory inside our portable Node.js that contains executables.
@@ -103,7 +111,7 @@ func bundledNpmBin() string {
 
 // bundledClaudeBin returns the expected path to the claude binary in our npm global dir.
 func bundledClaudeBin() string {
-	d := npmGlobalDir()
+	d := claudeInstallDir()
 	if goruntime.GOOS == "windows" {
 		return filepath.Join(d, "claude.cmd")
 	}
@@ -112,35 +120,70 @@ func bundledClaudeBin() string {
 
 // bundledCodexBin returns the expected path to the codex binary in our npm global dir.
 func bundledCodexBin() string {
-	d := npmGlobalDir()
+	d := codexInstallDir()
 	if goruntime.GOOS == "windows" {
 		return filepath.Join(d, "codex.cmd")
 	}
 	return filepath.Join(d, "bin", "codex")
 }
 
-// resolveCodexBin returns the best available codex binary (system PATH → bundled), or "".
+// resolveCodexBin returns only Draftline's managed, version-pinned Codex CLI.
+// PATH is deliberately ignored so an unrelated global update cannot silently
+// change the security flags or behavior Draftline relies on.
 func resolveCodexBin() string {
-	if p, err := exec.LookPath("codex"); err == nil {
+	if managedCodexIsPinned() {
+		return bundledCodexBin()
+	}
+	return ""
+}
+
+// resolveNpmBin is used only to install managed tools. Prefer Draftline's
+// checksum-pinned runtime, with system npm as a bootstrap fallback.
+func resolveNpmBin() string {
+	p := bundledNpmBin()
+	if _, err := os.Stat(p); err == nil {
 		return p
 	}
-	p := bundledCodexBin()
-	if _, err := os.Stat(p); err == nil {
+	if p, err := exec.LookPath("npm"); err == nil {
 		return p
 	}
 	return ""
 }
 
-// resolveNpmBin returns the best available npm binary (system PATH → bundled), or "".
-func resolveNpmBin() string {
-	if p, err := exec.LookPath("npm"); err == nil {
-		return p
+func installedNpmPackageVersion(prefix string, packagePath ...string) string {
+	parts := []string{prefix}
+	if goruntime.GOOS != "windows" {
+		parts = append(parts, "lib")
 	}
-	p := bundledNpmBin()
-	if _, err := os.Stat(p); err == nil {
-		return p
+	parts = append(parts, "node_modules")
+	parts = append(parts, packagePath...)
+	data, err := os.ReadFile(filepath.Join(append(parts, "package.json")...))
+	if err != nil {
+		return ""
 	}
-	return ""
+	var manifest struct {
+		Version string `json:"version"`
+	}
+	if json.Unmarshal(data, &manifest) != nil {
+		return ""
+	}
+	return strings.TrimSpace(manifest.Version)
+}
+
+func managedClaudeIsPinned() bool {
+	if installedNpmPackageVersion(claudeInstallDir(), "@anthropic-ai", "claude-code") != claudeCodeVersion {
+		return false
+	}
+	_, err := os.Stat(bundledClaudeBin())
+	return err == nil
+}
+
+func managedCodexIsPinned() bool {
+	if installedNpmPackageVersion(codexInstallDir(), "@openai", "codex") != codexCLIVersion {
+		return false
+	}
+	_, err := os.Stat(bundledCodexBin())
+	return err == nil
 }
 
 // cmdExec wraps exec.CommandContext so that on Windows, .cmd and .bat files
@@ -239,14 +282,10 @@ func codexExec(ctx context.Context, codexPath string, args ...string) *exec.Cmd 
 	return cmdExec(ctx, codexPath, args...)
 }
 
-// resolveClaudeBin returns the best available claude binary (system PATH → bundled), or "".
+// resolveClaudeBin returns only Draftline's managed, version-pinned Claude CLI.
 func resolveClaudeBin() string {
-	if p, err := exec.LookPath("claude"); err == nil {
-		return p
-	}
-	p := bundledClaudeBin()
-	if _, err := os.Stat(p); err == nil {
-		return p
+	if managedClaudeIsPinned() {
+		return bundledClaudeBin()
 	}
 	return ""
 }
@@ -254,8 +293,8 @@ func resolveClaudeBin() string {
 // ── Setup orchestration ─────────────────────────────────────────────────────
 
 // SetupClaudeCode orchestrates the full Claude Code setup in one call:
-//  1. Download + extract portable Node.js if npm is unavailable
-//  2. npm install -g @anthropic-ai/claude-code --prefix {npmGlobalDir}
+//  1. Download and verify Draftline's pinned portable Node.js runtime
+//  2. Install the exact Claude Code version into its private AI directory
 //
 // Progress is streamed to the frontend via "setup:progress" events.
 // The function blocks until setup is complete (or fails).
@@ -265,8 +304,8 @@ func (a *App) SetupClaudeCode() types.ClaudeCodeStatus {
 	}
 
 	// ── Step 1: Ensure npm is available ─────────────────────────────────────
-	npmPath := resolveNpmBin()
-	if npmPath == "" {
+	npmPath := bundledNpmBin()
+	if _, err := os.Stat(npmPath); err != nil {
 		emit("step:node")
 		emit("Downloading Node.js " + nodeVersion + " — this is a one-time 28 MB download…")
 		if err := downloadAndExtractNode(emit); err != nil {
@@ -280,11 +319,10 @@ func (a *App) SetupClaudeCode() types.ClaudeCodeStatus {
 	}
 
 	// ── Step 2: Install Claude Code CLI ─────────────────────────────────────
-	claudePath := resolveClaudeBin()
-	if claudePath == "" {
+	if !managedClaudeIsPinned() {
 		emit("step:claude")
 		emit("Installing Claude Code CLI — this takes about a minute…")
-		if err := runNpmInstall(npmPath, "@anthropic-ai/claude-code@"+claudeCodeVersion); err != nil {
+		if err := runNpmInstall(npmPath, claudeInstallDir(), "@anthropic-ai/claude-code@"+claudeCodeVersion); err != nil {
 			emit("error:Claude Code installation failed: " + err.Error())
 			return types.ClaudeCodeStatus{Error: "Claude Code install failed: " + err.Error()}
 		}
@@ -298,15 +336,15 @@ func (a *App) SetupClaudeCode() types.ClaudeCodeStatus {
 }
 
 // SetupCodexCLI orchestrates OpenAI Codex CLI setup for ChatGPT-account users,
-// through the same bundled-Node pipeline as Claude Code. Progress streams over
+// through the same pinned-Node pipeline as Claude Code. Progress streams over
 // the shared "setup:progress" channel (one setup wizard runs at a time).
 func (a *App) SetupCodexCLI() types.ClaudeCodeStatus {
 	emit := func(msg string) {
 		runtime.EventsEmit(a.ctx, "setup:progress", msg)
 	}
 
-	npmPath := resolveNpmBin()
-	if npmPath == "" {
+	npmPath := bundledNpmBin()
+	if _, err := os.Stat(npmPath); err != nil {
 		emit("step:node")
 		emit("Downloading Node.js " + nodeVersion + " — this is a one-time 28 MB download…")
 		if err := downloadAndExtractNode(emit); err != nil {
@@ -317,10 +355,10 @@ func (a *App) SetupCodexCLI() types.ClaudeCodeStatus {
 	}
 	emit("node:done")
 
-	if resolveCodexBin() == "" {
+	if !managedCodexIsPinned() {
 		emit("step:claude")
 		emit("Installing Codex CLI — this takes about a minute…")
-		if err := runNpmInstall(npmPath, "@openai/codex@"+codexCLIVersion); err != nil {
+		if err := runNpmInstall(npmPath, codexInstallDir(), "@openai/codex@"+codexCLIVersion); err != nil {
 			emit("error:Codex installation failed: " + err.Error())
 			return types.ClaudeCodeStatus{Error: "Codex install failed: " + err.Error()}
 		}
@@ -331,9 +369,9 @@ func (a *App) SetupCodexCLI() types.ClaudeCodeStatus {
 	return a.CheckCodexCLI()
 }
 
-func runNpmInstall(npmPath, pkg string) error {
-	prefix := npmGlobalDir()
-	_ = os.MkdirAll(prefix, 0755)
+func runNpmInstall(npmPath, prefix, pkg string) error {
+	_ = os.MkdirAll(prefix, 0700)
+	_ = os.Chmod(prefix, 0700)
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
 

@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02446] - 2026-08-31
+
+### Security
+- Claude Code and Codex now run as text-only processes.
+- Draftline now only runs its own pinned Claude Code and Codex installs.
+
 ## [0.16.02445] - 2026-08-31
 
 ### Added
