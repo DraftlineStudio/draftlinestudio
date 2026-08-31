@@ -19,6 +19,14 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02429] - 2026-08-30
+
+### Security
+- Tightened filesystem permissions on locally cached user data. Rolling backups (`internal/backup/backup.go`) now create the per-project backup directory `0700` and write `backup.N.draftline` and `info.json` as `0600` (was `0755`/`0644`), so a full manuscript copy is no longer world/group-readable on multi-user systems. Recent-projects writes (`AddRecentProject`/`RemoveRecentProject`/`ClearRecentProjects` in `app.go`) now use `fsutil.WriteFileAtomic` at `0600` (was `os.WriteFile` `0644`). Opening a project best-effort tightens any pre-existing loose directory/file via `os.Chmod` (errors ignored; Unix bits are a no-op on Windows).
+- Audit ref: sol5.6-2026-08-30 — SEC-001 / SEC-004 (backup-perms).
+
+---
+
 ## [0.16.02428] - 2026-08-30
 
 ### Changed
