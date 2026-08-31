@@ -4,6 +4,22 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02439] - 2026-08-31
+
+### Fixed
+- AI diff-apply no longer flattens the whole chapter to plain text. Paragraphs the
+  user did not change (untouched or rejected) are now preserved as their exact
+  original `<p>` HTML — bold, italic, links, font-size and color survive. Whole-
+  paragraph accepts keep the revised HTML verbatim; only a paragraph with mixed
+  accept/reject decisions inside it is reconstructed from plain-text word chunks.
+  (audit ref: Fable5 C1)
+
+### Changed
+- Paragraphs are now aligned by an LCS edit script over their text instead of by
+  positional index, so inserting or deleting a paragraph no longer cascades into
+  spurious full-paragraph diffs on every following paragraph. (audit ref: Fable5 M3)
+
+
 ## Versioning System
 
 This project does NOT use Semantic Versioning (SemVer).
