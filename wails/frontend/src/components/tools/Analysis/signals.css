@@ -1,0 +1,42 @@
+/* Signals panel (design 3b) — panel-specific rules only; shared classes
+   (.an-*) come from analysis.css. */
+
+.sg-panel .sg-tiles-block {
+  flex-shrink: 0;
+}
+
+.sg-freshness-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* One-line plain-language read: slightly larger serif than card excerpts. */
+.sg-oneline {
+  padding: 0 12px 6px;
+  flex-shrink: 0;
+}
+.sg-oneline .an-label {
+  display: block;
+  margin-bottom: 6px;
+}
+.sg-oneline .an-serif {
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+/* Jump list into the other analysis panels. */
+.sg-jumps {
+  padding: 6px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+/* Empty state spacing. */
+.sg-panel .an-empty p {
+  margin: 0 0 8px;
+}
+.sg-panel .an-empty .an-run-btn {
+  margin-top: 8px;
+}

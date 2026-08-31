@@ -1715,19 +1715,6 @@ html, body, #root {
   gap: 6px;
 }
 
-/* Issues section needs full height without padding */
-.slide-panel-content:has(.issues-section) {
-  padding: 0;
-  overflow: hidden;
-}
-
-.issues-section {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-}
-
 /* Legacy classes for backwards compatibility */
 .tools-panel {
   display: flex;
@@ -2266,33 +2253,6 @@ html, body, #root {
 }
 
 /* Story analysis */
-.story-analysis { padding: 10px; }
-.story-analysis-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.story-analysis-heading > div > span { display: block; margin-top: 3px; color: var(--text-muted); font-size: 10px; }
-.story-analysis-heading .bible-add-btn { margin: 0; white-space: nowrap; }
-.story-analysis-overview {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: 12px;
-}
-.story-analysis-metric { padding: 8px; border: 1px solid var(--border); border-radius: 5px; background: var(--bg-secondary); }
-.story-analysis-metric span { display: block; color: var(--text-muted); font-size: 9px; text-transform: uppercase; letter-spacing: 0.45px; }
-.story-analysis-metric strong { display: block; margin-top: 3px; color: var(--text-primary); font-size: 13px; }
-.story-analysis-section { margin-top: 16px; }
-.story-observation-list, .chapter-analysis-list { display: flex; flex-direction: column; gap: 7px; margin-top: 7px; }
-.story-observation, .chapter-analysis-card { padding: 9px; border: 1px solid var(--border); border-radius: 5px; background: var(--bg-secondary); }
-.story-observation > span { color: #d7a843; font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; }
-.story-observation strong { display: block; margin-top: 2px; color: var(--text-primary); font-size: 11px; }
-.story-observation p, .chapter-extractive-summary { margin: 4px 0 0; color: var(--text-secondary); font-size: 10px; line-height: 1.45; }
-.chapter-analysis-card header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.chapter-analysis-card header strong { overflow: hidden; color: var(--text-primary); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.tempo-label { padding: 1px 5px; border-radius: 8px; background: var(--bg-tertiary); color: var(--text-muted); font-size: 9px; text-transform: capitalize; }
-.tempo-label.brisk { color: #55b879; }
-.tempo-label.measured { color: #7b91d2; }
-.chapter-analysis-stats { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 5px; color: var(--text-muted); font-size: 9px; }
-.chapter-keywords { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
-.chapter-keywords span { padding: 1px 5px; border-radius: 8px; background: var(--bg-tertiary); color: var(--text-secondary); font-size: 9px; }
 .statusbar-dot {
   width: 5px; height: 5px;
   border-radius: 50%;
@@ -3751,19 +3711,6 @@ html, body, #root {
   border-color: var(--border-strong);
 }
 
-/* ===== STORY ANALYSIS ACTION BUTTON (shared "Run again" style) ===== */
-.bible-add-btn {
-  width: 100%;
-  padding: 8px;
-  font-size: 11px;
-  font-weight: 500;
-  background: var(--bg-surface-alt);
-  border: 1px dashed var(--border);
-  border-radius: 4px;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-.bible-add-btn:hover { border-color: var(--app-accent); color: var(--app-accent-text); }
 
 /* ===== AI ANTI-PATTERNS ===== */
 .anti-pattern-list {

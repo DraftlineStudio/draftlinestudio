@@ -29,12 +29,10 @@ frontend/src/
 │   │   │   └── index.tsx       # Word counts, goals, session stats
 │   │   ├── AIStudio/
 │   │   │   └── index.tsx       # AI modes, style mixer, streaming
-│   │   ├── Analysis/           # Analysis sidebar suite (see ANALYSIS-SIDEBARS.md)
-│   │   │   ├── shared.ts       # Cross-panel nav, deltas, dismissals
-│   │   │   ├── analysis.css    # Shared .an-* visual vocabulary
-│   │   │   └── *Panel.tsx      # One component + css per panel
-│   │   └── PlotWalker/
-│   │       └── index.tsx       # Story Analysis viewer
+│   │   └── Analysis/           # Analysis sidebar suite (see ANALYSIS-SIDEBARS.md)
+│   │       ├── shared.ts       # Cross-panel nav, deltas, dismissals
+│   │       ├── analysis.css    # Shared .an-* visual vocabulary
+│   │       └── *Panel.tsx      # One component + css per panel
 │   └── dialogs/
 │       ├── AppSettingsDialog.tsx
 │       ├── ExportWizard.tsx
@@ -101,8 +99,7 @@ Slim router that displays feature modules based on active glyph selection and th
 Each feature is isolated in its own folder:
 - **Dashboard/** - Word counts, writing goals, session stats, AI detection
 - **AIStudio/** - Rewrite modes, style mixer, streaming output, setup guidance
-- **Analysis/** - The analysis sidebar suite (Prose, and siblings as they land) — see `docs/frontend/ANALYSIS-SIDEBARS.md`
-- **PlotWalker/** - Story Analysis viewer (manuscript signals, observations, per-chapter cards)
+- **Analysis/** - The analysis sidebar suite (Signals, Prose, Pacing, Chapters, Worth Reviewing, AI Analysis) — see `docs/frontend/ANALYSIS-SIDEBARS.md`. The old single Story Analysis pane (`PlotWalker/`) was replaced by this suite in 0.16.02454.
 
 The Story Bible (plot notes, timeline) and Plot Walker planning tools (beat sheet,
 foreshadowing ledger, knowledge matrix) were retired from the sidebar in 0.16.02449.
@@ -117,7 +114,7 @@ Spelling and grammar are independent bundled features managed from **Settings > 
 
 The bundled feature catalog lives in `features/registry.ts`. Stable IDs, capabilities, categories, resource profiles, and persisted setting keys provide the client contract for future community analysis packs. The Marketplace tab currently previews this boundary; package discovery and installation require the signed catalog and installer described in `docs/architecture/PLUGIN-SYSTEM.md`.
 
-`AnalysisCoordinator.tsx` keeps manuscript-scale work off the typing path. Content mutations increment a lightweight revision, mark Characters/Story/Pacing stale, and reset a 15-second idle timer. `analysisStore.ts` runs the consolidated Wails analysis call, rejects results if a newer revision exists, and consumes `analysis:progress` events for the bottom status bar. The Story Analysis pane reads persisted results from `book.analysis.story`.
+`AnalysisCoordinator.tsx` keeps manuscript-scale work off the typing path. Content mutations increment a lightweight revision, mark Characters/Story/Pacing stale, and reset a 15-second idle timer. `analysisStore.ts` runs the consolidated Wails analysis call, rejects results if a newer revision exists, and consumes `analysis:progress` events for the bottom status bar. The analysis sidebar suite (`tools/Analysis/`, see `ANALYSIS-SIDEBARS.md`) reads the persisted results from `book.analysis.story`.
 
 ## State Management
 

@@ -9,8 +9,8 @@ import { SECTION_CONFIG } from './tools/constants'
 import GlyphIcon from './tools/GlyphIcon'
 import DashboardTab from './tools/Dashboard'
 import AiStudioTab from './tools/AIStudio'
-import { IssuesSection } from './tools/PlotWalker'
 import CharacterQuickRef from './tools/CharacterQuickRef'
+import SignalsPanel from './tools/Analysis/SignalsPanel'
 import ProsePanel from './tools/Analysis/ProsePanel'
 import PacingPanel from './tools/Analysis/PacingPanel'
 import ChaptersPanel from './tools/Analysis/ChaptersPanel'
@@ -20,7 +20,6 @@ import { OPEN_TOOLS_SECTION_EVENT, useReviewCount } from './tools/Analysis/share
 function isSectionEnabled(section: Exclude<GlyphSection, null>, settings: AppSettings): boolean {
   if (section === 'ai') return settings.ai_enabled
   if (section === 'characters') return settings.cast_enabled
-  if (section === 'issues') return settings.analysis_enabled
   if (section === 'signals' || section === 'prose' || section === 'pacing' || section === 'chapters' || section === 'review') {
     return settings.analysis_enabled
   }
@@ -151,11 +150,11 @@ export default function ToolsPanel() {
           <div className="slide-panel-content">
             {activeSection === 'dashboard' && <DashboardTab />}
             {activeSection === 'characters' && <CharacterQuickRef />}
+            {activeSection === 'signals' && <SignalsPanel />}
             {activeSection === 'prose' && <ProsePanel />}
             {activeSection === 'pacing' && <PacingPanel />}
             {activeSection === 'chapters' && <ChaptersPanel />}
             {activeSection === 'review' && <ReviewPanel />}
-            {activeSection === 'issues' && <IssuesSection />}
             {activeSection === 'ai' && <AiStudioTab />}
           </div>
         </div>
