@@ -60,37 +60,6 @@ func LevenshteinDistance(s1, s2 string) int {
 	return prev[len2]
 }
 
-// IsTypo checks if two strings are within the allowed edit distance for typos.
-// By default, allows edit distance of 1 for strings of length 4+.
-// For shorter strings, requires exact match to avoid false positives.
-func IsTypo(s1, s2 string, maxDistance int) bool {
-	s1 = strings.ToLower(s1)
-	s2 = strings.ToLower(s2)
-
-	// Exact match is always true
-	if s1 == s2 {
-		return true
-	}
-
-	// For short names (< 4 chars), don't allow typos (too many false positives)
-	// e.g., "Joe" vs "Jon" should not merge
-	if len(s1) < 4 || len(s2) < 4 {
-		return false
-	}
-
-	// Length difference check - if lengths differ by more than maxDistance,
-	// they can't be within edit distance
-	lenDiff := len(s1) - len(s2)
-	if lenDiff < 0 {
-		lenDiff = -lenDiff
-	}
-	if lenDiff > maxDistance {
-		return false
-	}
-
-	return LevenshteinDistance(s1, s2) <= maxDistance
-}
-
 // IsLikelyTypo is a stricter version that also checks:
 // - First letter must match (common typos don't change the first letter)
 // - Length difference of at most 1

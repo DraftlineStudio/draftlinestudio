@@ -230,12 +230,3 @@ func IsNickname(name1, name2 string) bool {
 
 	return false
 }
-
-// GetNicknames returns all known nicknames for a given name.
-func GetNicknames(name string) []string {
-	n := strings.ToLower(name)
-	if nicks, ok := DefaultNicknames[n]; ok {
-		return nicks
-	}
-	return nil
-}
