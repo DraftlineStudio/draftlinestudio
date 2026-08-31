@@ -4,10 +4,16 @@ package ziputil
 
 import (
 	"archive/zip"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
 )
+
+// ErrEntryNotFound is returned by ReadNamed when no entry matches the requested
+// name. Callers use errors.Is to distinguish an absent entry from a read
+// failure (e.g. an oversized or corrupt entry that does exist).
+var ErrEntryNotFound = errors.New("entry not found in archive")
 
 const (
 	// MaxEntrySize caps a single decompressed entry. Chapters are HTML/JSON;
@@ -75,5 +81,5 @@ func ReadNamed(files []*zip.File, name string, caseInsensitive bool) ([]byte, er
 			return ReadEntry(f)
 		}
 	}
-	return nil, fmt.Errorf("entry %q not found in archive", name)
+	return nil, fmt.Errorf("%q: %w", name, ErrEntryNotFound)
 }

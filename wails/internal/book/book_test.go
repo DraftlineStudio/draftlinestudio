@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"draftline/internal/types"
@@ -153,6 +154,52 @@ func TestWriteReplacesExistingFileAtomically(t *testing.T) {
 		if e.Name() != filepath.Base(path) {
 			t.Fatalf("unexpected file left beside book: %s", e.Name())
 		}
+	}
+}
+
+func TestOpenFailsOnMissingChapterEntry(t *testing.T) {
+	isolateConfigDir(t)
+	path := filepath.Join(t.TempDir(), "missing.draftline")
+
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := zip.NewWriter(f)
+	mw, _ := w.Create("manifest.json")
+	// Manifest references body/000.html but the entry is never written.
+	_, _ = mw.Write([]byte(`{"version":"2.0","body":[{"title":"Chapter One","type":"chapter","file":"body/000.html"}]}`))
+	_ = w.Close()
+	_ = f.Close()
+
+	got, err := Open(path)
+	if err == nil {
+		t.Fatalf("expected error for missing chapter entry, got body=%d", len(got.Body))
+	}
+	if !strings.Contains(err.Error(), "Chapter One") || !strings.Contains(err.Error(), "body/000.html") {
+		t.Fatalf("error should name the chapter and file, got: %v", err)
+	}
+}
+
+func TestOpenFailsOnOversizedChapterEntry(t *testing.T) {
+	isolateConfigDir(t)
+	path := filepath.Join(t.TempDir(), "oversized.draftline")
+
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := zip.NewWriter(f)
+	mw, _ := w.Create("manifest.json")
+	_, _ = mw.Write([]byte(`{"version":"2.0","body":[{"title":"Big Chapter","type":"chapter","file":"body/000.html"}]}`))
+	bw, _ := w.Create("body/000.html")
+	// Highly compressible but exceeds MaxEntrySize (50 MB) when decompressed.
+	_, _ = bw.Write(make([]byte, (50<<20)+1))
+	_ = w.Close()
+	_ = f.Close()
+
+	if _, err := Open(path); err == nil {
+		t.Fatal("expected error for oversized chapter entry, not an empty chapter")
 	}
 }
 

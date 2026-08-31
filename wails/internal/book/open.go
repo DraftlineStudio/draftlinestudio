@@ -4,6 +4,7 @@ package book
 import (
 	"archive/zip"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"draftline/internal/types"
@@ -13,6 +14,22 @@ import (
 // ReadZipEntry reads a named entry from a ZIP archive, enforcing size limits.
 func ReadZipEntry(r *zip.ReadCloser, name string) ([]byte, error) {
 	return ziputil.ReadNamed(r.File, name, false)
+}
+
+// readChapterContent reads a manifest-referenced chapter entry. A missing,
+// oversized, or otherwise unreadable entry is a hard error rather than an empty
+// chapter: silently substituting empty content would let a subsequent autosave
+// overwrite the (still intact) source with nothing. The error names the chapter
+// and file, and distinguishes an absent entry from a read/size failure.
+func readChapterContent(r *zip.ReadCloser, title, file string) (string, error) {
+	content, err := ReadZipEntry(r, file)
+	if err != nil {
+		if errors.Is(err, ziputil.ErrEntryNotFound) {
+			return "", fmt.Errorf("chapter %q references entry %q which is missing from the archive", title, file)
+		}
+		return "", fmt.Errorf("chapter %q entry %q could not be read: %w", title, file, err)
+	}
+	return string(content), nil
 }
 
 // Open reads a .draftline file and returns the BookData.
@@ -83,36 +100,53 @@ func Open(path string) (types.BookData, error) {
 	// v1.0 migration: chapters/ -> body/
 	if raw.Version == "1.0" {
 		for _, ch := range raw.Chapters {
-			content, _ := ReadZipEntry(r, ch.File)
+			content, err := readChapterContent(r, ch.Title, ch.File)
+			if err != nil {
+				return types.BookData{}, err
+			}
 			book.Body = append(book.Body, types.ChapterItem{
 				Title:   ch.Title,
 				Type:    "Chapter",
-				Content: string(content),
+				Content: content,
 			})
 		}
 		return book, nil
 	}
 
-	// v2.0
-	copyright, _ := ReadZipEntry(r, "copyright.html")
-	book.Copyright = string(copyright)
+	// v2.0: copyright.html is written by convention (not in the manifest chapter
+	// arrays). Its absence is tolerated for legacy files, but if it exists and
+	// cannot be read (oversized/corrupt) we must not silently drop author text.
+	if copyright, err := ReadZipEntry(r, "copyright.html"); err == nil {
+		book.Copyright = string(copyright)
+	} else if !errors.Is(err, ziputil.ErrEntryNotFound) {
+		return types.BookData{}, fmt.Errorf("copyright entry %q could not be read: %w", "copyright.html", err)
+	}
 
 	for _, item := range raw.FrontMatter {
-		content, _ := ReadZipEntry(r, item.File)
+		content, err := readChapterContent(r, item.Title, item.File)
+		if err != nil {
+			return types.BookData{}, err
+		}
 		book.FrontMatter = append(book.FrontMatter, types.ChapterItem{
-			Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, Content: string(content),
+			Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, Content: content,
 		})
 	}
 	for _, item := range raw.Body {
-		content, _ := ReadZipEntry(r, item.File)
+		content, err := readChapterContent(r, item.Title, item.File)
+		if err != nil {
+			return types.BookData{}, err
+		}
 		book.Body = append(book.Body, types.ChapterItem{
-			Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, Content: string(content),
+			Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, Content: content,
 		})
 	}
 	for _, item := range raw.BackMatter {
-		content, _ := ReadZipEntry(r, item.File)
+		content, err := readChapterContent(r, item.Title, item.File)
+		if err != nil {
+			return types.BookData{}, err
+		}
 		book.BackMatter = append(book.BackMatter, types.ChapterItem{
-			Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, Content: string(content),
+			Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, Content: content,
 		})
 	}
 
