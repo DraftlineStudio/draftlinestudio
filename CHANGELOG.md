@@ -4,6 +4,22 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02441] - 2026-08-31
+
+### Changed
+- Reduced the algorithmic complexity of the relationship-analysis path
+  (`internal/indexing`) without changing output. `AnalyzeBook` now buckets
+  mentions by chapter in a single O(M) pass instead of rescanning every mention
+  once per chapter (O(C×M)); `detectCharacterEvents` resolves endpoint names
+  through a prebuilt entityID→canonical map instead of scanning all entities per
+  relationship (~O(R×E)); and `scenes.go` compiles its scene-break / paragraph
+  regexes once at package level instead of recompiling them for every chapter.
+  These are hygiene refactors: on realistic books the analysis pass was already
+  fast (tens of ms), so the change is not measurable end to end — it removes the
+  quadratic shapes so the cost stays linear as manuscripts grow. Existing
+  indexing, entityresolution, and relationship determinism tests remain green.
+  (audit ref: Fable5 C3)
+
 ## [0.16.02440] - 2026-08-31
 
 ### Fixed
