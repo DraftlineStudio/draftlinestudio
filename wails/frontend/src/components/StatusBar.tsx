@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useBookStore } from '../store/bookStore'
 import { analyzeText, getScoreColor, getScoreLabel, type AIDetectionResult } from '../services/aiDetection'
@@ -13,7 +13,10 @@ export default function StatusBar() {
     currentSection: s.currentSection,
     currentIndex: s.currentIndex,
   })))
-  const words = book ? countBookWords(book) : 0
+  // Whole-book word count is an HTML re-parse of every chapter; memoize it so it
+  // only recomputes when the book content actually changes — not on every
+  // isDirty / statusMessage / isAutoSaving toggle re-render.
+  const words = useMemo(() => (book ? countBookWords(book) : 0), [book])
   const filePath = book?.file_path || null
   const fileName = filePath ? filePath.split(/[\\/]/).pop() : null
 

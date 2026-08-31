@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02442] - 2026-08-31
+
+### Changed
+- Typing no longer recounts the whole book's words on every keystroke.
+
 ## [0.16.02440] - 2026-08-31
 
 ### Fixed

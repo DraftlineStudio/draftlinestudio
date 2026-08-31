@@ -1,12 +1,18 @@
 // Writing Dashboard - word counts, goals, AI detection
 
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useBookStore } from '../../../store/bookStore'
 import { analyzeText, getScoreColor, getScoreLabel, analyzeAntiPatterns, getAntiPatternColor, type AIDetectionResult, type AntiPatternResult } from '../../../services/aiDetection'
 import { countWords, countBookWords } from '../../../utils/textUtils'
 
 export default function DashboardTab() {
-  const { book, updateWritingGoals, currentSection, currentIndex } = useBookStore()
+  const { book, updateWritingGoals, currentSection, currentIndex } = useBookStore(useShallow(s => ({
+    book: s.book,
+    updateWritingGoals: s.updateWritingGoals,
+    currentSection: s.currentSection,
+    currentIndex: s.currentIndex,
+  })))
   const [sessionStart] = useState(() => Date.now())
   const [sessionStartWords] = useState(() => {
     if (!book) return 0
@@ -49,8 +55,10 @@ export default function DashboardTab() {
     return () => { if (analysisTimer.current) clearTimeout(analysisTimer.current) }
   }, [currentContent])
 
-  // Calculate metrics
-  const totalWords = countBookWords(book)
+  // Calculate metrics. Whole-book count re-parses every chapter's HTML, so
+  // memoize on the book reference — it must not re-run on every unrelated store
+  // update that re-renders this tab.
+  const totalWords = useMemo(() => countBookWords(book), [book])
   const targetWords = book.writing_goals?.target_word_count || 0
   const dailyGoal = book.writing_goals?.daily_word_goal || 0
   const todayWords = book.writing_goals?.words_today || 0
@@ -66,7 +74,7 @@ export default function DashboardTab() {
 
   // Chapter stats
   const chapters = book.body || []
-  const chapterWordCounts = chapters.map(ch => countWords(ch.content || ''))
+  const chapterWordCounts = useMemo(() => chapters.map(ch => countWords(ch.content || '')), [chapters])
   const avgWordsPerChapter = chapters.length > 0
     ? Math.round(chapterWordCounts.reduce((a, b) => a + b, 0) / chapters.length)
     : 0
