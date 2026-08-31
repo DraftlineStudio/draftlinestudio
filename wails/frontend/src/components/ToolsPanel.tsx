@@ -15,6 +15,7 @@ import ProsePanel from './tools/Analysis/ProsePanel'
 import PacingPanel from './tools/Analysis/PacingPanel'
 import ChaptersPanel from './tools/Analysis/ChaptersPanel'
 import ReviewPanel from './tools/Analysis/ReviewPanel'
+import AIDetectPanel from './tools/Analysis/AIDetectPanel'
 import { OPEN_TOOLS_SECTION_EVENT, useReviewCount } from './tools/Analysis/shared'
 
 function isSectionEnabled(section: Exclude<GlyphSection, null>, settings: AppSettings): boolean {
@@ -155,6 +156,7 @@ export default function ToolsPanel() {
             {activeSection === 'pacing' && <PacingPanel />}
             {activeSection === 'chapters' && <ChaptersPanel />}
             {activeSection === 'review' && <ReviewPanel />}
+            {activeSection === 'aidetect' && <AIDetectPanel />}
             {activeSection === 'ai' && <AiStudioTab />}
           </div>
         </div>

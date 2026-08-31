@@ -1,0 +1,137 @@
+/* AI Analysis panel (design 3g) — panel-specific rules.
+   Shared vocabulary (.an-*) lives in analysis.css. */
+
+/* ── Gauge block ─────────────────────────────────────────────────────────── */
+.ai-gauge-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 12px 12px;
+}
+.ai-gauge {
+  position: relative;
+  width: 150px;
+  height: 84px;
+}
+.ai-gauge-readout {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  text-align: center;
+}
+.ai-gauge-score {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -1px;
+  line-height: 1;
+}
+.ai-verdict {
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 10px;
+}
+.ai-gauge-sub {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ai-gauge-empty {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 10px 0 4px;
+  line-height: 1.5;
+}
+.ai-legend {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 10px;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.ai-legend > span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.ai-legend-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── By chapter ──────────────────────────────────────────────────────────── */
+.ai-strip-note { margin-top: 6px; }
+
+/* ── Highest signal ──────────────────────────────────────────────────────── */
+/* Rows are full-bleed (.an-chapter-row carries its own 12px side padding). */
+.ai-top-block {
+  padding-left: 0;
+  padding-right: 0;
+}
+.ai-top-block .an-label-row {
+  padding: 0 12px;
+  margin-bottom: 8px;
+}
+.ai-top-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ai-top-bar { flex: 0 0 64px; }
+.ai-top-rows .an-row-value { width: 32px; }
+
+/* ── Flagged passages ────────────────────────────────────────────────────── */
+.ai-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.ai-card-chapter {
+  font-size: 10px;
+  color: var(--text-muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ai-card-head .an-badge { flex-shrink: 0; }
+.ai-go { margin-top: 6px; }
+
+/* ── AI anti-patterns ────────────────────────────────────────────────────── */
+.ai-ap-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ai-ap-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 11px;
+  border-left: 2px solid transparent;
+  padding-left: 8px;
+}
+.ai-ap-name {
+  color: var(--text-secondary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ai-ap-count {
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
