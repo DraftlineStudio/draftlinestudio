@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02445] - 2026-08-31
+
+### Added
+- Licensed Draftline under the MIT License.
+- Added a project README.
+
 ## [0.16.02442] - 2026-08-31
 
 ### Changed
