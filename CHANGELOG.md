@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02444] - 2026-08-31
+
+### Changed
+- Reorganized `docs/ai-audit/`: moved the five historical audit reports (and the gitignored 182 MB Qodana SARIF) into `resolved/`, and added `RESOLUTION-2026-08-31.md` — a landing report of the 19 fixes landed in builds 02425–02443, known residuals, deferred items, and a manual-test checklist.
+
+---
+
 ## [0.16.02443] - 2026-08-31
 
 ### Added
