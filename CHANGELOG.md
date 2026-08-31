@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02453] - 2026-08-31
+
+### Added
+- Added the Worth Reviewing panel with dismissable observations.
+
 ## [0.16.02452] - 2026-08-31
 
 ### Added
