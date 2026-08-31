@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02436] - 2026-08-30
+
+### Fixed
+- AI requests no longer hang when a CLI prints a very long line.
+
 ## [0.16.02435] - 2026-08-30
 
 ### Security
