@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02437] - 2026-08-31
+
+### Fixed
+- Dialogue detection now works with curly quotes.
+
 ## [0.16.02436] - 2026-08-30
 
 ### Fixed

@@ -1,10 +1,59 @@
 package indexing
 
 import (
+	"strings"
 	"testing"
 
 	"draftline/internal/types"
 )
+
+// Real manuscripts quote dialogue with CURLY double quotes (U+201C/U+201D),
+// not straight ASCII. findDialogueRanges must recognize them, and the
+// apostrophe inside a contraction ("You're") must NOT be treated as a dialogue
+// delimiter. This asserts a directed dialogue interaction is produced.
+func TestDetectInteractions_CurlyQuotedDialogue(t *testing.T) {
+	// U+201C ... U+201D around the spoken line; a straight apostrophe in
+	// "You're" that must not fabricate its own quoted span.
+	text := "Marcus stepped forward. “You're late,” he said to Clara."
+
+	marcusOff := strings.Index(text, "Marcus")
+	claraOff := strings.Index(text, "Clara")
+
+	scenes := []types.SceneRecord{
+		{ID: "sc-0", ChapterIndex: 0, StartOffset: 0, EndOffset: len(text), SceneType: "scene"},
+	}
+	mentions := []types.MentionRecord{
+		{ID: "m0", Chapter: 0, CharOffset: marcusOff},
+		{ID: "m1", Chapter: 0, CharOffset: claraOff},
+	}
+	entityMap := map[string]string{"m0": "e-marcus", "m1": "e-clara"}
+
+	interactions := DetectInteractions(0, text, scenes, mentions, entityMap, DefaultCoOccurrenceConfig())
+
+	var dialogue *types.InteractionRecord
+	for i := range interactions {
+		if interactions[i].InteractionType == "dialogue" {
+			dialogue = &interactions[i]
+			break
+		}
+	}
+	if dialogue == nil {
+		t.Fatalf("no dialogue interaction detected in curly-quoted text; got %d interactions: %+v", len(interactions), interactions)
+	}
+	if dialogue.DirectedFrom != "e-marcus" || dialogue.DirectedTo != "e-clara" {
+		t.Errorf("expected directed dialogue e-marcus -> e-clara, got %q -> %q", dialogue.DirectedFrom, dialogue.DirectedTo)
+	}
+}
+
+// A straight apostrophe used as a possessive/contraction must not be treated
+// as an opening single quote that fabricates a dialogue span (the old table
+// listed straight single ' as a delimiter).
+func TestFindDialogueRanges_ApostropheNotDialogue(t *testing.T) {
+	text := "Kira's hand brushed Marcus' coat as they walked on."
+	if ranges := findDialogueRanges(text); len(ranges) != 0 {
+		t.Errorf("apostrophes fabricated %d dialogue ranges: %+v", len(ranges), ranges)
+	}
+}
 
 // End-to-end pipeline test: index a book (with front matter, so chapter
 // indexes must be global) and analyze relationships. Scenes, interactions,

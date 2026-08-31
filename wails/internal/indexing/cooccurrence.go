@@ -10,11 +10,11 @@ import (
 
 // CoOccurrenceConfig controls detection sensitivity.
 type CoOccurrenceConfig struct {
-	SameSentenceWeight   float64
-	SameParagraphWeight  float64
-	SameSceneWeight      float64
-	DialogueWeight       float64
-	MinConfidence        float64
+	SameSentenceWeight  float64
+	SameParagraphWeight float64
+	SameSceneWeight     float64
+	DialogueWeight      float64
+	MinConfidence       float64
 }
 
 // DefaultCoOccurrenceConfig returns standard configuration.
@@ -178,15 +178,18 @@ type DialogueRange struct {
 func findDialogueRanges(text string) []DialogueRange {
 	ranges := []DialogueRange{}
 
-	// Handle various quote styles
+	// Handle various quote styles. Must align with the dialogue delimiters the
+	// mention scanner recognizes in isQuoteInitial: straight double, curly
+	// double (U+201C/U+201D), and guillemets. Straight and curly SINGLE quotes
+	// are deliberately excluded — their closing forms are indistinguishable
+	// from apostrophes ("Kira's") and would fabricate dialogue from possessives.
 	quoteChars := []struct {
 		open  string
 		close string
 	}{
-		{`"`, `"`},
-		{`"`, `"`},
-		{`'`, `'`},
-		{`«`, `»`},
+		{`"`, `"`}, // straight double (open/close identical)
+		{"“", "”"}, // curly double “ ”
+		{`«`, `»`}, // guillemets
 	}
 
 	for _, q := range quoteChars {
