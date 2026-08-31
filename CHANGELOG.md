@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02438] - 2026-08-31
+
+### Fixed
+- Re-indexing a book now clears outdated relationship data.
+
 ## [0.16.02437] - 2026-08-31
 
 ### Fixed
