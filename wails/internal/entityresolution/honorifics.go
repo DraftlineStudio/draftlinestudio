@@ -243,26 +243,3 @@ func TokenizeName(name string) []string {
 	}
 	return tokens
 }
-
-// NormalizeToken normalizes a single name token for comparison.
-// Lowercases and removes punctuation except hyphens.
-func NormalizeToken(token string) string {
-	var sb strings.Builder
-	for _, r := range strings.ToLower(token) {
-		if (r >= 'a' && r <= 'z') || r == '-' || r == '\'' {
-			sb.WriteRune(r)
-		}
-	}
-	return sb.String()
-}
-
-// GetNameHead returns the "head" of a name - typically the last token (surname).
-// For single-token names, returns that token.
-// Example: "Carlos Ruiz" → "Ruiz"
-// Example: "Ruiz" → "Ruiz"
-func GetNameHead(tokens []string) string {
-	if len(tokens) == 0 {
-		return ""
-	}
-	return tokens[len(tokens)-1]
-}

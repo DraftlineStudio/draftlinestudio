@@ -165,9 +165,6 @@ var commonWordsLower = map[string]bool{
 	"beginning": true, "ending": true, "climax": true,
 }
 
-// CommonWords wraps commonWordsLower for case-insensitive lookup
-var CommonWords = commonWordsLower
-
 // IsCommonWord checks if a word is a common word (case-insensitive)
 func IsCommonWord(word string) bool {
 	return commonWordsLower[strings.ToLower(word)]
