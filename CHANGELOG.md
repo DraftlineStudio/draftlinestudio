@@ -4,6 +4,22 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02447] - 2026-08-31
+
+### Added
+- Added chapter version history inside `.draftline` archives (format 2.2). Chapters now carry stable IDs so history follows them through renames and reordering; changed chapter content is snapshotted after ten minutes of actual writing activity, deduplicated by content hash, and retained at up to 50 versions per chapter / 1,000 per project.
+- Added File → Chapter History, with a version timeline, side-by-side word-level comparison against the current chapter, and explicit restore. Restoring first checkpoints the current chapter, making the operation reversible.
+- Added Settings → Application → Activity-based saving. Disabling it stops both the five-second paused-edit save and automatic ten-minute history snapshots; manual save remains available.
+
+### Changed
+- Ordinary saves preserve unchanged history as already-compressed ZIP entries instead of inflating every snapshot into memory and recompressing it. The comparison dialog and diff engine are lazy-loaded so version history does not increase editor startup cost.
+- Older `.draftline` projects receive stable chapter IDs in memory when opened and persist them on their next save; archives without history remain fully compatible.
+
+### Fixed
+- Activity-driven history creates no duplicate or idle snapshots: only chapters changed during the active window are considered, and an unchanged content hash is skipped.
+
+---
+
 ## [0.16.02446] - 2026-08-31
 
 ### Security

@@ -16,6 +16,23 @@ import (
 // Write saves a BookData to a .draftline file at the specified path.
 // appVersion should be the current application version string.
 func Write(path string, book types.BookData, appVersion string) types.SaveResult {
+	return WriteWithSnapshots(path, book, appVersion, nil)
+}
+
+// WriteWithSnapshots saves the book while preserving its embedded chapter
+// history and optionally appending changed chapter snapshots.
+func WriteWithSnapshots(path string, book types.BookData, appVersion string, snapshots []types.ChapterSnapshotRequest) types.SaveResult {
+	history := historyArchive{Entries: []types.ChapterHistoryEntry{}, Contents: map[string][]byte{}}
+	if len(snapshots) > 0 {
+		var err error
+		history, err = loadHistory(path)
+		if err != nil {
+			return types.SaveResult{Success: false, Error: err.Error()}
+		}
+		addHistorySnapshots(&history, snapshots)
+	}
+	EnsureBookChapterIDs(&book)
+
 	// Create backup of existing file before overwriting
 	if err := backup.Create(path); err != nil {
 		// Log but don't fail the save - backup is best-effort
@@ -28,6 +45,7 @@ func Write(path string, book types.BookData, appVersion string) types.SaveResult
 	w := zip.NewWriter(&buf)
 
 	type entry struct {
+		ID       string `json:"id"`
 		Title    string `json:"title"`
 		Subtitle string `json:"subtitle,omitempty"`
 		Type     string `json:"type"`
@@ -47,7 +65,7 @@ func Write(path string, book types.BookData, appVersion string) types.SaveResult
 	}
 
 	mf := manifest{
-		Version:      "2.1",
+		Version:      "2.2",
 		AppVersion:   appVersion,
 		Metadata:     book.Metadata,
 		FrontMatter:  []entry{},
@@ -66,6 +84,33 @@ func Write(path string, book types.BookData, appVersion string) types.SaveResult
 		}
 		_, err = f.Write([]byte(content))
 		return err
+	}
+
+	if len(snapshots) == 0 {
+		if err := copyHistoryEntries(w, path); err != nil {
+			return types.SaveResult{Success: false, Error: err.Error()}
+		}
+	} else {
+		for _, historyEntry := range history.Entries {
+			content, ok := history.Contents[historyEntry.File]
+			if !ok {
+				return types.SaveResult{Success: false, Error: "chapter history content is missing"}
+			}
+			if err := addEntry(historyEntry.File, string(content)); err != nil {
+				return types.SaveResult{Success: false, Error: err.Error()}
+			}
+		}
+	}
+	if len(snapshots) > 0 && len(history.Entries) > 0 {
+		historyJSON, err := json.MarshalIndent(struct {
+			Entries []types.ChapterHistoryEntry `json:"entries"`
+		}{Entries: history.Entries}, "", "  ")
+		if err != nil {
+			return types.SaveResult{Success: false, Error: fmt.Sprintf("failed to encode chapter history: %v", err)}
+		}
+		if err := addEntry(historyIndexFile, string(historyJSON)); err != nil {
+			return types.SaveResult{Success: false, Error: err.Error()}
+		}
 	}
 
 	if err := addEntry("copyright.html", book.Copyright); err != nil {
@@ -119,21 +164,21 @@ func Write(path string, book types.BookData, appVersion string) types.SaveResult
 		if err := addEntry(file, item.Content); err != nil {
 			return types.SaveResult{Success: false, Error: err.Error()}
 		}
-		mf.FrontMatter = append(mf.FrontMatter, entry{Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, File: file})
+		mf.FrontMatter = append(mf.FrontMatter, entry{ID: item.ID, Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, File: file})
 	}
 	for i, item := range book.Body {
 		file := fmt.Sprintf("body/%03d.html", i)
 		if err := addEntry(file, item.Content); err != nil {
 			return types.SaveResult{Success: false, Error: err.Error()}
 		}
-		mf.Body = append(mf.Body, entry{Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, File: file})
+		mf.Body = append(mf.Body, entry{ID: item.ID, Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, File: file})
 	}
 	for i, item := range book.BackMatter {
 		file := fmt.Sprintf("back_matter/%03d.html", i)
 		if err := addEntry(file, item.Content); err != nil {
 			return types.SaveResult{Success: false, Error: err.Error()}
 		}
-		mf.BackMatter = append(mf.BackMatter, entry{Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, File: file})
+		mf.BackMatter = append(mf.BackMatter, entry{ID: item.ID, Title: item.Title, Subtitle: item.Subtitle, Type: item.Type, File: file})
 	}
 
 	manifestBytes, _ := json.MarshalIndent(mf, "", "  ")
@@ -152,6 +197,9 @@ func Write(path string, book types.BookData, appVersion string) types.SaveResult
 	}
 	if _, err := ziputil.ReadNamed(zr.File, "manifest.json", false); err != nil {
 		return types.SaveResult{Success: false, Error: "internal error: produced archive is missing manifest.json"}
+	}
+	if err := ziputil.CheckArchive(zr.File); err != nil {
+		return types.SaveResult{Success: false, Error: fmt.Sprintf("archive exceeds safety limits: %v", err)}
 	}
 
 	if err := fsutil.WriteFileAtomic(path, buf.Bytes(), 0644); err != nil {

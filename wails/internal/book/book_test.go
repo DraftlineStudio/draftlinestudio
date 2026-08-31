@@ -95,14 +95,95 @@ func TestWriteOpenPersistsAnalysisAndCorrections(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	if got.Version != "2.1" || !got.IsIndexed {
-		t.Fatalf("expected indexed v2.1 book, got version=%q indexed=%v", got.Version, got.IsIndexed)
+	if got.Version != "2.2" || !got.IsIndexed {
+		t.Fatalf("expected indexed v2.2 book, got version=%q indexed=%v", got.Version, got.IsIndexed)
 	}
 	if got.Analysis.EntityResolution == nil || len(got.Analysis.EntityResolution.MergeRules) != 1 {
 		t.Fatal("entity analysis or merge rules did not survive round trip")
 	}
 	if got.Analysis.Relationships == nil || len(got.Analysis.Relationships.Events) != 1 {
 		t.Fatal("relationship analysis or manual events did not survive round trip")
+	}
+}
+
+func TestChapterHistoryRoundTripDeduplicatesAndSurvivesNormalSave(t *testing.T) {
+	isolateConfigDir(t)
+	path := filepath.Join(t.TempDir(), "history.draftline")
+	b := testBook()
+	EnsureBookChapterIDs(&b)
+	chapterID := b.Body[0].ID
+
+	if res := Write(path, b, "v1"); !res.Success {
+		t.Fatalf("initial write: %s", res.Error)
+	}
+	request := types.ChapterSnapshotRequest{
+		ChapterID: chapterID, Section: "body", ChapterTitle: b.Body[0].Title,
+		Content: b.Body[0].Content, Reason: "Writing session",
+	}
+	if res := WriteWithSnapshots(path, b, "v1", []types.ChapterSnapshotRequest{request, request}); !res.Success {
+		t.Fatalf("snapshot write: %s", res.Error)
+	}
+	entries, err := ListChapterHistory(path, chapterID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("duplicate content should create one snapshot, got %d", len(entries))
+	}
+	snapshot, err := GetChapterHistorySnapshot(path, entries[0].ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.Content != b.Body[0].Content || snapshot.Entry.WordCount != 2 {
+		t.Fatalf("unexpected snapshot: words=%d content=%q", snapshot.Entry.WordCount, snapshot.Content)
+	}
+
+	b.Metadata.Title = "Saved Again"
+	if res := Write(path, b, "v1"); !res.Success {
+		t.Fatalf("normal save: %s", res.Error)
+	}
+	entries, err = ListChapterHistory(path, chapterID)
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("normal save must preserve history: entries=%d err=%v", len(entries), err)
+	}
+}
+
+func TestLegacyChapterIDsAreAssignedAndPersisted(t *testing.T) {
+	isolateConfigDir(t)
+	path := filepath.Join(t.TempDir(), "ids.draftline")
+	if res := Write(path, testBook(), "v1"); !res.Success {
+		t.Fatalf("write: %s", res.Error)
+	}
+	got, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Body[0].ID == "" || got.Body[0].ID == got.Body[1].ID {
+		t.Fatalf("chapter IDs were not assigned uniquely: %#v", got.Body)
+	}
+}
+
+func TestChapterHistoryDeduplicatesAgainstLatestSnapshot(t *testing.T) {
+	isolateConfigDir(t)
+	path := filepath.Join(t.TempDir(), "latest-history.draftline")
+	b := testBook()
+	EnsureBookChapterIDs(&b)
+	chapterID := b.Body[0].ID
+	if res := Write(path, b, "v1"); !res.Success {
+		t.Fatal(res.Error)
+	}
+	for _, content := range []string{"<p>Version A</p>", "<p>Version B</p>", "<p>Version B</p>"} {
+		request := types.ChapterSnapshotRequest{ChapterID: chapterID, Section: "body", ChapterTitle: "Chapter One", Content: content}
+		if res := WriteWithSnapshots(path, b, "v1", []types.ChapterSnapshotRequest{request}); !res.Success {
+			t.Fatal(res.Error)
+		}
+	}
+	entries, err := ListChapterHistory(path, chapterID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("latest duplicate should be skipped, got %d entries", len(entries))
 	}
 }
 
