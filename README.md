@@ -11,16 +11,17 @@ Draftline is under active pre-1.0 development. Windows is the primary developmen
 - Rich chapter-based manuscript editing powered by TipTap and ProseMirror
 - Fast offline spelling and grammar diagnostics
 - Character detection, entity resolution, aliases, appearances, and relationship analysis
+- Private local chapter structure, pacing, readability, dialogue, keyword, and extractive-summary analysis
 - Story bible, timelines, beat sheets, foreshadowing, and knowledge tracking
 - Chapter-scoped find and replace
 - Optional activity-based local saves, embedded chapter version history with side-by-side restore, and rolling manuscript backups
 - EPUB and DOCX import, with export support currently being redesigned
 - Optional AI line editing, copy editing, rewriting, and inline assistance
-- Feature switches presented through a plugin-style settings screen
+- Bundled plugins with capability/resource metadata and a marketplace foundation for optional local analysis packs
 
 ## Privacy and AI
 
-Draftline stores manuscripts locally in `.draftline` project files. Spelling, grammar, and character indexing run locally.
+Draftline stores manuscripts locally in `.draftline` project files. Spelling, grammar, character indexing, relationships, and bundled story/pacing analysis run locally.
 
 AI features are optional and disabled until configured. When an AI feature is used, the selected manuscript text and its editing instructions are sent to the provider or command-line tool selected in Settings. Supported paths include local endpoints, provider APIs, Claude Code, and OpenAI Codex. Those services have their own privacy and data-retention policies.
 

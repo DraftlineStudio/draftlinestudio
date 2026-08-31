@@ -1,18 +1,196 @@
 export namespace types {
-	
+
 	export class AIRewriteResult {
 	    result: string;
 	    error?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new AIRewriteResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.result = source["result"];
 	        this.error = source["error"];
 	    }
+	}
+	export class StoryAnalysisObservation {
+	    kind: string;
+	    level: string;
+	    title: string;
+	    detail: string;
+	    chapter_index?: number;
+
+	    static createFrom(source: any = {}) {
+	        return new StoryAnalysisObservation(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.level = source["level"];
+	        this.title = source["title"];
+	        this.detail = source["detail"];
+	        this.chapter_index = source["chapter_index"];
+	    }
+	}
+	export class TermCount {
+	    term: string;
+	    count: number;
+
+	    static createFrom(source: any = {}) {
+	        return new TermCount(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.term = source["term"];
+	        this.count = source["count"];
+	    }
+	}
+	export class ChapterAnalysis {
+	    chapter_id?: string;
+	    chapter_index: number;
+	    title: string;
+	    word_count: number;
+	    sentence_count: number;
+	    paragraph_count: number;
+	    scene_break_count: number;
+	    dialogue_percent: number;
+	    average_sentence_words: number;
+	    average_paragraph_words: number;
+	    reading_ease: number;
+	    mean_grade_level: number;
+	    mean_word_length: number;
+	    short_sentence_percent: number;
+	    long_sentence_percent: number;
+	    verb_percent: number;
+	    adverb_percent: number;
+	    adjective_percent: number;
+	    tempo_score: number;
+	    tempo_label: string;
+	    keywords?: TermCount[];
+	    extractive_summary?: string;
+
+	    static createFrom(source: any = {}) {
+	        return new ChapterAnalysis(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.chapter_id = source["chapter_id"];
+	        this.chapter_index = source["chapter_index"];
+	        this.title = source["title"];
+	        this.word_count = source["word_count"];
+	        this.sentence_count = source["sentence_count"];
+	        this.paragraph_count = source["paragraph_count"];
+	        this.scene_break_count = source["scene_break_count"];
+	        this.dialogue_percent = source["dialogue_percent"];
+	        this.average_sentence_words = source["average_sentence_words"];
+	        this.average_paragraph_words = source["average_paragraph_words"];
+	        this.reading_ease = source["reading_ease"];
+	        this.mean_grade_level = source["mean_grade_level"];
+	        this.mean_word_length = source["mean_word_length"];
+	        this.short_sentence_percent = source["short_sentence_percent"];
+	        this.long_sentence_percent = source["long_sentence_percent"];
+	        this.verb_percent = source["verb_percent"];
+	        this.adverb_percent = source["adverb_percent"];
+	        this.adjective_percent = source["adjective_percent"];
+	        this.tempo_score = source["tempo_score"];
+	        this.tempo_label = source["tempo_label"];
+	        this.keywords = this.convertValues(source["keywords"], TermCount);
+	        this.extractive_summary = source["extractive_summary"];
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class StoryAnalysisOverview {
+	    chapter_count: number;
+	    word_count: number;
+	    sentence_count: number;
+	    paragraph_count: number;
+	    average_chapter_words: number;
+	    average_sentence_words: number;
+	    dialogue_percent: number;
+	    reading_ease: number;
+	    mean_grade_level: number;
+	    tempo_score: number;
+
+	    static createFrom(source: any = {}) {
+	        return new StoryAnalysisOverview(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.chapter_count = source["chapter_count"];
+	        this.word_count = source["word_count"];
+	        this.sentence_count = source["sentence_count"];
+	        this.paragraph_count = source["paragraph_count"];
+	        this.average_chapter_words = source["average_chapter_words"];
+	        this.average_sentence_words = source["average_sentence_words"];
+	        this.dialogue_percent = source["dialogue_percent"];
+	        this.reading_ease = source["reading_ease"];
+	        this.mean_grade_level = source["mean_grade_level"];
+	        this.tempo_score = source["tempo_score"];
+	    }
+	}
+	export class StoryAnalysisData {
+	    content_hash: string;
+	    engine: string;
+	    last_analyzed: string;
+	    overview: StoryAnalysisOverview;
+	    chapters: ChapterAnalysis[];
+	    observations?: StoryAnalysisObservation[];
+	    version: number;
+
+	    static createFrom(source: any = {}) {
+	        return new StoryAnalysisData(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.content_hash = source["content_hash"];
+	        this.engine = source["engine"];
+	        this.last_analyzed = source["last_analyzed"];
+	        this.overview = this.convertValues(source["overview"], StoryAnalysisOverview);
+	        this.chapters = this.convertValues(source["chapters"], ChapterAnalysis);
+	        this.observations = this.convertValues(source["observations"], StoryAnalysisObservation);
+	        this.version = source["version"];
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class CharacterEvent {
 	    id: string;
@@ -21,11 +199,11 @@ export namespace types {
 	    event_type: string;
 	    description: string;
 	    is_auto_detected: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new CharacterEvent(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -47,11 +225,11 @@ export namespace types {
 	    chapter_history: number[];
 	    interaction_ids?: string[];
 	    type_breakdown: Record<string, number>;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new RelationshipRecord(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -77,11 +255,11 @@ export namespace types {
 	    directed_to?: string;
 	    confidence: number;
 	    text_snippet?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new InteractionRecord(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -103,11 +281,11 @@ export namespace types {
 	    end_offset: number;
 	    scene_type: string;
 	    character_ids: string[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new SceneRecord(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -125,11 +303,11 @@ export namespace types {
 	    events?: CharacterEvent[];
 	    last_analyzed?: string;
 	    version?: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new RelationshipData(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.scenes = this.convertValues(source["scenes"], SceneRecord);
@@ -139,7 +317,7 @@ export namespace types {
 	        this.last_analyzed = source["last_analyzed"];
 	        this.version = source["version"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -190,11 +368,11 @@ export namespace types {
 	    mention_id_1: string;
 	    mention_id_2: string;
 	    reason?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new SeparatedPairRecord(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.mention_id_1 = source["mention_id_1"];
@@ -213,11 +391,11 @@ export namespace types {
 	    detection_status?: string;
 	    detection_score?: number;
 	    character_id?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new EntityRecord(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -241,11 +419,11 @@ export namespace types {
 	    person_evidence?: boolean;
 	    non_person_evidence?: boolean;
 	    strong_person_evidence?: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new MentionRecord(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -266,11 +444,11 @@ export namespace types {
 	    decisions?: EntityDecision[];
 	    last_resolved?: string;
 	    version?: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new EntityData(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.mentions = this.convertValues(source["mentions"], MentionRecord);
@@ -281,7 +459,7 @@ export namespace types {
 	        this.last_resolved = source["last_resolved"];
 	        this.version = source["version"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -303,19 +481,21 @@ export namespace types {
 	export class AnalysisData {
 	    entity_resolution?: EntityData;
 	    relationships?: RelationshipData;
+	    story?: StoryAnalysisData;
 	    version?: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new AnalysisData(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.entity_resolution = this.convertValues(source["entity_resolution"], EntityData);
 	        this.relationships = this.convertValues(source["relationships"], RelationshipData);
+	        this.story = this.convertValues(source["story"], StoryAnalysisData);
 	        this.version = source["version"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -351,6 +531,7 @@ export namespace types {
 	    cast_enabled: boolean;
 	    story_bible_enabled: boolean;
 	    plot_walker_enabled: boolean;
+	    analysis_enabled: boolean;
 	    characters_lane_view: string;
 	    ai_enabled: boolean;
 	    ai_mode: string;
@@ -370,11 +551,11 @@ export namespace types {
 	    book_trim_size: string;
 	    sidebar_panel_width: number;
 	    sidebar_active_section: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new AppSettings(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.default_author = source["default_author"];
@@ -393,6 +574,7 @@ export namespace types {
 	        this.cast_enabled = source["cast_enabled"];
 	        this.story_bible_enabled = source["story_bible_enabled"];
 	        this.plot_walker_enabled = source["plot_walker_enabled"];
+	        this.analysis_enabled = source["analysis_enabled"];
 	        this.characters_lane_view = source["characters_lane_view"];
 	        this.ai_enabled = source["ai_enabled"];
 	        this.ai_mode = source["ai_mode"];
@@ -419,11 +601,11 @@ export namespace types {
 	    path: string;
 	    modified: string;
 	    size: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new BackupInfo(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.number = source["number"];
@@ -438,11 +620,11 @@ export namespace types {
 	    beat_type: string;
 	    description: string;
 	    notes?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Beat(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -454,16 +636,16 @@ export namespace types {
 	}
 	export class BeatSheet {
 	    beats: Beat[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new BeatSheet(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.beats = this.convertValues(source["beats"], Beat);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -487,11 +669,11 @@ export namespace types {
 	    character_id: string;
 	    learns_chapter?: number;
 	    suspected_chapter?: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new KnowledgeEntry(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.secret_id = source["secret_id"];
@@ -504,11 +686,11 @@ export namespace types {
 	    id: string;
 	    name: string;
 	    description: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new SecretInfo(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -519,17 +701,17 @@ export namespace types {
 	export class KnowledgeMatrix {
 	    secrets: SecretInfo[];
 	    entries: KnowledgeEntry[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new KnowledgeMatrix(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.secrets = this.convertValues(source["secrets"], SecretInfo);
 	        this.entries = this.convertValues(source["entries"], KnowledgeEntry);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -557,11 +739,11 @@ export namespace types {
 	    payoff_chapter?: number;
 	    status: string;
 	    notes?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ForeshadowingItem(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -576,16 +758,16 @@ export namespace types {
 	}
 	export class ForeshadowingLedger {
 	    items: ForeshadowingItem[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ForeshadowingLedger(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.items = this.convertValues(source["items"], ForeshadowingItem);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -613,11 +795,11 @@ export namespace types {
 	    action: number;
 	    description: number;
 	    pacing: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new WritingStyleOptions(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.metaphors = source["metaphors"];
@@ -635,11 +817,11 @@ export namespace types {
 	    daily_word_goal: number;
 	    words_today: number;
 	    last_writing_date: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new WritingGoals(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.target_word_count = source["target_word_count"];
@@ -666,11 +848,11 @@ export namespace types {
 	    entity_kind?: string;
 	    detection_status?: string;
 	    detection_score?: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Character(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -696,18 +878,18 @@ export namespace types {
 	    characters: Character[];
 	    plot_notes: string;
 	    timeline: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new StoryBible(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.characters = this.convertValues(source["characters"], Character);
 	        this.plot_notes = source["plot_notes"];
 	        this.timeline = source["timeline"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -732,11 +914,11 @@ export namespace types {
 	    subtitle?: string;
 	    type: string;
 	    content: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ChapterItem(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -753,11 +935,11 @@ export namespace types {
 	    publisher: string;
 	    created: string;
 	    modified: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Metadata(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.title = source["title"];
@@ -785,11 +967,11 @@ export namespace types {
 	    foreshadowing?: ForeshadowingLedger;
 	    knowledge_matrix?: KnowledgeMatrix;
 	    analysis?: AnalysisData;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new BookData(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.version = source["version"];
@@ -809,7 +991,7 @@ export namespace types {
 	        this.knowledge_matrix = this.convertValues(source["knowledge_matrix"], KnowledgeMatrix);
 	        this.analysis = this.convertValues(source["analysis"], AnalysisData);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -828,6 +1010,7 @@ export namespace types {
 		    return a;
 		}
 	}
+
 	export class ChapterHistoryEntry {
 	    id: string;
 	    chapter_id: string;
@@ -888,7 +1071,7 @@ export namespace types {
 		    return a;
 		}
 	}
-	
+
 	export class ChapterSnapshotRequest {
 	    chapter_id: string;
 	    section: string;
@@ -916,11 +1099,11 @@ export namespace types {
 	    event_type: string;
 	    description: string;
 	    related_chars?: string[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new CharacterTimelineEvent(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.chapter = source["chapter"];
@@ -934,11 +1117,11 @@ export namespace types {
 	    error?: string;
 	    character_id: string;
 	    events: CharacterTimelineEvent[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new CharacterTimelineResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.success = source["success"];
@@ -946,7 +1129,7 @@ export namespace types {
 	        this.character_id = source["character_id"];
 	        this.events = this.convertValues(source["events"], CharacterTimelineEvent);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -971,11 +1154,11 @@ export namespace types {
 	    npm_available: boolean;
 	    version: string;
 	    error?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ClaudeCodeStatus(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.installed = source["installed"];
@@ -985,18 +1168,18 @@ export namespace types {
 	        this.error = source["error"];
 	    }
 	}
-	
-	
+
+
 
 	export class ExportOptions {
 	    includeCopyright: boolean;
 	    includeFrontMatter: boolean;
 	    includeBackMatter: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ExportOptions(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.includeCopyright = source["includeCopyright"];
@@ -1008,11 +1191,11 @@ export namespace types {
 	    success: boolean;
 	    file_path?: string;
 	    error?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ExportResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.success = source["success"];
@@ -1020,24 +1203,58 @@ export namespace types {
 	        this.error = source["error"];
 	    }
 	}
-	
-	
+
+
+	export class FullAnalysisResult {
+	    success: boolean;
+	    error?: string;
+	    book?: BookData;
+
+	    static createFrom(source: any = {}) {
+	        return new FullAnalysisResult(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.error = source["error"];
+	        this.book = this.convertValues(source["book"], BookData);
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ImportResult {
 	    success: boolean;
 	    book?: BookData;
 	    error?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new ImportResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.success = source["success"];
 	        this.book = this.convertValues(source["book"], BookData);
 	        this.error = source["error"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1063,11 +1280,11 @@ export namespace types {
 	    new_characters: number;
 	    characters?: Character[];
 	    book: BookData;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new IndexResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.success = source["success"];
@@ -1077,7 +1294,7 @@ export namespace types {
 	        this.characters = this.convertValues(source["characters"], Character);
 	        this.book = this.convertValues(source["book"], BookData);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1102,11 +1319,11 @@ export namespace types {
 	    after_context: string;
 	    characters: string[];
 	    chapter_title: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new InlineGenerateRequest(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.instruction = source["instruction"];
@@ -1116,23 +1333,23 @@ export namespace types {
 	        this.chapter_title = source["chapter_title"];
 	    }
 	}
-	
-	
-	
-	
-	
-	
+
+
+
+
+
+
 	export class PDFOptions {
 	    includeCopyright: boolean;
 	    includeFrontMatter: boolean;
 	    includeBackMatter: boolean;
 	    pageSize: string;
 	    fontSize: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new PDFOptions(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.includeCopyright = source["includeCopyright"];
@@ -1170,11 +1387,11 @@ export namespace types {
 	    generateHalfTitle: boolean;
 	    generateTOC: boolean;
 	    mirroredMargins: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new PrintPDFOptions(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.includeCopyright = source["includeCopyright"];
@@ -1210,11 +1427,11 @@ export namespace types {
 	    books?: number;
 	    chapters: number;
 	    words: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new RecentProjectStats(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.books = source["books"];
@@ -1228,11 +1445,11 @@ export namespace types {
 	    name: string;
 	    lastOpened: string;
 	    stats: RecentProjectStats;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new RecentProject(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.type = source["type"];
@@ -1241,7 +1458,7 @@ export namespace types {
 	        this.lastOpened = source["lastOpened"];
 	        this.stats = this.convertValues(source["stats"], RecentProjectStats);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1260,7 +1477,7 @@ export namespace types {
 		    return a;
 		}
 	}
-	
+
 	export class RelationshipAnalysisResult {
 	    success: boolean;
 	    error?: string;
@@ -1268,11 +1485,11 @@ export namespace types {
 	    scenes_detected: number;
 	    interactions_found: number;
 	    relationships_built: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new RelationshipAnalysisResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.success = source["success"];
@@ -1282,7 +1499,7 @@ export namespace types {
 	        this.interactions_found = source["interactions_found"];
 	        this.relationships_built = source["relationships_built"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1301,17 +1518,17 @@ export namespace types {
 		    return a;
 		}
 	}
-	
-	
+
+
 	export class SaveResult {
 	    success: boolean;
 	    file_path: string;
 	    error?: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new SaveResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.success = source["success"];
@@ -1319,19 +1536,19 @@ export namespace types {
 	        this.error = source["error"];
 	    }
 	}
-	
-	
-	
+
+
+
 	export class SplitEntityResult {
 	    success: boolean;
 	    error?: string;
 	    book?: BookData;
 	    characters?: Character[];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new SplitEntityResult(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.success = source["success"];
@@ -1339,7 +1556,7 @@ export namespace types {
 	        this.book = this.convertValues(source["book"], BookData);
 	        this.characters = this.convertValues(source["characters"], Character);
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1358,7 +1575,11 @@ export namespace types {
 		    return a;
 		}
 	}
-	
-	
+
+
+
+
+
+
 
 }

@@ -6,6 +6,8 @@ export function AddCharacterEvent(arg1:types.BookData,arg2:types.CharacterEvent)
 
 export function AddRecentProject(arg1:types.RecentProject):Promise<void>;
 
+export function AnalyzeBook(arg1:types.BookData):Promise<types.FullAnalysisResult>;
+
 export function AnalyzeRelationships(arg1:types.BookData):Promise<types.RelationshipAnalysisResult>;
 
 export function BrowseForDirectory():Promise<string>;
