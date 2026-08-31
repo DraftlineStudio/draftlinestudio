@@ -212,7 +212,7 @@ export default function CharactersView() {
               onChange={e => {
                 const v = e.target.value as ViewMode
                 setLaneView(v)
-                saveSettings({ characters_lane_view: v })
+                void saveSettings({ characters_lane_view: v })
                 // Heatmap reads as a ranked order — put the biggest presences on top.
                 if (v === 'heat') setSortMode('mentions-desc')
               }}

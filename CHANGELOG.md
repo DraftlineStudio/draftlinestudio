@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02433] - 2026-08-30
+
+### Fixed
+- Rapid settings changes no longer overwrite each other.
+
 ## [0.16.02432] - 2026-08-30
 
 ### Fixed
