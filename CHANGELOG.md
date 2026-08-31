@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02439] - 2026-08-31
+
+### Fixed
+- Applying an AI diff no longer removes formatting from the chapter.
+- Inserting or deleting a paragraph no longer marks every later paragraph as changed.
+
 ## [0.16.02438] - 2026-08-31
 
 ### Fixed
