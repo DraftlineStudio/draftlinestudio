@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02435] - 2026-08-30
+
+### Security
+- Limited the number of chapter references a project file can declare.
+
 ## [0.16.02434] - 2026-08-30
 
 ### Fixed
