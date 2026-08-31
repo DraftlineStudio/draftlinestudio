@@ -4,6 +4,15 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02452] - 2026-08-31
+
+### Added
+- Added a Chapters analysis sidebar panel: per-chapter keyword chips and one-line extractive summaries from the last local analysis, presented as a clickable card feed — a skimmable recap of the book so far.
+- Chapter cards show word count, scene count, and scene-break count, and clicking a card jumps the editor to that chapter.
+- The feed shows the first 8 chapters with a "Show all N chapters" / "Show fewer" toggle; chapters with neither keywords nor a summary (e.g. part dividers) are skipped without disturbing chapter numbering.
+
+---
+
 ## [0.16.02451] - 2026-08-31
 
 ### Added
