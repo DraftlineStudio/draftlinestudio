@@ -9,17 +9,13 @@ import { SECTION_CONFIG } from './tools/constants'
 import GlyphIcon from './tools/GlyphIcon'
 import DashboardTab from './tools/Dashboard'
 import AiStudioTab from './tools/AIStudio'
-import { PlotSection, TimelineSection } from './tools/StoryBible'
-import { BeatsSection, ForeshadowingSection, KnowledgeSection, IssuesSection } from './tools/PlotWalker'
+import { IssuesSection } from './tools/PlotWalker'
 import CharacterQuickRef from './tools/CharacterQuickRef'
 
 function isSectionEnabled(section: Exclude<GlyphSection, null>, settings: AppSettings): boolean {
   if (section === 'ai') return settings.ai_enabled
   if (section === 'characters') return settings.cast_enabled
-  if (section === 'plot' || section === 'timeline') return settings.story_bible_enabled
-  if (section === 'beats' || section === 'foreshadow' || section === 'knowledge' || section === 'issues') {
-    return settings.plot_walker_enabled
-  }
+  if (section === 'issues') return settings.analysis_enabled
   return true
 }
 
@@ -68,8 +64,7 @@ export default function ToolsPanel() {
     activeSection,
     settings.ai_enabled,
     settings.cast_enabled,
-    settings.story_bible_enabled,
-    settings.plot_walker_enabled,
+    settings.analysis_enabled,
   ])
 
   // Handle resize
@@ -133,11 +128,6 @@ export default function ToolsPanel() {
           <div className="slide-panel-content">
             {activeSection === 'dashboard' && <DashboardTab />}
             {activeSection === 'characters' && <CharacterQuickRef />}
-            {activeSection === 'plot' && <PlotSection />}
-            {activeSection === 'timeline' && <TimelineSection />}
-            {activeSection === 'beats' && <BeatsSection />}
-            {activeSection === 'foreshadow' && <ForeshadowingSection />}
-            {activeSection === 'knowledge' && <KnowledgeSection />}
             {activeSection === 'issues' && <IssuesSection />}
             {activeSection === 'ai' && <AiStudioTab />}
           </div>

@@ -22,17 +22,15 @@ frontend/src/
 │   │   ├── Toolbar.tsx         # Formatting toolbar
 │   │   └── InlinePrompt.tsx    # Ctrl+L prompt UI
 │   ├── tools/                  # ToolsPanel feature modules
-│   │   ├── constants.ts        # SECTION_CONFIG, AI_MODES, BEAT_TYPES
+│   │   ├── constants.ts        # SECTION_CONFIG, AI_MODES
 │   │   ├── types.ts            # GlyphSection, AIMode, AIState
 │   │   ├── GlyphIcon.tsx       # Glyph bar icons
 │   │   ├── Dashboard/
 │   │   │   └── index.tsx       # Word counts, goals, session stats
 │   │   ├── AIStudio/
 │   │   │   └── index.tsx       # AI modes, style mixer, streaming
-│   │   ├── StoryBible/
-│   │   │   └── index.tsx       # Characters, plot notes, timeline
 │   │   └── PlotWalker/
-│   │       └── index.tsx       # Beats, foreshadowing, knowledge matrix
+│   │       └── index.tsx       # Story Analysis viewer
 │   └── dialogs/
 │       ├── AppSettingsDialog.tsx
 │       ├── ExportWizard.tsx
@@ -99,8 +97,14 @@ Slim router that displays feature modules based on active glyph selection and th
 Each feature is isolated in its own folder:
 - **Dashboard/** - Word counts, writing goals, session stats, AI detection
 - **AIStudio/** - Rewrite modes, style mixer, streaming output, setup guidance
-- **StoryBible/** - Characters (with merge/highlight), plot notes, timeline
-- **PlotWalker/** - Beat sheet, foreshadowing ledger, knowledge matrix, issues
+- **PlotWalker/** - Story Analysis viewer (manuscript signals, observations, per-chapter cards)
+
+The Story Bible (plot notes, timeline) and Plot Walker planning tools (beat sheet,
+foreshadowing ledger, knowledge matrix) were retired from the sidebar in 0.16.02449.
+Their data model, `plotStore.ts`/`storyBibleStore.ts` reducers, and `.draftline`
+file-format fields remain intact so existing project files round-trip unchanged;
+the Go settings keys `story_bible_enabled`/`plot_walker_enabled` are also retained
+for settings-file compatibility but no longer gate any UI.
 
 ### Writing diagnostics and plugins
 
@@ -138,7 +142,8 @@ interface BookState {
   rewriteSelection: (mode: string, styleOpts: StyleOptions) => Promise<void>
   generateInline: (prompt: string) => Promise<void>
 
-  // Story Bible Actions
+  // Story Bible / planning-data actions (UI retired 0.16.02449; kept for
+  // file-format compatibility and delegated to plotStore/storyBibleStore)
   updateCharacter: (id: string, data: Partial<Character>) => void
   addBeat: (beat: Beat) => void
   // ... etc
