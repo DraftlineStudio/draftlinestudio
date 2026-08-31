@@ -20,7 +20,7 @@ import (
 func (a *App) ImportEPUBDialog() types.ImportResult {
 	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title:            "Import EPUB",
-		DefaultDirectory: a.settings.DefaultSaveDir,
+		DefaultDirectory: a.getSettings().DefaultSaveDir,
 		Filters: []runtime.FileFilter{
 			{DisplayName: "EPUB Files (*.epub)", Pattern: "*.epub"},
 		},
@@ -144,7 +144,7 @@ func (a *App) ImportEPUB(path string) types.ImportResult {
 	// The imported book is a NEW, unsaved project. Clear the session's current
 	// file so Save cannot silently overwrite whatever project was open before
 	// the import — Ctrl+S on an imported book must go through Save As.
-	a.currentFile = ""
+	a.setCurrentFile("")
 
 	return types.ImportResult{Success: true, Book: book}
 }
@@ -385,7 +385,7 @@ func cleanHTML(html string) string {
 func (a *App) ImportDOCXDialog() types.ImportResult {
 	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title:            "Import Word Document",
-		DefaultDirectory: a.settings.DefaultSaveDir,
+		DefaultDirectory: a.getSettings().DefaultSaveDir,
 		Filters: []runtime.FileFilter{
 			{DisplayName: "Word Documents (*.docx)", Pattern: "*.docx"},
 		},
@@ -455,7 +455,7 @@ func (a *App) ImportDOCX(path string) types.ImportResult {
 
 	// See ImportEPUB: an imported book must never inherit the previous
 	// project's save target.
-	a.currentFile = ""
+	a.setCurrentFile("")
 
 	return types.ImportResult{Success: true, Book: book}
 }

@@ -19,6 +19,14 @@ If a package manager or strict SemVer parsing is a hard requirement for your wor
 If this versioning system has a formal name, I am unaware of it, feel free to raise an issue in Github and hit me with a "WeLl AcTuAlLy" if you know the name.
 
 
+## [0.16.02432] - 2026-08-30
+
+### Fixed
+- Synchronized shared backend state across Wails goroutines. Wails dispatches each bound method on its own goroutine, and `a.settings` / `a.currentFile` were read (AI dispatch, save, getters) and written (`startup`, `SaveSettings`, open/import/write paths) in `wails/app.go` and `wails/import.go` with no lock, and `a.legacyAPIKey` was written outside `apiKeyMu` in `SetAPIKey`/`ClearAPIKey`/`startup` — allowing torn reads and lost updates (worst case a Save racing an import that just cleared the save target). Added a `sync.RWMutex` (`a.stateMu`) guarding `settings` and `currentFile` behind small `get`/`set` accessors, moved the `legacyAPIKey` writes under `apiKeyMu`, and made every AI path snapshot the settings it needs under the lock before doing any HTTP/subprocess work so no lock is ever held across I/O.
+- Audit ref: fable5-2026-08-30 — M1 (backend-state-mutex).
+
+---
+
 ## [0.16.02431] - 2026-08-30
 
 ### Security
