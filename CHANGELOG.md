@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02451] - 2026-08-31
+
+### Added
+- Added the Pacing panel with a whole-book tempo strip and per-chapter bars.
+
 ## [0.16.02450] - 2026-08-31
 
 ### Added
