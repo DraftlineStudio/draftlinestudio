@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02450] - 2026-08-31
+
+### Added
+- Added the Prose panel with sentence rhythm, sentence length, and readability.
+
 ## [0.16.02449] - 2026-08-31
 
 ### Removed

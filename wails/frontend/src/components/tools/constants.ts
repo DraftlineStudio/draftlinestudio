@@ -31,6 +31,7 @@ export const INTENSITY_LABELS = ['Off', 'Subtle', 'Moderate', 'Heavy']
 export const SECTION_CONFIG: { id: Exclude<GlyphSection, null>; label: string; tooltip: string }[] = [
   { id: 'dashboard', label: 'Dashboard', tooltip: 'Writing Dashboard' },
   { id: 'characters', label: 'Characters', tooltip: 'Characters' },
+  { id: 'prose', label: 'Prose', tooltip: 'Prose' },
   { id: 'issues', label: 'Issues', tooltip: 'Story Analysis' },
   { id: 'ai', label: 'AI', tooltip: 'AI Studio' },
 ]
