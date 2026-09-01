@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02474] - 2026-09-01
+
+### Fixed
+- The Plot and Prose status chips now track their own analysis phases.
+
 ## [0.16.02473] - 2026-09-01
 
 ### Changed
