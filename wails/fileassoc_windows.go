@@ -23,7 +23,10 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
-const draftlineProgID = "Draftline.Project"
+const (
+	draftlineProgID = "Draftline.Project"
+	universeProgID  = "Draftline.Universe"
+)
 
 // Document icon: the dl-icon mark on the brand-blue rounded square
 // (generated from reference-assets/imgs/dl-icon.png; PNG-compressed
@@ -33,9 +36,15 @@ const draftlineProgID = "Draftline.Project"
 //go:embed build/windows/draftline-doc.ico
 var docIconData []byte
 
-// ensureDocIcon writes the document icon beside the user's app data and
+// Universe icon: same mark on a slate-gray square so .storiverse files are
+// visually distinct from .draftline projects.
+//
+//go:embed build/windows/storiverse-doc.ico
+var universeIconData []byte
+
+// ensureIcon writes an embedded icon into %LOCALAPPDATA%\Draftline and
 // returns its path, or "" to fall back to the exe's own icon.
-func ensureDocIcon() string {
+func ensureIcon(name string, data []byte) string {
 	base, err := os.UserCacheDir() // %LOCALAPPDATA%
 	if err != nil {
 		return ""
@@ -44,9 +53,9 @@ func ensureDocIcon() string {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return ""
 	}
-	path := filepath.Join(dir, "draftline-doc.ico")
-	if existing, err := os.ReadFile(path); err != nil || !bytes.Equal(existing, docIconData) {
-		if err := os.WriteFile(path, docIconData, 0o644); err != nil {
+	path := filepath.Join(dir, name)
+	if existing, err := os.ReadFile(path); err != nil || !bytes.Equal(existing, data) {
+		if err := os.WriteFile(path, data, 0o644); err != nil {
 			return ""
 		}
 	}
@@ -66,9 +75,14 @@ func registerFileAssociations() error {
 		return nil // dev or renamed binary: don't claim associations
 	}
 	command := fmt.Sprintf(`"%s" "%%1"`, exe)
-	docIcon := ensureDocIcon()
+	exeIcon := fmt.Sprintf(`"%s",0`, exe)
+	docIcon := ensureIcon("draftline-doc.ico", docIconData)
 	if docIcon == "" {
-		docIcon = fmt.Sprintf(`"%s",0`, exe) // fall back to the app icon
+		docIcon = exeIcon
+	}
+	universeIcon := ensureIcon("storiverse-doc.ico", universeIconData)
+	if universeIcon == "" {
+		universeIcon = exeIcon
 	}
 
 	type entry struct {
@@ -80,13 +94,22 @@ func registerFileAssociations() error {
 		// Bump this value whenever the registration schema changes: it forces
 		// one changed=true pass (and thus one shell refresh) for users whose
 		// entries are otherwise already correct.
-		{`Software\Classes\` + draftlineProgID, "RegistrationVersion", "3"},
+		{`Software\Classes\` + draftlineProgID, "RegistrationVersion", "4"},
 		// Owned document type for .draftline.
 		{`Software\Classes\` + draftlineProgID, "", "Draftline Project"},
 		{`Software\Classes\` + draftlineProgID + `\DefaultIcon`, "", docIcon},
 		{`Software\Classes\` + draftlineProgID + `\shell\open\command`, "", command},
 		{`Software\Classes\.draftline`, "", draftlineProgID},
 		{`Software\Classes\.draftline\OpenWithProgids`, draftlineProgID, ""},
+		// Universe files get their own type + gray icon for visual identity.
+		// Opening them is not supported yet — the launch path ignores the
+		// extension until Storiverse ships — but the files are claimed and
+		// distinguishable in Explorer today.
+		{`Software\Classes\` + universeProgID, "", "Storiverse Universe"},
+		{`Software\Classes\` + universeProgID + `\DefaultIcon`, "", universeIcon},
+		{`Software\Classes\` + universeProgID + `\shell\open\command`, "", command},
+		{`Software\Classes\.storiverse`, "", universeProgID},
+		{`Software\Classes\.storiverse\OpenWithProgids`, universeProgID, ""},
 		// "Open with" entry (non-default) for the importable formats.
 		{`Software\Classes\Applications\draftline.exe`, "FriendlyAppName", "Draftline"},
 		{`Software\Classes\Applications\draftline.exe\shell\open\command`, "", command},

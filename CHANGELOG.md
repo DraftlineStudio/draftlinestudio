@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02482] - 2026-09-01
+
+### Added
+- .storiverse files are now registered as their own document type with a slate-gray version of the Draftline mark, so universe files are visually distinct from the blue .draftline project icon in Explorer. Opening universes stays unsupported until Storiverse ships — the launch path deliberately ignores the extension for now — but the files are claimed and identifiable today.
+
+---
+
 ## [0.16.02481] - 2026-09-01
 
 ### Changed
