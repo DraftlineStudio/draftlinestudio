@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02482] - 2026-09-01
+
+### Added
+- Registered .storiverse files with their own icon.
+
 ## [0.16.02481] - 2026-09-01
 
 ### Changed
