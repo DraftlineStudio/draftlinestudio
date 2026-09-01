@@ -1,8 +1,8 @@
 // Book Store - Core book data, file operations, chapter management, UI state
-// Delegates to specialized stores: editorStore, storyBibleStore, plotStore
+// Delegates to specialized stores: editorStore, storyBibleStore
 
 import { create } from 'zustand'
-import type { BookData, ChapterItem, Character, Metadata, Section, WritingStyleOptions, Beat, ForeshadowingItem, SecretInfo, KnowledgeEntry } from '../types/draftline'
+import type { BookData, ChapterItem, Character, Metadata, Section, WritingStyleOptions } from '../types/draftline'
 import { DEFAULT_STYLE_OPTIONS } from '../types/draftline'
 import type { ParagraphDiff, DiffChange } from '../utils/diff'
 import { countBookWords } from '../utils/textUtils'
@@ -12,7 +12,6 @@ import { types } from '../../wailsjs/go/models'
 import { useAppStore } from './appStore'
 import { useEditorStore, type EditorInstance } from './editorStore'
 import { useStoryBibleStore } from './storyBibleStore'
-import { usePlotStore } from './plotStore'
 
 // Auto-save debounce timer
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
@@ -207,10 +206,8 @@ interface BookStore {
   statusMessage: string
 
   // UI state
-  darkMode: boolean
   dialogs: DialogState
   leftPanelOpen: boolean
-  rightPanelOpen: boolean
 
   // Workspace view: the editor, or the full-screen Cast view
   viewMode: 'editor' | 'cast'
@@ -248,20 +245,6 @@ interface BookStore {
   highlightedCharacterId: string | null
   setHighlightedCharacter: (id: string | null) => void
   getHighlightedCharacterNames: () => string[]
-  updateStoryBibleText: (field: 'plot_notes' | 'timeline', text: string) => void
-
-  // Plot (delegates to plotStore)
-  addBeat: (beat: Beat) => void
-  updateBeat: (beat: Beat) => void
-  deleteBeat: (id: string) => void
-  addForeshadowingItem: (item: ForeshadowingItem) => void
-  updateForeshadowingItem: (item: ForeshadowingItem) => void
-  deleteForeshadowingItem: (id: string) => void
-  addSecret: (secret: SecretInfo) => void
-  updateSecret: (secret: SecretInfo) => void
-  deleteSecret: (id: string) => void
-  setKnowledgeEntry: (entry: KnowledgeEntry) => void
-  removeKnowledgeEntry: (secretId: string, characterId: string) => void
 
   // Writing goals & style
   updateWritingGoals: (goals: Partial<{ target_word_count: number; daily_word_goal: number; words_today: number; last_writing_date: string }>) => void
@@ -276,8 +259,6 @@ interface BookStore {
 
   // UI actions
   toggleLeftPanel: () => void
-  toggleRightPanel: () => void
-  toggleDarkMode: () => void
   openMetadataDialog: () => void
   closeMetadataDialog: () => void
   openNewChapterDialog: (section: Section) => void
@@ -294,7 +275,6 @@ interface BookStore {
   confirmNewBook: (title: string, author: string, publisher: string) => Promise<void>
   loadImportedBook: (book: BookData) => void
   cancelNewBookWizard: () => void
-  setDarkMode: (v: boolean) => void
 
   // Editor store bridge (for backwards compatibility)
   editorRef: EditorInstance | null
@@ -359,10 +339,8 @@ export const useBookStore = create<BookStore>((set, get) => ({
   statusMessage: 'Ready',
 
   // UI state
-  darkMode: true,
   dialogs: { showMetadata: false, showNewChapter: false, newChapterSection: null, showUnsavedWarning: false, pendingAction: null, showNewBookWizard: false, showExportWizard: false, showChapterHistory: false },
   leftPanelOpen: true,
-  rightPanelOpen: true,
 
   viewMode: 'editor',
   setViewMode: (mode) => set({ viewMode: mode }),
@@ -653,103 +631,6 @@ export const useBookStore = create<BookStore>((set, get) => ({
   setHighlightedCharacter: (id) => useStoryBibleStore.getState().setHighlightedCharacter(id),
   getHighlightedCharacterNames: () => useStoryBibleStore.getState().getHighlightedCharacterNames(get().book),
 
-  updateStoryBibleText: (field, text) => {
-    const { book } = get()
-    if (!book) return
-    const updated = useStoryBibleStore.getState().updateStoryBibleText(book, field, text)
-    set({ book: updated, isDirty: true })
-    scheduleAutoSave()
-  },
-
-  // Plot - delegate to plotStore
-  addBeat: (beat) => {
-    const { book } = get()
-    if (!book) return
-    const updated = usePlotStore.getState().addBeat(book, beat)
-    set({ book: updated, isDirty: true })
-    scheduleAutoSave()
-  },
-
-  updateBeat: (beat) => {
-    const { book } = get()
-    if (!book) return
-    const updated = usePlotStore.getState().updateBeat(book, beat)
-    set({ book: updated, isDirty: true })
-    scheduleAutoSave()
-  },
-
-  deleteBeat: (id) => {
-    const { book } = get()
-    if (!book) return
-    const updated = usePlotStore.getState().deleteBeat(book, id)
-    set({ book: updated, isDirty: true })
-    scheduleAutoSave()
-  },
-
-  addForeshadowingItem: (item) => {
-    const { book } = get()
-    if (!book) return
-    const updated = usePlotStore.getState().addForeshadowingItem(book, item)
-    set({ book: updated, isDirty: true })
-    scheduleAutoSave()
-  },
-
-  updateForeshadowingItem: (item) => {
-    const { book } = get()
-    if (!book) return
-    const updated = usePlotStore.getState().updateForeshadowingItem(book, item)
-    set({ book: updated, isDirty: true })
-    scheduleAutoSave()
-  },
-
-  deleteForeshadowingItem: (id) => {
-    const { book } = get()
-    if (!book) return
-    const updated = usePlotStore.getState().deleteForeshadowingItem(book, id)
-    set({ book: updated, isDirty: true })
-    scheduleAutoSave()
-  },
-
-  addSecret: (secret) => {
-    const { book } = get()
-    if (!book) return
-    const updated = usePlotStore.getState().addSecret(book, secret)
-    set({ book: updated, isDirty: true })
-    scheduleAutoSave()
-  },
-
-  updateSecret: (secret) => {
-    const { book } = get()
-    if (!book) return
-    const updated = usePlotStore.getState().updateSecret(book, secret)
-    set({ book: updated, isDirty: true })
-    scheduleAutoSave()
-  },
-
-  deleteSecret: (id) => {
-    const { book } = get()
-    if (!book) return
-    const updated = usePlotStore.getState().deleteSecret(book, id)
-    set({ book: updated, isDirty: true })
-    scheduleAutoSave()
-  },
-
-  setKnowledgeEntry: (entry) => {
-    const { book } = get()
-    if (!book) return
-    const updated = usePlotStore.getState().setKnowledgeEntry(book, entry)
-    set({ book: updated, isDirty: true })
-    scheduleAutoSave()
-  },
-
-  removeKnowledgeEntry: (secretId, characterId) => {
-    const { book } = get()
-    if (!book) return
-    const updated = usePlotStore.getState().removeKnowledgeEntry(book, secretId, characterId)
-    set({ book: updated, isDirty: true })
-    scheduleAutoSave()
-  },
-
   // Writing goals & style
   updateWritingGoals: (goals) => {
     const { book } = get()
@@ -852,8 +733,6 @@ export const useBookStore = create<BookStore>((set, get) => ({
 
   // UI actions
   toggleLeftPanel: () => set(s => ({ leftPanelOpen: !s.leftPanelOpen })),
-  toggleRightPanel: () => set(s => ({ rightPanelOpen: !s.rightPanelOpen })),
-  toggleDarkMode: () => set(s => ({ darkMode: !s.darkMode })),
   openMetadataDialog: () => set(s => ({ dialogs: { ...s.dialogs, showMetadata: true } })),
   closeMetadataDialog: () => set(s => ({ dialogs: { ...s.dialogs, showMetadata: false } })),
   openNewChapterDialog: (section) => set(s => ({ dialogs: { ...s.dialogs, showNewChapter: true, newChapterSection: section } })),
@@ -900,7 +779,6 @@ export const useBookStore = create<BookStore>((set, get) => ({
 
   cancelNewBookWizard: () => set(s => ({ dialogs: { ...s.dialogs, showNewBookWizard: false } })),
 
-  setDarkMode: (v) => set({ darkMode: v }),
 
   saveAndProceed: async () => {
     // The dialog stays open until the save actually succeeds: a failed or

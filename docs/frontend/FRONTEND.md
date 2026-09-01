@@ -146,13 +146,22 @@ interface BookState {
   rewriteSelection: (mode: string, styleOpts: StyleOptions) => Promise<void>
   generateInline: (prompt: string) => Promise<void>
 
-  // Story Bible / planning-data actions (UI retired 0.16.02449; kept for
-  // file-format compatibility and delegated to plotStore/storyBibleStore)
+  // Characters (delegated to storyBibleStore, which owns the transforms
+  // and the highlight state)
   updateCharacter: (id: string, data: Partial<Character>) => void
-  addBeat: (beat: Beat) => void
   // ... etc
 }
 ```
+
+The dead planning-transform layer was removed in 0.16.02465: `plotStore.ts`
+(beats/foreshadowing/secrets/knowledge wrappers) and `updateStoryBibleText`
+had zero callers after the 0.16.02449 sidebar retirement and were deleted,
+along with the vestigial `darkMode`/`toggleDarkMode`/`rightPanelOpen` UI state
+(written but never read — theming is driven by `appStore.settings.theme_mode`).
+The `.draftline` file-format fields for beats etc. are untouched; only the
+frontend wrappers died. `storyBibleStore` (characters CRUD + highlighting,
+including the `applyCharacterDecision` entity-resolution rewrite) is covered
+by `store/__tests__/storyBibleStore.test.ts`.
 
 ### appStore.ts
 ```typescript
