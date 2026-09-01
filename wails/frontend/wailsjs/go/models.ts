@@ -1,4 +1,4 @@
-﻿export namespace types {
+export namespace types {
 	
 	export class AIRewriteResult {
 	    result: string;
@@ -22,11 +22,11 @@
 	    counterparty_names?: string[];
 	    cue: string;
 	    confidence: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new EvidenceKnowledgeState(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.state = source["state"];
@@ -1334,7 +1334,7 @@
 	
 	
 	
-
+	
 	export class ExportOptions {
 	    includeCopyright: boolean;
 	    includeFrontMatter: boolean;
@@ -1849,11 +1849,11 @@
 	    text: string;
 	    cue: string;
 	    confidence: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new StorySearchKnowledgeState(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.evidence_id = source["evidence_id"];
@@ -1923,7 +1923,7 @@
 		    return a;
 		}
 	}
-
+	
 	export class StorySearchMatch {
 	    section: string;
 	    section_index: number;
@@ -2028,7 +2028,164 @@
 		}
 	}
 	
+	export class StoryTimelineChapter {
+	    chapter_index: number;
+	    chapter_title: string;
+	    event_count: number;
+	    explicit_time_count: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new StoryTimelineChapter(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.chapter_index = source["chapter_index"];
+	        this.chapter_title = source["chapter_title"];
+	        this.event_count = source["event_count"];
+	        this.explicit_time_count = source["explicit_time_count"];
+	    }
+	}
+	export class StoryTimelineEvent {
+	    id: string;
+	    evidence_ids: string[];
+	    primary_type: string;
+	    event_types: string[];
+	    text: string;
+	    source_text: string;
+	    chapter_id: string;
+	    chapter_index: number;
+	    chapter_title: string;
+	    section: string;
+	    section_index: number;
+	    paragraph_index: number;
+	    sentence_index: number;
+	    start_offset: number;
+	    character_ids?: string[];
+	    character_names?: string[];
+	    locations?: EvidenceTerm[];
+	    time_expressions?: string[];
+	    time_kind: string;
+	    time_label: string;
+	    confidence: number;
+	    status: string;
+	    pinned?: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new StoryTimelineEvent(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.evidence_ids = source["evidence_ids"];
+	        this.primary_type = source["primary_type"];
+	        this.event_types = source["event_types"];
+	        this.text = source["text"];
+	        this.source_text = source["source_text"];
+	        this.chapter_id = source["chapter_id"];
+	        this.chapter_index = source["chapter_index"];
+	        this.chapter_title = source["chapter_title"];
+	        this.section = source["section"];
+	        this.section_index = source["section_index"];
+	        this.paragraph_index = source["paragraph_index"];
+	        this.sentence_index = source["sentence_index"];
+	        this.start_offset = source["start_offset"];
+	        this.character_ids = source["character_ids"];
+	        this.character_names = source["character_names"];
+	        this.locations = this.convertValues(source["locations"], EvidenceTerm);
+	        this.time_expressions = source["time_expressions"];
+	        this.time_kind = source["time_kind"];
+	        this.time_label = source["time_label"];
+	        this.confidence = source["confidence"];
+	        this.status = source["status"];
+	        this.pinned = source["pinned"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class StoryTimelineFacet {
+	    id: string;
+	    label: string;
+	    count: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new StoryTimelineFacet(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.label = source["label"];
+	        this.count = source["count"];
+	    }
+	}
+	export class StoryTimelineResult {
+	    success: boolean;
+	    error?: string;
+	    engine: string;
+	    events: StoryTimelineEvent[];
+	    chapters: StoryTimelineChapter[];
+	    characters: StoryTimelineFacet[];
+	    locations: StoryTimelineFacet[];
+	    event_types: StoryTimelineFacet[];
+	    explicit_time_count: number;
+	    relative_time_count: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new StoryTimelineResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.error = source["error"];
+	        this.engine = source["engine"];
+	        this.events = this.convertValues(source["events"], StoryTimelineEvent);
+	        this.chapters = this.convertValues(source["chapters"], StoryTimelineChapter);
+	        this.characters = this.convertValues(source["characters"], StoryTimelineFacet);
+	        this.locations = this.convertValues(source["locations"], StoryTimelineFacet);
+	        this.event_types = this.convertValues(source["event_types"], StoryTimelineFacet);
+	        this.explicit_time_count = source["explicit_time_count"];
+	        this.relative_time_count = source["relative_time_count"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	
 	
 
 }
+

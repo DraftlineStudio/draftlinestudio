@@ -136,6 +136,14 @@ local grammatical position; Draftline does not resolve pronouns or distant
 clause subjects by guesswork. Existing evidence classifications remain stable
 so the upgrade does not orphan compatible author review decisions.
 
+### storytimeline/
+Deterministic projection of the persistent evidence index into a manuscript-
+order event trail. It merges classifications from the same source sentence,
+excludes rejected and ordinary non-timed facts, retains confirmed and pinned
+author evidence, derives conservative character/place/type facets, and labels
+explicit, relative, or manuscript-only timing without guessing dates.
+`story_timeline.go` is the thin Wails-facing delegate.
+
 ### storysearch/
 Deterministic whole-manuscript evidence retrieval. Searches explicit query
 submissions by scene, expands only confirmed character aliases, and returns

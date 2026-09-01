@@ -4,6 +4,20 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02486] - 2026-09-01
+
+### Added
+- Added the first automatic, source-backed Story Timeline as a dedicated bottom-tool tab. It assembles deduplicated events in manuscript order from the persistent evidence index and opens every item at its exact source.
+- Added a chapter event-density strip and filters for free-text details, confirmed characters, conservatively detected places, event types, and timing certainty.
+- Added explicit chronology labels that distinguish time references, relative expressions, and events known only by manuscript placement. Draftline does not assume that a mentioned date is the current scene date or convert ambiguous prose into an invented calendar.
+- Added deterministic timeline regression tests covering source deduplication, ordering, rejected evidence, timed facts, character/place/type facets, conservative place cleanup, and missing indexes.
+
+### Changed
+- Multiple evidence classifications attached to the same source sentence now become one timeline event, retaining all source IDs while selecting the most editorially useful event label.
+- Renamed the status-bar and Story menu entry to **Ask Draftline** so the feature is discoverable by its current name; the same bottom workspace now contains Ask Draftline, Timeline, and the Evidence Archive.
+
+---
+
 ## [0.16.02485] - 2026-09-01
 
 ### Added
