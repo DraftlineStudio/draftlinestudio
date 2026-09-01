@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02480] - 2026-09-01
+
+### Fixed
+- .draftline files now show the Draftline icon instead of the blank-page icon: association registration notifies the Windows shell (SHChangeNotify) whenever the registry entries actually change, so Explorer refreshes its icon cache instead of waiting for a rebuild. Registration also became write-on-change, keeping ordinary launches free of registry churn.
+
+---
+
 ## [0.16.02479] - 2026-09-01
 
 ### Fixed
