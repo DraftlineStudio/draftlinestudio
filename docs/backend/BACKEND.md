@@ -144,6 +144,14 @@ author evidence, derives conservative character/place/type facets, and labels
 explicit, relative, or manuscript-only timing without guessing dates.
 `story_timeline.go` is the thin Wails-facing delegate.
 
+### continuity/
+Read-only comparison engine over the current story fingerprint. The first
+version emits explainable review prompts for confirmed-character identity and
+appearance gaps, paired knowledge states, a narrow set of physical attributes,
+nearby clock references, and chapter event density. Signals retain exact source
+coordinates and never mutate manuscript or evidence data. `continuity.go` is
+the thin Wails-facing delegate.
+
 ### storysearch/
 Deterministic whole-manuscript evidence retrieval. Searches explicit query
 submissions by scene, expands only confirmed character aliases, and returns

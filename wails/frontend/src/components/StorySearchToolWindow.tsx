@@ -9,6 +9,7 @@ import { isConfirmedCharacter } from '../utils/characterStatus'
 import DetailInsightPanel from './storysearch/DetailInsightPanel'
 import EvidenceIndexPanel from './storysearch/EvidenceIndexPanel'
 import StoryTimelinePanel from './storysearch/StoryTimelinePanel'
+import ContinuityPanel from './storysearch/ContinuityPanel'
 
 type SearchResult = types.StorySearchResult
 type SearchMatch = types.StorySearchMatch
@@ -28,7 +29,7 @@ export default function StorySearchToolWindow() {
   })))
   const [panelHeight, setPanelHeight] = useState(height)
   const [query, setQuery] = useState('')
-  const [activeView, setActiveView] = useState<'search' | 'timeline' | 'evidence'>('search')
+  const [activeView, setActiveView] = useState<'search' | 'timeline' | 'continuity' | 'evidence'>('search')
   const [result, setResult] = useState<SearchResult | null>(null)
   const [loading, setLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -105,7 +106,13 @@ export default function StorySearchToolWindow() {
           </svg>
           Timeline
         </button>
-        <span className="story-search-header-hint">{activeView === 'search' ? 'Source-backed manuscript trails · no AI' : activeView === 'timeline' ? 'Automatic events · explicit uncertainty' : 'Everything Draftline has indexed'}</span>
+        <button type="button" className={`story-search-tab ${activeView === 'continuity' ? 'active' : ''}`} onClick={() => setActiveView('continuity')}>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
+            <path d="M6 1.2 10.4 3v2.7c0 2.5-1.7 4.3-4.4 5.1-2.7-.8-4.4-2.6-4.4-5.1V3z" /><path d="m3.8 6 1.4 1.4 3-3" />
+          </svg>
+          Continuity
+        </button>
+        <span className="story-search-header-hint">{activeView === 'search' ? 'Source-backed manuscript trails · no AI' : activeView === 'timeline' ? 'Automatic events · explicit uncertainty' : activeView === 'continuity' ? 'Review questions · paired sources' : 'Everything Draftline has indexed'}</span>
         <button
           type="button"
           className={`story-search-archive-toggle ${activeView === 'evidence' ? 'active' : ''}`}
@@ -205,7 +212,7 @@ export default function StorySearchToolWindow() {
             </div>
           </>
         )}
-      </div> : activeView === 'timeline' && book ? <StoryTimelinePanel book={book} onNavigate={navigateSource} /> : book ? <EvidenceIndexPanel book={book} onNavigate={navigateSource} /> : null}
+      </div> : activeView === 'timeline' && book ? <StoryTimelinePanel book={book} onNavigate={navigateSource} /> : activeView === 'continuity' && book ? <ContinuityPanel book={book} onNavigate={navigateSource} /> : book ? <EvidenceIndexPanel book={book} onNavigate={navigateSource} /> : null}
     </section>
   )
 }

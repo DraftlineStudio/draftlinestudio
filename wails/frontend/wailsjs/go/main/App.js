@@ -22,6 +22,10 @@ export function BrowseForDirectory() {
   return window['go']['main']['App']['BrowseForDirectory']();
 }
 
+export function BuildContinuityReport(arg1) {
+  return window['go']['main']['App']['BuildContinuityReport'](arg1);
+}
+
 export function BuildStoryTimeline(arg1) {
   return window['go']['main']['App']['BuildStoryTimeline'](arg1);
 }

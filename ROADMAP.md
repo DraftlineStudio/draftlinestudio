@@ -49,9 +49,12 @@ retrieval, indexing, review, and refactoring must not depend on generative AI.
       time expressions, with chapter density, character/place/type/time filters,
       source navigation, and ambiguity shown instead of silently guessed
       (`0.16.02486`).
-- [ ] Continuity checks over confirmed facts: conflicting attributes,
-      impossible knowledge, reintroductions, unexplained singleton characters,
-      chronology conflicts, and unresolved plants/payoffs.
+- [x] First continuity review over confirmed characters, evidence, knowledge,
+      and timeline data: identity gaps, strong one-offs, knowledge reversals or
+      suspicious ordering, conflicting physical attributes, clock regressions,
+      and thin event coverage, all with source navigation (`0.16.02487`).
+- [ ] Expand continuity review with reintroductions, unresolved plants/payoffs,
+      object/location state changes, and author-confirmable issue resolution.
 - [ ] Full-screen Storyboard for chapter/event density, plot threads, timeline,
       thin chapters, evidence review, and source navigation.
 - [ ] Chapter-history provenance where snapshots can prove when a passage
