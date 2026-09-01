@@ -7,14 +7,16 @@ import { countBookWords, getCurrentContent } from '../utils/textUtils'
 import { useAnalysisStore } from '../store/analysisStore'
 
 export default function StatusBar() {
-  const { book, isDirty, isAutoSaving, currentSection, currentIndex } = useBookStore(useShallow(s => ({
+  const { book, isDirty, isAutoSaving, currentSection, currentIndex, setViewMode } = useBookStore(useShallow(s => ({
     book: s.book,
     isDirty: s.isDirty,
     isAutoSaving: s.isAutoSaving,
     currentSection: s.currentSection,
     currentIndex: s.currentIndex,
+    setViewMode: s.setViewMode,
   })))
   const statusMessage = useAppStore(s => s.statusMessage)
+  const openStorySearch = useAppStore(s => s.openStorySearch)
   // Whole-book word count is an HTML re-parse of every chapter; memoize it so it
   // only recomputes when the book content actually changes — not on every
   // isDirty / statusMessage / isAutoSaving toggle re-render.
@@ -84,6 +86,14 @@ export default function StatusBar() {
         </div>
       )}
       <div className="statusbar-right">
+        {book && (
+          <button className="statusbar-story-search" onClick={() => { setViewMode('editor'); openStorySearch() }} title="Search the whole story (Ctrl+Shift+F)">
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.25">
+              <circle cx="5" cy="5" r="3.4" /><path d="M7.5 7.5 11 11" />
+            </svg>
+            Story Search
+          </button>
+        )}
         {book && analysis.state !== 'idle' && (
           <button
             className="statusbar-analysis-modules"

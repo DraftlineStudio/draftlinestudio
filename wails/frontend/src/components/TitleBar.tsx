@@ -10,8 +10,8 @@ interface TitleBarProps {
 }
 
 export default function TitleBar({ minimal = false }: TitleBarProps) {
-  const { book, currentSection, newBook, openBook, saveBook, saveBookAs, closeProject } = useBookStore()
-  const { settings, openSettings, openMetadataDialog, openExportWizard, openChapterHistory } = useAppStore()
+  const { book, currentSection, newBook, openBook, saveBook, saveBookAs, closeProject, setViewMode } = useBookStore()
+  const { settings, openSettings, openMetadataDialog, openExportWizard, openChapterHistory, openStorySearch } = useAppStore()
   const [dropOpen, setDropOpen] = useState(false)
   const [dropPos, setDropPos] = useState({ top: 0, left: 0 })
   const btnRef = useRef<HTMLButtonElement>(null)
@@ -46,6 +46,7 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
   }, [dropOpen])
 
   function run(fn: () => void) { setDropOpen(false); fn() }
+  function showStorySearch() { setViewMode('editor'); openStorySearch() }
 
   const dropdown = dropOpen && createPortal(
     <div
@@ -93,6 +94,13 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
           <path d="M2.2 4.2A5 5 0 1 1 1.5 7"/><path d="M1 2v3.5h3.5"/><path d="M6.5 3.5V7l2.2 1.3"/>
         </svg>
         <span>Chapter History…</span>
+      </button>
+
+      <button className="titlebar-dropdown-item" onClick={() => run(showStorySearch)} disabled={!book}>
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3">
+          <circle cx="5.5" cy="5.5" r="3.8" /><path d="M8.3 8.3 12 12" />
+        </svg>
+        <span>Search Story…</span><kbd>Ctrl+Shift+F</kbd>
       </button>
 
       <div className="titlebar-dropdown-sep" />

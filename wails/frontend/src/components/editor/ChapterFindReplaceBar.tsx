@@ -108,6 +108,21 @@ export default function ChapterFindReplaceBar({ editor }: Props) {
   }, [openSearch])
 
   useEffect(() => {
+    if (!editor) return
+    const handleStoryEvidence = (event: Event) => {
+      const nextQuery = (event as CustomEvent<{ query?: string }>).detail?.query?.trim()
+      if (!nextQuery) return
+      setQuery(nextQuery)
+      setMode('find')
+      updateChapterSearch(editor.view, { query: nextQuery, caseSensitive: false, wholeWord: false, activeIndex: 0 })
+      refreshStatus()
+      window.requestAnimationFrame(() => window.requestAnimationFrame(scrollToCurrent))
+    }
+    window.addEventListener('draftline:find-story-evidence', handleStoryEvidence)
+    return () => window.removeEventListener('draftline:find-story-evidence', handleStoryEvidence)
+  }, [editor, refreshStatus, scrollToCurrent])
+
+  useEffect(() => {
     if (!editor || mode === null) return
     updateChapterSearch(editor.view, { query, caseSensitive, wholeWord, activeIndex: 0 })
     refreshStatus()

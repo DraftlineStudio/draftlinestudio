@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02469] - 2026-08-31
+
+### Added
+- Added Story Search, a manuscript search window that understands character aliases.
+
 ## [0.16.02463] - 2026-08-31
 
 ### Changed
