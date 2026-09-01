@@ -2,7 +2,7 @@
 // Delegates to specialized stores: editorStore, storyBibleStore
 
 import { create } from 'zustand'
-import type { BookData, ChapterItem, Character, Metadata, Section, WritingStyleOptions } from '../types/draftline'
+import type { BookData, ChapterItem, Character, EvidenceRecord, Metadata, Section, WritingStyleOptions } from '../types/draftline'
 import { DEFAULT_STYLE_OPTIONS } from '../types/draftline'
 import type { ParagraphDiff, DiffChange } from '../utils/diff'
 import { countBookWords } from '../utils/textUtils'
@@ -224,6 +224,7 @@ interface BookStore {
 
   // Direct book update (for analysis results, etc.)
   updateBook: (book: BookData) => void
+  updateEvidenceRecord: (recordID: string, changes: Partial<EvidenceRecord>) => void
 
   // Navigation
   setCurrentChapter: (section: Section, index: number) => void
@@ -491,6 +492,21 @@ export const useBookStore = create<BookStore>((set, get) => ({
   // Direct book update (for analysis results, etc.)
   updateBook: (book) => {
     set({ book, isDirty: true })
+    scheduleAutoSave()
+  },
+
+  updateEvidenceRecord: (recordID, changes) => {
+    const { book } = get()
+    const evidence = book?.analysis?.evidence
+    if (!book || !evidence) return
+    const records = evidence.records.map(record => record.id === recordID ? { ...record, ...changes } : record)
+    set({
+      book: {
+        ...book,
+        analysis: { ...book.analysis, evidence: { ...evidence, records } },
+      },
+      isDirty: true,
+    })
     scheduleAutoSave()
   },
 

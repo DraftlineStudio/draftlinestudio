@@ -50,7 +50,10 @@
 	    rationale: string;
 	    status: string;
 	    source: string;
+	    author_text?: string;
 	    author_note?: string;
+	    pinned?: boolean;
+	    reviewed_at?: string;
 
 	    static createFrom(source: any = {}) {
 	        return new EvidenceRecord(source);
@@ -79,7 +82,10 @@
 	        this.rationale = source["rationale"];
 	        this.status = source["status"];
 	        this.source = source["source"];
+	        this.author_text = source["author_text"];
 	        this.author_note = source["author_note"];
+	        this.pinned = source["pinned"];
+	        this.reviewed_at = source["reviewed_at"];
 	    }
 
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

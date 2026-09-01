@@ -340,11 +340,19 @@ func appendEvidence(result *types.EvidenceData, record types.EvidenceRecord, pri
 	seen[base] = occurrence + 1
 	sum := sha256.Sum256([]byte(fmt.Sprintf("%s\x00%d", base, occurrence)))
 	record.ID = "evidence-" + hex.EncodeToString(sum[:10])
-	if old, ok := prior[record.ID]; ok && (old.Status == "confirmed" || old.Status == "rejected") {
+	if old, ok := prior[record.ID]; ok && hasAuthorEvidenceDecision(old) {
 		record.Status = old.Status
+		record.AuthorText = old.AuthorText
 		record.AuthorNote = old.AuthorNote
+		record.Pinned = old.Pinned
+		record.ReviewedAt = old.ReviewedAt
 	}
 	result.Records = append(result.Records, record)
+}
+
+func hasAuthorEvidenceDecision(record types.EvidenceRecord) bool {
+	return record.Status == "confirmed" || record.Status == "rejected" ||
+		record.AuthorText != "" || record.AuthorNote != "" || record.Pinned || record.ReviewedAt != ""
 }
 
 func priorEvidence(data *types.EvidenceData) map[string]types.EvidenceRecord {

@@ -52,18 +52,39 @@ func TestAnalyzeEvidencePreservesReviewDecisionAndAuthorRecords(t *testing.T) {
 		t.Fatal("expected discovery")
 	}
 	discovery.Status = "confirmed"
+	discovery.AuthorText = "Ruiz confirms the tunnel opens at midnight."
 	discovery.AuthorNote = "Main investigation turn"
+	discovery.Pinned = true
+	discovery.ReviewedAt = "2026-09-01T07:00:00Z"
 	author := types.EvidenceRecord{ID: "author-1", Kind: "fact", EvidenceType: "custom", Text: "The author pinned this.", Source: "author", Status: "confirmed", ChapterIndex: 0}
 	first.Records = append(first.Records, author)
 	book.Analysis.Evidence = first
 
 	second := AnalyzeEvidence(&book, nil)
 	preserved := findEvidenceType(second.Records, "discovery")
-	if preserved == nil || preserved.Status != "confirmed" || preserved.AuthorNote != "Main investigation turn" {
+	if preserved == nil || preserved.Status != "confirmed" || preserved.AuthorText != discovery.AuthorText ||
+		preserved.AuthorNote != "Main investigation turn" || !preserved.Pinned || preserved.ReviewedAt != discovery.ReviewedAt {
 		t.Fatalf("review decision was not preserved: %+v", preserved)
 	}
 	if got := findEvidenceID(second.Records, "author-1"); got == nil || got.Text != author.Text {
 		t.Fatalf("author evidence was not preserved: %+v", got)
+	}
+}
+
+func TestAnalyzeEvidencePreservesPinnedDetectedRecord(t *testing.T) {
+	book := evidenceTestBook("Ruiz learned that the tunnel opened at midnight.", map[string]string{"Ruiz": "ruiz"})
+	first := AnalyzeEvidence(&book, nil)
+	discovery := findEvidenceType(first.Records, "discovery")
+	if discovery == nil {
+		t.Fatal("expected discovery")
+	}
+	discovery.Pinned = true
+	discovery.AuthorNote = "Review this when the timeline is built"
+	book.Analysis.Evidence = first
+
+	preserved := findEvidenceType(AnalyzeEvidence(&book, nil).Records, "discovery")
+	if preserved == nil || !preserved.Pinned || preserved.AuthorNote != discovery.AuthorNote || preserved.Status != "detected" {
+		t.Fatalf("pinned unconfirmed record was not preserved: %+v", preserved)
 	}
 }
 

@@ -2233,6 +2233,7 @@ html, body, #root {
 .evidence-index-toolbar {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 14px;
   min-height: 43px;
   padding: 6px 12px;
@@ -2258,31 +2259,88 @@ html, body, #root {
 .evidence-index-built { margin-left: auto; color: var(--text-muted); font-size: 9px; }
 .evidence-index-list { flex: 1; min-height: 0; overflow: auto; }
 .evidence-index-row {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--border-subtle);
+  background: transparent;
+}
+.evidence-index-row.pinned { box-shadow: inset 2px 0 var(--status-warning); }
+.evidence-index-row.rejected { opacity: .62; }
+.evidence-index-source {
   display: grid;
   grid-template-columns: minmax(130px, 190px) minmax(300px, 1fr) 58px;
   align-items: start;
   width: 100%;
   padding: 8px 12px;
   border: 0;
-  border-bottom: 1px solid var(--border-subtle);
   background: transparent;
   color: var(--text-primary);
   text-align: left;
   font: inherit;
   cursor: pointer;
 }
-.evidence-index-row:hover,
-.evidence-index-row:focus-visible { background: var(--bg-hover); outline: none; }
+.evidence-index-source:hover,
+.evidence-index-source:focus-visible { background: var(--bg-hover); outline: none; }
 .evidence-index-location { display: flex; min-width: 0; flex-direction: column; gap: 2px; padding-right: 14px; }
 .evidence-index-location strong { overflow: hidden; color: var(--text-chapter); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .evidence-index-location span { color: var(--text-muted); font-size: 9px; }
 .evidence-index-content { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
 .evidence-index-badges { display: flex; flex-wrap: wrap; gap: 4px; }
 .evidence-index-badges i.confirmed { border-color: color-mix(in srgb, var(--status-success) 40%, var(--border)); color: var(--status-success); }
+.evidence-index-badges i.rejected { border-color: color-mix(in srgb, var(--status-error) 40%, var(--border)); color: var(--status-error); }
+.evidence-index-badges i.pinned { border-color: color-mix(in srgb, var(--status-warning) 45%, var(--border)); color: var(--status-warning); }
 .evidence-index-text { color: var(--text-secondary); line-height: 1.4; }
+.evidence-index-author-text { display: flex; gap: 6px; color: var(--text-secondary); font-size: 10px; }
+.evidence-index-author-text b { color: var(--status-success); font-size: 8px; letter-spacing: .03em; text-transform: uppercase; }
 .evidence-index-terms { overflow: hidden; color: var(--text-muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.evidence-index-review-reason { color: var(--status-warning); font-size: 8px; }
+.evidence-index-note { color: var(--text-muted); font-size: 9px; font-style: italic; }
 .evidence-index-open { justify-self: end; padding-top: 3px; color: var(--text-muted); font-size: 9px; white-space: nowrap; }
-.evidence-index-row:hover .evidence-index-open { color: var(--accent); }
+.evidence-index-source:hover .evidence-index-open { color: var(--accent); }
+.evidence-review-actions {
+  display: flex;
+  gap: 4px;
+  padding: 0 12px 7px 202px;
+}
+.evidence-review-actions button,
+.evidence-review-editor > button {
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg-toolbar);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 9px;
+  cursor: pointer;
+}
+.evidence-review-actions button:hover,
+.evidence-review-editor > button:hover { border-color: var(--border-strong); color: var(--text-primary); }
+.evidence-review-actions button.active { background: var(--bg-active); color: var(--text-primary); }
+.evidence-review-actions button.confirm.active { border-color: color-mix(in srgb, var(--status-success) 45%, var(--border)); color: var(--status-success); }
+.evidence-review-actions button.reject.active { border-color: color-mix(in srgb, var(--status-error) 45%, var(--border)); color: var(--status-error); }
+.evidence-review-actions button.pin.active { border-color: color-mix(in srgb, var(--status-warning) 45%, var(--border)); color: var(--status-warning); }
+.evidence-review-editor {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+  padding: 0 12px 9px 202px;
+}
+.evidence-review-editor label { display: flex; min-width: 0; flex-direction: column; gap: 3px; color: var(--text-secondary); font-size: 9px; }
+.evidence-review-editor label span { display: flex; justify-content: space-between; gap: 8px; }
+.evidence-review-editor label small { color: var(--text-muted); font-size: 8px; }
+.evidence-review-editor input {
+  min-width: 0;
+  padding: 5px 7px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 10px;
+  outline: none;
+}
+.evidence-review-editor input:focus { border-color: var(--border-focus); }
 .evidence-index-empty {
   display: flex;
   flex: 1;

@@ -120,6 +120,12 @@ bundled prose/v3 model plus conservative deterministic cues; it stores exact
 source sentences and coordinates in `analysis.json`, performs no network call,
 and is rebuildable from the manuscript.
 
+Build 02476 adds author-owned review provenance without modifying source
+evidence. Confirm/reject status, a separate author interpretation, notes, pins,
+and review timestamps follow stable evidence IDs through reanalysis. The
+frontend derives a bounded local review queue from high-value and suspicious
+records while the complete archive remains available for inspection.
+
 ### storysearch/
 Deterministic whole-manuscript evidence retrieval. Searches explicit query
 submissions by scene, expands only confirmed character aliases, and returns

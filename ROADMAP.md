@@ -27,8 +27,11 @@ retrieval, indexing, review, and refactoring must not depend on generative AI.
 
 ## Next: make evidence editorially useful
 
-- [ ] Author review controls: confirm, reject, edit, annotate, or pin an
-      inferred fact/event; preserve decisions through reanalysis.
+- [x] Author review controls: confirm, reject, edit, annotate, or pin an
+      inferred fact/event; preserve decisions through reanalysis. A bounded,
+      deterministic queue ranks discoveries, introductions, explicit times,
+      interactions, and suspicious singleton details above the full archive
+      (`0.16.02476`).
 - [x] Evidence-backed Detail Search with natural question intent, confirmed
       aliases, complete chapter trails, earliest/latest source navigation,
       missing-given-name answers, singleton warnings, discovery signals,
