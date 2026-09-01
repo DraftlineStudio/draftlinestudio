@@ -111,7 +111,16 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
         return
       }
       if (!result.success || !result.book) {
-        throw new Error(result.error || 'Analysis failed')
+        const message = result.error || 'Analysis failed'
+        if (message.includes('analysis is already running')) {
+          set({
+            state: 'stale', progress: 0, message: 'Another analysis task is finishing; waiting to run again',
+            modules: { characters: 'stale', plot: 'stale', prose: 'stale' },
+          })
+          setTimeout(() => { if (get().state === 'stale') void get().run() }, 5_000)
+          return
+        }
+        throw new Error(message)
       }
       after.updateBook(result.book as unknown as BookData)
       set({

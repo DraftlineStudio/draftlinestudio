@@ -8,6 +8,7 @@ export type AIMode = 'claudecode' | 'codex' | 'api' | 'local'
 export type AIProvider = 'claude' | 'openai' | 'gemini' | 'grok' | ''
 export type ThemeMode = 'light' | 'dark' | 'auto'
 export type EditorFontSize = 'small' | 'normal' | 'large'
+export type AnalysisCPUProfile = 'adaptive' | 'gentle' | 'balanced' | 'fast'
 
 export type ClaudeCodeSetupStep = 'idle' | 'running' | 'auth' | 'auth-waiting' | 'done' | 'error'
 export type TestStatus = 'idle' | 'testing' | 'ok' | 'error'
@@ -31,6 +32,8 @@ export interface ApplicationSectionProps {
   setAutoThemeDusk: (v: string) => void
   activityAutoSaveEnabled: boolean
   setActivityAutoSaveEnabled: (v: boolean) => void
+  analysisCPUProfile: AnalysisCPUProfile
+  setAnalysisCPUProfile: (v: AnalysisCPUProfile) => void
   onBrowse: () => void
 }
 

@@ -20,7 +20,10 @@ type AppSettings struct {
 	StoryBibleEnabled       bool     `json:"story_bible_enabled"`
 	PlotWalkerEnabled       bool     `json:"plot_walker_enabled"`
 	AnalysisEnabled         bool     `json:"analysis_enabled"`
-	// CharactersLaneView remembers the codex lane style: "grid" | "heat".
+	// AnalysisCPUProfile controls the approximate background core budget:
+	// "adaptive" | "gentle" | "balanced" | "fast".
+	AnalysisCPUProfile string `json:"analysis_cpu_profile"`
+	// CharactersLaneView remembers the codex lane style: "grid" | "heat" | "weave".
 	CharactersLaneView string `json:"characters_lane_view"`
 	// AI
 	AIEnabled  bool   `json:"ai_enabled"`
