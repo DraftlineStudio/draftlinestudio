@@ -76,12 +76,10 @@ export default function StatusBar() {
             disabled={analysis.state === 'running'}
             title={analysis.state === 'error' ? analysis.error : analysis.state === 'stale' ? 'Analysis is out of date; click to run now' : 'Story analysis is current'}
           >
-            {/* Display labels only — the internal module keys stay
-                'story'/'pacing' (settings/analysis compatibility). */}
-            {(['characters', 'story', 'pacing'] as const).map(module => (
+            {(['characters', 'plot', 'prose'] as const).map(module => (
               <span className="statusbar-analysis-module" key={module}>
                 <i className={`analysis-state-dot ${analysis.modules[module]}`} />
-                {module === 'characters' ? 'Characters' : module === 'story' ? 'Plot' : 'Prose'}
+                {module === 'characters' ? 'Characters' : module === 'plot' ? 'Plot' : 'Prose'}
               </span>
             ))}
           </button>
