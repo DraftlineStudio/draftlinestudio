@@ -7,7 +7,7 @@ import { DEFAULT_STYLE_OPTIONS } from '../types/draftline'
 import type { ParagraphDiff, DiffChange } from '../utils/diff'
 import { countBookWords } from '../utils/textUtils'
 
-import { NewBook, OpenBookDialog, SaveBook, SaveBookAs, SaveBookSnapshots, OpenRecentProject, AddRecentProject, IndexBook, MergeEntities, SplitEntity, ImportEPUB, ImportDOCX } from '../../wailsjs/go/main/App'
+import { NewBook, OpenBookDialog, SaveBook, SaveBookAs, SaveBookSnapshots, OpenRecentProject, AddRecentProject, IndexBook, MergeEntities, SplitEntity, ImportEPUB, ImportDOCX, ShowInfoDialog } from '../../wailsjs/go/main/App'
 import { types } from '../../wailsjs/go/models'
 import { useAppStore } from './appStore'
 import { useEditorStore, type EditorInstance } from './editorStore'
@@ -448,6 +448,14 @@ export const useBookStore = create<BookStore>((set, get) => ({
     const ext = (path.split('.').pop() || '').toLowerCase()
     if (ext === 'draftline') {
       await get().openRecentBook(path)
+      return
+    }
+    if (ext === 'storiverse') {
+      setStatus('Storiverse universes are not supported in this version')
+      void ShowInfoDialog(
+        'Storiverse universe',
+        'This is a Storiverse universe file. Universe support is coming in a later version of Draftline — update to a version that supports Storiverse to open it.',
+      )
       return
     }
     if (ext !== 'epub' && ext !== 'docx') return

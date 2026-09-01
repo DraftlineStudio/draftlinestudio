@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02483] - 2026-09-01
+
+### Changed
+- Opening a .storiverse file now shows a notice that support is coming.
+
 ## [0.16.02482] - 2026-09-01
 
 ### Added
