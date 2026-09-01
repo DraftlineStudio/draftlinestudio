@@ -32,6 +32,7 @@ const mocks = vi.hoisted(() => ({
   SplitEntity: vi.fn(),
   ImportEPUB: vi.fn(),
   ImportDOCX: vi.fn(),
+  ShowInfoDialog: vi.fn(),
   AnalyzeBook: vi.fn(),
   // appStore.ts imports (bookStore imports appStore)
   LoadSettings: vi.fn(),
@@ -385,5 +386,16 @@ describe('external file opens', () => {
     expect(mocks.ImportEPUB).not.toHaveBeenCalled()
     expect(mocks.OpenRecentProject).not.toHaveBeenCalled()
     expect(store().dialogs.showUnsavedWarning).toBe(false)
+  })
+
+  it('a .storiverse shows the not-yet-supported notice instead of opening', async () => {
+    mocks.ShowInfoDialog.mockResolvedValue(undefined)
+    await store().openExternalFile('C:/books/saga.storiverse')
+    expect(mocks.ShowInfoDialog).toHaveBeenCalledWith(
+      'Storiverse universe',
+      expect.stringContaining('later version'),
+    )
+    expect(mocks.OpenRecentProject).not.toHaveBeenCalled()
+    expect(store().book).toBe(null)
   })
 })

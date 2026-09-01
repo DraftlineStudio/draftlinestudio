@@ -17,12 +17,29 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-// Extensions the app can actually open. .storiverse and .pdf are deliberately
-// absent: nothing can open a universe yet, and there is no PDF importer.
+// Extensions the app accepts from the OS. .storiverse is forwarded so the
+// frontend can explain that universe support arrives in a later version
+// (rather than a dead double-click); .pdf is deliberately absent — there is
+// no PDF importer.
 var openableExtensions = map[string]bool{
-	".draftline": true,
-	".epub":      true,
-	".docx":      true,
+	".draftline":  true,
+	".storiverse": true,
+	".epub":       true,
+	".docx":       true,
+}
+
+// ShowInfoDialog displays a native OS information dialog. Used by the
+// frontend for messages that must not be missable (e.g. the .storiverse
+// not-yet-supported notice).
+func (a *App) ShowInfoDialog(title, message string) {
+	if a.ctx == nil {
+		return
+	}
+	_, _ = runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
+		Type:    runtime.InfoDialog,
+		Title:   title,
+		Message: message,
+	})
 }
 
 var (

@@ -1,7 +1,7 @@
 # File Associations (cross-platform)
 
 Draftline claims `.draftline` as its own document type and appears in
-"Open with" for `.epub`/`.docx` (routed to the importers). `.storiverse` is registered as its own type (`Draftline.Universe`, slate-gray icon) for visual identity only — opening universes is unsupported until Storiverse ships, and the launch path ignores the extension. `.pdf` is deliberately unregistered: there is no PDF importer.
+"Open with" for `.epub`/`.docx` (routed to the importers). `.storiverse` is registered as its own type (`Draftline.Universe`, slate-gray icon) for visual identity only — double-clicking one shows a native "support coming in a later version — update to open" dialog until Storiverse ships. `.pdf` is deliberately unregistered: there is no PDF importer.
 
 ## Runtime plumbing (shared, 0.16.02477)
 
