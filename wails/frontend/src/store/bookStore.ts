@@ -230,6 +230,7 @@ interface BookStore {
   // Direct book update (for analysis results, etc.)
   updateBook: (book: BookData) => void
   updateEvidenceRecord: (recordID: string, changes: Partial<EvidenceRecord>) => void
+  setContinuityDecision: (signalID: string, status: 'reviewed' | 'dismissed' | null) => void
 
   // Navigation
   setCurrentChapter: (section: Section, index: number) => void
@@ -580,6 +581,27 @@ export const useBookStore = create<BookStore>((set, get) => ({
       book: {
         ...book,
         analysis: { ...book.analysis, evidence: { ...evidence, records } },
+      },
+      isDirty: true,
+    })
+    scheduleAutoSave()
+  },
+
+  // Continuity questions are rebuilt from the manuscript every time, so only
+  // the author's decision is stored. Passing null clears a decision, which
+  // returns the question to the outstanding queue.
+  setContinuityDecision: (signalID, status) => {
+    const { book } = get()
+    if (!book) return
+    const existing = book.analysis?.continuity?.decisions ?? []
+    const without = existing.filter(decision => decision.signal_id !== signalID)
+    const decisions = status
+      ? [...without, { signal_id: signalID, status, decided_at: new Date().toISOString() }]
+      : without
+    set({
+      book: {
+        ...book,
+        analysis: { ...book.analysis, continuity: { ...book.analysis?.continuity, decisions } },
       },
       isDirty: true,
     })

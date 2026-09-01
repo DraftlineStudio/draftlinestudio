@@ -4,6 +4,27 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02490] - 2026-09-01
+
+### Added
+- **Continuity decisions persist.** Mark a question reviewed or dismissed and the judgement is saved with the book. Decided questions stay listed but drop out of the outstanding counts, so the header badges describe work left rather than work seen. Clicking an active decision again clears it and returns the question to the queue.
+- Continuity signal IDs are derived from a question's kind, title, and source evidence, so a decision survives rebuilds of the report but is deliberately not carried over when the underlying prose changes — an edited passage produces a new question that resurfaces for a fresh look.
+- Outstanding review/observation counts now appear as badges in the bottom bar header while Continuity is active.
+- A **Decided** filter, so previously handled questions can be found again.
+
+### Changed
+- **Continuity rebuilt as queue and detail**, matching the Continuity A reference. A 428px queue on the left — filter box, All/Review/Observations/Decided chips, one row per question with severity dot, category and cue strength, and a footer recording how many chapters were checked. The detail pane on the right carries the severity, category and kind chips, the question, its explanation, the paired source quote, and Open source / Mark reviewed / Dismiss actions with a "Question N of M" position.
+- Marking a question reviewed or dismissed advances to the next open question, so the queue keeps moving.
+- Continuity tab icon is now the reference's circle-check.
+- Previously the view was a flat list of cards with four dropdown filters; long explanations and sources competed for the same column, and there was no way to record that a question had been handled.
+
+### Internal
+- New `ContinuityDecision` / `ContinuityData` types persisted under `analysis.continuity`. Only decisions are stored — the report itself is always rebuilt from the current fingerprint, so it can never drift from the manuscript.
+- `applyDecisions` stamps stored decisions onto freshly built signals; a decision whose question no longer exists is ignored rather than resurrected. Two Go tests cover application, count exclusion, and rejection of unknown or invalid decisions.
+- Raised the `bookStore.ts` ratchet 910 → 930 for `setContinuityDecision`, with the reason and a "watch this" note recorded in `docs/TECHNICAL-DEBT.md`. If a fourth raise is needed, the analysis-decision writers should be extracted to a pure helper module instead.
+
+---
+
 ## [0.16.02489] - 2026-09-01
 
 ### Removed

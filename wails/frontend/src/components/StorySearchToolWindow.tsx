@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAppStore } from '../store/appStore'
 import { useBookStore } from '../store/bookStore'
@@ -34,6 +34,10 @@ export default function StorySearchToolWindow() {
   const [panelHeight, setPanelHeight] = useState(height)
   const [restoreHeight, setRestoreHeight] = useState(height)
   const [activeView, setActiveView] = useState<ToolView>('search')
+  const [continuityCounts, setContinuityCounts] = useState<{ review: number; info: number } | null>(null)
+  // Stable identity: the panel reports counts from an effect, so a new function
+  // each render would loop.
+  const reportCounts = useCallback((counts: { review: number; info: number } | null) => setContinuityCounts(counts), [])
 
   function beginResize(event: React.PointerEvent<HTMLDivElement>) {
     event.preventDefault()
@@ -90,13 +94,20 @@ export default function StorySearchToolWindow() {
           </svg>
         </Tab>
         <Tab view="continuity" active={activeView} onSelect={setActiveView} label="Continuity">
-          <svg width="13" height="13" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
-            <path d="M6 1.2 10.4 3v2.7c0 2.5-1.7 4.3-4.4 5.1-2.7-.8-4.4-2.6-4.4-5.1V3z" /><path d="m3.8 6 1.4 1.4 3-3" />
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="9" /><path d="M8.5 12l2.5 2.5 4.5-5" />
           </svg>
         </Tab>
 
         <span className="story-search-header-hint">{HINTS[activeView]}</span>
         <div className="story-search-header-spacer" />
+
+        {activeView === 'continuity' && continuityCounts && (
+          <>
+            {continuityCounts.review > 0 && <span className="story-search-badge review">{continuityCounts.review} review</span>}
+            <span className="story-search-badge">{continuityCounts.info} {continuityCounts.info === 1 ? 'observation' : 'observations'}</span>
+          </>
+        )}
 
         <button
           type="button"
@@ -144,7 +155,7 @@ export default function StorySearchToolWindow() {
 
       {activeView === 'search' && book && <AskPanel book={book} onNavigate={navigateSource} />}
       {activeView === 'graph' && book && <StoryGraphPanel book={book} onNavigate={navigateSource} onOpenCodex={() => setViewMode('cast')} />}
-      {activeView === 'continuity' && book && <ContinuityPanel book={book} onNavigate={navigateSource} />}
+      {activeView === 'continuity' && book && <ContinuityPanel book={book} onNavigate={navigateSource} onCounts={reportCounts} />}
       {activeView === 'evidence' && book && <EvidenceIndexPanel book={book} onNavigate={navigateSource} />}
     </section>
   )

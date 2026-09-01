@@ -128,3 +128,61 @@ func assertSignal(t *testing.T, report types.ContinuityReport, kind string) type
 	t.Fatalf("expected %s signal, got %#v", kind, report.Signals)
 	return types.ContinuitySignal{}
 }
+
+func TestStoredDecisionsAreAppliedAndExcludedFromCounts(t *testing.T) {
+	book := testBook()
+	book.StoryBible.Characters = []types.Character{
+		{ID: "ruiz", Name: "Ruiz", EntityKind: "person", IsAutoDetected: true, DetectionStatus: "accepted", DetectionScore: .99, Aliases: []string{"Detective Ruiz"}, MentionCount: 12, ChapterMentions: map[int]int{0: 4, 1: 8}},
+	}
+	book.Analysis.Evidence.Records = []types.EvidenceRecord{
+		evidence("ruiz-source", 0, 10, "Ruiz entered the station.", "fact", "state", []string{"ruiz"}, []string{"Ruiz"}),
+	}
+
+	before := Build(book)
+	target := assertSignal(t, before, "missing-given-name")
+	if target.Status != "" {
+		t.Fatalf("expected an undecided question, got status %q", target.Status)
+	}
+	openBefore := before.ReviewCount + before.InfoCount
+
+	book.Analysis.Continuity = &types.ContinuityData{
+		Decisions: []types.ContinuityDecision{{SignalID: target.ID, Status: "reviewed", DecidedAt: "2026-09-01T00:00:00Z"}},
+	}
+
+	after := Build(book)
+	decided := assertSignal(t, after, "missing-given-name")
+	if decided.Status != "reviewed" {
+		t.Fatalf("expected the stored decision to be applied, got %q", decided.Status)
+	}
+	// The question is still reported — it is only dropped from the outstanding
+	// counts, so the author can still find what they already handled.
+	if openBefore-1 != after.ReviewCount+after.InfoCount {
+		t.Fatalf("expected one fewer outstanding question, before=%d after=%d", openBefore, after.ReviewCount+after.InfoCount)
+	}
+}
+
+func TestDecisionsForUnknownOrInvalidSignalsAreIgnored(t *testing.T) {
+	book := testBook()
+	book.StoryBible.Characters = []types.Character{
+		{ID: "ruiz", Name: "Ruiz", EntityKind: "person", IsAutoDetected: true, DetectionStatus: "accepted", DetectionScore: .99, Aliases: []string{"Detective Ruiz"}, MentionCount: 12, ChapterMentions: map[int]int{0: 4, 1: 8}},
+	}
+	book.Analysis.Evidence.Records = []types.EvidenceRecord{
+		evidence("ruiz-source", 0, 10, "Ruiz entered the station.", "fact", "state", []string{"ruiz"}, []string{"Ruiz"}),
+	}
+	baseline := Build(book)
+
+	book.Analysis.Continuity = &types.ContinuityData{Decisions: []types.ContinuityDecision{
+		{SignalID: "continuity-doesnotexist", Status: "reviewed"},
+		{SignalID: assertSignal(t, baseline, "missing-given-name").ID, Status: "bogus-status"},
+	}}
+
+	after := Build(book)
+	for _, item := range after.Signals {
+		if item.Status != "" {
+			t.Fatalf("expected no status applied, got %q on %s", item.Status, item.ID)
+		}
+	}
+	if after.ReviewCount+after.InfoCount != baseline.ReviewCount+baseline.InfoCount {
+		t.Fatal("counts changed despite no valid decision being applied")
+	}
+}

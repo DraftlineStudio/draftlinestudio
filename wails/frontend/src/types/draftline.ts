@@ -275,9 +275,22 @@ export interface AnalysisData {
   relationships?: RelationshipData
   story?: StoryAnalysisData
   evidence?: EvidenceData
+  continuity?: ContinuityData
   // Future analysis types:
   // plot_analysis?: PlotAnalysisData
   // theme_analysis?: ThemeAnalysisData
+  version?: number
+}
+
+export interface ContinuityDecision {
+  signal_id: string
+  status: 'reviewed' | 'dismissed' | string
+  decided_at?: string
+}
+
+/** Only author decisions persist; the report itself is always rebuilt. */
+export interface ContinuityData {
+  decisions?: ContinuityDecision[]
   version?: number
 }
 

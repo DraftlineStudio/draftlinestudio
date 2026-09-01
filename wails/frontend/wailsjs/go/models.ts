@@ -14,6 +14,54 @@ export namespace types {
 	        this.error = source["error"];
 	    }
 	}
+	export class ContinuityDecision {
+	    signal_id: string;
+	    status: string;
+	    decided_at?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ContinuityDecision(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.signal_id = source["signal_id"];
+	        this.status = source["status"];
+	        this.decided_at = source["decided_at"];
+	    }
+	}
+	export class ContinuityData {
+	    decisions?: ContinuityDecision[];
+	    version?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ContinuityData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.decisions = this.convertValues(source["decisions"], ContinuityDecision);
+	        this.version = source["version"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class EvidenceKnowledgeState {
 	    state: string;
 	    character_ids?: string[];
@@ -641,6 +689,7 @@ export namespace types {
 	    relationships?: RelationshipData;
 	    story?: StoryAnalysisData;
 	    evidence?: EvidenceData;
+	    continuity?: ContinuityData;
 	    version?: number;
 	
 	    static createFrom(source: any = {}) {
@@ -653,6 +702,7 @@ export namespace types {
 	        this.relationships = this.convertValues(source["relationships"], RelationshipData);
 	        this.story = this.convertValues(source["story"], StoryAnalysisData);
 	        this.evidence = this.convertValues(source["evidence"], EvidenceData);
+	        this.continuity = this.convertValues(source["continuity"], ContinuityData);
 	        this.version = source["version"];
 	    }
 	
@@ -1328,6 +1378,8 @@ export namespace types {
 	        this.error = source["error"];
 	    }
 	}
+	
+	
 	export class ContinuityFacet {
 	    id: string;
 	    label: string;
@@ -1383,6 +1435,7 @@ export namespace types {
 	    character_names?: string[];
 	    sources?: ContinuitySource[];
 	    confidence: number;
+	    status?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ContinuitySignal(source);
@@ -1400,6 +1453,7 @@ export namespace types {
 	        this.character_names = source["character_names"];
 	        this.sources = this.convertValues(source["sources"], ContinuitySource);
 	        this.confidence = source["confidence"];
+	        this.status = source["status"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
