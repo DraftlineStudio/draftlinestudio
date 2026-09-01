@@ -54,6 +54,24 @@ type StorySearchSignal struct {
 	Detail string `json:"detail"`
 }
 
+// StorySearchKnowledgeState is one source-backed point in the searched
+// detail's knowledge trail, retained in manuscript order.
+type StorySearchKnowledgeState struct {
+	EvidenceID        string   `json:"evidence_id"`
+	State             string   `json:"state"`
+	CharacterIDs      []string `json:"character_ids,omitempty"`
+	CharacterNames    []string `json:"character_names,omitempty"`
+	CounterpartyIDs   []string `json:"counterparty_ids,omitempty"`
+	CounterpartyNames []string `json:"counterparty_names,omitempty"`
+	ChapterIndex      int      `json:"chapter_index"`
+	ChapterTitle      string   `json:"chapter_title"`
+	Section           string   `json:"section"`
+	SectionIndex      int      `json:"section_index"`
+	Text              string   `json:"text"`
+	Cue               string   `json:"cue"`
+	Confidence        float64  `json:"confidence"`
+}
+
 // StorySearchInsight turns raw scene hits into a compact manuscript trail.
 // It summarizes only measured occurrences and indexed evidence; it never
 // invents an answer when the source does not establish one.
@@ -65,7 +83,9 @@ type StorySearchInsight struct {
 	EventCount       int                         `json:"event_count"`
 	FactCount        int                         `json:"fact_count"`
 	DiscoveryCount   int                         `json:"discovery_count"`
+	KnowledgeCount   int                         `json:"knowledge_count"`
 	Chapters         []StorySearchChapterSummary `json:"chapters"`
+	KnowledgeStates  []StorySearchKnowledgeState `json:"knowledge_states,omitempty"`
 	RelatedTerms     []StorySearchRelatedTerm    `json:"related_terms,omitempty"`
 	Signals          []StorySearchSignal         `json:"signals,omitempty"`
 }

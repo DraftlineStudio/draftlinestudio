@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02484] - 2026-09-01
+
+### Added
+- Added character knowledge tracking and knowledge questions in search.
+
 ## [0.16.02483] - 2026-09-01
 
 ### Changed
