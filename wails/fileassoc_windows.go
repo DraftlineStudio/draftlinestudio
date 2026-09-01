@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
 )
 
@@ -42,6 +43,10 @@ func registerFileAssociations() error {
 		value string
 	}
 	entries := []entry{
+		// Bump this value whenever the registration schema changes: it forces
+		// one changed=true pass (and thus one shell refresh) for users whose
+		// entries are otherwise already correct.
+		{`Software\Classes\` + draftlineProgID, "RegistrationVersion", "2"},
 		// Owned document type for .draftline.
 		{`Software\Classes\` + draftlineProgID, "", "Draftline Project"},
 		{`Software\Classes\` + draftlineProgID + `\DefaultIcon`, "", fmt.Sprintf(`"%s",0`, exe)},
@@ -56,16 +61,39 @@ func registerFileAssociations() error {
 		{`Software\Classes\Applications\draftline.exe\SupportedTypes`, ".docx", ""},
 	}
 
+	changed := false
 	for _, e := range entries {
-		key, _, err := registry.CreateKey(registry.CURRENT_USER, e.path, registry.SET_VALUE)
+		key, _, err := registry.CreateKey(registry.CURRENT_USER, e.path, registry.QUERY_VALUE|registry.SET_VALUE)
 		if err != nil {
 			return fmt.Errorf("create %s: %w", e.path, err)
 		}
-		err = key.SetStringValue(e.name, e.value)
-		key.Close()
-		if err != nil {
-			return fmt.Errorf("set %s[%s]: %w", e.path, e.name, err)
+		// Write only on change so we know when the shell needs a refresh —
+		// and so quiet launches stay quiet.
+		if existing, _, err := key.GetStringValue(e.name); err != nil || existing != e.value {
+			if err := key.SetStringValue(e.name, e.value); err != nil {
+				key.Close()
+				return fmt.Errorf("set %s[%s]: %w", e.path, e.name, err)
+			}
+			changed = true
 		}
+		key.Close()
+	}
+
+	if changed {
+		// Without this, Explorer keeps showing the cached blank-page icon for
+		// .draftline files until the icon cache happens to rebuild.
+		notifyShellAssocChanged()
 	}
 	return nil
+}
+
+var procSHChangeNotify = windows.NewLazySystemDLL("shell32.dll").NewProc("SHChangeNotify")
+
+const (
+	shcneAssocChanged = 0x08000000
+	shcnfIDList       = 0x0000
+)
+
+func notifyShellAssocChanged() {
+	_, _, _ = procSHChangeNotify.Call(shcneAssocChanged, shcnfIDList, 0, 0)
 }
