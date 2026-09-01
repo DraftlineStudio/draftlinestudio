@@ -4,6 +4,26 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02492] - 2026-09-01
+
+### Changed
+- **The Intertwined view is now genuinely the large-format Story Graph**, not a smaller one. It previously plotted only "this character appears in this chapter" dots, which made the full-screen Character Center show *less* than the bottom bar. It now plots the same source-backed story beats the Story Graph does, at the same position inside a chapter, using a placement rule both views share so a beat can never appear in two different places depending on which view you are in.
+- **Presence rails show gaps.** A single line was drawn from a character's first to last chapter, so someone absent for six chapters in the middle looked continuously present. Rails are now drawn as contiguous runs, and an absence is visible.
+- **Interaction curves no longer stack.** Every crossing was drawn at its chapter's centre, so two pairs meeting in the same chapter overlapped exactly and a busy chapter turned to mush. Crossings are now spread across the middle of the column, one per pair per chapter.
+- Beat size reflects importance (decisive beats are larger and ringed in their event-type colour), matching the Story Graph's vocabulary.
+- Hovering a beat or a crossing shows a styled card with the source sentence or the pair and interaction count, replacing the browser's native tooltips.
+- Selecting a character now dims only the genuinely unrelated cast: the selection and everyone it shares a confirmed relationship with stay lit.
+- Added chapter-width zoom (four steps, showing chapter titles at wider settings), and toggles for story beats and interactions so a dense manuscript can be read one layer at a time.
+- Clicking a beat opens its chapter; clicking a chapter header opens that chapter.
+- Chapter header and character-name columns are now frozen with CSS sticky positioning instead of a scroll-position transform, so they stay aligned without JavaScript bookkeeping.
+
+### Internal
+- `positionOfParagraph` extracted from `positionInChapter` in `storyGraph.ts` and shared with the weave, so the two views cannot drift apart on beat placement.
+- 10 new tests covering gap detection, crossing spread, out-of-range chapter handling, and the shared placement contract (78 frontend tests, up from 68).
+- Verified that `chapter_mentions`, `relationship.chapter_history`, and timeline `chapter_index` all use the same global front+body+back enumeration, so beats and crossings land in the columns they belong to.
+
+---
+
 ## [0.16.02491] - 2026-09-01
 
 ### Added

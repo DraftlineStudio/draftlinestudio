@@ -239,19 +239,94 @@
   flex-shrink: 0;
 }
 
-/* ── Intertwined character timeline ── */
+/* ── Intertwined character timeline ──────────────────────────────────────────
+   The large-format sibling of the bottom bar's Story Graph. One scroll
+   container holds the names column, chapter header and canvas together, so the
+   three stay aligned without scroll-position bookkeeping. */
 .chars-weave {
   position: relative;
-  display: grid;
-  grid-template-columns: 190px minmax(0, 1fr);
+  display: flex;
   flex: 1;
   min-height: 0;
+  flex-direction: column;
   overflow: hidden;
   background: var(--bg-panel, #27292D);
 }
-.chars-weave-names {
+.chars-weave-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border-subtle, #2A2C30);
+}
+.chars-weave-zoom { display: flex; gap: 4px; }
+.chars-weave-zoom button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border, #323438);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--icon-color, #AFB3BA);
+  cursor: pointer;
+}
+.chars-weave-zoom button:hover:not(:disabled) { background: var(--bg-hover, rgba(255,255,255,0.055)); color: var(--text-primary, #DFE1E5); }
+.chars-weave-zoom button:disabled { opacity: .4; cursor: default; }
+.chars-weave-toolbar label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted, #6A6E75);
+  font-size: 11px;
+  cursor: pointer;
+  user-select: none;
+}
+.chars-weave-toolbar label.active { color: var(--text-secondary, #9DA0A8); }
+.chars-weave-toolbar input { accent-color: var(--app-accent-text, #5aafe0); margin: 0; }
+.chars-weave-counts { margin-left: auto; color: var(--text-muted, #6A6E75); font-size: 10.5px; }
+
+.chars-weave-body { flex: 1; min-height: 0; display: flex; }
+.chars-weave-scroll { flex: 1; min-width: 0; overflow: auto; }
+.chars-weave-stage { position: relative; min-width: 100%; }
+
+/* Chapter header: sticks to the top while the canvas scrolls under it. */
+.chars-weave-header {
+  position: sticky;
+  top: 0;
   z-index: 3;
+  display: flex;
+  height: 26px;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--border-subtle, #2A2C30);
+  background: var(--bg-panel, #27292D);
+}
+.chars-weave-header span {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
   overflow: hidden;
+  padding: 0 4px;
+  box-sizing: border-box;
+  color: var(--text-muted, #6A6E75);
+  font-size: 9.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.chars-weave-header span:hover { color: var(--text-primary, #DFE1E5); }
+
+.chars-weave-rows { position: relative; display: flex; align-items: flex-start; }
+
+/* Names column: sticks to the left while the canvas scrolls beneath it. */
+.chars-weave-names {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  flex: none;
+  box-sizing: border-box;
   border-right: 1px solid var(--border-subtle, #2A2C30);
   background: var(--bg-panel, #27292D);
 }
@@ -261,8 +336,9 @@
   grid-template-columns: 8px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  padding: 0 10px;
+  padding: 0 12px;
   border: 0;
+  border-left: 2px solid transparent;
   background: transparent;
   color: var(--text-secondary, #9DA0A8);
   font: inherit;
@@ -271,48 +347,59 @@
 }
 .chars-weave-names button:hover { background: var(--bg-hover, rgba(255, 255, 255, 0.055)); }
 .chars-weave-names button.selected {
+  border-left-color: var(--app-accent-text, #5aafe0);
   background: var(--bg-active, rgba(255, 255, 255, 0.09));
   color: var(--text-primary, #DFE1E5);
 }
+.chars-weave-names button.dim { opacity: .4; }
 .chars-weave-names i { width: 7px; height: 7px; border-radius: 50%; }
 .chars-weave-names span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .chars-weave-names small { color: var(--text-muted, #6A6E75); font-size: 9px; }
-.chars-weave-scroll { min-width: 0; overflow: auto; }
-.chars-weave-chapters {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  height: 24px;
-  display: flex;
-  padding-left: 28px;
-  box-sizing: border-box;
-  background: var(--bg-panel, #27292D);
-  border-bottom: 1px solid var(--border-subtle, #2A2C30);
-}
-.chars-weave-chapters span {
-  flex: 0 0 auto;
-  display: grid;
-  place-items: center;
-  color: var(--text-muted, #6A6E75);
-  font-size: 9px;
-}
-.chars-weave-svg { display: block; overflow: visible; }
+
+.chars-weave-svg { flex: none; display: block; }
 .chars-weave-grid { stroke: var(--border-subtle, #2A2C30); stroke-width: 1; }
+.chars-weave-band { fill: rgba(255, 255, 255, 0.016); }
 .chars-weave-node { cursor: pointer; }
 .chars-weave-node:hover circle:last-child { stroke: var(--text-primary, #DFE1E5); stroke-width: 2.5; }
-.chars-weave-link { pointer-events: stroke; }
-.chars-weave-key {
+.chars-weave-link { pointer-events: stroke; cursor: pointer; }
+.chars-weave-link:hover { opacity: 1 !important; }
+
+.chars-weave-tip {
   position: absolute;
-  right: 10px;
-  bottom: 8px;
-  z-index: 4;
-  padding: 4px 7px;
-  border: 1px solid var(--border-subtle, #2A2C30);
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--bg-chrome, #1A1B1E) 92%, transparent);
-  color: var(--text-muted, #6A6E75);
-  font-size: 9px;
+  z-index: 5;
+  width: 268px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong, #46484C);
+  border-radius: 5px;
+  background: var(--bg-toolbar, #2F3033);
+  box-shadow: var(--shadow-dialog);
   pointer-events: none;
+}
+.chars-weave-tip strong {
+  color: var(--text-primary, #DFE1E5);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.chars-weave-tip em {
+  color: var(--text-chapter, #BFC1C7);
+  font-family: Merriweather, Georgia, serif;
+  font-size: 11.5px;
+  font-style: italic;
+  line-height: 1.5;
+}
+.chars-weave-tip span { color: var(--text-muted, #6A6E75); font-size: 10.5px; }
+
+.chars-weave-key {
+  flex: none;
+  padding: 5px 12px;
+  border-top: 1px solid var(--border-subtle, #2A2C30);
+  color: var(--text-muted, #6A6E75);
+  font-size: 10px;
 }
 
 .chars-row {
