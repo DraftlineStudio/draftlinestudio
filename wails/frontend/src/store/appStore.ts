@@ -28,7 +28,7 @@ export interface AppSettings {
   ai_enabled: boolean
   ai_mode: 'claudecode' | 'codex' | 'api' | 'local'
   ai_provider: 'claude' | 'openai' | 'gemini' | 'grok' | ''
-  characters_lane_view: 'grid' | 'heat'
+  characters_lane_view: 'grid' | 'heat' | 'weave'
   has_api_key: boolean
   ai_debug_logging: boolean
   ai_model: string
@@ -179,7 +179,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
         ai_mode: (raw.ai_mode as AppSettings['ai_mode']) || 'claudecode',
         theme_mode: (raw.theme_mode as AppSettings['theme_mode']) || (raw.dark_mode ? 'dark' : 'light'),
         editor_font_size: (raw.editor_font_size as AppSettings['editor_font_size']) || 'normal',
-        characters_lane_view: raw.characters_lane_view === 'heat' ? 'heat' : 'grid',
+        characters_lane_view: raw.characters_lane_view === 'heat' || raw.characters_lane_view === 'weave'
+          ? raw.characters_lane_view
+          : 'grid',
         custom_dictionary: (raw as unknown as Partial<AppSettings>).custom_dictionary ?? [],
       }
       set({ settings, loaded: true })

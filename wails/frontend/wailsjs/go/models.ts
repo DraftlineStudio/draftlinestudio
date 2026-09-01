@@ -2257,6 +2257,7 @@ export namespace types {
 	    start_offset: number;
 	    character_ids?: string[];
 	    character_names?: string[];
+	    thread_terms?: EvidenceTerm[];
 	    locations?: EvidenceTerm[];
 	    time_expressions?: string[];
 	    time_kind: string;
@@ -2287,6 +2288,7 @@ export namespace types {
 	        this.start_offset = source["start_offset"];
 	        this.character_ids = source["character_ids"];
 	        this.character_names = source["character_names"];
+	        this.thread_terms = this.convertValues(source["thread_terms"], EvidenceTerm);
 	        this.locations = this.convertValues(source["locations"], EvidenceTerm);
 	        this.time_expressions = source["time_expressions"];
 	        this.time_kind = source["time_kind"];
@@ -2382,4 +2384,3 @@ export namespace types {
 	
 
 }
-

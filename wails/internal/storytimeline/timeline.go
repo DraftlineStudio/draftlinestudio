@@ -8,7 +8,7 @@ import (
 	"draftline/internal/types"
 )
 
-const engine = "source-evidence-timeline-v1"
+const engine = "source-evidence-timeline-v2"
 
 var relativeTimeRe = regexp.MustCompile(`(?i)\b(?:later|earlier|ago|before|after|tomorrow|yesterday|next|previous|prior)\b`)
 var danglingMeridiemRe = regexp.MustCompile(`(?i)^(\d{1,2}:\d{2})\s+[ap]$`)
@@ -72,7 +72,8 @@ func eventFromRecord(book types.BookData, record types.EvidenceRecord, character
 		ID: record.ID, EvidenceIDs: []string{record.ID}, PrimaryType: record.EvidenceType, EventTypes: []string{record.EvidenceType}, Text: text, SourceText: record.Text,
 		ChapterID: record.ChapterID, ChapterIndex: record.ChapterIndex, ChapterTitle: chapterTitle(book, record), Section: record.Section, SectionIndex: record.SectionIndex,
 		ParagraphIndex: record.ParagraphIndex, SentenceIndex: record.SentenceIndex, StartOffset: record.StartOffset,
-		CharacterIDs: append([]string(nil), record.CharacterIDs...), CharacterNames: append([]string(nil), record.CharacterNames...), Locations: locationTerms(record.NamedEntities, characterNames, record.Text),
+		CharacterIDs: append([]string(nil), record.CharacterIDs...), CharacterNames: append([]string(nil), record.CharacterNames...),
+		ThreadTerms: threadTerms(record.NamedEntities, characterNames), Locations: locationTerms(record.NamedEntities, characterNames, record.Text),
 		TimeExpressions: times, TimeKind: timeKind, TimeLabel: timeLabel,
 		Confidence: record.Confidence, Status: record.Status, Pinned: record.Pinned,
 	}
@@ -86,6 +87,7 @@ func mergeRecord(event *types.StoryTimelineEvent, record types.EvidenceRecord, c
 	}
 	event.CharacterIDs = appendUnique(event.CharacterIDs, record.CharacterIDs...)
 	event.CharacterNames = appendUnique(event.CharacterNames, record.CharacterNames...)
+	event.ThreadTerms = appendUniqueTerms(event.ThreadTerms, threadTerms(record.NamedEntities, characterNames))
 	event.TimeExpressions = appendUnique(event.TimeExpressions, cleanTimeExpressions(record.TimeExpressions)...)
 	event.Locations = appendUniqueTerms(event.Locations, locationTerms(record.NamedEntities, characterNames, record.Text))
 	if record.Confidence > event.Confidence {
@@ -96,6 +98,32 @@ func mergeRecord(event *types.StoryTimelineEvent, record types.EvidenceRecord, c
 	}
 	event.Pinned = event.Pinned || record.Pinned
 	event.TimeKind, event.TimeLabel = timeMeaning(event.TimeExpressions)
+}
+
+// threadTerms keeps recurring non-person story anchors available to the graph.
+// The UI may connect two beats through an exact repeated term, but never has to
+// infer a topic from cast alone. Broad numeric/time labels are intentionally
+// excluded because they produce visually convincing but meaningless strands.
+func threadTerms(terms []types.EvidenceTerm, characterNames map[string]bool) []types.EvidenceTerm {
+	excludedLabels := map[string]bool{
+		"per": true, "person": true, "date": true, "time": true,
+		"cardinal": true, "ordinal": true, "quantity": true,
+		"money": true, "percent": true,
+	}
+	result := []types.EvidenceTerm{}
+	for _, term := range terms {
+		label := strings.ToLower(strings.TrimSpace(term.Label))
+		value := strings.TrimSpace(term.Text)
+		if excludedLabels[label] || value == "" || characterNames[normalize(value)] {
+			continue
+		}
+		if strings.ContainsAny(value, "\r\n") || len(strings.Fields(value)) > 6 {
+			continue
+		}
+		term.Text = value
+		result = appendUniqueTerms(result, []types.EvidenceTerm{term})
+	}
+	return result
 }
 
 func timeMeaning(expressions []string) (string, string) {

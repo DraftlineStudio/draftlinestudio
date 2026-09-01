@@ -4,6 +4,24 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02491] - 2026-09-01
+
+### Added
+- **Intertwined character timeline** in the full Character Center. The new view reads left to right in manuscript order, keeps one colored rail per confirmed character, plots chapter presence, and bends source-backed relationship crossings between the characters in the chapters where they interact. Selecting a character dims unrelated rails and crossings without hiding the surrounding cast.
+- Story beats may now belong to multiple visible story strands. Crossover curves make the chapters where investigations, locations, organizations, objects, or other named story anchors meet visually explicit.
+
+### Changed
+- **Story Graph threads now follow story evidence instead of exact cast combinations.** Recurring non-person terms retained from prose/v3 form stable strands even when characters enter or leave a scene. A recurring `IBM` / `One IBM Plaza` reference can therefore remain one strand while Hanlon and Ruiz move independently through it.
+- One-off named terms are not promoted into misleading plot lanes. Beats without a recurring story anchor remain visible in explicitly labelled character-led or unlinked fallback lanes, and older archives remain compatible without migration.
+- Duplicate anchors backed by the exact same set of source beats collapse into one rail, and the graph caps named strands at twelve to remain legible.
+- Character Center remembers Grid, Heatmap, or Intertwined as the author's preferred large-screen view.
+
+### Internal
+- Story timeline engine advanced to `source-evidence-timeline-v2` and now projects filtered non-person `thread_terms` from the existing evidence fingerprint. Person, date, time, numeric, and author-confirmed character terms are excluded before they can become story strands.
+- Added regression coverage for term filtering, recurring named strands, one-off fallback behavior, crossover membership, link direction, and backwards-safe empty graphs (68 frontend tests).
+
+---
+
 ## [0.16.02490] - 2026-09-01
 
 ### Added
