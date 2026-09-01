@@ -29,7 +29,7 @@ const debtLineThreshold = 800
 var debtRatchet = map[string]int{
 	"app.go":                          1500, // 1,468 at 02470; analysis orchestration extracted, CLI drivers still here
 	"import.go":                       780,  // 722 at 02468; EPUB+DOCX importers (backlog: internal/importer)
-	"frontend/src/store/bookStore.ts": 860,  // 825 at 02468
+	"frontend/src/store/bookStore.ts": 910,  // raised 02475: story-search state + OS file-open routing (TECHNICAL-DEBT.md)
 	"frontend/src/components/dialogs/ExportWizard.tsx":      860, // 833; oldest open backlog item
 	"frontend/src/components/characters/CharactersView.tsx": 840, // 811; five components in one file
 	"frontend/src/components/tools/AIStudio/index.tsx":      780, // 748

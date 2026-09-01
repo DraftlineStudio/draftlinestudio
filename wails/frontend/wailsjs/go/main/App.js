@@ -202,6 +202,10 @@ export function SplitEntity(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['SplitEntity'](arg1, arg2, arg3, arg4);
 }
 
+export function TakePendingOpenPath() {
+  return window['go']['main']['App']['TakePendingOpenPath']();
+}
+
 export function TestLocalAI(arg1) {
   return window['go']['main']['App']['TestLocalAI'](arg1);
 }

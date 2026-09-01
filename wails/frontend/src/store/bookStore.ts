@@ -7,7 +7,7 @@ import { DEFAULT_STYLE_OPTIONS } from '../types/draftline'
 import type { ParagraphDiff, DiffChange } from '../utils/diff'
 import { countBookWords } from '../utils/textUtils'
 
-import { NewBook, OpenBookDialog, SaveBook, SaveBookAs, SaveBookSnapshots, OpenRecentProject, AddRecentProject, IndexBook, MergeEntities, SplitEntity } from '../../wailsjs/go/main/App'
+import { NewBook, OpenBookDialog, SaveBook, SaveBookAs, SaveBookSnapshots, OpenRecentProject, AddRecentProject, IndexBook, MergeEntities, SplitEntity, ImportEPUB, ImportDOCX } from '../../wailsjs/go/main/App'
 import { types } from '../../wailsjs/go/models'
 import { useAppStore } from './appStore'
 import { useEditorStore, type EditorInstance } from './editorStore'
@@ -192,7 +192,9 @@ function scheduleChapterHistory(chapterID?: string) {
 // dialogs (metadata, new chapter, export, chapter history) are in appStore.
 interface DialogState {
   showUnsavedWarning: boolean
-  pendingAction: 'new' | 'open' | null
+  // 'open' = show the file picker; the object forms carry the specific file
+  // (recent projects, OS file associations) through the unsaved-changes flow.
+  pendingAction: 'new' | 'open' | { openPath: string } | { importPath: string } | null
   showNewBookWizard: boolean
 }
 
@@ -217,6 +219,9 @@ interface BookStore {
   newBook: () => Promise<void>
   openBook: () => Promise<void>
   openRecentBook: (path: string) => Promise<void>
+  // OS file associations / "Open with": routes .draftline to the open flow
+  // and .epub/.docx to the importers, honoring the unsaved-changes dialog.
+  openExternalFile: (path: string) => Promise<void>
   saveBook: () => Promise<void>
   saveBookAs: () => Promise<void>
   restoreChapterHistory: (content: string) => Promise<boolean>
@@ -290,6 +295,55 @@ interface BookStore {
   rejectAllDiff: () => void
   applyPendingDiff: () => void
   clearPendingDiff: () => void
+}
+
+// Direct import for OS "Open with" on .epub/.docx — same importers the
+// New Book wizard uses, minus the file picker and preview step.
+async function importExternalBook(path: string) {
+  const ext = (path.split('.').pop() || '').toLowerCase()
+  try {
+    const result = ext === 'epub' ? await ImportEPUB(path) : await ImportDOCX(path)
+    if (!result.success || !result.book) {
+      if (result.error !== 'cancelled') setStatus(`Import failed: ${result.error || 'unknown error'}`)
+      return
+    }
+    useBookStore.getState().loadImportedBook(result.book as unknown as BookData)
+    const warnings = result.warnings?.length || 0
+    if (warnings > 0) {
+      setStatus(`Imported: ${result.book.metadata?.title || path} (${warnings} import warning${warnings === 1 ? '' : 's'})`)
+    }
+  } catch (e) {
+    setStatus(`Import failed: ${e}`)
+  }
+}
+
+// Shared tail of the unsaved-changes dialog: run whatever the user was
+// trying to do before the dialog interrupted.
+async function proceedWithAction(action: DialogState['pendingAction']) {
+  if (action === 'new') {
+    useBookStore.setState(s => ({ dialogs: { ...s.dialogs, showNewBookWizard: true } }))
+    return
+  }
+  if (action && typeof action === 'object') {
+    if ('openPath' in action) {
+      await useBookStore.getState().openRecentBook(action.openPath)
+    } else {
+      await importExternalBook(action.importPath)
+    }
+    return
+  }
+  if (action === 'open') {
+    try {
+      const opened: BookData = await OpenBookDialog()
+      if (!opened?.version) return
+      const section: Section = opened.body.length > 0 ? 'body' : 'front_matter'
+      beginBookSession()
+      useBookStore.setState({ book: opened, currentSection: section, currentIndex: 0, isDirty: false, analysisRevision: 0 })
+      setStatus(`Opened: ${opened.metadata.title}`)
+    } catch (e) {
+      setStatus(`Error opening file: ${e}`)
+    }
+  }
 }
 
 function getSectionArray(book: BookData, section: Section): ChapterItem[] {
@@ -390,10 +444,24 @@ export const useBookStore = create<BookStore>((set, get) => ({
     }
   },
 
+  openExternalFile: async (path: string) => {
+    const ext = (path.split('.').pop() || '').toLowerCase()
+    if (ext === 'draftline') {
+      await get().openRecentBook(path)
+      return
+    }
+    if (ext !== 'epub' && ext !== 'docx') return
+    if (get().isDirty) {
+      set(s => ({ dialogs: { ...s.dialogs, showUnsavedWarning: true, pendingAction: { importPath: path } } }))
+      return
+    }
+    await importExternalBook(path)
+  },
+
   openRecentBook: async (path: string) => {
     const { isDirty } = get()
     if (isDirty) {
-      set(s => ({ dialogs: { ...s.dialogs, showUnsavedWarning: true, pendingAction: 'open' } }))
+      set(s => ({ dialogs: { ...s.dialogs, showUnsavedWarning: true, pendingAction: { openPath: path } } }))
       return
     }
     try {
@@ -807,18 +875,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
       setStatus(`Saved: ${outcome.filePath}`)
     }
     set(s => ({ dialogs: { ...s.dialogs, showUnsavedWarning: false, pendingAction: null } }))
-    if (action === 'new') {
-      set(s => ({ dialogs: { ...s.dialogs, showNewBookWizard: true } }))
-    } else if (action === 'open') {
-      try {
-        const opened: BookData = await OpenBookDialog()
-        if (!opened?.version) return
-        const section: Section = opened.body.length > 0 ? 'body' : 'front_matter'
-        beginBookSession()
-        set({ book: opened, currentSection: section, currentIndex: 0, isDirty: false, analysisRevision: 0 })
-        setStatus(`Opened: ${opened.metadata.title}`)
-      } catch (e) { setStatus(`Error opening file: ${e}`) }
-    }
+    await proceedWithAction(action)
   },
 
   discardAndProceed: async () => {
@@ -826,17 +883,6 @@ export const useBookStore = create<BookStore>((set, get) => ({
     const action = dialogs.pendingAction
     beginBookSession()
     set(s => ({ dialogs: { ...s.dialogs, showUnsavedWarning: false, pendingAction: null }, isDirty: false }))
-    if (action === 'new') {
-      set(s => ({ dialogs: { ...s.dialogs, showNewBookWizard: true } }))
-    } else if (action === 'open') {
-      try {
-        const opened: BookData = await OpenBookDialog()
-        if (!opened?.version) return
-        const section: Section = opened.body.length > 0 ? 'body' : 'front_matter'
-        beginBookSession()
-        set({ book: opened, currentSection: section, currentIndex: 0, isDirty: false, analysisRevision: 0 })
-        setStatus(`Opened: ${opened.metadata.title}`)
-      } catch (e) { setStatus(`Error opening file: ${e}`) }
-    }
+    await proceedWithAction(action)
   },
 }))

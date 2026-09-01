@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02477] - 2026-09-01
+
+### Added
+- Files opened from the operating system now open or import in Draftline.
+
+### Fixed
+- Opening a recent project with unsaved changes now opens that project after Save or Discard.
+
 ## [0.16.02476] - 2026-09-01
 
 ### Added
