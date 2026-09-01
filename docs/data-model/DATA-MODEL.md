@@ -20,6 +20,7 @@ book.draftline (ZIP)
 ├── back_matter/            # Appendix, acknowledgments, etc.
 │   └── ...
 │
+├── analysis.json           # Rebuildable characters, relationships, story metrics, evidence
 ├── story_bible.json        # Characters, plot notes, timeline
 ├── beat_sheet.json         # Story structure beats
 ├── foreshadowing.json      # Plant/payoff tracking
@@ -89,6 +90,24 @@ Automatic snapshots are activity-driven: editing marks the affected chapter, and
 ### Derived Story Analysis
 
 `analysis.json` stores rebuildable analysis separately from author-owned manuscript and planning data. Its `story` object contains an engine/version identifier, manuscript content hash, timestamp, aggregate metrics, per-chapter metrics, and evidence-based observations. Current built-in metrics include sentence and paragraph structure, dialogue density, readability, part-of-speech ratios, keywords, an extractive summary, and a descriptive tempo signal.
+
+Its `evidence` object is the persistent local fact/event index. Each admitted
+record contains a stable content-derived ID, kind and cue type, exact source
+sentence, stable chapter ID plus chapter/section/paragraph/sentence coordinates,
+confirmed character IDs and names, locally detected named terms, primary verb,
+explicit time expressions, cue confidence and rationale, and a
+`detected | confirmed | rejected` review status. Unrelated earlier edits do not
+renumber unchanged evidence records. Reanalysis preserves confirmed/rejected
+decisions while their exact source remains present and always preserves
+author-created records.
+
+The built-in index is conservative: it admits explainable introductions,
+discoveries/revelations, arrivals/departures/transitions, direct interactions,
+stated conditions, and explicit time references anchored to named story
+subjects. It does not treat every sentence as a plot event. Records are capped
+at 50,000 with an explicit `truncated` flag. This adds no new archive entry or
+manifest migration—the future-proof `analysis.json` container remains part of
+archive format 2.2, while its internal analysis schema advances independently.
 
 Editing prose marks Characters, Story, and Pacing analysis stale. After 15 seconds without another edit, Draftline runs the local pipeline and persists the new derived results on the next save. A result produced from an older frontend revision is discarded, so background analysis cannot replace newer author text.
 

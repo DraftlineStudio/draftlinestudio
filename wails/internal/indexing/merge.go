@@ -72,6 +72,7 @@ func MergeCharacterEntities(book *types.BookData, entityIDs []string, canonical 
 	// Relationship data references the absorbed entity IDs — stale now.
 	// Clearing it makes the Relationships panel prompt a re-analyze.
 	book.Analysis.Relationships = nil
+	book.Analysis.Evidence = nil
 
 	return nil
 }

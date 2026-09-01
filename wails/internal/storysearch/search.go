@@ -89,7 +89,32 @@ func Search(book types.BookData, request types.StorySearchRequest) types.StorySe
 				Excerpt:        buildExcerpt(pieces),
 				MatchedTerms:   matched,
 				AdditionalHits: max(0, len(pieces)-maxExcerptPieces),
+				Evidence:       evidenceForScene(book.Analysis.Evidence, ref.globalIndex, paragraphs),
 			})
+		}
+	}
+	return result
+}
+
+func evidenceForScene(data *types.EvidenceData, chapterIndex int, paragraphs []string) []types.StorySearchEvidence {
+	if data == nil {
+		return nil
+	}
+	scene := strings.ToLower(cleanSpace(strings.Join(paragraphs, " ")))
+	result := make([]types.StorySearchEvidence, 0, 4)
+	for _, record := range data.Records {
+		if record.ChapterIndex != chapterIndex || record.Status == "rejected" || record.Text == "" {
+			continue
+		}
+		if !strings.Contains(scene, strings.ToLower(cleanSpace(record.Text))) {
+			continue
+		}
+		result = append(result, types.StorySearchEvidence{
+			ID: record.ID, Kind: record.Kind, EvidenceType: record.EvidenceType,
+			Status: record.Status, Confidence: record.Confidence,
+		})
+		if len(result) == 12 {
+			break
 		}
 	}
 	return result
