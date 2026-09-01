@@ -2,6 +2,8 @@ import { lazy, Suspense, useEffect, useRef, useCallback, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useBookStore } from './store/bookStore'
 import { useAppStore } from './store/appStore'
+import { TakePendingOpenPath } from '../wailsjs/go/main/App'
+import { EventsOn } from '../wailsjs/runtime/runtime'
 import { applyAccent, clearAccent } from './utils/accentColor'
 import { useAutoTheme } from './hooks/useAutoTheme'
 import ThemeTransitionOverlay from './components/ThemeTransitionOverlay'
@@ -49,6 +51,18 @@ export default function App() {
   useEffect(() => {
     void loadSettings()
     void loadRecentProjects()
+  }, [])
+
+  // OS file associations / "Open with": the file the app was launched with,
+  // plus files forwarded from second instances (single-instance lock) and
+  // macOS open-file events. Routed through the normal open/import flows so
+  // the unsaved-changes dialog is respected.
+  useEffect(() => {
+    const open = (path: string) => {
+      if (path) void useBookStore.getState().openExternalFile(path)
+    }
+    void TakePendingOpenPath().then(open)
+    return EventsOn('file:open', (path: string) => open(path))
   }, [])
 
   // Handle new book from welcome screen
