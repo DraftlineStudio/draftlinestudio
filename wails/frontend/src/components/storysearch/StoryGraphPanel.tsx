@@ -81,7 +81,7 @@ export default function StoryGraphPanel({ book, onNavigate, onOpenCodex }: Props
 
   const visible = (node: GraphNode) => {
     if (!focus) return true
-    if (mode === 'threads') return node.laneId === focus
+    if (mode === 'threads') return (node.memberships ?? [node.laneId]).includes(focus)
     return (node.event.character_ids ?? []).includes(focus)
   }
 
@@ -122,7 +122,7 @@ export default function StoryGraphPanel({ book, onNavigate, onOpenCodex }: Props
           <button type="button" className={mode === 'characters' ? 'active' : ''} onClick={() => setMode('characters')}>Characters</button>
         </div>
 
-        <span className="story-graph-rail-label">{mode === 'threads' ? 'Plot threads' : 'Characters'}</span>
+        <span className="story-graph-rail-label">{mode === 'threads' ? 'Story strands' : 'Characters'}</span>
         <div className="story-graph-legend">
           {graph.lanes.map(lane => (
             <button
@@ -244,11 +244,15 @@ export default function StoryGraphPanel({ book, onNavigate, onOpenCodex }: Props
               )
             })}
 
-            {/* In character mode a beat's supporting cast is drawn as a short
-                stub back to their own rail, so a shared scene reads as shared. */}
-            {mode === 'characters' && graph.nodes.map(node => {
+            {/* Secondary memberships bend into the beat's primary rail. These
+                crossovers are the graph's point: one beat can advance several
+                story strands or bring several characters together. */}
+            {graph.nodes.map(node => {
               const x = xOf(node), y = yOf(node)
-              return (node.event.character_ids ?? []).slice(1).map(id => {
+              const memberships = mode === 'characters'
+                ? (node.event.character_ids ?? [])
+                : (node.memberships ?? [node.laneId])
+              return memberships.filter(id => id !== node.laneId).map(id => {
                 const position = lanePosition.get(id)
                 if (position === undefined) return null
                 const otherY = laneY(position)

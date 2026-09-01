@@ -370,6 +370,7 @@ export interface StoryTimelineEvent {
   start_offset: number
   character_ids?: string[]
   character_names?: string[]
+  thread_terms?: EvidenceTerm[]
   locations?: EvidenceTerm[]
   time_expressions?: string[]
   time_kind: 'anchored' | 'relative' | 'manuscript' | string

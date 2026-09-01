@@ -13,6 +13,7 @@ import { hexToRgba } from '../../utils/accentColor'
 import { confirmedCharacterIds, confirmedEvents, confirmedRelationships, isConfirmedCharacter } from '../../utils/characterStatus'
 import type { BookData, Character, CharacterRole, CharacterEvent, MentionRecord } from '../../types/draftline'
 import './characters.css'
+import CharacterInterweave from './CharacterInterweave'
 
 import { allChapters, chapterName, cellAlpha, chapterLocation, takeCharacterFocus } from './shared'
 
@@ -49,7 +50,7 @@ function mentionExcerpt(book: BookData, m: MentionRecord): string {
 const EMPTY_CELL = 'rgba(255,255,255,0.03)'
 
 type SortMode = 'first' | 'mentions-desc' | 'mentions-asc'
-type ViewMode = 'grid' | 'heat'
+type ViewMode = 'grid' | 'heat' | 'weave'
 type StatusFilter = 'accepted' | 'review' | 'all'
 
 export default function CharactersView() {
@@ -61,7 +62,9 @@ export default function CharactersView() {
   const { isAnalyzing, analyzeRelationships } = useRelationshipStore()
   const { settings, saveSettings } = useAppStore()
 
-  const savedLane: ViewMode = settings.characters_lane_view === 'heat' ? 'heat' : 'grid'
+  const savedLane: ViewMode = settings.characters_lane_view === 'heat' || settings.characters_lane_view === 'weave'
+    ? settings.characters_lane_view
+    : 'grid'
   // A pending focus (sidebar's "Open in Characters") wins over auto-select.
   const [selectedId, setSelectedId] = useState<string | null>(() => takeCharacterFocus())
   const [query, setQuery] = useState('')
@@ -219,6 +222,7 @@ export default function CharactersView() {
             >
               <option value="grid">Grid view</option>
               <option value="heat">Heatmap view</option>
+              <option value="weave">Intertwined view</option>
             </select>
             <select className="dialog-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value as StatusFilter)}>
               <option value="accepted">Characters</option>
@@ -263,6 +267,14 @@ export default function CharactersView() {
                 </>
               )}
             </div>
+          ) : laneView === 'weave' ? (
+            <CharacterInterweave
+              book={book}
+              characters={sorted}
+              relationships={relationships}
+              selectedId={selectedId}
+              onSelect={pickRow}
+            />
           ) : (
             <div className="chars-lanes">
               <div className="chars-lane-head">
