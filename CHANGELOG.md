@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [0.16.02492] - 2026-09-01
 
+### Added
+- **Background analysis CPU profiles** under Settings → Application: Adaptive, Gentle, Balanced, and Fast. Adaptive is the new default and automatically gives manuscripts of roughly 750 KB or larger the Gentle 1–2 core budget; ordinary books use Balanced's maximum of four analysis cores.
+
 ### Changed
 - **The Intertwined view is now genuinely the large-format Story Graph**, not a smaller one. It previously plotted only "this character appears in this chapter" dots, which made the full-screen Character Center show *less* than the bottom bar. It now plots the same source-backed story beats the Story Graph does, at the same position inside a chapter, using a placement rule both views share so a beat can never appear in two different places depending on which view you are in.
 - **Presence rails show gaps.** A single line was drawn from a character's first to last chapter, so someone absent for six chapters in the middle looked continuously present. Rails are now drawn as contiguous runs, and an absence is visible.
@@ -16,11 +19,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added chapter-width zoom (four steps, showing chapter titles at wider settings), and toggles for story beats and interactions so a dense manuscript can be read one layer at a time.
 - Clicking a beat opens its chapter; clicking a chapter header opens that chapter.
 - Chapter header and character-name columns are now frozen with CSS sticky positioning instead of a scroll-position transform, so they stay aligned without JavaScript bookkeeping.
+- All in-process prose/v3 work now runs beneath one cross-platform Go scheduler budget. The limit covers character NER, entity resolution, relationship mapping, fact/event extraction, pacing, readability, keywords, and summaries rather than throttling only one worker pool.
+- CPU choices are described as concurrency budgets instead of exact percentages because operating-system scheduling and non-analysis work can vary. Adaptive, Gentle, and Balanced deliberately leave processing capacity for the editor and the rest of the computer.
+
+### Fixed
+- Prevented automatic whole-book analysis, manual character detection, and manual relationship analysis from running concurrently and competing for every available core. The backend now enforces one manuscript-scale analysis job at a time, and an automatic job waits and retries when a manual job is finishing.
+- Large novels no longer start prose/v3's former eight-worker character pass at full machine concurrency by default. On an eight-core machine, a large manuscript now receives two analysis cores in Adaptive mode.
 
 ### Internal
 - `positionOfParagraph` extracted from `positionInChapter` in `storyGraph.ts` and shared with the weave, so the two views cannot drift apart on beat placement.
 - 10 new tests covering gap detection, crossing spread, out-of-range chapter handling, and the shared placement contract (78 frontend tests, up from 68).
 - Verified that `chapter_mentions`, `relationship.chapter_history`, and timeline `chapter_index` all use the same global front+body+back enumeration, so beats and crossings land in the columns they belong to.
+- Added deterministic tests for adaptive manuscript thresholds, every CPU profile, low-core machines, full-section size accounting, and the backend analysis single-flight lifecycle.
 
 ---
 

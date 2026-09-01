@@ -24,6 +24,7 @@ export interface AppSettings {
   story_bible_enabled: boolean
   plot_walker_enabled: boolean
   analysis_enabled: boolean
+  analysis_cpu_profile: 'adaptive' | 'gentle' | 'balanced' | 'fast'
   // AI
   ai_enabled: boolean
   ai_mode: 'claudecode' | 'codex' | 'api' | 'local'
@@ -118,6 +119,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   story_bible_enabled: true,
   plot_walker_enabled: true,
   analysis_enabled: true,
+  analysis_cpu_profile: 'adaptive',
   ai_enabled: false,
   ai_mode: 'claudecode',
   ai_provider: '',
@@ -182,6 +184,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
         characters_lane_view: raw.characters_lane_view === 'heat' || raw.characters_lane_view === 'weave'
           ? raw.characters_lane_view
           : 'grid',
+        analysis_cpu_profile: ['adaptive', 'gentle', 'balanced', 'fast'].includes(raw.analysis_cpu_profile)
+          ? raw.analysis_cpu_profile as AppSettings['analysis_cpu_profile']
+          : 'adaptive',
         custom_dictionary: (raw as unknown as Partial<AppSettings>).custom_dictionary ?? [],
       }
       set({ settings, loaded: true })

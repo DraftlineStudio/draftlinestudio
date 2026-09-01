@@ -742,6 +742,7 @@ export namespace types {
 	    story_bible_enabled: boolean;
 	    plot_walker_enabled: boolean;
 	    analysis_enabled: boolean;
+	    analysis_cpu_profile: string;
 	    characters_lane_view: string;
 	    ai_enabled: boolean;
 	    ai_mode: string;
@@ -785,6 +786,7 @@ export namespace types {
 	        this.story_bible_enabled = source["story_bible_enabled"];
 	        this.plot_walker_enabled = source["plot_walker_enabled"];
 	        this.analysis_enabled = source["analysis_enabled"];
+	        this.analysis_cpu_profile = source["analysis_cpu_profile"];
 	        this.characters_lane_view = source["characters_lane_view"];
 	        this.ai_enabled = source["ai_enabled"];
 	        this.ai_mode = source["ai_mode"];
