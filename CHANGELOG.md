@@ -4,6 +4,14 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02463] - 2026-08-31
+
+### Changed
+- Removed mechanical readability and grade-level estimates from the Signals overview. The neutral replacement reports manuscript word count, and the one-line summary now describes only measured sentence length, dialogue share, and prose tempo without comparing the manuscript to an age group, school grade, genre, or audience.
+- Moved traditional readability formulas into a collapsed details section in Prose. When deliberately opened, they are explicitly described as sentence-and-word-shape calculations that do not measure subject knowledge, terminology, narrative complexity, intended audience, or comprehension.
+
+---
+
 ## [0.16.02462] - 2026-08-31
 
 ### Fixed
