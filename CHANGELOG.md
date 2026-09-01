@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02489] - 2026-09-01
+
+### Removed
+- Removed the Timeline view, replaced by the Story Graph.
+
 ## [0.16.02488] - 2026-09-01
 
 ### Added
