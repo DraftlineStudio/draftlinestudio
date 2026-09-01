@@ -239,6 +239,82 @@
   flex-shrink: 0;
 }
 
+/* ── Intertwined character timeline ── */
+.chars-weave {
+  position: relative;
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg-panel, #27292D);
+}
+.chars-weave-names {
+  z-index: 3;
+  overflow: hidden;
+  border-right: 1px solid var(--border-subtle, #2A2C30);
+  background: var(--bg-panel, #27292D);
+}
+.chars-weave-names button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary, #9DA0A8);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.chars-weave-names button:hover { background: var(--bg-hover, rgba(255, 255, 255, 0.055)); }
+.chars-weave-names button.selected {
+  background: var(--bg-active, rgba(255, 255, 255, 0.09));
+  color: var(--text-primary, #DFE1E5);
+}
+.chars-weave-names i { width: 7px; height: 7px; border-radius: 50%; }
+.chars-weave-names span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.chars-weave-names small { color: var(--text-muted, #6A6E75); font-size: 9px; }
+.chars-weave-scroll { min-width: 0; overflow: auto; }
+.chars-weave-chapters {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 24px;
+  display: flex;
+  padding-left: 28px;
+  box-sizing: border-box;
+  background: var(--bg-panel, #27292D);
+  border-bottom: 1px solid var(--border-subtle, #2A2C30);
+}
+.chars-weave-chapters span {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted, #6A6E75);
+  font-size: 9px;
+}
+.chars-weave-svg { display: block; overflow: visible; }
+.chars-weave-grid { stroke: var(--border-subtle, #2A2C30); stroke-width: 1; }
+.chars-weave-node { cursor: pointer; }
+.chars-weave-node:hover circle:last-child { stroke: var(--text-primary, #DFE1E5); stroke-width: 2.5; }
+.chars-weave-link { pointer-events: stroke; }
+.chars-weave-key {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  z-index: 4;
+  padding: 4px 7px;
+  border: 1px solid var(--border-subtle, #2A2C30);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--bg-chrome, #1A1B1E) 92%, transparent);
+  color: var(--text-muted, #6A6E75);
+  font-size: 9px;
+  pointer-events: none;
+}
+
 .chars-row {
   display: flex;
   align-items: center;

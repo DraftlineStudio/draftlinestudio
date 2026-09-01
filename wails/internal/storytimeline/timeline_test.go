@@ -87,6 +87,28 @@ func TestBuildKeepsLocationFacetsConservative(t *testing.T) {
 	}
 }
 
+func TestBuildCarriesOnlyNonPersonNamedTermsIntoStoryThreads(t *testing.T) {
+	event := record("anchors", 0, 10, "event", "discovery", "Hanlon found IBM beneath One IBM Plaza on Monday.", nil)
+	event.NamedEntities = []types.EvidenceTerm{
+		{Text: "Hanlon", Label: "PERSON"},
+		{Text: "IBM", Label: "ORG"},
+		{Text: "One IBM Plaza", Label: "FAC"},
+		{Text: "Monday", Label: "DATE"},
+	}
+	book := timelineBook([]types.EvidenceRecord{event})
+	book.StoryBible.Characters = []types.Character{{ID: "hanlon", Name: "Daniel Hanlon", Aliases: []string{"Hanlon"}}}
+
+	result := Build(book)
+	if len(result.Events) != 1 || len(result.Events[0].ThreadTerms) != 2 {
+		t.Fatalf("expected only IBM story anchors, got %#v", result.Events)
+	}
+	for _, term := range result.Events[0].ThreadTerms {
+		if term.Text == "Hanlon" || term.Text == "Monday" {
+			t.Fatalf("person/time term leaked into story strands: %#v", result.Events[0].ThreadTerms)
+		}
+	}
+}
+
 func TestBuildReportsMissingEvidenceIndex(t *testing.T) {
 	result := Build(types.BookData{})
 	if result.Success || result.Error == "" || result.Events == nil {

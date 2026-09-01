@@ -76,35 +76,43 @@ describe('eventTier', () => {
 })
 
 describe('deriveThreads', () => {
-  it('makes a thread from a cast pair that recurs', () => {
+  it('makes a story strand from a recurring non-person anchor', () => {
     const events = [
-      event({ id: '1', character_ids: ['evan', 'eve'], character_names: ['Evan', 'Eveline'], chapter_index: 0 }),
-      event({ id: '2', character_ids: ['evan', 'eve'], character_names: ['Evan', 'Eveline'], chapter_index: 2 }),
+      event({ id: '1', thread_terms: [{ text: 'IBM', label: 'ORG' }], character_ids: ['evan'], character_names: ['Evan'], chapter_index: 0 }),
+      event({ id: '2', thread_terms: [{ text: 'One IBM Plaza', label: 'FAC' }], character_ids: ['eve'], character_names: ['Eveline'], chapter_index: 2 }),
     ]
     const { lanes, laneOf } = deriveThreads(events)
     expect(lanes).toHaveLength(1)
-    expect(lanes[0].name).toBe('Evan & Eveline')
+    expect(lanes[0].name).toBe('IBM')
     expect(lanes[0].from).toBe(0)
     expect(lanes[0].to).toBe(2)
     expect(laneOf.get('1')).toBe(lanes[0].id)
   })
 
-  it('does not invent a thread from a one-off pairing', () => {
+  it('does not promote a one-off named term into a story strand', () => {
     const events = [
-      event({ id: '1', character_ids: ['evan', 'eve'], character_names: ['Evan', 'Eveline'] }),
+      event({ id: '1', thread_terms: [{ text: 'Blue folder', label: 'PRODUCT' }], character_ids: ['evan'], character_names: ['Evan'] }),
       event({ id: '2', character_ids: ['evan'], character_names: ['Evan'] }),
     ]
     const { lanes } = deriveThreads(events)
-    // The single pairing folds into Evan's solo rail rather than becoming a
-    // thread of its own.
-    expect(lanes.map(lane => lane.name)).toEqual(['Evan'])
+    expect(lanes.map(lane => lane.name)).toEqual(['Evan-led beats'])
     expect(lanes[0].eventCount).toBe(2)
   })
 
-  it('routes uncast events to an Unattributed rail', () => {
+  it('routes uncast events to an explicitly unlinked rail', () => {
     const { lanes, laneOf } = deriveThreads([event({ id: '1' })])
-    expect(lanes[0].name).toBe('Unattributed')
+    expect(lanes[0].name).toBe('Unlinked beats')
     expect(laneOf.get('1')).toBeDefined()
+  })
+
+  it('keeps every recurring strand membership on a crossover beat', () => {
+    const events = [
+      event({ id: '1', thread_terms: [{ text: 'IBM', label: 'ORG' }, { text: 'Tunnel', label: 'LOC' }] }),
+      event({ id: '2', thread_terms: [{ text: 'IBM', label: 'ORG' }] }),
+      event({ id: '3', thread_terms: [{ text: 'Tunnel', label: 'LOC' }] }),
+    ]
+    const { memberships } = deriveThreads(events)
+    expect(memberships.get('1')).toHaveLength(2)
   })
 
   it('assigns every event a lane', () => {

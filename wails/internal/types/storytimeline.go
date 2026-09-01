@@ -27,6 +27,7 @@ type StoryTimelineEvent struct {
 	StartOffset     int            `json:"start_offset"`
 	CharacterIDs    []string       `json:"character_ids,omitempty"`
 	CharacterNames  []string       `json:"character_names,omitempty"`
+	ThreadTerms     []EvidenceTerm `json:"thread_terms,omitempty"`
 	Locations       []EvidenceTerm `json:"locations,omitempty"`
 	TimeExpressions []string       `json:"time_expressions,omitempty"`
 	TimeKind        string         `json:"time_kind"` // anchored | relative | manuscript

@@ -2,6 +2,15 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02491] - 2026-09-01
+
+### Added
+- Added an Intertwined character timeline.
+
+### Changed
+- Story Graph threads now follow story evidence instead of cast combinations.
+- The Character Center remembers the last view used.
+
 ## [0.16.02490] - 2026-09-01
 
 ### Changed
