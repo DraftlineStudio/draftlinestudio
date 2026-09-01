@@ -2,6 +2,15 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02460] - 2026-08-31
+
+### Fixed
+- EPUB imports no longer split chapters too aggressively.
+- Chapter headings become chapter titles instead of duplicating in the text.
+
+### Changed
+- Added size limits for very large imports.
+
 ## [0.16.02459] - 2026-08-31
 
 ### Fixed
