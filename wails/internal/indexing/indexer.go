@@ -94,6 +94,7 @@ func IndexBook(book *types.BookData) types.IndexResult {
 	// entity IDs. Invalidate it (matching merge/split behavior) so stale edges
 	// can't be read.
 	book.Analysis.Relationships = nil
+	book.Analysis.Evidence = nil
 
 	book.IsIndexed = true
 	book.LastIndexed = time.Now().Format(time.RFC3339)
@@ -156,6 +157,7 @@ func SplitCharacterEntity(book *types.BookData, entityID string, mentionIDs []st
 
 	// Relationship data references the pre-split entity — stale now.
 	book.Analysis.Relationships = nil
+	book.Analysis.Evidence = nil
 
 	return nil
 }

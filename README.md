@@ -15,6 +15,7 @@ Draftline is under active pre-1.0 development. Windows is the primary developmen
 - Story bible, timelines, beat sheets, foreshadowing, and knowledge tracking
 - Chapter-scoped find and replace
 - Local whole-manuscript Story Search with quoted phrases, confirmed-character alias expansion, evidence excerpts, and source navigation
+- Persistent local fact/event evidence indexing with exact source sentences and an inspectable Evidence Index
 - Optional activity-based local saves, embedded chapter version history with side-by-side restore, and rolling manuscript backups
 - EPUB and DOCX import, with export support currently being redesigned
 - Optional AI line editing, copy editing, rewriting, and inline assistance
@@ -94,6 +95,7 @@ Draftline/
 │   ├── frontend/          React and TypeScript user interface
 │   └── internal/          Book, backup, indexing, export, and support packages
 ├── CHANGELOG.md           Linear build-version history
+├── ROADMAP.md             Current product roadmap and refactoring plans
 └── LICENSE                MIT License
 ```
 

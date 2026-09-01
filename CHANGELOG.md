@@ -4,6 +4,22 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02470] - 2026-09-01
+
+### Added
+- Added a persistent, local fact/event evidence index to the normal on-open and idle analysis pipeline. Conservative prose/v3-assisted rules identify introductions, discoveries, interactions, transitions, stated facts, and explicit time references while retaining the exact source sentence, chapter/paragraph coordinates, linked confirmed characters, named terms, cue strength, and a stable content-derived ID.
+- Added an Evidence Index tab to the resizable Story Search tool window. Writers can browse event/fact counts, filter the records, inspect why each passage qualified, and jump directly to the exact sentence; Story Search results also display any persisted evidence supporting the matched scene.
+- Added the current product roadmap at `ROADMAP.md`, including evidence-backed detail search and timelines, continuity checks, a full-screen Storyboard, previewable character refactoring, and storyline/detail refactoring.
+- Added regression coverage for exact evidence provenance, stable IDs after unrelated edits, preserved author review decisions, singleton introductions, false-positive restraint, archive round trips, and Story Search evidence attachment.
+
+### Changed
+- Replaced the manuscript-specific Story Search placeholder with neutral guidance applicable to every project.
+- Bounded evidence analysis to four concurrent chapter workers, cutting the reference manuscript pass from roughly 11.7 seconds to 3.2 seconds while preserving manuscript-order output and the 50,000-record safety cap.
+- Moved full-analysis orchestration out of `app.go` into `analysis.go` and ratcheted the facade from 1,511 to 1,468 lines, preserving the 02468 monolith cleanup as the analysis pipeline grows.
+- Advanced the rebuildable `analysis.json` schema to version 3. Older projects remain compatible and acquire evidence during their next normal analysis; character reindex, merge, split, and clear operations invalidate stale evidence before rebuilding it.
+
+---
+
 ## [0.16.02469] - 2026-08-31
 
 ### Added

@@ -75,7 +75,7 @@ func TestWriteOpenPersistsAnalysisAndCorrections(t *testing.T) {
 	b.IsIndexed = true
 	b.LastIndexed = "2026-08-30T12:00:00-05:00"
 	b.Analysis = types.AnalysisData{
-		Version: 1,
+		Version: 3,
 		EntityResolution: &types.EntityData{
 			Version:    1,
 			Mentions:   []types.MentionRecord{{ID: "m-0-0", Text: "Mara", Chapter: 0, CharOffset: 3}},
@@ -89,6 +89,13 @@ func TestWriteOpenPersistsAnalysisAndCorrections(t *testing.T) {
 		Story: &types.StoryAnalysisData{
 			Version: 1, Engine: "prose-v3", ContentHash: "abc123",
 			Chapters: []types.ChapterAnalysis{{ChapterID: "chapter-1", Title: "Chapter One", WordCount: 42}},
+		},
+		Evidence: &types.EvidenceData{
+			Version: 1, Engine: "prose-v3-evidence-v1", ContentHash: "evidence123",
+			Records: []types.EvidenceRecord{{
+				ID: "evidence-1", Kind: "event", EvidenceType: "discovery", ChapterID: "chapter-1",
+				Text: "Mara found the door.", Status: "confirmed", Source: "auto",
+			}},
 		},
 	}
 
@@ -110,6 +117,9 @@ func TestWriteOpenPersistsAnalysisAndCorrections(t *testing.T) {
 	}
 	if got.Analysis.Story == nil || got.Analysis.Story.ContentHash != "abc123" || len(got.Analysis.Story.Chapters) != 1 {
 		t.Fatal("story analysis did not survive round trip")
+	}
+	if got.Analysis.Evidence == nil || got.Analysis.Evidence.ContentHash != "evidence123" || len(got.Analysis.Evidence.Records) != 1 || got.Analysis.Evidence.Records[0].Status != "confirmed" {
+		t.Fatal("fact/event evidence did not survive round trip")
 	}
 }
 

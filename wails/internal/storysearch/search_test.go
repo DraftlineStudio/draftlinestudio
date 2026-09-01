@@ -72,6 +72,19 @@ func TestSearchHonorsQuotedPhrase(t *testing.T) {
 	}
 }
 
+func TestSearchAttachesPersistedEvidenceAndExcludesRejectedRecords(t *testing.T) {
+	book := testBook(`<p>Hanlon discovered the underground tunnel beneath the plaza.</p>`)
+	book.Analysis.Evidence = &types.EvidenceData{Records: []types.EvidenceRecord{
+		{ID: "kept", Kind: "event", EvidenceType: "discovery", ChapterIndex: 0, Text: "Hanlon discovered the underground tunnel beneath the plaza.", Status: "detected"},
+		{ID: "rejected", Kind: "fact", EvidenceType: "state", ChapterIndex: 0, Text: "Hanlon discovered the underground tunnel beneath the plaza.", Status: "rejected"},
+	}}
+
+	result := Search(book, types.StorySearchRequest{Query: "underground tunnel"})
+	if len(result.Matches) != 1 || len(result.Matches[0].Evidence) != 1 || result.Matches[0].Evidence[0].ID != "kept" {
+		t.Fatalf("search evidence attachment is wrong: %+v", result.Matches)
+	}
+}
+
 func testBook(content string) types.BookData {
 	return types.BookData{
 		Body: []types.ChapterItem{{ID: "chapter-1", Title: "First", Type: "chapter", Content: content}},

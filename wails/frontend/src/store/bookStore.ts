@@ -655,11 +655,12 @@ export const useBookStore = create<BookStore>((set, get) => ({
     try {
       const result = await IndexBook(book as any)
       if (result.success && result.book) {
-        set({
+        set(state => ({
           book: result.book as unknown as BookData,
           isIndexing: false,
           isDirty: true,
-        })
+          analysisRevision: state.analysisRevision + 1,
+        }))
         setStatus(`Found ${result.characters_found} characters (${result.new_characters} new)`)
         scheduleAutoSave()
       } else {
@@ -681,7 +682,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
       book: {
         ...book,
         story_bible: { ...book.story_bible, characters: [], plot_notes: book.story_bible?.plot_notes || '', timeline: book.story_bible?.timeline || '' },
-        analysis: { ...book.analysis, entity_resolution: undefined, relationships: undefined },
+        analysis: { ...book.analysis, entity_resolution: undefined, relationships: undefined, evidence: undefined },
       },
       isDirty: true,
     })
@@ -695,7 +696,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
     try {
       const result = await MergeEntities(book as any, entityIds, canonical)
       if (result.success && result.book) {
-        set({ book: result.book as unknown as BookData, isDirty: true })
+        set(state => ({ book: result.book as unknown as BookData, isDirty: true, analysisRevision: state.analysisRevision + 1 }))
         setStatus('Characters merged')
         scheduleAutoSave()
         return true
@@ -714,7 +715,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
     try {
       const result = await SplitEntity(book as any, entityId, mentionIds, newCanonical)
       if (result.success && result.book) {
-        set({ book: result.book as unknown as BookData, isDirty: true })
+        set(state => ({ book: result.book as unknown as BookData, isDirty: true, analysisRevision: state.analysisRevision + 1 }))
         setStatus('Character split')
         scheduleAutoSave()
         return true

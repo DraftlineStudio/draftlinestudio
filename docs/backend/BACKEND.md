@@ -7,7 +7,8 @@ The Draftline backend is written in Go and uses [Wails v2](https://wails.io/) to
 ```
 wails/
 ├── main.go                    # Application entry point
-├── app.go                     # App struct facade (~1,500 lines; guarded against growth)
+├── app.go                     # App struct facade (~1,470 lines; guarded against growth)
+├── analysis.go                # Full local-analysis pipeline orchestration + progress
 ├── story_search.go            # Thin Story Search Wails binding
 ├── import.go                  # EPUB/DOCX import pipeline + routing (see import/IMPORT.md)
 ├── import_sanitize.go         # Import decoder, XHTML sanitizer, chaptering
@@ -23,6 +24,7 @@ wails/
     │   ├── structure.go       # Beat, Foreshadowing, KnowledgeMatrix
     │   ├── settings.go        # AppSettings, ClaudeCodeStatus
     │   ├── export.go          # ExportOptions, PDFOptions, PrintPDFOptions
+    │   ├── evidence.go        # Persistent source-located fact/event records
     │   └── results.go         # SaveResult, ExportResult, AIRewriteResult
     │
     ├── book/                  # Book lifecycle operations
@@ -45,9 +47,10 @@ wails/
     │   └── providers/         # AI HTTP transport (Anthropic/OpenAI-compat/Gemini
     │                          # + pure CLI helpers); app.go injects an Emit closure
     │
-    ├── indexing/              # Character detection
+    ├── indexing/              # Local manuscript analysis
     │   ├── patterns.go        # Common words, regex patterns
     │   ├── characters.go      # Name detection, attribute extraction
+    │   ├── evidence.go        # Persistent fact/event candidate extraction
     │   └── indexer.go         # Book/chapter indexing
     │
     ├── storysearch/           # Local scene/phrase search + confirmed alias expansion
@@ -110,13 +113,19 @@ Multi-format export: EPUB, DOCX, PDF, and print-ready PDF.
 AI prompt building and response parsing. Since 0.16.02468 the HTTP provider transport lives in `ai/providers` (`Request` carries the resolved model, API key, settings, and an `Emit` closure, so the package never imports the Wails runtime). The Claude Code / Codex CLI drivers stay in app.go alongside setup.go's exec helpers; their pure helpers (arg building, prompt-safe failure messages) are in `ai/providers/cli.go`.
 
 ### [indexing/](indexing/INDEXING.md)
-Character name detection and attribute extraction for Story Bible.
+Character name detection, attribute extraction, relationships, story metrics,
+and the persistent fact/event evidence index. The evidence pass uses the
+bundled prose/v3 model plus conservative deterministic cues; it stores exact
+source sentences and coordinates in `analysis.json`, performs no network call,
+and is rebuildable from the manuscript.
 
 ### storysearch/
 Deterministic whole-manuscript evidence retrieval. Searches explicit query
 submissions by scene, expands only confirmed character aliases, and returns
 source excerpts and chapter coordinates without storing another manuscript
-copy or calling AI. `story_search.go` contains only the Wails-facing delegate.
+copy or calling AI. Search results can attach matching persisted evidence so
+the Evidence Index and ad-hoc retrieval use the same source-located records.
+`story_search.go` contains only the Wails-facing delegate.
 
 ### [logging/](logging/LOGGING.md)
 Debug logging for AI operations.

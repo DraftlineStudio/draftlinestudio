@@ -274,10 +274,50 @@ export interface AnalysisData {
   entity_resolution?: EntityData
   relationships?: RelationshipData
   story?: StoryAnalysisData
+  evidence?: EvidenceData
   // Future analysis types:
   // plot_analysis?: PlotAnalysisData
   // theme_analysis?: ThemeAnalysisData
   version?: number
+}
+
+export interface EvidenceTerm {
+  text: string
+  label: string
+}
+
+export interface EvidenceRecord {
+  id: string
+  kind: 'event' | 'fact' | string
+  evidence_type: 'introduction' | 'discovery' | 'transition' | 'interaction' | 'state' | 'time_reference' | string
+  chapter_id: string
+  chapter_index: number
+  section: Section | string
+  section_index: number
+  paragraph_index: number
+  sentence_index: number
+  start_offset: number
+  end_offset: number
+  text: string
+  character_ids?: string[]
+  character_names?: string[]
+  named_entities?: EvidenceTerm[]
+  action?: string
+  time_expressions?: string[]
+  confidence: number
+  rationale: string
+  status: 'detected' | 'confirmed' | 'rejected' | string
+  source: 'auto' | 'author' | string
+  author_note?: string
+}
+
+export interface EvidenceData {
+  content_hash: string
+  engine: string
+  last_analyzed: string
+  records: EvidenceRecord[]
+  truncated?: boolean
+  version: number
 }
 
 export interface TermCount {
