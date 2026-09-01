@@ -7,14 +7,12 @@ import AskPanel from './storysearch/AskPanel'
 import ContinuityPanel from './storysearch/ContinuityPanel'
 import EvidenceIndexPanel from './storysearch/EvidenceIndexPanel'
 import StoryGraphPanel from './storysearch/StoryGraphPanel'
-import StoryTimelinePanel from './storysearch/StoryTimelinePanel'
 
-type ToolView = 'search' | 'graph' | 'timeline' | 'continuity' | 'evidence'
+type ToolView = 'search' | 'graph' | 'continuity' | 'evidence'
 
 const HINTS: Record<ToolView, string> = {
   search: 'Source-backed manuscript trails · no AI',
   graph: 'Derived threads and beats · manuscript order',
-  timeline: 'Automatic events · explicit uncertainty',
   continuity: 'Review questions · paired sources',
   evidence: 'Everything Draftline has indexed',
 }
@@ -91,11 +89,6 @@ export default function StorySearchToolWindow() {
             <circle cx="5" cy="6" r="2.2" /><circle cx="12" cy="12" r="2.2" /><circle cx="19" cy="6" r="2.2" /><path d="M7 7.5l3 3M14 10.5l3-3" />
           </svg>
         </Tab>
-        <Tab view="timeline" active={activeView} onSelect={setActiveView} label="Timeline">
-          <svg width="13" height="13" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
-            <path d="M2 1.5v9M2 3.1h3.2M2 6h6.3M2 8.9h4.8" /><circle cx="5.7" cy="3.1" r=".8" /><circle cx="8.8" cy="6" r=".8" /><circle cx="7.3" cy="8.9" r=".8" />
-          </svg>
-        </Tab>
         <Tab view="continuity" active={activeView} onSelect={setActiveView} label="Continuity">
           <svg width="13" height="13" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
             <path d="M6 1.2 10.4 3v2.7c0 2.5-1.7 4.3-4.4 5.1-2.7-.8-4.4-2.6-4.4-5.1V3z" /><path d="m3.8 6 1.4 1.4 3-3" />
@@ -151,7 +144,6 @@ export default function StorySearchToolWindow() {
 
       {activeView === 'search' && book && <AskPanel book={book} onNavigate={navigateSource} />}
       {activeView === 'graph' && book && <StoryGraphPanel book={book} onNavigate={navigateSource} onOpenCodex={() => setViewMode('cast')} />}
-      {activeView === 'timeline' && book && <StoryTimelinePanel book={book} onNavigate={navigateSource} />}
       {activeView === 'continuity' && book && <ContinuityPanel book={book} onNavigate={navigateSource} />}
       {activeView === 'evidence' && book && <EvidenceIndexPanel book={book} onNavigate={navigateSource} />}
     </section>
