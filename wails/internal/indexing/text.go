@@ -70,7 +70,8 @@ func ShouldAnalyzeChapter(chapter types.ChapterItem) bool {
 	for _, excluded := range []string{
 		"cover", "title page", "copyright", "dedication", "epigraph",
 		"contents", "table of contents", "acknowledgments", "acknowledgements",
-		"about the author", "also by", "glossary", "index", "colophon",
+		"author's note", "author’s note", "authors note", "about the author",
+		"also by", "glossary", "index", "colophon",
 	} {
 		if typeName == excluded || title == excluded {
 			return false

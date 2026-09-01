@@ -4,6 +4,22 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02457] - 2026-08-31
+
+### Changed
+- Redesigned Pacing as an explainable prose-tempo panel: an explicit overall score and definition replace the ambiguous brightness scale, the chapter strip now uses labeled measured/balanced/brisk bands, and the panel states clearly that tempo describes prose rhythm rather than plot urgency or story quality.
+- Added plain-language chapter-to-chapter transition findings, with the three largest tempo rises or drops linked directly to their destination chapters.
+- Reworked chapter rows to show exact values and supporting context for tempo, dialogue share, and chapter length. Length now compares against the median chapter instead of whichever chapter happens to be longest, and Reading Ease has moved out of Pacing's controls because it belongs to Prose.
+- Relabeled the readability result as a composite grade estimate and added an explanation that it averages five formulas rather than representing a definitive reading age; Signals no longer makes unsupported audience claims from that estimate.
+
+### Added
+- Added focused tests for tempo boundaries, median chapter-length comparison, and detection of noticeable neighboring tempo changes.
+
+### Fixed
+- Author's Note front matter is no longer included in story, readability, pacing, or character analysis.
+
+---
+
 ## [0.16.02456] - 2026-08-31
 
 ### Changed
