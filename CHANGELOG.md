@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02478] - 2026-09-01
+
+### Added
+- Draftline now registers file associations for .draftline, .epub, and .docx on Windows.
+
 ## [0.16.02477] - 2026-09-01
 
 ### Added

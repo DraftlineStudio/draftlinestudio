@@ -43,7 +43,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.16.02477"
+const AppVersion = "0.16.02478"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -296,6 +296,14 @@ func (a *App) startup(ctx context.Context) {
 	raw.AIAPIKey = ""
 	a.setSettings(raw)
 	logging.SetEnabled(raw.AIDebugLogging)
+
+	// Best-effort per-user file associations (Windows HKCU; no-op elsewhere).
+	// Off the startup path — registry writes must never delay first paint.
+	go func() {
+		if err := registerFileAssociations(); err != nil {
+			log.Printf("file association registration failed: %v", err)
+		}
+	}()
 }
 
 // NewBook returns an empty types.BookData struct with defaults.

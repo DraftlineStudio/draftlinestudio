@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- shared-mime-info definition for the .draftline project format.
+     Install: cp to ~/.local/share/mime/packages/ && update-mime-database ~/.local/share/mime
+     (epub/docx use their standard MIME types and need no definition here). -->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-draftline">
+    <comment>Draftline Project</comment>
+    <glob pattern="*.draftline"/>
+    <sub-class-of type="application/zip"/>
+  </mime-type>
+</mime-info>
