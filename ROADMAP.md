@@ -42,6 +42,68 @@ retrieval, indexing, review, and refactoring must not depend on generative AI.
 - [ ] Chapter-history provenance where snapshots can prove when a passage
       changed; never invent edit history that predates available snapshots.
 
+## Story Fingerprint and Evidence Archive
+
+- [ ] Keep the complete raw evidence browser as an **Evidence Archive**. It is
+      intentionally not a primary writing surface; a small archive-folder
+      action in Detail Search, Timeline, Continuity, Storyboard, and other
+      derived views opens everything Draftline's heuristics know about the
+      book, including mundane and low-confidence records.
+- [ ] Derive a versioned **Story Fingerprint** from the manuscript's reviewed
+      entities, aliases, relationships, appearances, interactions, notable
+      quotes, facts, events, explicit times, character knowledge, locations,
+      objects, recurring concepts, plot threads, pacing, and structural
+      metrics. Every conclusion remains traceable to source evidence.
+- [ ] Present the useful fingerprint through ranked editorial views while
+      retaining the full archive for transparency, debugging, author review,
+      and the possibility that an apparently mundane detail matters later.
+- [ ] Track fingerprint schema, analysis-engine version, source content hash,
+      generation time, and review provenance so Draftline can distinguish
+      current, stale, partially upgraded, and source-unavailable fingerprints.
+- [ ] Treat fingerprints as local derived intellectual property: portable and
+      user-owned, never uploaded or submitted to AI without explicit action.
+
+## Storiverse: connect book fingerprints
+
+- [ ] A Storiverse is a normal portable folder containing its manifest and a
+      hidden `.storiverse/` data directory. Source manuscripts may be dropped
+      beside it or selected from anywhere, but are inputs—not files Storiverse
+      secretly copies into its own storage.
+- [ ] Adding a `.draftline` indexes it in place. Importing DOCX/EPUB creates one
+      standalone `.draftline` at an author-chosen location, then indexes that
+      source; Storiverse retains the fingerprint, never another manuscript.
+- [ ] Treat an added book as a live link to its original `.draftline`. Saving
+      that book in Draftline schedules its Storiverse fingerprint refresh;
+      opening or reindexing the universe also compares source hashes so edits
+      made outside universe context cannot leave a silently stale fingerprint.
+- [ ] Store an independent snapshot of every book's Story Fingerprint under
+      `.storiverse/fingerprints/`. The universe can therefore retain character,
+      timeline, continuity, and knowledge context when a linked manuscript is
+      offline, moved, deliberately omitted from a shared copy, or temporarily
+      unavailable.
+- [ ] Join stable identities across fingerprints without destroying book-local
+      identity: one universe character may map to different book entity IDs,
+      aliases, roles, ages, and knowledge states over time.
+- [ ] Build cross-book continuity, chronology, relationship evolution,
+      knowledge tracking, recurring details, universe rules, and series-wide
+      search from fingerprints rather than repeatedly opening every manuscript.
+- [ ] Give every `.draftline` a stable book ID. Dropping an updated copy into a
+      Storiverse and choosing reindex must find the existing fingerprint by ID,
+      compare its content hash, refresh it atomically, preserve compatible
+      author decisions, and show conflicts instead of creating a duplicate
+      book or silently replacing universe-level corrections.
+- [ ] Keep absolute source locations in per-device local app state, not inside
+      the portable universe. On another device, dragging any copy with the same
+      book ID relinks it without importing a duplicate or losing the cached
+      fingerprint.
+- [ ] A fingerprint is a continuity index, not a manuscript substitute: retain
+      only the evidence excerpts and coordinates required to justify its
+      conclusions, and degrade source navigation honestly when the book is
+      unavailable.
+- [ ] Exporting or copying a Storiverse includes fingerprints by default—not
+      the source manuscripts—so it remains small and portable. Authors may
+      explicitly choose to bundle sources as a separate export operation.
+
 ## Refactoring engine
 
 ### Character refactoring
