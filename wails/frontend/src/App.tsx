@@ -25,7 +25,7 @@ import ExportWizard from './components/dialogs/ExportWizard'
 const ChapterHistoryDialog = lazy(() => import('./components/dialogs/ChapterHistoryDialog'))
 
 export default function App() {
-  const { hasBook, bookTitle, bookFilePath, newBook, openBook, openRecentBook, saveBook, saveBookAs, dialogs, initBook, setDarkMode, toggleLeftPanel, toggleRightPanel, viewMode, setViewMode } = useBookStore(useShallow(s => ({
+  const { hasBook, bookTitle, bookFilePath, newBook, openBook, openRecentBook, saveBook, saveBookAs, dialogs, initBook, toggleLeftPanel, viewMode, setViewMode } = useBookStore(useShallow(s => ({
     hasBook: s.book !== null,
     bookTitle: s.book?.metadata.title,
     bookFilePath: s.book?.file_path,
@@ -36,9 +36,7 @@ export default function App() {
     saveBookAs: s.saveBookAs,
     dialogs: s.dialogs,
     initBook: s.initBook,
-    setDarkMode: s.setDarkMode,
     toggleLeftPanel: s.toggleLeftPanel,
-    toggleRightPanel: s.toggleRightPanel,
     viewMode: s.viewMode,
     setViewMode: s.setViewMode,
   })))
@@ -111,17 +109,14 @@ export default function App() {
 
   // Apply theme changes (from auto mode or manual settings)
   useEffect(() => {
-    const newDarkMode = computedTheme === 'dark'
-
     // Handle smooth transition when theme changes (not on initial load)
     if (prevThemeRef.current !== null && prevThemeRef.current !== computedTheme) {
       handleThemeTransition(computedTheme)
     }
 
-    setDarkMode(newDarkMode)
     document.documentElement.setAttribute('data-theme', computedTheme)
     prevThemeRef.current = computedTheme
-  }, [computedTheme, setDarkMode])
+  }, [computedTheme])
 
   // Drive accent color from book title's avatar color
   useEffect(() => {
@@ -137,7 +132,6 @@ export default function App() {
         case 'n': e.preventDefault(); void newBook(); break
         case 'o': e.preventDefault(); void openBook(); break
         case '[': e.preventDefault(); toggleLeftPanel(); break
-        case ']': e.preventDefault(); toggleRightPanel(); break
         case 's':
           e.preventDefault()
           if (e.shiftKey) void saveBookAs()
@@ -147,7 +141,7 @@ export default function App() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [newBook, openBook, saveBook, saveBookAs, toggleLeftPanel, toggleRightPanel])
+  }, [newBook, openBook, saveBook, saveBookAs, toggleLeftPanel])
 
   // When book is opened from NewBookWizard, hide welcome screen
   useEffect(() => {
