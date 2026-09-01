@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02488] - 2026-09-01
+
+### Added
+- Added the Story Graph, showing story beats across chapters by thread or character.
+
+### Changed
+- Redesigned the bottom bar and Ask Draftline layout.
+
 ## [0.16.02487] - 2026-09-01
 
 ### Added
