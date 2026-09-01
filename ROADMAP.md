@@ -29,9 +29,13 @@ retrieval, indexing, review, and refactoring must not depend on generative AI.
 
 - [ ] Author review controls: confirm, reject, edit, annotate, or pin an
       inferred fact/event; preserve decisions through reanalysis.
-- [ ] Evidence-backed detail search: first establishment, later references,
-      missing given names, singleton named people, discoveries, locations,
-      objects, and who knew what when.
+- [x] Evidence-backed Detail Search with natural question intent, confirmed
+      aliases, complete chapter trails, earliest/latest source navigation,
+      missing-given-name answers, singleton warnings, discovery signals,
+      relevant event/fact counts, and clickable related-detail pivots
+      (`0.16.02475`).
+- [ ] Knowledge-state queries: who learned or knew a fact, when it changed,
+      whether knowledge was shared, and where the source establishes it.
 - [ ] Automatic timeline draft assembled from confirmed events and explicit
       time expressions, with ambiguity shown instead of silently guessed.
 - [ ] Continuity checks over confirmed facts: conflicting attributes,

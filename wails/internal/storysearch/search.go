@@ -50,12 +50,15 @@ func Search(book types.BookData, request types.StorySearchRequest) types.StorySe
 		return result
 	}
 
-	groups, resolved := buildQueryGroups(book, query)
+	interpretedQuery, intent := interpretDetailQuery(query)
+	groups, resolved := buildQueryGroups(book, interpretedQuery)
 	if len(groups) == 0 {
 		result.Error = "The search did not contain any searchable words."
 		return result
 	}
 	result.ResolvedEntities = resolved
+	insight := newInsightAccumulator(intent, interpretedQuery, resolved)
+	evidenceByChapter := evidenceByChapter(book.Analysis.Evidence)
 
 	limit := request.Limit
 	if limit <= 0 {
@@ -76,6 +79,8 @@ func Search(book types.BookData, request types.StorySearchRequest) types.StorySe
 			}
 
 			result.Total++
+			sceneEvidence := evidenceRecordsForScene(evidenceByChapter[ref.globalIndex], pieces)
+			insight.add(ref, sceneEvidence)
 			if len(result.Matches) >= limit {
 				continue
 			}
@@ -89,33 +94,47 @@ func Search(book types.BookData, request types.StorySearchRequest) types.StorySe
 				Excerpt:        buildExcerpt(pieces),
 				MatchedTerms:   matched,
 				AdditionalHits: max(0, len(pieces)-maxExcerptPieces),
-				Evidence:       evidenceForScene(book.Analysis.Evidence, ref.globalIndex, paragraphs),
+				Evidence:       lightweightEvidence(sceneEvidence),
 			})
+		}
+	}
+	result.Insight = insight.finish(result.Total)
+	return result
+}
+
+func evidenceByChapter(data *types.EvidenceData) map[int][]types.EvidenceRecord {
+	result := make(map[int][]types.EvidenceRecord)
+	if data == nil {
+		return result
+	}
+	for _, record := range data.Records {
+		if record.Status != "rejected" && record.Text != "" {
+			result[record.ChapterIndex] = append(result[record.ChapterIndex], record)
 		}
 	}
 	return result
 }
 
-func evidenceForScene(data *types.EvidenceData, chapterIndex int, paragraphs []string) []types.StorySearchEvidence {
-	if data == nil {
-		return nil
-	}
+func evidenceRecordsForScene(records []types.EvidenceRecord, paragraphs []string) []types.EvidenceRecord {
 	scene := strings.ToLower(cleanSpace(strings.Join(paragraphs, " ")))
-	result := make([]types.StorySearchEvidence, 0, 4)
-	for _, record := range data.Records {
-		if record.ChapterIndex != chapterIndex || record.Status == "rejected" || record.Text == "" {
-			continue
-		}
+	result := make([]types.EvidenceRecord, 0, 4)
+	for _, record := range records {
 		if !strings.Contains(scene, strings.ToLower(cleanSpace(record.Text))) {
 			continue
 		}
+		result = append(result, record)
+	}
+	return result
+}
+
+func lightweightEvidence(records []types.EvidenceRecord) []types.StorySearchEvidence {
+	limit := min(len(records), 12)
+	result := make([]types.StorySearchEvidence, 0, limit)
+	for _, record := range records[:limit] {
 		result = append(result, types.StorySearchEvidence{
 			ID: record.ID, Kind: record.Kind, EvidenceType: record.EvidenceType,
 			Status: record.Status, Confidence: record.Confidence,
 		})
-		if len(result) == 12 {
-			break
-		}
 	}
 	return result
 }

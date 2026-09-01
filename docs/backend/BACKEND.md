@@ -53,8 +53,9 @@ wails/
     │   ├── evidence.go        # Persistent fact/event candidate extraction
     │   └── indexer.go         # Book/chapter indexing
     │
-    ├── storysearch/           # Local scene/phrase search + confirmed alias expansion
-    │   └── search.go           # Wails-independent search engine
+    ├── storysearch/           # Local detail trails + confirmed alias expansion
+    │   ├── insight.go          # Query intent, fingerprint summaries, signals
+    │   └── search.go           # Wails-independent source search engine
     │
     └── logging/               # Debug logging
         └── debug.go           # AI operation logging
@@ -126,6 +127,13 @@ source excerpts and chapter coordinates without storing another manuscript
 copy or calling AI. Search results can attach matching persisted evidence so
 the Evidence Index and ad-hoc retrieval use the same source-located records.
 `story_search.go` contains only the Wails-facing delegate.
+
+Build 02475 layers deterministic Detail Search over those sources. Natural
+question framing is reduced to searchable concepts without changing quoted
+phrases; the engine then summarizes complete chapter coverage, relevant
+event/fact evidence, related named details, missing confirmed names, singleton
+occurrences, and discovery cues. Evidence association is limited to the actual
+query-bearing paragraphs rather than every record in a matching chapter.
 
 ### [logging/](logging/LOGGING.md)
 Debug logging for AI operations.
