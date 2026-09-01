@@ -1,4 +1,4 @@
-export namespace types {
+﻿export namespace types {
 	
 	export class AIRewriteResult {
 	    result: string;
@@ -12,6 +12,30 @@ export namespace types {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.result = source["result"];
 	        this.error = source["error"];
+	    }
+	}
+	export class EvidenceKnowledgeState {
+	    state: string;
+	    character_ids?: string[];
+	    character_names?: string[];
+	    counterparty_ids?: string[];
+	    counterparty_names?: string[];
+	    cue: string;
+	    confidence: number;
+
+	    static createFrom(source: any = {}) {
+	        return new EvidenceKnowledgeState(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.state = source["state"];
+	        this.character_ids = source["character_ids"];
+	        this.character_names = source["character_names"];
+	        this.counterparty_ids = source["counterparty_ids"];
+	        this.counterparty_names = source["counterparty_names"];
+	        this.cue = source["cue"];
+	        this.confidence = source["confidence"];
 	    }
 	}
 	export class EvidenceTerm {
@@ -46,6 +70,7 @@ export namespace types {
 	    named_entities?: EvidenceTerm[];
 	    action?: string;
 	    time_expressions?: string[];
+	    knowledge_states?: EvidenceKnowledgeState[];
 	    confidence: number;
 	    rationale: string;
 	    status: string;
@@ -78,6 +103,7 @@ export namespace types {
 	        this.named_entities = this.convertValues(source["named_entities"], EvidenceTerm);
 	        this.action = source["action"];
 	        this.time_expressions = source["time_expressions"];
+	        this.knowledge_states = this.convertValues(source["knowledge_states"], EvidenceKnowledgeState);
 	        this.confidence = source["confidence"];
 	        this.rationale = source["rationale"];
 	        this.status = source["status"];
@@ -1308,6 +1334,7 @@ export namespace types {
 	
 	
 	
+
 	export class ExportOptions {
 	    includeCopyright: boolean;
 	    includeFrontMatter: boolean;
@@ -1808,6 +1835,42 @@ export namespace types {
 	        this.count = source["count"];
 	    }
 	}
+	export class StorySearchKnowledgeState {
+	    evidence_id: string;
+	    state: string;
+	    character_ids?: string[];
+	    character_names?: string[];
+	    counterparty_ids?: string[];
+	    counterparty_names?: string[];
+	    chapter_index: number;
+	    chapter_title: string;
+	    section: string;
+	    section_index: number;
+	    text: string;
+	    cue: string;
+	    confidence: number;
+
+	    static createFrom(source: any = {}) {
+	        return new StorySearchKnowledgeState(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.evidence_id = source["evidence_id"];
+	        this.state = source["state"];
+	        this.character_ids = source["character_ids"];
+	        this.character_names = source["character_names"];
+	        this.counterparty_ids = source["counterparty_ids"];
+	        this.counterparty_names = source["counterparty_names"];
+	        this.chapter_index = source["chapter_index"];
+	        this.chapter_title = source["chapter_title"];
+	        this.section = source["section"];
+	        this.section_index = source["section_index"];
+	        this.text = source["text"];
+	        this.cue = source["cue"];
+	        this.confidence = source["confidence"];
+	    }
+	}
 	export class StorySearchInsight {
 	    intent: string;
 	    interpreted_query: string;
@@ -1816,7 +1879,9 @@ export namespace types {
 	    event_count: number;
 	    fact_count: number;
 	    discovery_count: number;
+	    knowledge_count: number;
 	    chapters: StorySearchChapterSummary[];
+	    knowledge_states?: StorySearchKnowledgeState[];
 	    related_terms?: StorySearchRelatedTerm[];
 	    signals?: StorySearchSignal[];
 	
@@ -1833,7 +1898,9 @@ export namespace types {
 	        this.event_count = source["event_count"];
 	        this.fact_count = source["fact_count"];
 	        this.discovery_count = source["discovery_count"];
+	        this.knowledge_count = source["knowledge_count"];
 	        this.chapters = this.convertValues(source["chapters"], StorySearchChapterSummary);
+	        this.knowledge_states = this.convertValues(source["knowledge_states"], StorySearchKnowledgeState);
 	        this.related_terms = this.convertValues(source["related_terms"], StorySearchRelatedTerm);
 	        this.signals = this.convertValues(source["signals"], StorySearchSignal);
 	    }
@@ -1856,6 +1923,7 @@ export namespace types {
 		    return a;
 		}
 	}
+
 	export class StorySearchMatch {
 	    section: string;
 	    section_index: number;
@@ -1964,4 +2032,3 @@ export namespace types {
 	
 
 }
-

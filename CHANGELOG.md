@@ -4,6 +4,20 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02484] - 2026-09-01
+
+### Added
+- Added persistent, source-backed character knowledge states to the local evidence engine. Draftline now distinguishes learning, knowing, explicitly not knowing, trying to remember, believing, suspecting, sharing, and withholding without using generative AI.
+- Added natural knowledge questions to Detail Search. Searches such as “Who knew about the tunnel?” or “Who told Ruiz about IBM?” return a manuscript-order Knowledge Trail naming directly supported characters and counterparties, with the exact sentence and one-click chapter navigation.
+- Added regression coverage for knowledge acquisition, direct communication participants, negative knowledge, belief versus certainty, withholding, missing speakers, query interpretation, and source-backed knowledge answers.
+
+### Changed
+- Upgraded the persistent evidence engine to `prose-v3-evidence-v2`. Existing event/fact classifications remain stable so compatible author review decisions retain their IDs while the same records gain knowledge metadata during the automatic on-open analysis pass.
+- Knowledge attribution now requires a nearby confirmed character in a conservative grammatical position. Pronoun-only subjects, distant clauses, noun uses such as “report,” and ambiguous recipients are omitted rather than silently guessed.
+- Evidence records containing knowledge states receive additional priority in the **Worth reviewing** queue.
+
+---
+
 ## [0.16.02483] - 2026-09-01
 
 ### Changed

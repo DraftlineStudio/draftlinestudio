@@ -165,6 +165,7 @@ export default function StorySearchToolWindow() {
               onFirst={() => firstRef.current?.scrollIntoView({ block: 'nearest' })}
               onLast={() => lastRef.current?.scrollIntoView({ block: 'nearest' })}
               onRelated={term => { setQuery(term); void runSearch(term) }}
+              onKnowledge={state => navigateSource(state.section as Section, state.section_index, state.text)}
             />}
             <div className="story-search-summary"><span>Source trail · manuscript order</span></div>
             <div className="story-search-results">

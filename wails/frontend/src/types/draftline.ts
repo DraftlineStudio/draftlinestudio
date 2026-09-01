@@ -286,6 +286,16 @@ export interface EvidenceTerm {
   label: string
 }
 
+export interface EvidenceKnowledgeState {
+  state: 'learned' | 'knows' | 'does_not_know' | 'attempts_to_recall' | 'believes' | 'does_not_believe' | 'suspects' | 'does_not_suspect' | 'shared' | 'withheld' | string
+  character_ids?: string[]
+  character_names?: string[]
+  counterparty_ids?: string[]
+  counterparty_names?: string[]
+  cue: string
+  confidence: number
+}
+
 export interface EvidenceRecord {
   id: string
   kind: 'event' | 'fact' | string
@@ -304,6 +314,7 @@ export interface EvidenceRecord {
   named_entities?: EvidenceTerm[]
   action?: string
   time_expressions?: string[]
+  knowledge_states?: EvidenceKnowledgeState[]
   confidence: number
   rationale: string
   status: 'detected' | 'confirmed' | 'rejected' | string

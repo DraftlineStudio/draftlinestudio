@@ -40,6 +40,7 @@ function scoreRecord(record: EvidenceRecord, termFrequency: Map<string, number>)
     default: add(5, 'Candidate story fact')
   }
   if ((record.character_ids?.length ?? 0) >= 2) add(15, 'Several confirmed characters share this moment')
+  if ((record.knowledge_states?.length ?? 0) > 0) add(45, 'Establishes a character knowledge state')
   if (record.confidence < .75) add(10, 'Lower-confidence rule match')
   if (recordTerms(record).some(term => termFrequency.get(term) === 1)) add(25, 'Named detail appears in one indexed passage')
 
