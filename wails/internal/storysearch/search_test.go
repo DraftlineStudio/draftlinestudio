@@ -85,6 +85,87 @@ func TestSearchAttachesPersistedEvidenceAndExcludesRejectedRecords(t *testing.T)
 	}
 }
 
+func TestSearchBuildsInsightAcrossAllMatchesBeyondDisplayLimit(t *testing.T) {
+	book := types.BookData{Body: []types.ChapterItem{
+		{ID: "chapter-1", Title: "Arrival", Type: "chapter", Content: `<p>Hanlon found the brass key beside IBM.</p>`},
+		{ID: "chapter-2", Title: "Return", Type: "chapter", Content: `<p>Ruiz returned the brass key to Hanlon.</p>`},
+	}}
+	book.Analysis.Evidence = &types.EvidenceData{Records: []types.EvidenceRecord{
+		{ID: "discovery", Kind: "event", EvidenceType: "discovery", ChapterIndex: 0, Text: "Hanlon found the brass key beside IBM.", CharacterNames: []string{"Daniel Hanlon"}, NamedEntities: []types.EvidenceTerm{{Text: "IBM", Label: "ORG"}}, Status: "detected"},
+		{ID: "return", Kind: "event", EvidenceType: "transition", ChapterIndex: 1, Text: "Ruiz returned the brass key to Hanlon.", CharacterNames: []string{"Ruiz", "Daniel Hanlon"}, Status: "detected"},
+	}}
+
+	result := Search(book, types.StorySearchRequest{Query: "brass key", Limit: 1})
+	if result.Total != 2 || len(result.Matches) != 1 {
+		t.Fatalf("expected two total matches with one displayed, got total=%d displayed=%d", result.Total, len(result.Matches))
+	}
+	if result.Insight == nil || result.Insight.ChapterCount != 2 || result.Insight.EventCount != 2 || len(result.Insight.Chapters) != 2 {
+		t.Fatalf("insight did not cover the complete trail: %+v", result.Insight)
+	}
+	if len(result.Insight.RelatedTerms) == 0 || result.Insight.RelatedTerms[0].Text != "Daniel Hanlon" {
+		t.Fatalf("expected repeated related character to rank first: %+v", result.Insight.RelatedTerms)
+	}
+}
+
+func TestSearchInterpretsNaturalResearchQuestion(t *testing.T) {
+	book := testBook(`<p>Hanlon and Ruiz researched IBM together.</p>`)
+	book.Analysis.EntityResolution = &types.EntityData{Entities: []types.EntityRecord{
+		{ID: "hanlon", Canonical: "Daniel Hanlon", Aliases: []string{"Hanlon"}, DetectionStatus: "accepted"},
+		{ID: "ruiz", Canonical: "Ruiz", Aliases: []string{"Ruiz"}, DetectionStatus: "accepted"},
+	}}
+
+	result := Search(book, types.StorySearchRequest{Query: "What chapter did Hanlon and Ruiz research IBM?"})
+	if result.Total != 1 || result.Insight == nil || result.Insight.Intent != "research" {
+		t.Fatalf("natural research question was not interpreted: %+v", result)
+	}
+	if result.Insight.InterpretedQuery != "Hanlon Ruiz IBM" {
+		t.Fatalf("unexpected interpreted query: %q", result.Insight.InterpretedQuery)
+	}
+}
+
+func TestSearchAnswersConfirmedNameQuestionWithoutInventingGivenName(t *testing.T) {
+	book := testBook(`<p>Detective Ruiz entered. Hanlon followed him.</p>`)
+	book.Analysis.EntityResolution = &types.EntityData{Entities: []types.EntityRecord{
+		{ID: "ruiz", Canonical: "Ruiz", Aliases: []string{"Ruiz", "Detective Ruiz"}, DetectionStatus: "accepted"},
+		{ID: "hanlon", Canonical: "Daniel Hanlon", Aliases: []string{"Hanlon"}, DetectionStatus: "accepted"},
+	}}
+
+	ruiz := Search(book, types.StorySearchRequest{Query: "Ruiz first name"})
+	if ruiz.Total != 1 || ruiz.Insight == nil || len(ruiz.Insight.Signals) == 0 || ruiz.Insight.Signals[0].Title != "No confirmed given name found" {
+		t.Fatalf("expected an honest missing-name answer, got %+v", ruiz.Insight)
+	}
+
+	hanlon := Search(book, types.StorySearchRequest{Query: "What is Hanlon's full name?"})
+	if hanlon.Total != 1 || hanlon.Insight == nil || len(hanlon.Insight.Signals) == 0 || hanlon.Insight.Signals[0].Title != "Daniel Hanlon" {
+		t.Fatalf("expected confirmed full-name answer, got %+v", hanlon.Insight)
+	}
+}
+
+func TestSearchFlagsSingletonDetail(t *testing.T) {
+	result := Search(testBook(`<p>Kyle entered with the coffee and was never seen again.</p>`), types.StorySearchRequest{Query: "Kyle"})
+	if result.Insight == nil || len(result.Insight.Signals) == 0 || result.Insight.Signals[0].Title != "Appears in one scene" {
+		t.Fatalf("expected singleton signal, got %+v", result.Insight)
+	}
+}
+
+func TestSearchRelatedTermsExcludePrimaryPossessivesAndPronounContractions(t *testing.T) {
+	book := testBook(`<p>Hanlon reviewed IBM's records.</p>`)
+	book.Analysis.EntityResolution = &types.EntityData{Entities: []types.EntityRecord{{
+		ID: "hanlon", Canonical: "Daniel Hanlon", Aliases: []string{"Hanlon"}, DetectionStatus: "accepted",
+	}}}
+	book.Analysis.Evidence = &types.EvidenceData{Records: []types.EvidenceRecord{{
+		ID: "record", Kind: "fact", EvidenceType: "state", ChapterIndex: 0,
+		Text: "Hanlon reviewed IBM's records.", CharacterNames: []string{"Daniel Hanlon"},
+		NamedEntities: []types.EvidenceTerm{{Text: "Hanlon’s", Label: "PERSON"}, {Text: "He’d", Label: "PERSON"}, {Text: "IBM", Label: "ORG"}},
+		Status:        "detected",
+	}}}
+
+	result := Search(book, types.StorySearchRequest{Query: "Hanlon"})
+	if result.Insight == nil || len(result.Insight.RelatedTerms) != 1 || result.Insight.RelatedTerms[0].Text != "IBM" {
+		t.Fatalf("unexpected related-term noise: %+v", result.Insight)
+	}
+}
+
 func testBook(content string) types.BookData {
 	return types.BookData{
 		Body: []types.ChapterItem{{ID: "chapter-1", Title: "First", Type: "chapter", Content: content}},

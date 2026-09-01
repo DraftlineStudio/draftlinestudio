@@ -1966,6 +1966,22 @@ html, body, #root {
 .story-search-tab svg { color: var(--icon-color); }
 .story-search-tab small { padding: 1px 5px; border-radius: 8px; background: var(--bg-active); color: var(--text-muted); font-size: 9px; }
 .story-search-header-hint { margin-left: 12px; color: var(--text-muted); font-size: 10px; }
+.story-search-archive-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 25px;
+  margin-left: auto;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.story-search-archive-toggle:hover,
+.story-search-archive-toggle.active { border-color: var(--border); background: var(--bg-hover); color: var(--text-primary); }
+.story-search-archive-toggle small { padding: 1px 4px; border-radius: 7px; background: var(--bg-active); color: var(--text-muted); font-size: 8px; }
 .story-search-close,
 .story-search-clear {
   border: 0;
@@ -1981,6 +1997,7 @@ html, body, #root {
   font-size: 18px;
   line-height: 1;
 }
+.story-search-header .story-search-close { margin-left: 4px; }
 .story-search-close:hover,
 .story-search-clear:hover { color: var(--text-primary); background: var(--bg-hover); }
 .story-search-form {
@@ -2098,6 +2115,73 @@ html, body, #root {
   cursor: pointer;
 }
 .story-search-summary button:hover { background: var(--bg-hover); color: var(--text-primary); }
+.detail-insight {
+  flex: 0 1 auto;
+  max-height: 55%;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-surface-alt) 72%, var(--bg-panel));
+  overflow: auto;
+}
+.detail-insight-lede { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.detail-insight-lede > div:first-child { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.detail-insight-eyebrow { color: var(--accent); font-size: 8px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.detail-insight-lede strong { color: var(--text-primary); font-size: 13px; font-weight: 600; }
+.detail-insight-lede small { overflow: hidden; color: var(--text-muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.detail-insight-jump { display: flex; flex: 0 0 auto; gap: 4px; }
+.detail-insight-jump button {
+  padding: 3px 7px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg-toolbar);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 9px;
+  cursor: pointer;
+}
+.detail-insight-jump button:hover { border-color: var(--border-strong); color: var(--text-primary); }
+.detail-insight-stats { display: grid; grid-template-columns: repeat(4, minmax(85px, 1fr)); gap: 5px; margin-top: 8px; }
+.detail-insight-stats > span { display: flex; align-items: baseline; gap: 5px; padding: 4px 7px; border: 1px solid var(--border-subtle); border-radius: 3px; background: var(--bg-panel); }
+.detail-insight-stats strong { color: var(--text-primary); font-size: 12px; }
+.detail-insight-stats small { color: var(--text-muted); font-size: 8px; }
+.detail-insight-signals { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 5px; margin-top: 7px; }
+.detail-insight-signal { display: flex; min-width: 0; gap: 7px; padding: 6px 8px; border: 1px solid var(--border-subtle); border-radius: 3px; background: var(--bg-panel); }
+.detail-insight-signal > i { display: grid; flex: 0 0 17px; width: 17px; height: 17px; place-items: center; border-radius: 50%; background: var(--bg-active); color: var(--text-muted); font-size: 9px; font-style: normal; font-weight: 700; }
+.detail-insight-signal.answer > i { background: color-mix(in srgb, var(--status-success) 16%, transparent); color: var(--status-success); }
+.detail-insight-signal.attention > i { background: color-mix(in srgb, var(--status-warning) 16%, transparent); color: var(--status-warning); }
+.detail-insight-signal > span { display: flex; min-width: 0; flex-direction: column; gap: 1px; }
+.detail-insight-signal strong { color: var(--text-secondary); font-size: 9px; }
+.detail-insight-signal small { color: var(--text-muted); font-size: 8px; line-height: 1.35; }
+.detail-insight-chapters,
+.detail-insight-related { display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: center; gap: 8px; margin-top: 7px; }
+.detail-insight-chapters > span,
+.detail-insight-related > span { color: var(--text-muted); font-size: 8px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.detail-insight-chapters > div,
+.detail-insight-related > div {
+  display: flex;
+  gap: 4px;
+  padding-bottom: 3px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+.detail-insight-chapters > div::-webkit-scrollbar,
+.detail-insight-related > div::-webkit-scrollbar { height: 5px; }
+.detail-insight-chapters > div::-webkit-scrollbar-track,
+.detail-insight-related > div::-webkit-scrollbar-track { background: transparent; }
+.detail-insight-chapters > div::-webkit-scrollbar-thumb,
+.detail-insight-related > div::-webkit-scrollbar-thumb { border-radius: 3px; background: var(--scrollbar-thumb); }
+.detail-insight-chapters > div::-webkit-scrollbar-thumb:hover,
+.detail-insight-related > div::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
+.detail-insight-chapters > div::-webkit-scrollbar-button,
+.detail-insight-related > div::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+.detail-insight-chapter,
+.detail-insight-related > div > button { display: inline-flex; flex: 0 0 auto; align-items: baseline; gap: 5px; padding: 3px 6px; border: 1px solid var(--border-subtle); border-radius: 9px; background: var(--bg-panel); color: var(--text-secondary); font: inherit; font-size: 8px; cursor: pointer; }
+.detail-insight-related > div > button:hover { border-color: var(--border-strong); background: var(--bg-hover); color: var(--text-primary); }
+.detail-insight-chapter strong { max-width: 150px; overflow: hidden; font: inherit; text-overflow: ellipsis; white-space: nowrap; }
+.detail-insight-chapter small,
+.detail-insight-related > div > button small { color: var(--text-muted); font-size: 7px; }
+.detail-insight-limit { margin-top: 6px; color: var(--status-warning); font-size: 8px; }
 .story-search-results { flex: 1; min-height: 0; overflow: auto; }
 .story-search-result {
   display: grid;

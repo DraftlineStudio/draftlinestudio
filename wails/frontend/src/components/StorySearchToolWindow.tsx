@@ -5,6 +5,7 @@ import { types } from '../../wailsjs/go/models'
 import { useAppStore } from '../store/appStore'
 import { useBookStore } from '../store/bookStore'
 import type { Section } from '../types/draftline'
+import DetailInsightPanel from './storysearch/DetailInsightPanel'
 import EvidenceIndexPanel from './storysearch/EvidenceIndexPanel'
 
 type SearchResult = types.StorySearchResult
@@ -35,7 +36,11 @@ export default function StorySearchToolWindow() {
 
   async function submit(event?: FormEvent) {
     event?.preventDefault()
-    const cleaned = query.trim()
+    await runSearch(query)
+  }
+
+  async function runSearch(value: string) {
+    const cleaned = value.trim()
     if (!book || !cleaned || loading) return
     setLoading(true)
     try {
@@ -87,16 +92,21 @@ export default function StorySearchToolWindow() {
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.25">
             <circle cx="5" cy="5" r="3.4" /><path d="M7.5 7.5 11 11" />
           </svg>
-          Story Search
+          Detail Search
         </button>
-        <button type="button" className={`story-search-tab ${activeView === 'evidence' ? 'active' : ''}`} onClick={() => setActiveView('evidence')}>
+        <span className="story-search-header-hint">{activeView === 'search' ? 'Source-backed manuscript trails · no AI' : 'Everything Draftline has indexed'}</span>
+        <button
+          type="button"
+          className={`story-search-archive-toggle ${activeView === 'evidence' ? 'active' : ''}`}
+          onClick={() => setActiveView(activeView === 'evidence' ? 'search' : 'evidence')}
+          title={`Evidence Archive${book?.analysis?.evidence?.records.length ? ` · ${book.analysis.evidence.records.length} records` : ''}`}
+          aria-label="Open Evidence Archive"
+        >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.15">
-            <path d="M2 1.5h8v9H2zM4 4h4M4 6h4M4 8h2.5" />
+            <path d="M1.5 3.25h3l.8-1h5.2v7.5h-9zM1.5 4.5h9M4 6.2h4M4 8h3" />
           </svg>
-          Evidence Index
           {!!book?.analysis?.evidence?.records.length && <small>{book.analysis.evidence.records.length}</small>}
         </button>
-        <span className="story-search-header-hint">Local analysis · no AI</span>
         <button className="story-search-close" onClick={close} title="Close Story Search" aria-label="Close Story Search">×</button>
       </header>
 
@@ -109,13 +119,13 @@ export default function StorySearchToolWindow() {
             ref={inputRef}
             value={query}
             onChange={event => setQuery(event.target.value)}
-            placeholder={'Search names, places, objects, or an exact phrase'}
-            aria-label="Search names, details, and phrases across the story"
+            placeholder={'Trace a character, place, object, discovery, or exact phrase'}
+            aria-label="Trace names, details, and phrases across the story"
           />
           {query && <button type="button" className="story-search-clear" onClick={() => { setQuery(''); setResult(null); inputRef.current?.focus() }} aria-label="Clear search">×</button>}
         </div>
         <button className="story-search-submit" type="submit" disabled={!query.trim() || loading}>
-          {loading ? 'Searching…' : 'Search'}
+          {loading ? 'Tracing…' : 'Trace'}
         </button>
       </form>}
 
@@ -133,27 +143,30 @@ export default function StorySearchToolWindow() {
       {activeView === 'search' ? <div className="story-search-body">
         {!result && !loading && (
           <div className="story-search-empty">
-            <strong>Find story evidence without leaving the editor.</strong>
-            <span>Use several terms to find scenes where those details converge. Confirmed character names automatically include their aliases.</span>
+            <strong>Follow a detail through the manuscript.</strong>
+            <span>Trace where something begins, returns, or connects. Ask about a character's first name, a discovery, or several details that should converge.</span>
           </div>
         )}
-        {loading && <div className="story-search-empty"><span className="story-search-spinner" />Searching the manuscript…</div>}
+        {loading && <div className="story-search-empty"><span className="story-search-spinner" />Building the source trail…</div>}
         {result?.error && <div className="story-search-empty story-search-error">{result.error}</div>}
         {result && !result.error && result.total === 0 && (
           <div className="story-search-empty">
-            <strong>No scene contains all of those terms.</strong>
-            <span>Try fewer terms, or put an exact phrase in quotation marks.</span>
+            <strong>No source trail connects all of those details.</strong>
+            <span>Try fewer details, a confirmed alias, or put an exact phrase in quotation marks.</span>
           </div>
         )}
         {result && !result.error && result.total > 0 && (
           <>
-            <div className="story-search-summary">
-              <span><strong>{result.total}</strong> {result.total === 1 ? 'scene' : 'scenes'} in manuscript order{truncated ? ` · showing first ${result.matches.length}` : ''}</span>
-              <div>
-                <button type="button" onClick={() => firstRef.current?.scrollIntoView({ block: 'nearest' })}>First occurrence</button>
-                <button type="button" onClick={() => lastRef.current?.scrollIntoView({ block: 'nearest' })}>Last occurrence</button>
-              </div>
-            </div>
+            {result.insight && <DetailInsightPanel
+              insight={result.insight}
+              total={result.total}
+              truncated={truncated}
+              shown={result.matches.length}
+              onFirst={() => firstRef.current?.scrollIntoView({ block: 'nearest' })}
+              onLast={() => lastRef.current?.scrollIntoView({ block: 'nearest' })}
+              onRelated={term => { setQuery(term); void runSearch(term) }}
+            />}
+            <div className="story-search-summary"><span>Source trail · manuscript order</span></div>
             <div className="story-search-results">
               {result.matches.map((match, index) => (
                 <button

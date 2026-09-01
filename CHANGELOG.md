@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02475] - 2026-09-01
+
+### Added
+- Story Search now shows source-backed detail trails for characters, places, and objects.
+
 ## [0.16.02474] - 2026-09-01
 
 ### Fixed
