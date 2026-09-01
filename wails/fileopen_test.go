@@ -37,8 +37,18 @@ func TestLaunchFilePath(t *testing.T) {
 	})
 
 	t.Run("missing files and unsupported types yield nothing", func(t *testing.T) {
-		if got := launchFilePath([]string{"ghost.draftline", "story.pdf", "book.storiverse"}, dir); got != "" {
+		if got := launchFilePath([]string{"ghost.draftline", "story.pdf", "notes.txt"}, dir); got != "" {
 			t.Fatalf("expected empty, got %q", got)
+		}
+	})
+
+	t.Run("storiverse files are forwarded so the app can explain itself", func(t *testing.T) {
+		universe := filepath.Join(dir, "saga.storiverse")
+		if err := os.WriteFile(universe, []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if got := launchFilePath([]string{universe}, dir); got != universe {
+			t.Fatalf("got %q want %q", got, universe)
 		}
 	})
 

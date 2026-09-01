@@ -198,6 +198,10 @@ export function SetupCodexCLI() {
   return window['go']['main']['App']['SetupCodexCLI']();
 }
 
+export function ShowInfoDialog(arg1, arg2) {
+  return window['go']['main']['App']['ShowInfoDialog'](arg1, arg2);
+}
+
 export function SplitEntity(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['SplitEntity'](arg1, arg2, arg3, arg4);
 }

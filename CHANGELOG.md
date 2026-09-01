@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02483] - 2026-09-01
+
+### Changed
+- Double-clicking a .storiverse file now shows a clear notice — universe support is coming in a later version of Draftline; update to a version that supports Storiverse — instead of doing nothing. The message is a native dialog, so old installs will tell future users to update rather than dead-clicking.
+
+---
+
 ## [0.16.02482] - 2026-09-01
 
 ### Added
