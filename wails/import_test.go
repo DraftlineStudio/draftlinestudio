@@ -353,6 +353,37 @@ func TestRouteImportedSection(t *testing.T) {
 	}
 }
 
+// EPUBs that repeat the book title in every spine item's <title> (and carry
+// no visible headings) must fall back to "Chapter N", not name every chapter
+// after the book.
+func TestImportIgnoresRepeatedBookTitle(t *testing.T) {
+	dir := t.TempDir()
+	epub := filepath.Join(dir, "fixture.epub")
+	writeEPUB(t, epub, map[string]string{
+		"mimetype":               "application/epub+zip",
+		"META-INF/container.xml": epubContainerXML,
+		"OEBPS/content.opf": buildEPUBOPF([]epubManifestSpec{
+			{id: "ch1", href: "ch1.xhtml", mediaType: "application/xhtml+xml"},
+			{id: "ch2", href: "ch2.xhtml", mediaType: "application/xhtml+xml"},
+		}),
+		"OEBPS/ch1.xhtml": `<html><head><title>Fixture Book</title></head><body><p>First chapter prose.</p></body></html>`,
+		"OEBPS/ch2.xhtml": `<html><head><title>Fixture Book</title></head><body><p>Second chapter prose.</p></body></html>`,
+	})
+
+	a := &App{}
+	res := a.ImportEPUB(epub)
+	if !res.Success {
+		t.Fatalf("import failed: %s", res.Error)
+	}
+	if len(res.Book.Body) != 2 {
+		t.Fatalf("expected 2 chapters, got %d", len(res.Book.Body))
+	}
+	if res.Book.Body[0].Title != "Chapter 1" || res.Book.Body[1].Title != "Chapter 2" {
+		t.Fatalf("repeated book title leaked into chapter names: %q, %q",
+			res.Book.Body[0].Title, res.Book.Body[1].Title)
+	}
+}
+
 // End-to-end routing: sections land in the right BookData destination.
 func TestImportRoutesSections(t *testing.T) {
 	dir := t.TempDir()

@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02462] - 2026-08-31
+
+### Fixed
+- Imported chapters no longer take the book title as their name.
+- Untitled front and back matter sections now use their section name.
+
 ## [0.16.02461] - 2026-08-31
 
 ### Added

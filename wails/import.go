@@ -144,9 +144,12 @@ func (a *App) importEPUB(path string) types.ImportResult {
 			continue
 		}
 
-		// Use extracted title or generate one
-		if title == "" {
-			title = fmt.Sprintf("Chapter %d", len(body)+1)
+		// EPUBs commonly repeat the book title in every spine item's <title>;
+		// that is not a chapter name. Untitled sections are named after
+		// routing (type label or "Chapter N").
+		if bookTitle := strings.TrimSpace(metadata.Title); bookTitle != "" &&
+			strings.EqualFold(strings.TrimSpace(title), bookTitle) {
+			title = ""
 		}
 
 		parts, partWarnings := assembleChapters(title, blocks)
@@ -165,10 +168,8 @@ func (a *App) importEPUB(path string) types.ImportResult {
 				capReached = true
 				break
 			}
-			if strings.TrimSpace(part.Title) == "" {
-				part.Title = fmt.Sprintf("Chapter %d", len(body)+1)
-			}
 			route, typeLabel := routeImportedSection(part.Title, plainImportedText(part.Content))
+			untitled := strings.TrimSpace(part.Title) == ""
 			switch route {
 			case routeSkip:
 				continue
@@ -180,15 +181,27 @@ func (a *App) importEPUB(path string) types.ImportResult {
 					continue
 				}
 				part.Type = "Copyright"
+				if untitled {
+					part.Title = "Copyright"
+				}
 				front = append(front, part)
 			case routeFront:
 				part.Type = typeLabel
+				if untitled {
+					part.Title = typeLabel
+				}
 				front = append(front, part)
 			case routeBack:
 				part.Type = typeLabel
+				if untitled {
+					part.Title = typeLabel
+				}
 				back = append(back, part)
 			default:
 				part.Type = typeLabel
+				if untitled {
+					part.Title = fmt.Sprintf("Chapter %d", len(body)+1)
+				}
 				body = append(body, part)
 			}
 		}
