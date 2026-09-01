@@ -72,6 +72,11 @@ type App struct {
 	aiBusy        bool               // true while the single AI-request slot is held
 	aiGen         uint64             // generation counter; guards stale releases
 
+	// analysisMu is the backend single-flight boundary shared by automatic
+	// analysis and manual character/relationship rebuilds. Frontend guards are
+	// insufficient because these are separate Wails entry points.
+	analysisMu sync.Mutex
+
 	// API key state. The key lives in the OS keyring; legacyAPIKey holds a
 	// plaintext key only on machines where no keyring is available, so users
 	// there don't lose AI access.
@@ -148,6 +153,11 @@ func (a *App) CancelRewrite() {
 // become one entity). The result includes the updated book with characters
 // and entity data populated.
 func (a *App) IndexBook(book types.BookData) types.IndexResult {
+	done, ok := a.beginAnalysis(book)
+	if !ok {
+		return types.IndexResult{Success: false, Error: analysisBusyMessage}
+	}
+	defer done()
 	return indexing.IndexBook(&book)
 }
 
@@ -193,6 +203,11 @@ func (a *App) MergeEntities(book types.BookData, entityIDs []string, canonical s
 // AnalyzeRelationships detects character interactions and builds relationship data.
 // This should be called after entity resolution has been run.
 func (a *App) AnalyzeRelationships(book types.BookData) types.RelationshipAnalysisResult {
+	done, ok := a.beginAnalysis(book)
+	if !ok {
+		return types.RelationshipAnalysisResult{Success: false, Error: analysisBusyMessage}
+	}
+	defer done()
 	analyzer := indexing.NewRelationshipAnalyzer()
 	relData, err := analyzer.AnalyzeBook(book)
 	if err != nil {
@@ -548,6 +563,7 @@ func (a *App) loadSettingsFromDisk() types.AppSettings {
 		StoryBibleEnabled:       true,
 		PlotWalkerEnabled:       true,
 		AnalysisEnabled:         true,
+		AnalysisCPUProfile:      "adaptive",
 		CharactersLaneView:      "grid",
 		SidebarPanelWidth:       350,
 		// Open on the Writing Dashboard by default; "" means closed.

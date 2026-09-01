@@ -93,3 +93,15 @@ describe('serialize-savesettings — chained backend writes', () => {
     expect(resolved).toBe(true)
   })
 })
+
+describe('analysis CPU profile migration', () => {
+  it('defaults older settings to adaptive and preserves a valid explicit profile', async () => {
+    mocks.LoadSettings.mockResolvedValueOnce({})
+    await store().loadSettings()
+    expect(store().settings.analysis_cpu_profile).toBe('adaptive')
+
+    mocks.LoadSettings.mockResolvedValueOnce({ analysis_cpu_profile: 'gentle' })
+    await store().loadSettings()
+    expect(store().settings.analysis_cpu_profile).toBe('gentle')
+  })
+})
