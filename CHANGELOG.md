@@ -4,6 +4,15 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02462] - 2026-08-31
+
+### Fixed
+- Imported chapters no longer inherit the book's title: EPUBs that repeat the book name in every spine item's `<title>` (common when chapter numbers are images) now fall back to clean "Chapter N" names instead of naming all 100+ chapters after the book.
+- Untitled sections routed to front or back matter now take their section name (Dedication, Epigraph, Acknowledgments, …) instead of a generic chapter number.
+- Verified against real commercial and self-published EPUBs: numbered chapters, dedication/epigraph front matter, epilogue/acknowledgments back matter, and copyright pages all land correctly with no crashes.
+
+---
+
 ## [0.16.02461] - 2026-08-31
 
 ### Added
