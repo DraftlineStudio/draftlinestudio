@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02474] - 2026-09-01
+
+### Fixed
+- The status bar's Plot and Prose chips no longer mirror each other: Plot now tracks the fact/event evidence-indexing phase and Prose the prose-statistics phase (tempo, readability, keywords). Previously both chips were wired to the same pass and the evidence phase was reflected nowhere.
+
+---
+
 ## [0.16.02473] - 2026-09-01
 
 ### Changed

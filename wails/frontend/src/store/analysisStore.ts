@@ -5,10 +5,14 @@ import { useAppStore } from './appStore'
 import type { BookData } from '../types/draftline'
 
 export type AnalysisState = 'idle' | 'stale' | 'running' | 'current' | 'error'
-export type AnalysisModule = 'characters' | 'story' | 'pacing'
+
+// Status-bar chips. Ephemeral frontend state (nothing persisted): 'plot' is
+// driven by the Go pipeline's 'evidence' phase (fact/event indexing) and
+// 'prose' by its 'story' phase (tempo/readability/keyword statistics).
+export type AnalysisModule = 'characters' | 'plot' | 'prose'
 
 export interface AnalysisProgressEvent {
-  phase: 'characters' | 'relationships' | 'story' | 'complete' | string
+  phase: 'characters' | 'relationships' | 'evidence' | 'story' | 'complete' | string
   message: string
   chapter_index?: number
   chapter_title?: string
@@ -30,7 +34,7 @@ interface AnalysisStore {
 }
 
 const idleModules = (): Record<AnalysisModule, AnalysisState> => ({
-  characters: 'idle', story: 'idle', pacing: 'idle',
+  characters: 'idle', plot: 'idle', prose: 'idle',
 })
 
 export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
@@ -47,7 +51,7 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
       progress: 0,
       message: 'Story analysis is out of date',
       error: '',
-      modules: { characters: 'stale', story: 'stale', pacing: 'stale' },
+      modules: { characters: 'stale', plot: 'stale', prose: 'stale' },
     }
   }),
 
@@ -57,15 +61,19 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
     const modules = { ...current.modules }
     if (event.phase === 'characters') modules.characters = 'running'
     if (event.phase === 'relationships') modules.characters = 'current'
+    if (event.phase === 'evidence') {
+      modules.characters = 'current'
+      modules.plot = 'running'
+    }
     if (event.phase === 'story') {
       modules.characters = 'current'
-      modules.story = 'running'
-      modules.pacing = 'running'
+      modules.plot = 'current'
+      modules.prose = 'running'
     }
     if (event.phase === 'complete') {
       modules.characters = 'current'
-      modules.story = 'current'
-      modules.pacing = 'current'
+      modules.plot = 'current'
+      modules.prose = 'current'
     }
     return {
       state: event.phase === 'complete' ? 'current' : 'running',
@@ -84,7 +92,7 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
     const bookIdentity = `${before.book.file_path || ''}\u0000${before.book.metadata.created || ''}`
     set({
       state: 'running', progress: 1, message: 'Preparing manuscript analysis', error: '',
-      modules: { characters: 'running', story: 'stale', pacing: 'stale' },
+      modules: { characters: 'running', plot: 'stale', prose: 'stale' },
     })
     try {
       const result = await AnalyzeBook(before.book as any)
@@ -93,7 +101,7 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
       if (after.analysisRevision !== revision || currentIdentity !== bookIdentity) {
         set({
           state: 'stale', progress: 0, message: 'Story changed during analysis; waiting to run again',
-          modules: { characters: 'stale', story: 'stale', pacing: 'stale' },
+          modules: { characters: 'stale', plot: 'stale', prose: 'stale' },
         })
         const retryRevision = after.analysisRevision
         setTimeout(() => {
@@ -108,13 +116,13 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
       after.updateBook(result.book as unknown as BookData)
       set({
         state: 'current', progress: 100, message: 'Story analysis current', error: '',
-        modules: { characters: 'current', story: 'current', pacing: 'current' },
+        modules: { characters: 'current', plot: 'current', prose: 'current' },
       })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       set({
         state: 'error', progress: 0, message: 'Story analysis failed', error: message,
-        modules: { characters: 'error', story: 'error', pacing: 'error' },
+        modules: { characters: 'error', plot: 'error', prose: 'error' },
       })
     }
   },
