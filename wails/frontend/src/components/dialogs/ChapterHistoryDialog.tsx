@@ -4,6 +4,7 @@ import { GetChapterHistory, ListChapterHistory } from '../../../wailsjs/go/main/
 import type { ChapterHistoryEntry, ChapterHistorySnapshot, ChapterItem } from '../../types/draftline'
 import { diffContent } from '../../utils/diff'
 import { useBookStore } from '../../store/bookStore'
+import { useAppStore } from '../../store/appStore'
 
 function currentChapter(section: string, index: number, book: ReturnType<typeof useBookStore.getState>['book']): ChapterItem | null {
   if (!book || section === 'copyright') return null
@@ -12,13 +13,13 @@ function currentChapter(section: string, index: number, book: ReturnType<typeof 
 }
 
 export default function ChapterHistoryDialog() {
-  const { book, currentSection, currentIndex, closeChapterHistory, restoreChapterHistory } = useBookStore(useShallow(s => ({
+  const { book, currentSection, currentIndex, restoreChapterHistory } = useBookStore(useShallow(s => ({
     book: s.book,
     currentSection: s.currentSection,
     currentIndex: s.currentIndex,
-    closeChapterHistory: s.closeChapterHistory,
     restoreChapterHistory: s.restoreChapterHistory,
   })))
+  const closeChapterHistory = useAppStore(s => s.closeChapterHistory)
   const chapter = currentChapter(currentSection, currentIndex, book)
   const [entries, setEntries] = useState<ChapterHistoryEntry[]>([])
   const [selected, setSelected] = useState<ChapterHistorySnapshot | null>(null)

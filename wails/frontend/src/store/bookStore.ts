@@ -13,6 +13,10 @@ import { useAppStore } from './appStore'
 import { useEditorStore, type EditorInstance } from './editorStore'
 import { useStoryBibleStore } from './storyBibleStore'
 
+// Status-bar text lives in appStore (app-level UI state); this is the funnel
+// bookStore's save/index flows report through.
+const setStatus = (msg: string) => useAppStore.getState().setStatusMessage(msg)
+
 // Auto-save debounce timer
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
 const AUTO_SAVE_DELAY = 5000
@@ -118,10 +122,11 @@ function scheduleAutoSave() {
       const outcome = await performSave('save')
       if (bookSession !== session) return
       if (outcome.status === 'saved') {
-        useBookStore.setState({ isAutoSaving: false, statusMessage: 'Auto-saved' })
+        useBookStore.setState({ isAutoSaving: false })
+        setStatus('Auto-saved')
         setTimeout(() => {
-          if (useBookStore.getState().statusMessage === 'Auto-saved') {
-            useBookStore.setState({ statusMessage: '' })
+          if (useAppStore.getState().statusMessage === 'Auto-saved') {
+            setStatus('')
           }
         }, 2000)
       } else {
@@ -167,15 +172,15 @@ function scheduleChapterHistory(chapterID?: string) {
         const result = await SaveBookSnapshots(latestBook as any, requests as any)
         if (bookSession !== session) return
         if (result.success) {
-          useBookStore.setState({ statusMessage: 'Chapter history updated' })
+          setStatus('Chapter history updated')
         } else {
           ids.forEach(id => changedChapterIDs.add(id))
-          useBookStore.setState({ statusMessage: `Chapter history failed: ${result.error || 'unknown error'}` })
+          setStatus(`Chapter history failed: ${result.error || 'unknown error'}`)
         }
       } catch (e) {
         if (bookSession === session) {
           ids.forEach(id => changedChapterIDs.add(id))
-          useBookStore.setState({ statusMessage: `Chapter history failed: ${String(e)}` })
+          setStatus(`Chapter history failed: ${String(e)}`)
         }
       }
     })
@@ -183,15 +188,12 @@ function scheduleChapterHistory(chapterID?: string) {
   }, HISTORY_SNAPSHOT_DELAY)
 }
 
+// Only the dialogs entangled with the save pipeline live here; self-contained
+// dialogs (metadata, new chapter, export, chapter history) are in appStore.
 interface DialogState {
-  showMetadata: boolean
-  showNewChapter: boolean
-  newChapterSection: Section | null
   showUnsavedWarning: boolean
   pendingAction: 'new' | 'open' | null
   showNewBookWizard: boolean
-  showExportWizard: boolean
-  showChapterHistory: boolean
 }
 
 interface BookStore {
@@ -203,11 +205,9 @@ interface BookStore {
   isAutoSaving: boolean
   isIndexing: boolean
   analysisRevision: number
-  statusMessage: string
 
   // UI state
   dialogs: DialogState
-  leftPanelOpen: boolean
 
   // Workspace view: the editor, or the full-screen Cast view
   viewMode: 'editor' | 'cast'
@@ -258,16 +258,6 @@ interface BookStore {
   clearAllCharacters: () => void
 
   // UI actions
-  toggleLeftPanel: () => void
-  openMetadataDialog: () => void
-  closeMetadataDialog: () => void
-  openNewChapterDialog: (section: Section) => void
-  closeNewChapterDialog: () => void
-  openExportWizard: () => void
-  closeExportWizard: () => void
-  openChapterHistory: () => void
-  closeChapterHistory: () => void
-  setStatusMessage: (msg: string) => void
   closeUnsavedWarning: () => void
   saveAndProceed: () => Promise<void>
   discardAndProceed: () => Promise<void>
@@ -336,11 +326,9 @@ export const useBookStore = create<BookStore>((set, get) => ({
   isAutoSaving: false,
   isIndexing: false,
   analysisRevision: 0,
-  statusMessage: 'Ready',
 
   // UI state
-  dialogs: { showMetadata: false, showNewChapter: false, newChapterSection: null, showUnsavedWarning: false, pendingAction: null, showNewBookWizard: false, showExportWizard: false, showChapterHistory: false },
-  leftPanelOpen: true,
+  dialogs: { showUnsavedWarning: false, pendingAction: null, showNewBookWizard: false },
 
   viewMode: 'editor',
   setViewMode: (mode) => set({ viewMode: mode }),
@@ -385,7 +373,8 @@ export const useBookStore = create<BookStore>((set, get) => ({
       if (!book?.version) return
       const section: Section = book.body.length > 0 ? 'body' : 'front_matter'
       beginBookSession()
-      set({ book, currentSection: section, currentIndex: 0, isDirty: false, analysisRevision: 0, statusMessage: `Opened: ${book.metadata.title}` })
+      set({ book, currentSection: section, currentIndex: 0, isDirty: false, analysisRevision: 0 })
+      setStatus(`Opened: ${book.metadata.title}`)
       useEditorStore.getState().clearPendingDiff()
       if (book.file_path) {
         const wordCount = countBookWords(book)
@@ -396,7 +385,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
         }))
       }
     } catch (e) {
-      set({ statusMessage: `Error opening file: ${e}` })
+      setStatus(`Error opening file: ${e}`)
     }
   },
 
@@ -411,7 +400,8 @@ export const useBookStore = create<BookStore>((set, get) => ({
       if (!book?.version) return
       const section: Section = book.body.length > 0 ? 'body' : 'front_matter'
       beginBookSession()
-      set({ book, currentSection: section, currentIndex: 0, isDirty: false, analysisRevision: 0, statusMessage: `Opened: ${book.metadata.title}` })
+      set({ book, currentSection: section, currentIndex: 0, isDirty: false, analysisRevision: 0 })
+      setStatus(`Opened: ${book.metadata.title}`)
       useEditorStore.getState().clearPendingDiff()
       const wordCount = countBookWords(book)
       const chapterCount = book.front_matter.length + book.body.length + book.back_matter.length
@@ -420,7 +410,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
         lastOpened: new Date().toISOString(), stats: { chapters: chapterCount, words: wordCount }
       }))
     } catch (e) {
-      set({ statusMessage: `Error opening file: ${e}` })
+      setStatus(`Error opening file: ${e}`)
     }
   },
 
@@ -428,11 +418,11 @@ export const useBookStore = create<BookStore>((set, get) => ({
     if (!get().book) return
     const outcome = await performSave('save')
     if (outcome.status === 'saved') {
-      set({ statusMessage: `Saved: ${outcome.filePath}` })
+      setStatus(`Saved: ${outcome.filePath}`)
     } else if (outcome.status === 'stale') {
-      set({ statusMessage: 'Newer edits were made while saving — save again' })
+      setStatus('Newer edits were made while saving — save again')
     } else if (outcome.status === 'error') {
-      set({ statusMessage: `Save failed: ${outcome.message}` })
+      setStatus(`Save failed: ${outcome.message}`)
     }
   },
 
@@ -440,11 +430,11 @@ export const useBookStore = create<BookStore>((set, get) => ({
     if (!get().book) return
     const outcome = await performSave('saveAs')
     if (outcome.status === 'saved') {
-      set({ statusMessage: `Saved: ${outcome.filePath}` })
+      setStatus(`Saved: ${outcome.filePath}`)
     } else if (outcome.status === 'stale') {
-      set({ statusMessage: 'Newer edits were made while saving — save again' })
+      setStatus('Newer edits were made while saving — save again')
     } else if (outcome.status === 'error') {
-      set({ statusMessage: `Save failed: ${outcome.message}` })
+      setStatus(`Save failed: ${outcome.message}`)
     }
     // 'cancelled' (user dismissed the picker) stays silent.
   },
@@ -465,12 +455,12 @@ export const useBookStore = create<BookStore>((set, get) => ({
       saveChain = run.catch(() => {})
       const result = await run
       if (bookSession !== session || !result.success) {
-        set({ statusMessage: `Could not create restore checkpoint: ${result.error || 'unknown error'}` })
+        setStatus(`Could not create restore checkpoint: ${result.error || 'unknown error'}`)
         return false
       }
     }
     get().updateCurrentContent(content)
-    set({ statusMessage: 'Previous chapter version restored — save to keep it' })
+    setStatus('Previous chapter version restored — save to keep it')
     return true
   },
 
@@ -479,20 +469,21 @@ export const useBookStore = create<BookStore>((set, get) => ({
     if (book && isDirty) {
       const outcome = await performSave('save')
       if (outcome.status === 'error') {
-        set({ statusMessage: `Save failed: ${outcome.message} — project not closed` })
+        setStatus(`Save failed: ${outcome.message} — project not closed`)
         return
       }
       if (outcome.status === 'cancelled') {
-        set({ statusMessage: 'Save cancelled — project not closed' })
+        setStatus('Save cancelled — project not closed')
         return
       }
       if (outcome.status !== 'saved') {
-        set({ statusMessage: 'Newer edits are still unsaved — project not closed' })
+        setStatus('Newer edits are still unsaved — project not closed')
         return
       }
     }
     beginBookSession()
-    set({ book: null, currentSection: 'body', currentIndex: 0, isDirty: false, analysisRevision: 0, statusMessage: '' })
+    set({ book: null, currentSection: 'body', currentIndex: 0, isDirty: false, analysisRevision: 0 })
+    setStatus('')
     useEditorStore.getState().clearPendingDiff()
     useAppStore.getState().setShowWelcome(true)
   },
@@ -659,7 +650,8 @@ export const useBookStore = create<BookStore>((set, get) => ({
   indexBook: async () => {
     const { book } = get()
     if (!book) return
-    set({ isIndexing: true, statusMessage: 'Indexing characters...' })
+    set({ isIndexing: true })
+    setStatus('Indexing characters...')
     try {
       const result = await IndexBook(book as any)
       if (result.success && result.book) {
@@ -667,14 +659,16 @@ export const useBookStore = create<BookStore>((set, get) => ({
           book: result.book as unknown as BookData,
           isIndexing: false,
           isDirty: true,
-          statusMessage: `Found ${result.characters_found} characters (${result.new_characters} new)`,
         })
+        setStatus(`Found ${result.characters_found} characters (${result.new_characters} new)`)
         scheduleAutoSave()
       } else {
-        set({ isIndexing: false, statusMessage: result.error || 'Indexing failed' })
+        set({ isIndexing: false })
+        setStatus(result.error || 'Indexing failed')
       }
     } catch (e) {
-      set({ isIndexing: false, statusMessage: `Indexing error: ${e}` })
+      set({ isIndexing: false })
+      setStatus(`Indexing error: ${e}`)
     }
   },
 
@@ -690,8 +684,8 @@ export const useBookStore = create<BookStore>((set, get) => ({
         analysis: { ...book.analysis, entity_resolution: undefined, relationships: undefined },
       },
       isDirty: true,
-      statusMessage: 'All characters cleared — re-index to detect them fresh',
     })
+    setStatus('All characters cleared — re-index to detect them fresh')
     scheduleAutoSave()
   },
 
@@ -701,14 +695,15 @@ export const useBookStore = create<BookStore>((set, get) => ({
     try {
       const result = await MergeEntities(book as any, entityIds, canonical)
       if (result.success && result.book) {
-        set({ book: result.book as unknown as BookData, isDirty: true, statusMessage: 'Characters merged' })
+        set({ book: result.book as unknown as BookData, isDirty: true })
+        setStatus('Characters merged')
         scheduleAutoSave()
         return true
       }
-      set({ statusMessage: result.error || 'Merge failed' })
+      setStatus(result.error || 'Merge failed')
       return false
     } catch (e) {
-      set({ statusMessage: `Merge error: ${e}` })
+      setStatus(`Merge error: ${e}`)
       return false
     }
   },
@@ -719,29 +714,20 @@ export const useBookStore = create<BookStore>((set, get) => ({
     try {
       const result = await SplitEntity(book as any, entityId, mentionIds, newCanonical)
       if (result.success && result.book) {
-        set({ book: result.book as unknown as BookData, isDirty: true, statusMessage: 'Character split' })
+        set({ book: result.book as unknown as BookData, isDirty: true })
+        setStatus('Character split')
         scheduleAutoSave()
         return true
       }
-      set({ statusMessage: result.error || 'Split failed' })
+      setStatus(result.error || 'Split failed')
       return false
     } catch (e) {
-      set({ statusMessage: `Split error: ${e}` })
+      setStatus(`Split error: ${e}`)
       return false
     }
   },
 
   // UI actions
-  toggleLeftPanel: () => set(s => ({ leftPanelOpen: !s.leftPanelOpen })),
-  openMetadataDialog: () => set(s => ({ dialogs: { ...s.dialogs, showMetadata: true } })),
-  closeMetadataDialog: () => set(s => ({ dialogs: { ...s.dialogs, showMetadata: false } })),
-  openNewChapterDialog: (section) => set(s => ({ dialogs: { ...s.dialogs, showNewChapter: true, newChapterSection: section } })),
-  closeNewChapterDialog: () => set(s => ({ dialogs: { ...s.dialogs, showNewChapter: false, newChapterSection: null } })),
-  openExportWizard: () => set(s => ({ dialogs: { ...s.dialogs, showExportWizard: true } })),
-  closeExportWizard: () => set(s => ({ dialogs: { ...s.dialogs, showExportWizard: false } })),
-  openChapterHistory: () => set(s => ({ dialogs: { ...s.dialogs, showChapterHistory: true } })),
-  closeChapterHistory: () => set(s => ({ dialogs: { ...s.dialogs, showChapterHistory: false } })),
-  setStatusMessage: (msg) => set({ statusMessage: msg }),
 
   closeUnsavedWarning: () => set(s => ({ dialogs: { ...s.dialogs, showUnsavedWarning: false, pendingAction: null } })),
 
@@ -749,7 +735,8 @@ export const useBookStore = create<BookStore>((set, get) => ({
     try {
       const book: BookData = await NewBook()
       beginBookSession()
-      set({ book, currentSection: 'body', currentIndex: 0, isDirty: false, analysisRevision: 0, statusMessage: 'Ready' })
+      set({ book, currentSection: 'body', currentIndex: 0, isDirty: false, analysisRevision: 0 })
+      setStatus('Ready')
     } catch (e) {
       console.error('initBook failed:', e)
     }
@@ -761,9 +748,10 @@ export const useBookStore = create<BookStore>((set, get) => ({
       const book: BookData = await NewBook()
       const merged: BookData = { ...book, metadata: { ...book.metadata, title: title || 'Untitled', author, publisher } }
       beginBookSession()
-      set({ book: merged, currentSection: 'body', currentIndex: 0, isDirty: false, analysisRevision: 0, statusMessage: 'New project created' })
+      set({ book: merged, currentSection: 'body', currentIndex: 0, isDirty: false, analysisRevision: 0 })
+      setStatus('New project created')
     } catch (e) {
-      set({ statusMessage: `Error: ${e}` })
+      setStatus(`Error: ${e}`)
     }
   },
 
@@ -772,7 +760,8 @@ export const useBookStore = create<BookStore>((set, get) => ({
     const section: Section = book.body.length > 0 ? 'body' : book.front_matter.length > 0 ? 'front_matter' : 'back_matter'
     beginBookSession()
     const identifiedBook = ensureFrontendChapterIDs(book)
-    set({ book: identifiedBook, currentSection: section, currentIndex: 0, isDirty: true, analysisRevision: 0, statusMessage: `Imported: ${book.metadata.title}` })
+    set({ book: identifiedBook, currentSection: section, currentIndex: 0, isDirty: true, analysisRevision: 0 })
+    setStatus(`Imported: ${book.metadata.title}`)
     scheduleAutoSave()
     useAppStore.getState().setShowWelcome(false)
   },
@@ -788,17 +777,17 @@ export const useBookStore = create<BookStore>((set, get) => ({
     if (book) {
       const outcome = await performSave('save')
       if (outcome.status === 'error') {
-        set({ statusMessage: `Save failed: ${outcome.message}` })
+        setStatus(`Save failed: ${outcome.message}`)
         return // dialog stays open, pendingAction retained
       }
       if (outcome.status === 'cancelled') {
         return // dismissing the SaveAs picker is not consent to discard
       }
       if (outcome.status !== 'saved') {
-        set({ statusMessage: 'Newer edits are still unsaved — action cancelled' })
+        setStatus('Newer edits are still unsaved — action cancelled')
         return
       }
-      set({ statusMessage: `Saved: ${outcome.filePath}` })
+      setStatus(`Saved: ${outcome.filePath}`)
     }
     set(s => ({ dialogs: { ...s.dialogs, showUnsavedWarning: false, pendingAction: null } }))
     if (action === 'new') {
@@ -809,8 +798,9 @@ export const useBookStore = create<BookStore>((set, get) => ({
         if (!opened?.version) return
         const section: Section = opened.body.length > 0 ? 'body' : 'front_matter'
         beginBookSession()
-        set({ book: opened, currentSection: section, currentIndex: 0, isDirty: false, analysisRevision: 0, statusMessage: `Opened: ${opened.metadata.title}` })
-      } catch (e) { set({ statusMessage: `Error opening file: ${e}` }) }
+        set({ book: opened, currentSection: section, currentIndex: 0, isDirty: false, analysisRevision: 0 })
+        setStatus(`Opened: ${opened.metadata.title}`)
+      } catch (e) { setStatus(`Error opening file: ${e}`) }
     }
   },
 
@@ -827,8 +817,9 @@ export const useBookStore = create<BookStore>((set, get) => ({
         if (!opened?.version) return
         const section: Section = opened.body.length > 0 ? 'body' : 'front_matter'
         beginBookSession()
-        set({ book: opened, currentSection: section, currentIndex: 0, isDirty: false, analysisRevision: 0, statusMessage: `Opened: ${opened.metadata.title}` })
-      } catch (e) { set({ statusMessage: `Error opening file: ${e}` }) }
+        set({ book: opened, currentSection: section, currentIndex: 0, isDirty: false, analysisRevision: 0 })
+        setStatus(`Opened: ${opened.metadata.title}`)
+      } catch (e) { setStatus(`Error opening file: ${e}`) }
     }
   },
 }))

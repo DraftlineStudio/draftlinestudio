@@ -25,7 +25,7 @@ import ExportWizard from './components/dialogs/ExportWizard'
 const ChapterHistoryDialog = lazy(() => import('./components/dialogs/ChapterHistoryDialog'))
 
 export default function App() {
-  const { hasBook, bookTitle, bookFilePath, newBook, openBook, openRecentBook, saveBook, saveBookAs, dialogs, initBook, toggleLeftPanel, viewMode, setViewMode } = useBookStore(useShallow(s => ({
+  const { hasBook, bookTitle, bookFilePath, newBook, openBook, openRecentBook, saveBook, saveBookAs, dialogs, initBook, viewMode, setViewMode } = useBookStore(useShallow(s => ({
     hasBook: s.book !== null,
     bookTitle: s.book?.metadata.title,
     bookFilePath: s.book?.file_path,
@@ -36,11 +36,10 @@ export default function App() {
     saveBookAs: s.saveBookAs,
     dialogs: s.dialogs,
     initBook: s.initBook,
-    toggleLeftPanel: s.toggleLeftPanel,
     viewMode: s.viewMode,
     setViewMode: s.setViewMode,
   })))
-  const { loadSettings, settings, showSettings, showWelcome, setShowWelcome, loadRecentProjects, showNewUniverse, setShowNewUniverse } = useAppStore()
+  const { loadSettings, settings, showSettings, showWelcome, setShowWelcome, loadRecentProjects, showNewUniverse, setShowNewUniverse, toggleLeftPanel, showMetadata, showNewChapter, newChapterSection, showExportWizard, showChapterHistory } = useAppStore()
   const prevThemeRef = useRef<'light' | 'dark' | null>(null)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [targetTheme, setTargetTheme] = useState<'light' | 'dark'>('dark')
@@ -192,15 +191,15 @@ export default function App() {
       </div>
       <StatusBar />
       <AnalysisCoordinator />
-      {dialogs.showMetadata && <MetadataDialog />}
-      {dialogs.showNewChapter && dialogs.newChapterSection && (
-        <NewChapterDialog section={dialogs.newChapterSection} />
+      {showMetadata && <MetadataDialog />}
+      {showNewChapter && newChapterSection && (
+        <NewChapterDialog section={newChapterSection} />
       )}
       {dialogs.showNewBookWizard && <NewBookWizard />}
       {showNewUniverse && <NewUniverseWizard />}
       {dialogs.showUnsavedWarning && <UnsavedChangesDialog />}
-      {dialogs.showExportWizard && <ExportWizard />}
-      {dialogs.showChapterHistory && <Suspense fallback={null}><ChapterHistoryDialog /></Suspense>}
+      {showExportWizard && <ExportWizard />}
+      {showChapterHistory && <Suspense fallback={null}><ChapterHistoryDialog /></Suspense>}
       {showSettings && <AppSettingsDialog />}
     </div>
   )

@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useBookStore } from '../../store/bookStore'
+import { useAppStore } from '../../store/appStore'
 import { ExportEPUB, ExportDOCX, ExportPDF, ExportPrintPDF } from '../../../wailsjs/go/main/App'
 
 type ExportFormat = 'epub' | 'docx' | 'pdf' | 'print-pdf'
@@ -61,7 +62,8 @@ const TRIM_SIZES: Record<string, { label: string; w: string; h: string }> = {
 }
 
 export default function ExportWizard() {
-  const { book, closeExportWizard, setStatusMessage } = useBookStore()
+  const { book } = useBookStore()
+  const { closeExportWizard, setStatusMessage } = useAppStore()
 
   const [step, setStep] = useState<WizardStep>('format')
   const [format, setFormat] = useState<ExportFormat | null>(null)

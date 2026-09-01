@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { LoadSettings, SaveSettings, BrowseForDirectory, GetRecentProjects, AddRecentProject, RemoveRecentProject, ClearRecentProjects } from '../../wailsjs/go/main/App'
 import { types } from '../../wailsjs/go/models'
+import type { Section } from '../types/draftline'
 
 type RecentProject = types.RecentProject
 
@@ -53,6 +54,28 @@ interface AppStore {
   recentProjects: RecentProject[]
   showWelcome: boolean
   showNewUniverse: boolean
+
+  // App-level UI state (status bar, panels, self-contained dialogs).
+  // Dialogs entangled with the save pipeline (unsaved-changes warning,
+  // new-book wizard) live in bookStore instead.
+  statusMessage: string
+  setStatusMessage: (msg: string) => void
+  leftPanelOpen: boolean
+  toggleLeftPanel: () => void
+  showMetadata: boolean
+  openMetadataDialog: () => void
+  closeMetadataDialog: () => void
+  showNewChapter: boolean
+  newChapterSection: Section | null
+  openNewChapterDialog: (section: Section) => void
+  closeNewChapterDialog: () => void
+  showExportWizard: boolean
+  openExportWizard: () => void
+  closeExportWizard: () => void
+  showChapterHistory: boolean
+  openChapterHistory: () => void
+  closeChapterHistory: () => void
+
   loadSettings: () => Promise<void>
   saveSettings: (patch: Partial<AppSettings>) => Promise<void>
   openSettings: () => void
@@ -117,6 +140,24 @@ export const useAppStore = create<AppStore>((set, get) => ({
   recentProjects: [],
   showWelcome: true,
   showNewUniverse: false,
+
+  statusMessage: 'Ready',
+  setStatusMessage: (msg) => set({ statusMessage: msg }),
+  leftPanelOpen: true,
+  toggleLeftPanel: () => set(s => ({ leftPanelOpen: !s.leftPanelOpen })),
+  showMetadata: false,
+  openMetadataDialog: () => set({ showMetadata: true }),
+  closeMetadataDialog: () => set({ showMetadata: false }),
+  showNewChapter: false,
+  newChapterSection: null,
+  openNewChapterDialog: (section) => set({ showNewChapter: true, newChapterSection: section }),
+  closeNewChapterDialog: () => set({ showNewChapter: false, newChapterSection: null }),
+  showExportWizard: false,
+  openExportWizard: () => set({ showExportWizard: true }),
+  closeExportWizard: () => set({ showExportWizard: false }),
+  showChapterHistory: false,
+  openChapterHistory: () => set({ showChapterHistory: true }),
+  closeChapterHistory: () => set({ showChapterHistory: false }),
 
   loadSettings: async () => {
     try {

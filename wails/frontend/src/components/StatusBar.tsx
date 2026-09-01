@@ -1,19 +1,20 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useBookStore } from '../store/bookStore'
+import { useAppStore } from '../store/appStore'
 import { analyzeText, getScoreColor, getScoreLabel, type AIDetectionResult } from '../services/aiDetection'
 import { countBookWords, getCurrentContent } from '../utils/textUtils'
 import { useAnalysisStore } from '../store/analysisStore'
 
 export default function StatusBar() {
-  const { book, isDirty, isAutoSaving, statusMessage, currentSection, currentIndex } = useBookStore(useShallow(s => ({
+  const { book, isDirty, isAutoSaving, currentSection, currentIndex } = useBookStore(useShallow(s => ({
     book: s.book,
     isDirty: s.isDirty,
     isAutoSaving: s.isAutoSaving,
-    statusMessage: s.statusMessage,
     currentSection: s.currentSection,
     currentIndex: s.currentIndex,
   })))
+  const statusMessage = useAppStore(s => s.statusMessage)
   // Whole-book word count is an HTML re-parse of every chapter; memoize it so it
   // only recomputes when the book content actually changes — not on every
   // isDirty / statusMessage / isAutoSaving toggle re-render.

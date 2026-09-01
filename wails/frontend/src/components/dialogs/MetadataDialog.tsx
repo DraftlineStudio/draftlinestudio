@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useBookStore } from '../../store/bookStore'
+import { useAppStore } from '../../store/appStore'
 
 export default function MetadataDialog() {
-  const { book, updateMetadata, closeMetadataDialog } = useBookStore()
+  const { book, updateMetadata } = useBookStore()
+  const closeMetadataDialog = useAppStore(s => s.closeMetadataDialog)
   const meta = book?.metadata
 
   const [title, setTitle] = useState(meta?.title || '')
