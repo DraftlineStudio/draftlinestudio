@@ -2,6 +2,15 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02473] - 2026-09-01
+
+### Changed
+- Simplified the status bar to Characters, Plot, and Prose chips.
+- Added a Character Map button to the status bar.
+
+### Removed
+- Removed the AI detection meter and word count from the status bar.
+
 ## [0.16.02470] - 2026-09-01
 
 ### Added

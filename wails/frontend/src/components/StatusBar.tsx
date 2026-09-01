@@ -1,26 +1,17 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useBookStore } from '../store/bookStore'
 import { useAppStore } from '../store/appStore'
-import { analyzeText, getScoreColor, getScoreLabel, type AIDetectionResult } from '../services/aiDetection'
-import { countBookWords, getCurrentContent } from '../utils/textUtils'
 import { useAnalysisStore } from '../store/analysisStore'
 
 export default function StatusBar() {
-  const { book, isDirty, isAutoSaving, currentSection, currentIndex, setViewMode } = useBookStore(useShallow(s => ({
+  const { book, isDirty, isAutoSaving, setViewMode } = useBookStore(useShallow(s => ({
     book: s.book,
     isDirty: s.isDirty,
     isAutoSaving: s.isAutoSaving,
-    currentSection: s.currentSection,
-    currentIndex: s.currentIndex,
     setViewMode: s.setViewMode,
   })))
   const statusMessage = useAppStore(s => s.statusMessage)
   const openStorySearch = useAppStore(s => s.openStorySearch)
-  // Whole-book word count is an HTML re-parse of every chapter; memoize it so it
-  // only recomputes when the book content actually changes — not on every
-  // isDirty / statusMessage / isAutoSaving toggle re-render.
-  const words = useMemo(() => (book ? countBookWords(book) : 0), [book])
   const filePath = book?.file_path || null
   const fileName = filePath ? filePath.split(/[\\/]/).pop() : null
   const analysis = useAnalysisStore(useShallow(s => ({
@@ -31,33 +22,6 @@ export default function StatusBar() {
     error: s.error,
     run: s.run,
   })))
-
-  // Get current chapter content for AI detection
-  const currentContent = getCurrentContent(book, currentSection, currentIndex)
-
-  // Debounced AI analysis - only run 2 seconds after typing stops
-  const [aiResult, setAiResult] = useState<AIDetectionResult | null>(null)
-  const analysisTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    // Clear any pending analysis
-    if (analysisTimer.current) clearTimeout(analysisTimer.current)
-
-    // Don't analyze if content is too short
-    if (!currentContent || currentContent.length < 100) {
-      setAiResult(null)
-      return
-    }
-
-    // Debounce: wait 2 seconds after typing stops
-    analysisTimer.current = setTimeout(() => {
-      setAiResult(analyzeText(currentContent))
-    }, 2000)
-
-    return () => {
-      if (analysisTimer.current) clearTimeout(analysisTimer.current)
-    }
-  }, [currentContent])
 
   return (
     <div className="statusbar">
@@ -94,6 +58,17 @@ export default function StatusBar() {
             Story Search
           </button>
         )}
+        {book && (
+          <button className="statusbar-story-search" onClick={() => setViewMode('cast')} title="Open the character codex">
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.25">
+              <circle cx="4.5" cy="3.5" r="2" />
+              <path d="M1.5 10.5v-1a3 3 0 0 1 3-3h.5a3 3 0 0 1 3 3v1" />
+              <path d="M8 1.8a2 2 0 0 1 0 3.4" />
+              <path d="M10.5 10.5v-1a3 3 0 0 0-2-2.8" />
+            </svg>
+            Character Map
+          </button>
+        )}
         {book && analysis.state !== 'idle' && (
           <button
             className="statusbar-analysis-modules"
@@ -101,35 +76,16 @@ export default function StatusBar() {
             disabled={analysis.state === 'running'}
             title={analysis.state === 'error' ? analysis.error : analysis.state === 'stale' ? 'Analysis is out of date; click to run now' : 'Story analysis is current'}
           >
+            {/* Display labels only — the internal module keys stay
+                'story'/'pacing' (settings/analysis compatibility). */}
             {(['characters', 'story', 'pacing'] as const).map(module => (
               <span className="statusbar-analysis-module" key={module}>
                 <i className={`analysis-state-dot ${analysis.modules[module]}`} />
-                {module === 'characters' ? 'Characters' : module === 'story' ? 'Story' : 'Pacing'}
+                {module === 'characters' ? 'Characters' : module === 'story' ? 'Plot' : 'Prose'}
               </span>
             ))}
           </button>
         )}
-        {aiResult && (
-          <div
-            className="statusbar-ai-score"
-            title={`AI Detection: ${aiResult.score}% - ${getScoreLabel(aiResult.score)} (${aiResult.confidence} confidence)`}
-          >
-            <span className="ai-score-label">AI</span>
-            <div className="ai-score-bar">
-              <div
-                className="ai-score-fill"
-                style={{
-                  width: `${aiResult.score}%`,
-                  background: getScoreColor(aiResult.score),
-                }}
-              />
-            </div>
-            <span className="ai-score-value" style={{ color: getScoreColor(aiResult.score) }}>
-              {aiResult.score}%
-            </span>
-          </div>
-        )}
-        <span className="statusbar-words">{words.toLocaleString()} words</span>
       </div>
     </div>
   )
