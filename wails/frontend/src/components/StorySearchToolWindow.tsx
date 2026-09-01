@@ -1,20 +1,26 @@
-import { FormEvent, Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { SearchStory } from '../../wailsjs/go/main/App'
-import { types } from '../../wailsjs/go/models'
 import { useAppStore } from '../store/appStore'
 import { useBookStore } from '../store/bookStore'
-import type { BookData, Section } from '../types/draftline'
-import { isConfirmedCharacter } from '../utils/characterStatus'
-import DetailInsightPanel from './storysearch/DetailInsightPanel'
-import EvidenceIndexPanel from './storysearch/EvidenceIndexPanel'
-import StoryTimelinePanel from './storysearch/StoryTimelinePanel'
+import type { Section } from '../types/draftline'
+import AskPanel from './storysearch/AskPanel'
 import ContinuityPanel from './storysearch/ContinuityPanel'
+import EvidenceIndexPanel from './storysearch/EvidenceIndexPanel'
+import StoryGraphPanel from './storysearch/StoryGraphPanel'
+import StoryTimelinePanel from './storysearch/StoryTimelinePanel'
 
-type SearchResult = types.StorySearchResult
-type SearchMatch = types.StorySearchMatch
-type SearchStarter = { label: string; detail: string; query: string }
-type SearchStarterGroup = { id: string; label: string; starters: SearchStarter[] }
+type ToolView = 'search' | 'graph' | 'timeline' | 'continuity' | 'evidence'
+
+const HINTS: Record<ToolView, string> = {
+  search: 'Source-backed manuscript trails · no AI',
+  graph: 'Derived threads and beats · manuscript order',
+  timeline: 'Automatic events · explicit uncertainty',
+  continuity: 'Review questions · paired sources',
+  evidence: 'Everything Draftline has indexed',
+}
+
+/** Collapsed height of the bar; the expand toggle swaps between this and tall. */
+const TALL_HEIGHT = 560
 
 export default function StorySearchToolWindow() {
   const { book, setCurrentChapter, setViewMode } = useBookStore(useShallow(s => ({
@@ -28,40 +34,14 @@ export default function StorySearchToolWindow() {
     saveHeight: s.setBottomToolHeight,
   })))
   const [panelHeight, setPanelHeight] = useState(height)
-  const [query, setQuery] = useState('')
-  const [activeView, setActiveView] = useState<'search' | 'timeline' | 'continuity' | 'evidence'>('search')
-  const [result, setResult] = useState<SearchResult | null>(null)
-  const [loading, setLoading] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-  const firstRef = useRef<HTMLButtonElement>(null)
-  const lastRef = useRef<HTMLButtonElement>(null)
-
-  useEffect(() => { if (activeView === 'search') inputRef.current?.focus() }, [activeView])
-  useEffect(() => { setResult(null) }, [book?.file_path])
-
-  async function submit(event?: FormEvent) {
-    event?.preventDefault()
-    await runSearch(query)
-  }
-
-  async function runSearch(value: string) {
-    const cleaned = value.trim()
-    if (!book || !cleaned || loading) return
-    setLoading(true)
-    try {
-      setResult(await SearchStory(book as types.BookData, types.StorySearchRequest.createFrom({ query: cleaned, limit: 150 })))
-    } catch (error) {
-      setResult(types.StorySearchResult.createFrom({ query: cleaned, matches: [], total: 0, error: String(error) }))
-    } finally {
-      setLoading(false)
-    }
-  }
+  const [restoreHeight, setRestoreHeight] = useState(height)
+  const [activeView, setActiveView] = useState<ToolView>('search')
 
   function beginResize(event: React.PointerEvent<HTMLDivElement>) {
     event.preventDefault()
     const startY = event.clientY
     const startHeight = panelHeight
-    const clamp = (value: number) => Math.max(170, Math.min(560, value))
+    const clamp = (value: number) => Math.max(170, Math.min(TALL_HEIGHT, value))
     const onMove = (move: PointerEvent) => setPanelHeight(clamp(startHeight + startY - move.clientY))
     const onUp = (up: PointerEvent) => {
       const finalHeight = clamp(startHeight + startY - up.clientY)
@@ -74,6 +54,18 @@ export default function StorySearchToolWindow() {
     window.addEventListener('pointerup', onUp)
   }
 
+  function toggleExpand() {
+    if (panelHeight >= TALL_HEIGHT - 4) {
+      const target = Math.max(170, Math.min(TALL_HEIGHT, restoreHeight))
+      setPanelHeight(target)
+      saveHeight(target)
+      return
+    }
+    setRestoreHeight(panelHeight)
+    setPanelHeight(TALL_HEIGHT)
+    saveHeight(TALL_HEIGHT)
+  }
+
   function navigateSource(section: Section, sectionIndex: number, evidenceQuery: string) {
     setViewMode('editor')
     setCurrentChapter(section, sectionIndex)
@@ -82,232 +74,101 @@ export default function StorySearchToolWindow() {
     }, 0)
   }
 
-  function navigate(match: SearchMatch) {
-    navigateSource(match.section as Section, match.section_index, match.matched_terms[0] ?? '')
-  }
-
-  const aliases = useMemo(() => result?.resolved_entities ?? [], [result])
-  const starterGroups = useMemo(() => buildSearchStarters(book), [book])
-  const truncated = result ? result.total > result.matches.length : false
+  const expanded = panelHeight >= TALL_HEIGHT - 4
+  const evidenceCount = book?.analysis?.evidence?.records.length ?? 0
 
   return (
-    <section className="story-search-window" style={{ height: panelHeight }} aria-label="Ask Draftline and Story Timeline">
+    <section className="story-search-window" style={{ height: panelHeight }} aria-label="Ask Draftline and Story Graph">
       <div className="story-search-resizer" onPointerDown={beginResize} />
       <header className="story-search-header">
-        <button type="button" className={`story-search-tab ${activeView === 'search' ? 'active' : ''}`} onClick={() => setActiveView('search')}>
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.25">
-            <circle cx="5" cy="5" r="3.4" /><path d="M7.5 7.5 11 11" />
+        <Tab view="search" active={activeView} onSelect={setActiveView} label="Ask Draftline">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
           </svg>
-          Ask Draftline
-        </button>
-        <button type="button" className={`story-search-tab ${activeView === 'timeline' ? 'active' : ''}`} onClick={() => setActiveView('timeline')}>
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
+        </Tab>
+        <Tab view="graph" active={activeView} onSelect={setActiveView} label="Story Graph">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="5" cy="6" r="2.2" /><circle cx="12" cy="12" r="2.2" /><circle cx="19" cy="6" r="2.2" /><path d="M7 7.5l3 3M14 10.5l3-3" />
+          </svg>
+        </Tab>
+        <Tab view="timeline" active={activeView} onSelect={setActiveView} label="Timeline">
+          <svg width="13" height="13" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
             <path d="M2 1.5v9M2 3.1h3.2M2 6h6.3M2 8.9h4.8" /><circle cx="5.7" cy="3.1" r=".8" /><circle cx="8.8" cy="6" r=".8" /><circle cx="7.3" cy="8.9" r=".8" />
           </svg>
-          Timeline
-        </button>
-        <button type="button" className={`story-search-tab ${activeView === 'continuity' ? 'active' : ''}`} onClick={() => setActiveView('continuity')}>
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
+        </Tab>
+        <Tab view="continuity" active={activeView} onSelect={setActiveView} label="Continuity">
+          <svg width="13" height="13" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
             <path d="M6 1.2 10.4 3v2.7c0 2.5-1.7 4.3-4.4 5.1-2.7-.8-4.4-2.6-4.4-5.1V3z" /><path d="m3.8 6 1.4 1.4 3-3" />
           </svg>
-          Continuity
-        </button>
-        <span className="story-search-header-hint">{activeView === 'search' ? 'Source-backed manuscript trails · no AI' : activeView === 'timeline' ? 'Automatic events · explicit uncertainty' : activeView === 'continuity' ? 'Review questions · paired sources' : 'Everything Draftline has indexed'}</span>
+        </Tab>
+
+        <span className="story-search-header-hint">{HINTS[activeView]}</span>
+        <div className="story-search-header-spacer" />
+
         <button
           type="button"
-          className={`story-search-archive-toggle ${activeView === 'evidence' ? 'active' : ''}`}
+          className={`story-search-icon-btn ${activeView === 'evidence' ? 'active' : ''}`}
           onClick={() => setActiveView(activeView === 'evidence' ? 'search' : 'evidence')}
-          title={`Evidence Archive${book?.analysis?.evidence?.records.length ? ` · ${book.analysis.evidence.records.length} records` : ''}`}
-          aria-label="Open Evidence Archive"
+          title={`All deterministic detections${evidenceCount ? ` · ${evidenceCount} records` : ''}`}
+          aria-label="Open all deterministic detections"
         >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.15">
-            <path d="M1.5 3.25h3l.8-1h5.2v7.5h-9zM1.5 4.5h9M4 6.2h4M4 8h3" />
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 10a2 2 0 0 0-2 2c0 2.5-.6 4.5-1.5 6" />
+            <path d="M12 6a6 6 0 0 0-6 6c0 1.4-.2 2.7-.6 4" />
+            <path d="M12 2a10 10 0 0 0-8 4" />
+            <path d="M16 3.3A10 10 0 0 1 22 12c0 .8 0 1.6-.1 2.3" />
+            <path d="M16 12a4 4 0 0 0-8 0c0 2-.3 3.8-.9 5.4" />
+            <path d="M16 12c0 3-.5 5.8-1.4 8.3" />
+            <path d="M12 14c0 2.8-.5 5.4-1.3 7.8" />
           </svg>
-          {!!book?.analysis?.evidence?.records.length && <small>{book.analysis.evidence.records.length}</small>}
+          {!!evidenceCount && <small>{evidenceCount}</small>}
         </button>
-        <button className="story-search-close" onClick={close} title="Close bottom tool" aria-label="Close bottom tool">×</button>
+
+        <button
+          type="button"
+          className="story-search-icon-btn"
+          onClick={toggleExpand}
+          title={expanded ? 'Restore panel height' : 'Expand panel'}
+          aria-label={expanded ? 'Restore panel height' : 'Expand panel'}
+        >
+          {expanded ? (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10 20v-6H4M14 4v6h6M4 20l6-6M20 4l-6 6" />
+            </svg>
+          ) : (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 14v6h6M20 10V4h-6M4 20l6-6M20 4l-6 6" />
+            </svg>
+          )}
+        </button>
+
+        <button type="button" className="story-search-icon-btn" onClick={close} title="Close bottom tool" aria-label="Close bottom tool">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+            <path d="M5 5l14 14M19 5L5 19" />
+          </svg>
+        </button>
       </header>
 
-      {activeView === 'search' && <form className="story-search-form" onSubmit={submit}>
-        <div className="story-search-input-wrap">
-          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3">
-            <circle cx="5.5" cy="5.5" r="3.8" /><path d="M8.3 8.3 12 12" />
-          </svg>
-          <input
-            ref={inputRef}
-            value={query}
-            onChange={event => setQuery(event.target.value)}
-            placeholder={'Ask a question about your story, or search for any detail'}
-            aria-label="Trace names, details, and phrases across the story"
-          />
-          {query && <button type="button" className="story-search-clear" onClick={() => { setQuery(''); setResult(null); inputRef.current?.focus() }} aria-label="Clear search">×</button>}
-        </div>
-        <button className="story-search-submit" type="submit" disabled={!query.trim() || loading}>
-          {loading ? 'Searching…' : 'Ask'}
-        </button>
-      </form>}
-
-      {activeView === 'search' && aliases.length > 0 && (
-        <div className="story-search-aliases">
-          <span>Aliases included</span>
-          {aliases.map(entity => (
-            <span className="story-search-alias-chip" key={entity.id} title={entity.aliases.join(', ')}>
-              {entity.canonical}<small>{entity.aliases.length} names</small>
-            </span>
-          ))}
-        </div>
-      )}
-
-      {activeView === 'search' ? <div className="story-search-body">
-        {!result && !loading && (
-          <SearchStarterPanel groups={starterGroups} onSelect={value => { setQuery(value); void runSearch(value) }} />
-        )}
-        {loading && <div className="story-search-empty"><span className="story-search-spinner" />Building the source trail…</div>}
-        {result?.error && <div className="story-search-empty story-search-error">{result.error}</div>}
-        {result && !result.error && result.total === 0 && (
-          <div className="story-search-empty">
-            <strong>No source trail connects all of those details.</strong>
-            <span>Try fewer details, a confirmed alias, or put an exact phrase in quotation marks.</span>
-          </div>
-        )}
-        {result && !result.error && result.total > 0 && (
-          <>
-            {result.insight && <DetailInsightPanel
-              insight={result.insight}
-              total={result.total}
-              truncated={truncated}
-              shown={result.matches.length}
-              onFirst={() => firstRef.current?.scrollIntoView({ block: 'nearest' })}
-              onLast={() => lastRef.current?.scrollIntoView({ block: 'nearest' })}
-              onRelated={term => { setQuery(term); void runSearch(term) }}
-              onKnowledge={state => navigateSource(state.section as Section, state.section_index, state.text)}
-            />}
-            <div className="story-search-summary"><span>Source trail · manuscript order</span></div>
-            <div className="story-search-results">
-              {result.matches.map((match, index) => (
-                <button
-                  ref={index === 0 ? firstRef : index === result.matches.length - 1 ? lastRef : undefined}
-                  className="story-search-result"
-                  type="button"
-                  key={`${match.chapter_index}-${match.scene_index}`}
-                  onClick={() => navigate(match)}
-                  title={`Open ${match.chapter_title}`}
-                >
-                  <span className="story-search-result-location">
-                    <strong>{match.chapter_title}</strong>
-                    <span>Scene {match.scene_index + 1}</span>
-                  </span>
-                  <span className="story-search-result-excerpt">
-                    {!!match.evidence?.length && (
-                      <span className="story-search-evidence-badges">
-                        {match.evidence.slice(0, 4).map(item => <i key={item.id} className={item.kind}>{labelEvidenceType(item.evidence_type)}</i>)}
-                      </span>
-                    )}
-                    <HighlightedExcerpt text={match.excerpt} terms={match.matched_terms} />
-                    {!!match.additional_hits && <small> +{match.additional_hits} more evidence {match.additional_hits === 1 ? 'paragraph' : 'paragraphs'}</small>}
-                  </span>
-                  <span className="story-search-result-open">Open chapter →</span>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-      </div> : activeView === 'timeline' && book ? <StoryTimelinePanel book={book} onNavigate={navigateSource} /> : activeView === 'continuity' && book ? <ContinuityPanel book={book} onNavigate={navigateSource} /> : book ? <EvidenceIndexPanel book={book} onNavigate={navigateSource} /> : null}
+      {activeView === 'search' && book && <AskPanel book={book} onNavigate={navigateSource} />}
+      {activeView === 'graph' && book && <StoryGraphPanel book={book} onNavigate={navigateSource} onOpenCodex={() => setViewMode('cast')} />}
+      {activeView === 'timeline' && book && <StoryTimelinePanel book={book} onNavigate={navigateSource} />}
+      {activeView === 'continuity' && book && <ContinuityPanel book={book} onNavigate={navigateSource} />}
+      {activeView === 'evidence' && book && <EvidenceIndexPanel book={book} onNavigate={navigateSource} />}
     </section>
   )
 }
 
-function SearchStarterPanel({ groups, onSelect }: { groups: SearchStarterGroup[]; onSelect: (query: string) => void }) {
-  const [active, setActive] = useState(groups[0]?.id ?? '')
-  useEffect(() => {
-    if (!groups.some(group => group.id === active)) setActive(groups[0]?.id ?? '')
-  }, [active, groups])
-  const selected = groups.find(group => group.id === active) ?? groups[0]
+function Tab({ view, active, onSelect, label, children }: {
+  view: ToolView
+  active: ToolView
+  onSelect: (view: ToolView) => void
+  label: string
+  children: React.ReactNode
+}) {
   return (
-    <div className="story-search-start">
-      <div className="story-search-start-lede">
-        <strong>What do you want to know about this story?</strong>
-        <span>You do not need search syntax. Choose a trail Draftline found in this manuscript, or ask in your own words.</span>
-      </div>
-      <div className="story-search-start-tabs" role="tablist" aria-label="Story search suggestions">
-        {groups.map(group => <button type="button" role="tab" aria-selected={group.id === selected?.id} className={group.id === selected?.id ? 'active' : ''} key={group.id} onClick={() => setActive(group.id)}>{group.label}</button>)}
-      </div>
-      <div className="story-search-starters">
-        {selected?.starters.map((starter, index) => (
-          <button type="button" key={`${starter.query}-${index}`} onClick={() => onSelect(starter.query)}>
-            <strong>{starter.label}</strong>
-            <span>{starter.detail}</span>
-            <i>Explore →</i>
-          </button>
-        ))}
-      </div>
-    </div>
+    <button type="button" className={`story-search-tab ${active === view ? 'active' : ''}`} onClick={() => onSelect(view)}>
+      {children}
+      {label}
+    </button>
   )
-}
-
-function buildSearchStarters(book: BookData | null): SearchStarterGroup[] {
-  if (!book) return []
-  const characters = [...(book.story_bible?.characters ?? [])]
-    .filter(isConfirmedCharacter)
-    .sort((a, b) => (b.mention_count ?? 0) - (a.mention_count ?? 0))
-    .slice(0, 6)
-    .map(character => ({
-      label: `Follow ${character.name}`,
-      detail: `See where ${character.name} appears and which details travel with them.`,
-      query: character.name,
-    }))
-  const records = book.analysis?.evidence?.records ?? []
-  const knowledge: SearchStarter[] = []
-  const discoveries: SearchStarter[] = []
-  const seenKnowledge = new Set<string>()
-  for (const record of records) {
-    if (knowledge.length < 6) {
-      for (const state of record.knowledge_states ?? []) {
-        const name = state.character_names?.[0]
-        if (!name) continue
-        const key = `${name}:${state.state}`
-        if (seenKnowledge.has(key)) continue
-        seenKnowledge.add(key)
-        knowledge.push({ label: knowledgeStarterLabel(name, state.state), detail: record.text, query: `"${record.text.replace(/"/g, '')}"` })
-        if (knowledge.length >= 6) break
-      }
-    }
-    if (discoveries.length < 6 && record.evidence_type === 'discovery') {
-      discoveries.push({ label: `A discovery in ${chapterLabel(book, record.section, record.section_index)}`, detail: record.text, query: `"${record.text.replace(/"/g, '')}"` })
-    }
-    if (knowledge.length >= 6 && discoveries.length >= 6) break
-  }
-  return [
-    { id: 'characters', label: 'Characters', starters: characters },
-    { id: 'knowledge', label: 'Who knows what', starters: knowledge },
-    { id: 'discoveries', label: 'Discoveries', starters: discoveries },
-  ].filter(group => group.starters.length > 0)
-}
-
-function knowledgeStarterLabel(name: string, state: string): string {
-  if (state === 'shared') return `What did ${name} share?`
-  if (state === 'withheld') return `What did ${name} withhold?`
-  if (state === 'learned') return `What did ${name} learn?`
-  if (state === 'does_not_know') return `What didn't ${name} know?`
-  if (state === 'believes' || state === 'does_not_believe') return `What did ${name} believe?`
-  if (state === 'suspects' || state === 'does_not_suspect') return `What did ${name} suspect?`
-  return `What did ${name} know?`
-}
-
-function chapterLabel(book: BookData, section: string, index: number): string {
-  const chapters = section === 'front_matter' ? book.front_matter : section === 'back_matter' ? book.back_matter : book.body
-  return chapters?.[index]?.title || `chapter ${index + 1}`
-}
-
-function labelEvidenceType(value: string): string {
-  return value.replace(/_/g, ' ').replace(/^./, (letter: string) => letter.toUpperCase())
-}
-
-function HighlightedExcerpt({ text, terms }: { text: string; terms: string[] }) {
-  const normalized = terms.filter(Boolean).sort((a, b) => b.length - a.length)
-  if (normalized.length === 0) return <>{text}</>
-  const escaped = normalized.map(term => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-  const parts = text.split(new RegExp(`(${escaped.join('|')})`, 'gi'))
-  const lower = new Set(normalized.map(term => term.toLowerCase()))
-  return <>{parts.map((part, index) => lower.has(part.toLowerCase()) ? <mark key={index}>{part}</mark> : <Fragment key={index}>{part}</Fragment>)}</>
 }

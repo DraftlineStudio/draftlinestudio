@@ -4,6 +4,31 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02488] - 2026-09-01
+
+### Added
+- **Story Graph** — a new bottom-bar tab that draws the manuscript as lanes and beats instead of a list. Rails run left to right in chapter order; each beat is a node placed at its real paragraph position; curved links connect beats that share a character. Everything is derived from the existing source-backed evidence index — no AI, and nothing is drawn that the prose does not support.
+- Story Graph lanes switch between **Threads** and **Characters**. Threads are recurring cast combinations (a pairing that appears at least twice becomes a thread); one-off pairings fold into the lead character's rail rather than inventing a thread from a single scene. Character mode gives each confirmed character a rail and draws a beat's supporting cast as stubs back to their own rails.
+- Story Graph zoom with three tiers — key beats only, plus notable, all beats. Tiers are deterministic: author-confirmed or pinned records and decisive evidence types (turning point, conflict, resolution, discovery) are key; introductions, first interactions, explicit time markers and any multi-character scene are notable; the rest are minor.
+- Story Graph inspector showing the selected beat's type, chapter, exact source sentence, explicit time label, character chips, and its connected beats with the reason each connection exists. Previous/next navigation and "Open source →" jump into the manuscript.
+- **Open Character Codex** button in the Story Graph rail, shown when Characters lanes are selected — once you are reading the graph by character, the cast view is one click away.
+- Hover tooltips on graph nodes, and an expand/restore control in the bottom bar header.
+
+### Changed
+- Bottom bar redesigned to the Story Graph reference: 38px header, underline-style tabs, a per-view subtitle, and a right-hand icon cluster (all detections, expand, close) replacing the previous mixed button styles.
+- **Ask Draftline** rebuilt as two columns. The left column answers — signals, "What Draftline can prove" from the knowledge trail, details traveling with the query, and first/last mention. The right column is the source trail, with per-chapter coverage chips that now filter the results and an Earliest/Latest ordering toggle. Previously all of this stacked vertically and the chapter chips were display-only.
+- Bottom bar layout adapts below 1100px and 860px so the graph keeps its canvas on narrow windows.
+
+### Fixed
+- Selecting a graph beat highlights only its direct connections. Growing the highlight transitively lit the entire graph, because derived links chain nearly every beat together.
+
+### Internal
+- `StorySearchToolWindow.tsx` reduced from 313 to 174 lines; it is now a routing shell. New `storysearch/AskPanel.tsx`, `storysearch/StoryGraphPanel.tsx`, and pure `storysearch/storyGraph.ts` follow the `Analysis/` pattern, all well under the 800-line guardrail.
+- 19 unit tests for the graph derivation — tiers, thread grouping, character lanes, link direction, zoom filtering, and layout bounds (67 frontend tests total, up from 48).
+- Removed the superseded `DetailInsightPanel.tsx` and pruned its 102 dead CSS lines, plus four orphaned `story-search-*` rules.
+
+---
+
 ## [0.16.02487] - 2026-09-01
 
 ### Added
