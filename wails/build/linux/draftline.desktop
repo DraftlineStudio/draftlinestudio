@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Draftline
+Comment=Author's studio for planning, drafting, and exporting books
+Exec=draftline %f
+Icon=draftline
+Terminal=false
+Categories=Office;WordProcessor;
+MimeType=application/x-draftline;application/epub+zip;application/vnd.openxmlformats-officedocument.wordprocessingml.document;

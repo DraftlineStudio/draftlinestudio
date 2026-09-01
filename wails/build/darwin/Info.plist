@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Custom Info.plist so the .app bundle declares Draftline's document types:
+     .draftline as an owned type, .epub/.docx as "Open with" alternates (the
+     user's default reader/Word is never displaced). Static — no wails template
+     placeholders — so a template change can never break the bundle. -->
+<plist version="1.0">
+<dict>
+	<key>CFBundlePackageType</key><string>APPL</string>
+	<key>CFBundleName</key><string>Draftline</string>
+	<key>CFBundleDisplayName</key><string>Draftline</string>
+	<key>CFBundleExecutable</key><string>draftline</string>
+	<key>CFBundleIdentifier</key><string>com.draftline.app</string>
+	<key>CFBundleIconFile</key><string>iconfile</string>
+	<key>CFBundleShortVersionString</key><string>0.16.0</string>
+	<key>CFBundleVersion</key><string>0.16.0</string>
+	<key>NSHighResolutionCapable</key><true/>
+	<key>LSMinimumSystemVersion</key><string>10.15.0</string>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key><string>Draftline Project</string>
+			<key>CFBundleTypeRole</key><string>Editor</string>
+			<key>LSHandlerRank</key><string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array><string>com.draftline.project</string></array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key><string>EPUB Book</string>
+			<key>CFBundleTypeRole</key><string>Editor</string>
+			<key>LSHandlerRank</key><string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array><string>org.idpf.epub-container</string></array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key><string>Word Document</string>
+			<key>CFBundleTypeRole</key><string>Editor</string>
+			<key>LSHandlerRank</key><string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array><string>org.openxmlformats.wordprocessingml.document</string></array>
+		</dict>
+	</array>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key><string>com.draftline.project</string>
+			<key>UTTypeDescription</key><string>Draftline Project</string>
+			<key>UTTypeConformsTo</key>
+			<array><string>public.data</string><string>public.archive</string></array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array><string>draftline</string></array>
+			</dict>
+		</dict>
+	</array>
+</dict>
+</plist>
