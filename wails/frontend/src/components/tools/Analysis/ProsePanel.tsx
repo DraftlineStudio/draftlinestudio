@@ -211,7 +211,10 @@ export default function ProsePanel() {
       <div className="an-block">
         <div className="an-label prose-block-title">Readability</div>
         <StatRow label="Reading ease" value={overview.reading_ease.toFixed(1)} />
-        <StatRow label="Grade level" value={overview.mean_grade_level.toFixed(1)} />
+        <StatRow label="Composite grade estimate" value={overview.mean_grade_level.toFixed(1)} />
+        <div className="an-footnote prose-readability-note">
+          Average of five readability formulas, not a reading age. Different analyzers can vary widely.
+        </div>
       </div>
 
       <div className="an-block">

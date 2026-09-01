@@ -51,9 +51,7 @@ function dialogueClause(dialoguePercent: number): string {
 }
 
 function audienceClause(meanGradeLevel: number): string {
-  if (meanGradeLevel < 6) return 'reads younger than most adult fiction'
-  if (meanGradeLevel <= 9) return 'reads like mainstream adult fiction'
-  return 'reads dense for fiction'
+  return `composite readability estimate: grade ${meanGradeLevel.toFixed(1)}`
 }
 
 interface TileProps {
@@ -176,7 +174,7 @@ export default function SignalsPanel() {
           <Tile
             label="Reading ease"
             value={overview.reading_ease.toFixed(1)}
-            note={`grade level ${overview.mean_grade_level.toFixed(1)}`}
+            note={`composite grade estimate ${overview.mean_grade_level.toFixed(1)}`}
           />
           <Tile
             label="Tempo"

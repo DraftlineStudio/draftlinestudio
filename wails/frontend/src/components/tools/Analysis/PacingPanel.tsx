@@ -1,6 +1,6 @@
-// Pacing panel (analysis sidebar suite, design ref 3d) — tempo by chapter.
-// A whole-book heat strip up top, then a per-chapter scan list switchable
-// between tempo / dialogue / reading ease / length, with scene-break counts.
+// Pacing panel — an explainable view of prose tempo by chapter. Tempo is a
+// rhythm signal built from sentence length, sentence variation, and dialogue;
+// it deliberately does not claim to measure plot urgency or story quality.
 
 import { useMemo, useState } from 'react'
 import { useBookStore } from '../../../store/bookStore'
@@ -10,55 +10,93 @@ import { goToChapter } from './shared'
 import type { ChapterAnalysis } from '../../../types/draftline'
 import './pacing.css'
 
-// Chapters this short carry no meaningful pacing signal (part dividers,
-// epigraphs); they render faint and are excluded from means and outliers.
 const MIN_ANALYZABLE_WORDS = 20
+const NOTICEABLE_SHIFT = 10
 
-type MetricKey = 'tempo' | 'dialogue' | 'ease' | 'length'
+type MetricKey = 'tempo' | 'dialogue' | 'length'
+type TempoBand = 'measured' | 'balanced' | 'brisk'
 
 interface MetricDef {
   key: MetricKey
   tab: string
-  column: string
-  value: (ch: ChapterAnalysis) => number
+  explanation: string
+}
+
+interface TempoShift {
+  from: ChapterAnalysis
+  to: ChapterAnalysis
+  delta: number
 }
 
 const METRICS: MetricDef[] = [
-  { key: 'tempo', tab: 'Tempo', column: 'Tempo', value: ch => ch.tempo_score },
-  { key: 'dialogue', tab: 'Dialogue', column: 'Dialogue', value: ch => ch.dialogue_percent },
-  { key: 'ease', tab: 'Ease', column: 'Ease', value: ch => ch.reading_ease },
-  { key: 'length', tab: 'Length', column: 'Length', value: ch => ch.word_count },
+  {
+    key: 'tempo',
+    tab: 'Tempo',
+    explanation: 'Higher scores usually mean shorter sentences, more dialogue, or both.',
+  },
+  {
+    key: 'dialogue',
+    tab: 'Dialogue',
+    explanation: 'The share of chapter words that appear inside quotation marks.',
+  },
+  {
+    key: 'length',
+    tab: 'Length',
+    explanation: 'Chapter size compared with the typical analyzed chapter in this book.',
+  },
 ]
 
-const isAnalyzable = (ch: ChapterAnalysis) => ch.word_count >= MIN_ANALYZABLE_WORDS
+const isAnalyzable = (chapter: ChapterAnalysis) => chapter.word_count >= MIN_ANALYZABLE_WORDS
+const chapterName = (chapter: ChapterAnalysis, n: number) => chapter.title || `Chapter ${n}`
 
-const chapterName = (ch: ChapterAnalysis, n: number) => ch.title || `Chapter ${n}`
+export function tempoBand(score: number): TempoBand {
+  if (score <= 42) return 'measured'
+  if (score >= 68) return 'brisk'
+  return 'balanced'
+}
 
-// Lowest-mean contiguous window of 3+ analyzable chapters. Returns the sag
-// sentence when that window sits at least 12 tempo points below the book mean.
-function heatInsight(chapters: ChapterAnalysis[]): string {
-  const rows = chapters
-    .map((ch, i) => ({ n: i + 1, tempo: ch.tempo_score }))
-    .filter((row, i) => isAnalyzable(chapters[i]) && row.tempo > 0)
-  const base = 'Brighter is faster.'
-  if (rows.length < 3) return base
-  const bookMean = rows.reduce((sum, row) => sum + row.tempo, 0) / rows.length
-  // Prefix sums make every window mean O(1).
-  const prefix = [0]
-  for (const row of rows) prefix.push(prefix[prefix.length - 1] + row.tempo)
-  let best: { start: number; end: number; mean: number } | null = null
-  for (let len = 3; len <= rows.length; len++) {
-    for (let i = 0; i + len <= rows.length; i++) {
-      const mean = (prefix[i + len] - prefix[i]) / len
-      if (!best || mean < best.mean) {
-        best = { start: rows[i].n, end: rows[i + len - 1].n, mean }
-      }
+export function median(values: number[]): number {
+  if (values.length === 0) return 0
+  const sorted = [...values].sort((a, b) => a - b)
+  const middle = Math.floor(sorted.length / 2)
+  return sorted.length % 2 === 0
+    ? (sorted[middle - 1] + sorted[middle]) / 2
+    : sorted[middle]
+}
+
+export function findTempoShifts(chapters: ChapterAnalysis[]): TempoShift[] {
+  const shifts: TempoShift[] = []
+  for (let index = 1; index < chapters.length; index += 1) {
+    const from = chapters[index - 1]
+    const to = chapters[index]
+    if (!isAnalyzable(from) || !isAnalyzable(to)) continue
+    const delta = to.tempo_score - from.tempo_score
+    if (Math.abs(delta) >= NOTICEABLE_SHIFT) {
+      shifts.push({ from, to, delta })
     }
   }
-  if (best && bookMean - best.mean >= 12) {
-    return `${base} The pace sags around chapters ${best.start}–${best.end}.`
-  }
-  return base
+  return shifts.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+}
+
+function plural(value: number, singular: string): string {
+  return `${value.toLocaleString()} ${singular}${value === 1 ? '' : 's'}`
+}
+
+function dialogueLabel(value: number): string {
+  if (value < 15) return 'sparse'
+  if (value < 35) return 'moderate'
+  return 'dialogue-heavy'
+}
+
+function lengthLabel(ratio: number): string {
+  if (ratio < 0.65) return 'shorter than typical'
+  if (ratio > 1.5) return 'longer than typical'
+  return 'near typical length'
+}
+
+function shiftCopy(shift: TempoShift): string {
+  const direction = shift.delta > 0 ? 'rises' : 'drops'
+  return `${shift.to.title || 'The next chapter'} ${direction} ${Math.abs(Math.round(shift.delta))} points after ${shift.from.title || 'the previous chapter'}.`
 }
 
 export default function PacingPanel() {
@@ -70,25 +108,22 @@ export default function PacingPanel() {
 
   const analysis = book?.analysis?.story
   const chapters = analysis?.chapters
+  const metric = METRICS.find(item => item.key === metricKey) ?? METRICS[0]
 
-  const insight = useMemo(() => heatInsight(chapters ?? []), [chapters])
-
-  const metric = METRICS.find(m => m.key === metricKey) ?? METRICS[0]
-
-  // Normalization max plus outlier stats (mean/σ over analyzable chapters
-  // only) for the active metric.
-  const scan = useMemo(() => {
+  const model = useMemo(() => {
     const list = chapters ?? []
-    const values = list.map(metric.value)
-    const max = values.reduce((a, b) => Math.max(a, b), 0)
-    const usable = list.filter(isAnalyzable).map(metric.value)
-    const mean = usable.length ? usable.reduce((a, b) => a + b, 0) / usable.length : 0
-    const variance = usable.length
-      ? usable.reduce((sum, v) => sum + (v - mean) * (v - mean), 0) / usable.length
-      : 0
-    const sd = Math.sqrt(variance)
-    return { values, max, mean, sd }
-  }, [chapters, metric])
+    const usable = list.filter(isAnalyzable)
+    const typicalWords = median(usable.map(chapter => chapter.word_count))
+    const shifts = findTempoShifts(list)
+    const bands = usable.reduce<Record<TempoBand, number>>(
+      (counts, chapter) => {
+        counts[tempoBand(chapter.tempo_score)] += 1
+        return counts
+      },
+      { measured: 0, balanced: 0, brisk: 0 },
+    )
+    return { typicalWords, shifts, bands }
+  }, [chapters])
 
   if (!book) {
     return <div className="tool-empty-state">Open a project to see analysis.</div>
@@ -98,7 +133,7 @@ export default function PacingPanel() {
     return (
       <div className="an-panel pacing-panel">
         <div className="an-empty">
-          <p>No pacing analysis yet.</p>
+          <p>No prose-tempo analysis yet.</p>
           <p>Draftline analyzes your manuscript locally after 15 seconds of writing inactivity.</p>
           <button
             className="an-run-btn"
@@ -112,82 +147,140 @@ export default function PacingPanel() {
     )
   }
 
-  const totalBreaks = chapters.reduce((sum, ch) => sum + ch.scene_break_count, 0)
+  const overallScore = Math.round(analysis.overview.tempo_score)
+  const overallBand = tempoBand(overallScore)
+  const largestShift = model.shifts[0]
 
   return (
     <div className="an-panel pacing-panel">
-      <div className="an-block">
+      <div className="an-block pacing-overview">
+        <div className="an-label">Prose tempo</div>
+        <div className="pacing-score-line">
+          <span className={`pacing-score ${overallBand}`}>{overallScore}</span>
+          <span>
+            <strong>{overallBand}</strong>
+            <small>out of 100</small>
+          </span>
+        </div>
+        <p className="pacing-definition">
+          How quickly the prose reads based on sentence shape and dialogue. This is a rhythm
+          measurement, not a judgment of plot urgency or quality.
+        </p>
+      </div>
+
+      <div className="an-block pacing-flow">
         <div className="an-label-row">
-          <span className="an-label">The whole book</span>
+          <span className="an-label">Flow through the book</span>
           <span className="an-label-hint">start → end</span>
         </div>
-        <div className="an-heat-strip">
-          {chapters.map((ch, i) => {
-            const faint = ch.tempo_score === 0 || !isAnalyzable(ch)
+        <div className="pacing-flow-strip" aria-label="Chapter prose tempo from start to end">
+          {chapters.map((chapter, index) => {
+            const band = tempoBand(chapter.tempo_score)
+            const inert = !isAnalyzable(chapter) || chapter.tempo_score === 0
             return (
-              <div
-                key={ch.chapter_id || `${ch.chapter_index}`}
-                className="an-heat-cell"
-                title={`${i + 1} · ${chapterName(ch, i + 1)} — ${ch.tempo_score}`}
-                style={
-                  faint
-                    ? { background: 'var(--text-faint)' }
-                    : {
-                        background: 'var(--app-accent)',
-                        opacity: 0.35 + (ch.tempo_score / 100) * 0.65,
-                      }
-                }
+              <button
+                type="button"
+                key={chapter.chapter_id || chapter.chapter_index}
+                className={`pacing-flow-cell ${inert ? 'inert' : band}`}
+                title={`${index + 1} · ${chapterName(chapter, index + 1)} — ${Math.round(chapter.tempo_score)}/100, ${band}`}
+                aria-label={`Open ${chapterName(chapter, index + 1)}`}
+                onClick={() => goToChapter(chapter.chapter_index)}
               />
             )
           })}
         </div>
-        <div className="an-footnote pacing-heat-note">{insight}</div>
+        <div className="pacing-legend">
+          <span><i className="measured" />Measured {model.bands.measured}</span>
+          <span><i className="balanced" />Balanced {model.bands.balanced}</span>
+          <span><i className="brisk" />Brisk {model.bands.brisk}</span>
+        </div>
+        <div className="pacing-flow-read">
+          {largestShift
+            ? `${model.shifts.length} noticeable ${model.shifts.length === 1 ? 'change' : 'changes'}. ${shiftCopy(largestShift)}`
+            : 'Tempo remains fairly consistent between neighboring chapters.'}
+        </div>
       </div>
 
-      <div className="an-block an-tabs pacing-tabs-block">
-        {METRICS.map(m => (
-          <button
-            key={m.key}
-            className={`an-tab${m.key === metric.key ? ' active' : ''}`}
-            onClick={() => setMetricKey(m.key)}
-          >
-            {m.tab}
-          </button>
-        ))}
+      {model.shifts.length > 0 && (
+        <div className="an-block pacing-shifts">
+          <div className="an-label">Largest transitions</div>
+          {model.shifts.slice(0, 3).map(shift => (
+            <button
+              type="button"
+              className="pacing-shift-row"
+              key={`${shift.from.chapter_index}-${shift.to.chapter_index}`}
+              onClick={() => goToChapter(shift.to.chapter_index)}
+            >
+              <span className={shift.delta > 0 ? 'up' : 'down'}>
+                {shift.delta > 0 ? '↑' : '↓'} {Math.abs(Math.round(shift.delta))}
+              </span>
+              <span>{shiftCopy(shift)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="an-block pacing-metric-picker">
+        <div className="an-tabs">
+          {METRICS.map(item => (
+            <button
+              type="button"
+              key={item.key}
+              className={`an-tab${item.key === metricKey ? ' active' : ''}`}
+              onClick={() => setMetricKey(item.key)}
+            >
+              {item.tab}
+            </button>
+          ))}
+        </div>
+        <div className="an-footnote">{metric.explanation}</div>
       </div>
 
-      <div className="pacing-col-head">
-        <span className="pacing-col-n" />
-        <span className="pacing-col-title">Chapter</span>
-        <span className="pacing-col-metric">{metric.column}</span>
-        <span className="pacing-col-brk">Brk</span>
-      </div>
+      <div className="pacing-chapters">
+        {chapters.map((chapter, index) => {
+          const analyzable = isAnalyzable(chapter)
+          const band = tempoBand(chapter.tempo_score)
+          const lengthRatio = model.typicalWords > 0 ? chapter.word_count / model.typicalWords : 0
+          const metricValue = metricKey === 'tempo'
+            ? chapter.tempo_score
+            : metricKey === 'dialogue'
+              ? chapter.dialogue_percent
+              : Math.min(100, lengthRatio * 50)
+          const value = metricKey === 'tempo'
+            ? `${Math.round(chapter.tempo_score)}/100 · ${band}`
+            : metricKey === 'dialogue'
+              ? `${chapter.dialogue_percent.toFixed(1)}% · ${dialogueLabel(chapter.dialogue_percent)}`
+              : `${chapter.word_count.toLocaleString()} words`
+          const detail = metricKey === 'tempo'
+            ? `${chapter.average_sentence_words.toFixed(1)} words/sentence · ${chapter.dialogue_percent.toFixed(0)}% dialogue`
+            : metricKey === 'dialogue'
+              ? `${plural(chapter.sentence_count, 'sentence')} · ${plural(chapter.scene_break_count, 'scene break')}`
+              : `${lengthRatio.toFixed(1)}× typical · ${lengthLabel(lengthRatio)}`
 
-      <div className="pacing-rows">
-        {chapters.map((ch, i) => {
-          const value = scan.values[i]
-          const width = scan.max > 0 ? Math.max((value / scan.max) * 100, 2) : 2
-          const analyzable = isAnalyzable(ch)
-          const outlier =
-            analyzable && scan.sd > 0 && Math.abs(value - scan.mean) > 1.5 * scan.sd
-          const fillClass = !analyzable
-            ? 'an-bar-fill faint'
-            : outlier
-              ? 'an-bar-fill warning'
-              : 'an-bar-fill'
           return (
             <button
-              key={ch.chapter_id || `${ch.chapter_index}`}
-              className="an-chapter-row"
-              onClick={() => goToChapter(ch.chapter_index)}
+              type="button"
+              key={chapter.chapter_id || chapter.chapter_index}
+              className={`pacing-chapter-card${analyzable ? '' : ' inert'}`}
+              onClick={() => goToChapter(chapter.chapter_index)}
             >
-              <span className="an-row-n">{i + 1}</span>
-              <span className="an-row-title">{chapterName(ch, i + 1)}</span>
-              <div className="an-bar-track pacing-bar">
-                <div className={fillClass} style={{ width: `${width}%` }} />
-              </div>
-              <span className="an-row-value">
-                {analyzable ? ch.scene_break_count : '—'}
+              <span className="pacing-chapter-number">{index + 1}</span>
+              <span className="pacing-chapter-body">
+                <span className="pacing-chapter-head">
+                  <span className="pacing-chapter-title">{chapterName(chapter, index + 1)}</span>
+                  <span className="pacing-chapter-value">{analyzable ? value : 'Not enough prose'}</span>
+                </span>
+                {analyzable && (
+                  <>
+                    <span className="pacing-chapter-track">
+                      <span
+                        className={`pacing-chapter-fill ${metricKey === 'tempo' ? band : metricKey}`}
+                        style={{ width: `${Math.max(2, Math.min(100, metricValue))}%` }}
+                      />
+                    </span>
+                    <span className="pacing-chapter-detail">{detail}</span>
+                  </>
+                )}
               </span>
             </button>
           )
@@ -195,8 +288,7 @@ export default function PacingPanel() {
       </div>
 
       <div className="an-block an-footnote pacing-footer">
-        Brk = scene breaks · {totalBreaks.toLocaleString()} across the manuscript · amber
-        bars are outliers
+        Typical chapter: {Math.round(model.typicalWords).toLocaleString()} words · select any chapter to open it
       </div>
     </div>
   )

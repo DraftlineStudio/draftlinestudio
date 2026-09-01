@@ -42,7 +42,7 @@ Design section 3c "Prose expanded". Five `.an-block` sections, top to bottom:
 1. **Rhythm** — a 30px flex strip of up to the last 60 sentences of the *current editor chapter* (`currentSection`/`currentIndex` + `getCurrentContent` + `htmlToText`, split on `[.!?…]`). Bar height is proportional to sentence word count (normalized to the longest, min 8%); bars over 25 words render in `var(--status-warning)`, the rest in `var(--app-accent)`. Footnote: "Each bar is a sentence; amber runs past 25 words." A muted note replaces the strip when the chapter has no prose. Works with no analysis run.
 2. **Sentence lengths** — whole-manuscript histogram (buckets 1–5 / 6–10 / 11–15 / 16–20 / 21+) computed client-side from every chapter in front_matter/body/back_matter; fill width is bucket% relative to the largest bucket, right-aligned integer percentages; hint shows the total sentence count.
 3. **Sentences** — stat rows (12px, 26px tall, hairline separators, per the mock's StatRow): Short (< 8 words) %, Long (> 25 words) % (both from the same client-side pass), Avg. paragraph (`overview.sentence_count / overview.paragraph_count`, 1 decimal, "—" if no paragraphs), Paragraphs (`toLocaleString`).
-4. **Readability** — `overview.reading_ease.toFixed(1)`, `overview.mean_grade_level.toFixed(1)`.
+4. **Readability** — reading ease and a clearly labeled composite grade estimate. The estimate is the Prose v3 mean of Flesch–Kincaid, Automated Readability, Gunning Fog, SMOG, and Coleman–Liau; the UI warns that it is not a reading age and can differ substantially from tools using one formula.
 5. **Word classes** — 10px stacked bar (verbs `--app-accent`, adjectives `--section-body`, adverbs `--section-back`, remainder `--bg-surface-alt` via flex) from `aggregateWordClasses(analysis.chapters)` (shared.ts), with a 6px-swatch legend ("Verbs 18.4%" style).
 
 **Performance:** the store replaces the `book` object on every editor flush, so both heavy passes (rhythm parse and whole-manuscript parse) read a 2s-debounced book snapshot held in component state; a project change (`bookKey` from shared.ts) swaps the snapshot immediately so a newly opened book never shows the previous book's stats. Chapter switches refresh the rhythm strip instantly because section/index are not debounced.
@@ -51,20 +51,28 @@ Design section 3c "Prose expanded". Five `.an-block` sections, top to bottom:
 
 No localStorage keys. Shared helpers used: `aggregateWordClasses`, `bookKey`.
 
-## Pacing panel (`PacingPanel.tsx`, `pacing.css`) — design ref 3d
+## Pacing panel (`PacingPanel.tsx`, `pacing.css`)
 
-Tempo-by-chapter view of the manuscript.
+An explainable prose-tempo view. Tempo describes how quickly the writing reads
+from sentence shape and dialogue; the panel explicitly avoids presenting it as
+a measurement of plot urgency or story quality.
 
 **What it shows, top to bottom:**
-1. **The whole book** — a heat strip with one cell per analyzed chapter, background `var(--app-accent)` at opacity `0.35 + (tempo_score/100)*0.65` (brighter = faster). Chapters with `tempo_score` 0 or under 20 words render as `var(--text-faint)`. Each cell has a `"{n} · {title} — {tempo_score}"` tooltip. Below it, an insight footnote: the panel finds the contiguous window of 3+ analyzable chapters with the lowest mean tempo (prefix-sum scan) and, if that window sits at least 12 points below the book mean, appends "The pace sags around chapters {start}–{end}." to "Brighter is faster."
-2. **Metric tabs** — Tempo / Dialogue / Ease / Length switch which `ChapterAnalysis` field the list plots (`tempo_score`, `dialogue_percent`, `reading_ease`, `word_count`). Local `useState`, not persisted.
-3. **Column header** — 9px uppercase micro-labels: blank 18px / Chapter / metric name 76px / Brk 22px.
-4. **Chapter rows** (`.an-chapter-row` buttons) — 1-based number, title (fallback "Chapter {n}"), 76px bar normalized to the metric max (min 2% width), and `scene_break_count` (em dash for sub-20-word chapters). Bar turns `var(--status-warning)` when the chapter's metric is more than 1.5σ from the mean of analyzable chapters (sub-20-word chapters excluded from mean/σ and never flagged; their bars render faint). Click navigates via `goToChapter(chapter.chapter_index)` from `Analysis/shared.ts`.
-5. **Footer** — "Brk = scene breaks · {total} across the manuscript · amber bars are outliers".
 
-**Data:** `useBookStore(s => s.book).analysis?.story.chapters` (`ChapterAnalysis[]`). Insight and per-metric stats (max/mean/σ) are memoized on `chapters`/active metric. No whole-book HTML parsing, no debounced live analysis, no localStorage keys.
+1. **Prose tempo** — the word-weighted manuscript score, its measured/balanced/brisk band, and a concise definition of what the score does and does not mean. Bands use the same 42/68 boundaries as the backend.
+2. **Flow through the book** — one clickable cell per chapter, colored categorically rather than by ambiguous brightness. A legend gives the number of measured, balanced, and brisk chapters. The accompanying read reports the number of neighboring changes of at least 10 points and names the largest transition.
+3. **Largest transitions** — up to three chapter-to-chapter rises or drops, sorted by magnitude and linked to the destination chapter. Sub-20-word dividers are excluded.
+4. **Metric picker** — Tempo, Dialogue, and Length, each with a plain-language explanation. Reading Ease remains in Prose rather than mixing readability into pacing.
+5. **Chapter rows** — exact value, an absolute-scale bar, and supporting context. Tempo includes average sentence length and dialogue share; Dialogue includes sentence and scene-break counts; Length compares word count against the median analyzed chapter. Every row opens its chapter.
 
-**Empty states:** no book → `tool-empty-state` "Open a project to see analysis."; book without analysis (or zero analyzed chapters) → `.an-empty` explainer with an "Analyze now" `.an-run-btn` wired to `useAnalysisStore().run`, disabled while running or when `settings.analysis_enabled` is off.
+Median length is intentionally resistant to unusually long chapters. Pure helper
+tests lock the tempo boundaries, median calculation, and neighboring-transition
+threshold. The panel performs no HTML parsing, uses no localStorage, and reads
+only the stored `StoryAnalysisData` metrics.
+
+**Empty states:** no book → standard tool empty state; no analysis → local-analysis
+explanation and an Analyze now button, disabled while running or when Story
+Analysis is switched off.
 
 ## Chapters panel (`ChaptersPanel.tsx`, `chapters-panel.css`)
 
@@ -124,7 +132,7 @@ Hub overview of the local manuscript analysis (design 3b).
 **Layout (top to bottom)**
 1. **Freshness row** (`.an-freshness`) — status dot (success when `useAnalysisStore().state === 'current'`, error class on `'error'`, stale class otherwise), text from `formatAnalyzedStamp(analysis.last_analyzed)` ("Analyzing…" while running, "Analysis out of date" when stale), and a "Run again" `.an-run-btn` wired to `useAnalysisStore().run`, disabled while running or when `settings.analysis_enabled` is off.
 2. **Six stat tiles** (`.an-tiles`) from `book.analysis.story.overview`: Chapters, Avg. chapter words (rounded), Avg. sentence words (1 decimal), Dialogue % (1 decimal), Reading ease (with a "grade level N" note), and Tempo /100. Tempo is rounded to an integer once and that same value drives the tile, its "measured/balanced/brisk overall" note, and the one-line read, so they can never disagree at the 40/70 boundaries. Four tiles carry since-last-run deltas via `usePreviousOverview(book)` + `formatDelta`; "first run" is shown when no previous overview exists. Reading ease keeps its grade-level note and Tempo its descriptor note instead of deltas.
-3. **"In one line"** (`.an-label` + `.an-serif`) — a generated sentence: sentence-length clause (<10 short, <18 varied, else long), dialogue clause (<15% sparse, <35% moderate, else dialogue-heavy), tempo clause, em-dash, audience read from `mean_grade_level` (<6 younger than adult fiction, 6–9 mainstream, >9 dense).
+3. **"In one line"** (`.an-label` + `.an-serif`) — a generated sentence: sentence-length clause (<10 short, <18 varied, else long), dialogue clause (<15% sparse, <35% moderate, else dialogue-heavy), tempo clause, and the numeric composite readability estimate. It does not infer an audience or prose quality from grade level.
 4. **Jump list** — four `.an-jump-row` buttons calling `openToolsSection('prose' | 'pacing' | 'chapters' | 'review')`; the review row shows the `useReviewCount()` count in an `.an-badge` before the chevron, hidden when 0.
 
 **Data sources** — `useBookStore(s => s.book)` (`book.analysis.story`), `useAnalysisStore` (run state + `run()`), `useAppStore` (`settings.analysis_enabled`), and shared helpers from `Analysis/shared.ts`. `usePreviousOverview` persists per-book overview history under `draftline.analysis.overview-history.<bookKey>` in localStorage (managed by shared.ts, not this panel).
