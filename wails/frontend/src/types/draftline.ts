@@ -308,7 +308,10 @@ export interface EvidenceRecord {
   rationale: string
   status: 'detected' | 'confirmed' | 'rejected' | string
   source: 'auto' | 'author' | string
+  author_text?: string
   author_note?: string
+  pinned?: boolean
+  reviewed_at?: string
 }
 
 export interface EvidenceData {

@@ -4,6 +4,19 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02476] - 2026-09-01
+
+### Added
+- Added persistent evidence review controls to the Evidence Archive. Authors can confirm, reject, pin, annotate, or supply a clearer interpretation for an inferred fact/event while retaining the immutable source sentence underneath it.
+- Added a deterministic **Worth reviewing** queue that prioritizes discoveries, introductions, explicit time references, multi-character interactions, lower-confidence matches, and named details that appear in only one indexed passage. The queue is capped at the 100 highest-ranked candidates so reviewing evidence never becomes an obligation to classify the entire raw archive.
+- Added saved review provenance (`author_text`, `author_note`, `pinned`, and `reviewed_at`) to evidence records plus regression coverage for ranked candidates and reanalysis persistence.
+
+### Changed
+- Evidence Archive now opens on the ranked author-review queue while **Everything**, **Events**, and **Facts** retain access to the complete source-backed index, including rejected records.
+- Editing an interpretation stores the author's meaning separately and confirms the record; it never replaces the manuscript quotation used to justify the evidence.
+
+---
+
 ## [0.16.02475] - 2026-09-01
 
 ### Added
