@@ -26,13 +26,6 @@ export default function DetailInsightPanel({ insight, total, truncated, shown, o
         </div>
       </div>
 
-      <div className="detail-insight-stats">
-        <InsightStat value={total} label={total === 1 ? 'source scene' : 'source scenes'} />
-        <InsightStat value={insight.chapter_count} label={insight.chapter_count === 1 ? 'chapter' : 'chapters'} />
-        <InsightStat value={insight.event_count} label={insight.event_count === 1 ? 'indexed event' : 'indexed events'} />
-        <InsightStat value={insight.fact_count} label={insight.fact_count === 1 ? 'indexed fact' : 'indexed facts'} />
-      </div>
-
       {!!insight.signals?.length && (
         <div className="detail-insight-signals">
           {insight.signals.map((signal, index) => (
@@ -61,6 +54,16 @@ export default function DetailInsightPanel({ insight, total, truncated, shown, o
           </div>
         </div>
       )}
+
+      <details className="detail-insight-coverage">
+        <summary>Search coverage</summary>
+        <div className="detail-insight-stats">
+          <InsightStat value={total} label={total === 1 ? 'source scene' : 'source scenes'} />
+          <InsightStat value={insight.chapter_count} label={insight.chapter_count === 1 ? 'chapter' : 'chapters'} />
+          <InsightStat value={insight.event_count} label={insight.event_count === 1 ? 'indexed event' : 'indexed events'} />
+          <InsightStat value={insight.fact_count} label={insight.fact_count === 1 ? 'indexed fact' : 'indexed facts'} />
+        </div>
+      </details>
 
       <div className="detail-insight-chapters">
         <span>Chapter trail</span>
