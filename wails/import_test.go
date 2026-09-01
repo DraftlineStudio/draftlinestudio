@@ -221,12 +221,15 @@ func TestClassifyImportedNonStorySection(t *testing.T) {
 	}
 }
 
-func TestParseXHTMLPrefersVisibleSectionHeading(t *testing.T) {
-	title, body := parseXHTMLContent(`<html><head><title>Book Title</title></head><body><h2>ACKNOWLEDGMENTS</h2><p>Thanks.</p></body></html>`)
+func TestParseSpineDocPrefersVisibleSectionHeading(t *testing.T) {
+	title, blocks, _, err := parseSpineDoc([]byte(`<html><head><title>Book Title</title></head><body><h2>ACKNOWLEDGMENTS</h2><p>Thanks.</p></body></html>`))
+	if err != nil {
+		t.Fatal(err)
+	}
 	if title != "ACKNOWLEDGMENTS" {
 		t.Fatalf("visible heading should win over repeated EPUB title, got %q", title)
 	}
-	if got := classifyImportedSection(title, body); got != "acknowledgments" {
+	if got := classifyImportedSection(title, joinBlocks(blocks)); got != "acknowledgments" {
 		t.Fatalf("wrong semantic section type: %q", got)
 	}
 }

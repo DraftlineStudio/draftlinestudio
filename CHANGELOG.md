@@ -2,6 +2,16 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02459] - 2026-08-31
+
+### Fixed
+- Replaced the EPUB importer's HTML handling with a real parser.
+- Poetry and preformatted text keep their line breaks on import.
+- EPUBs in UTF-16, Latin-1, and Windows-1252 now import correctly.
+
+### Changed
+- Imports now report how many images were removed.
+
 ## [0.16.02458] - 2026-08-31
 
 ### Fixed
