@@ -4,6 +4,16 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02467] - 2026-08-31
+
+### Removed
+- Pruned 743 lines of dead CSS from `global.css` (5,014 → 4,271): the retired PlotTree visualization and Issues panel blocks, legacy tools-panel/tools-tab chrome, the pre-redesign dashboard and diff-view rules, PlotWalker status-bar styles, and orphaned one-off selectors — every deletion verified against a full unused-selector audit of the frontend source.
+
+### Changed
+- `global.css` stays a single stylesheet by design (per workflow: one home per rule, greppable CSS bugs); a header comment now records that convention and the cross-cutting classes to know before pruning. The mislabeled "New Universe Wizard" banner — which actually holds the app-wide dialog/button/form primitives used by ~26 components — is renamed "Shared dialog + form primitives" so nobody deletes it by mistake.
+
+---
+
 ## [0.16.02466] - 2026-08-31
 
 ### Changed
