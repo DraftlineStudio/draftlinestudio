@@ -41,6 +41,10 @@ retrieval, indexing, review, and refactoring must not depend on generative AI.
       suspected, tried to recall, shared, or withheld a searched detail, when
       the state appears in manuscript order, and the exact source establishing
       it (`0.16.02484`).
+- [x] Manuscript-aware **Ask Draftline** entry screen with clickable character,
+      knowledge, and discovery trails generated from the open book; answers
+      lead while technical search coverage stays available on demand
+      (`0.16.02485`).
 - [ ] Automatic timeline draft assembled from confirmed events and explicit
       time expressions, with ambiguity shown instead of silently guessed.
 - [ ] Continuity checks over confirmed facts: conflicting attributes,

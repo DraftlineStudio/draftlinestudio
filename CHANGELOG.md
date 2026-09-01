@@ -4,6 +4,17 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02485] - 2026-09-01
+
+### Added
+- Added a manuscript-aware **Ask Draftline** landing screen. Writers can explore confirmed characters, knowledge trails, and discoveries generated from the open book without knowing search syntax or relying on hardcoded example queries.
+
+### Changed
+- Renamed Detail Search to **Ask Draftline**, replaced its technical empty state with clickable story-specific starting points, and made the input invite ordinary questions.
+- Search answers and source-backed knowledge now lead the results display. Raw scene, chapter, event, and fact counts remain available under a compact **Search coverage** disclosure instead of competing with the answer.
+
+---
+
 ## [0.16.02484] - 2026-09-01
 
 ### Added
