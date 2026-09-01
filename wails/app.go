@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -17,6 +15,7 @@ import (
 	"time"
 
 	"draftline/internal/ai"
+	"draftline/internal/ai/providers"
 	"draftline/internal/backup"
 	"draftline/internal/book"
 	"draftline/internal/export"
@@ -44,27 +43,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.16.02467"
-
-// maxAIResponseBytes caps how much of a provider HTTP response body we will
-// read into memory. It sits comfortably above any plausible max-output-tokens
-// payload while preventing a hostile or malfunctioning endpoint from exhausting
-// memory via an unbounded body (audit Sol SEC-007).
-const maxAIResponseBytes = 16 << 20 // 16 MB
-
-// readAIResponseBody reads a provider response body up to maxAIResponseBytes.
-// If the body exceeds the cap it returns a clear "response too large" error
-// instead of buffering it all.
-func readAIResponseBody(r io.Reader) ([]byte, error) {
-	body, err := io.ReadAll(io.LimitReader(r, maxAIResponseBytes+1))
-	if err != nil {
-		return nil, err
-	}
-	if len(body) > maxAIResponseBytes {
-		return nil, fmt.Errorf("response too large (exceeds %d bytes)", maxAIResponseBytes)
-	}
-	return body, nil
-}
+const AppVersion = "0.16.02468"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -1115,176 +1094,6 @@ func (a *App) OpenCodexAuth() {
 	}()
 }
 
-// codexExecArgs builds the constant argv for a non-interactive codex run.
-// The prompt is NEVER an argv element — it is piped via stdin ("-"), the same
-// injection-safe pattern as the Claude CLI. lastMessageFile receives the final
-// assistant message (--output-last-message) so the result needn't be parsed
-// out of the progress stream.
-func codexExecArgs(model, lastMessageFile string, lightweight bool) []string {
-	args := []string{
-		"exec",
-		"--skip-git-repo-check", // temp workdir is not a git repo
-		"--ignore-user-config",
-		"--ignore-rules",
-		"--strict-config",
-		"--sandbox", "read-only",
-		"--ask-for-approval", "never",
-		"--config", `shell_environment_policy.inherit="none"`,
-		"--ephemeral",
-		"--color", "never",
-		"--json",
-		"--output-last-message", lastMessageFile,
-	}
-	// Draftline needs text transformation, not an agent. Disable every stable
-	// capability-bearing feature exposed by the pinned Codex CLI so manuscript
-	// content cannot induce shell, file, browser, app, or sub-agent activity.
-	for _, feature := range []string{
-		"shell_tool", "unified_exec", "view_image", "apps", "browser_use",
-		"computer_use", "image_generation", "multi_agent", "skill_search", "hooks",
-	} {
-		args = append(args, "--disable", feature)
-	}
-	if lightweight {
-		args = append(args, "--config", `model_reasoning_effort="low"`)
-	}
-	if model != "" {
-		args = append(args, "-m", model)
-	}
-	return append(args, "-")
-}
-
-func claudeCodeExecArgs(model string, lightweight bool) []string {
-	args := []string{
-		"-p",
-		"--output-format", "stream-json",
-		"--verbose",
-		"--max-turns", "1",
-		"--model", model,
-		"--safe-mode",
-		"--disable-slash-commands",
-		"--strict-mcp-config",
-		"--mcp-config", `{}`,
-		"--tools", "",
-		"--permission-mode", "dontAsk",
-		"--no-session-persistence",
-	}
-	if lightweight {
-		args = append(args, "--effort", "low")
-	}
-	return args
-}
-
-func claudeFailureMessage(stderr string, runErr error) string {
-	lower := strings.ToLower(stderr)
-	switch {
-	case strings.Contains(lower, "401"), strings.Contains(lower, "403"), strings.Contains(lower, "auth"):
-		return "Claude authentication failed. Sign in again from Settings › AI Studio."
-	case strings.Contains(lower, "rate limit"), strings.Contains(lower, "429"):
-		return "Claude rate limit reached. Wait a moment and try again."
-	case strings.Contains(lower, "model") && (strings.Contains(lower, "not found") || strings.Contains(lower, "not supported")):
-		return "Claude rejected the selected model. Check the model setting and try again."
-	case runErr != nil:
-		return "Claude request failed (" + runErr.Error() + "). Check your Claude sign-in and connection."
-	default:
-		return "Claude request failed. Check your Claude sign-in and connection."
-	}
-}
-
-// codexModelOverride prevents the shared legacy ai_model setting from leaking
-// a provider-specific model into Codex when the AI Studio quick-switcher is
-// used. Unknown values are left alone so future OpenAI model IDs still work.
-func codexModelOverride(model string) string {
-	trimmed := strings.TrimSpace(model)
-	lower := strings.ToLower(trimmed)
-	for _, prefix := range []string{"claude", "gemini", "grok", "llama", "mistral"} {
-		if strings.HasPrefix(lower, prefix) {
-			return ""
-		}
-	}
-	return trimmed
-}
-
-// resolveCodexLightweightModel uses the CLI's own cached availability list so
-// fast editing never hard-fails on installations that predate a model name.
-// With no known lightweight model, an empty override safely uses the CLI's
-// account default (still at low reasoning effort).
-func resolveCodexLightweightModel(home string) string {
-	data, err := os.ReadFile(filepath.Join(home, ".codex", "models_cache.json"))
-	if err != nil {
-		return ""
-	}
-	return selectCodexLightweightModel(data)
-}
-
-func selectCodexLightweightModel(data []byte) string {
-	var cache struct {
-		Models []struct {
-			Slug string `json:"slug"`
-		} `json:"models"`
-	}
-	if json.Unmarshal(data, &cache) != nil {
-		return ""
-	}
-	available := make(map[string]bool, len(cache.Models))
-	for _, model := range cache.Models {
-		available[model.Slug] = true
-	}
-	for _, preferred := range []string{"gpt-5.6-luna", "gpt-5.4-mini", "gpt-reserve"} {
-		if available[preferred] {
-			return preferred
-		}
-	}
-	return ""
-}
-
-func codexFailureMessage(stderr string, runErr error) string {
-	lines := strings.Split(stderr, "\n")
-	for i := len(lines) - 1; i >= 0; i-- {
-		line := strings.TrimSpace(lines[i])
-		if line == "" {
-			continue
-		}
-
-		// API failures commonly end in a JSON object containing detail/message.
-		if start := strings.Index(line, "{"); start >= 0 {
-			var payload map[string]any
-			if json.Unmarshal([]byte(line[start:]), &payload) == nil {
-				for _, key := range []string{"detail", "message", "error"} {
-					if message, ok := payload[key].(string); ok && strings.TrimSpace(message) != "" {
-						return "Codex request failed: " + truncateCodexError(message)
-					}
-				}
-			}
-		}
-
-		lower := strings.ToLower(line)
-		actionable := strings.HasPrefix(lower, "error:") || strings.HasPrefix(lower, "error ") ||
-			strings.Contains(lower, "unexpected status") || strings.Contains(lower, "not supported") ||
-			strings.Contains(lower, "invalid model") || strings.Contains(lower, "authentication failed") ||
-			strings.Contains(lower, "rate limit")
-		if !actionable {
-			continue
-		}
-		if idx := strings.Index(lower, "error:"); idx >= 0 {
-			line = strings.TrimSpace(line[idx+len("error:"):])
-		}
-		return "Codex request failed: " + truncateCodexError(line)
-	}
-
-	if runErr != nil {
-		return "Codex request failed (" + runErr.Error() + "). Check your Codex model setting and ChatGPT sign-in."
-	}
-	return "Codex request failed. Check your Codex model setting and ChatGPT sign-in."
-}
-
-func truncateCodexError(message string) string {
-	message = strings.TrimSpace(message)
-	if len(message) > 500 {
-		return message[:500] + "…"
-	}
-	return message
-}
-
 // callCodexCLI handles the "codex" AI mode: prose rewrites through the OpenAI
 // Codex CLI using the user's ChatGPT account.
 func (a *App) callCodexCLI(ctx context.Context, system, userMsg string, profile aiRequestProfile) types.AIRewriteResult {
@@ -1311,16 +1120,16 @@ func (a *App) callCodexCLI(ctx context.Context, system, userMsg string, profile 
 	}
 
 	lastMsg := filepath.Join(tempHome, "last-message.txt")
-	model := codexModelOverride(a.getSettings().AIModel)
+	model := providers.CodexModelOverride(a.getSettings().AIModel)
 	if profile.lightweight {
-		model = resolveCodexLightweightModel(realHome)
+		model = providers.ResolveCodexLightweightModel(realHome)
 		if model != "" {
 			runtime.EventsEmit(a.ctx, "ai:log", "Fast edit model: "+model)
 		}
 	}
 	// Lightweight editing prefers a model advertised by this CLI installation;
 	// otherwise no hardcoded override is used, avoiding model-churn failures.
-	cmd := codexExec(ctx, path, codexExecArgs(model, lastMsg, profile.lightweight)...)
+	cmd := codexExec(ctx, path, providers.CodexExecArgs(model, lastMsg, profile.lightweight)...)
 	cmd.Stdin = strings.NewReader(system + "\n\n" + userMsg)
 	cmd.Dir = tempHome
 
@@ -1368,7 +1177,7 @@ func (a *App) callCodexCLI(ctx context.Context, system, userMsg string, profile 
 		wg.Add(1)
 		go func(r io.ReadCloser, isErr bool) {
 			defer wg.Done()
-			drainLines(r, func(line string) {
+			providers.DrainLines(r, func(line string) {
 				if isErr {
 					stderrBuf.WriteString(line + "\n")
 				}
@@ -1383,7 +1192,7 @@ func (a *App) callCodexCLI(ctx context.Context, system, userMsg string, profile 
 		return types.AIRewriteResult{Error: "cancelled"}
 	}
 	if runErr != nil {
-		return types.AIRewriteResult{Error: codexFailureMessage(stderrBuf.String(), runErr)}
+		return types.AIRewriteResult{Error: providers.CodexFailureMessage(stderrBuf.String(), runErr)}
 	}
 
 	result, err := os.ReadFile(lastMsg)
@@ -1391,59 +1200,6 @@ func (a *App) callCodexCLI(ctx context.Context, system, userMsg string, profile 
 		return types.AIRewriteResult{Error: "Codex produced no output — check that you are signed in (Settings › AI Studio)"}
 	}
 	return types.AIRewriteResult{Result: strings.TrimSpace(string(result))}
-}
-
-// maxDrainLine caps how many bytes of a single output line are retained in
-// memory for logging/preview. Longer lines are truncated to this size but the
-// remainder is still consumed off the pipe.
-const maxDrainLine = 2 * 1024 * 1024
-
-// drainLines reads r to EOF, invoking onLine once per newline-delimited line
-// (with the trailing CR/LF stripped, matching bufio.Scanner.Text semantics).
-//
-// Unlike bufio.Scanner, it never stops on an over-long line: the retained
-// portion of each line is capped at maxDrainLine bytes and the rest of that
-// line is consumed and discarded. This guarantees the reader is drained for
-// the full lifetime of the pipe so the child process can never block writing
-// to a full stdout/stderr pipe (which would otherwise deadlock cmd.Wait()).
-func drainLines(r io.Reader, onLine func(string)) {
-	br := bufio.NewReaderSize(r, 64*1024)
-	var b strings.Builder
-	pending := false // some bytes of the current line have been seen
-	for {
-		chunk, err := br.ReadString('\n')
-		if len(chunk) > 0 {
-			pending = true
-			// Strip a single trailing LF (and preceding CR) to match Scanner.
-			end := len(chunk)
-			hasNL := chunk[end-1] == '\n'
-			if hasNL {
-				end--
-				if end > 0 && chunk[end-1] == '\r' {
-					end--
-				}
-			}
-			if remaining := maxDrainLine - b.Len(); remaining > 0 {
-				if end > remaining {
-					b.WriteString(chunk[:remaining])
-				} else {
-					b.WriteString(chunk[:end])
-				}
-			}
-			if hasNL {
-				onLine(b.String())
-				b.Reset()
-				pending = false
-			}
-		}
-		if err != nil {
-			// EOF or read error: flush any trailing line without a newline.
-			if pending {
-				onLine(b.String())
-			}
-			return
-		}
-	}
 }
 
 // readClaudeAPIKey reads the Anthropic API key stored by the Claude Code CLI.
@@ -1469,95 +1225,11 @@ func readClaudeAPIKey() string {
 	return ""
 }
 
-// streamAnthropic calls the Anthropic Messages API with SSE streaming.
-// It emits ai:token events for each text delta so the frontend can show
-// tokens as they arrive. Returns the full accumulated text.
-func (a *App) streamAnthropic(ctx context.Context, apiKey, model, system, userMsg string) (string, error) {
-	reqBody, _ := json.Marshal(map[string]any{
-		"model":      model,
-		"max_tokens": 8192,
-		"stream":     true,
-		"system":     system,
-		"messages":   []map[string]string{{"role": "user", "content": userMsg}},
-	})
-
-	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.anthropic.com/v1/messages", bytes.NewBuffer(reqBody))
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-api-key", apiKey)
-	req.Header.Set("anthropic-version", "2023-06-01")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		if errors.Is(ctx.Err(), context.Canceled) {
-			return "", fmt.Errorf("cancelled")
-		}
-		return "", err
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != 200 {
-		body, _ := readAIResponseBody(resp.Body)
-		var apiErr struct {
-			Error struct {
-				Message string `json:"message"`
-			} `json:"error"`
-		}
-		if json.Unmarshal(body, &apiErr) == nil && apiErr.Error.Message != "" {
-			return "", fmt.Errorf("%s", apiErr.Error.Message)
-		}
-		return "", fmt.Errorf("API error %d: %s", resp.StatusCode, string(body))
-	}
-
-	var sb strings.Builder
-	scanner := bufio.NewScanner(resp.Body)
-	scanner.Buffer(make([]byte, 64*1024), 64*1024)
-
-	for scanner.Scan() {
-		if ctx.Err() != nil {
-			return "", fmt.Errorf("cancelled")
-		}
-		line := scanner.Text()
-		if !strings.HasPrefix(line, "data: ") {
-			continue
-		}
-		data := strings.TrimPrefix(line, "data: ")
-
-		var event struct {
-			Type  string `json:"type"`
-			Delta struct {
-				Type string `json:"type"`
-				Text string `json:"text"`
-			} `json:"delta"`
-			Error struct {
-				Message string `json:"message"`
-			} `json:"error"`
-		}
-		if json.Unmarshal([]byte(data), &event) != nil {
-			continue
-		}
-		switch event.Type {
-		case "content_block_delta":
-			if event.Delta.Type == "text_delta" {
-				sb.WriteString(event.Delta.Text)
-				runtime.EventsEmit(a.ctx, "ai:token", event.Delta.Text)
-			}
-		case "error":
-			return "", fmt.Errorf("%s", event.Error.Message)
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		if errors.Is(ctx.Err(), context.Canceled) {
-			return "", fmt.Errorf("cancelled")
-		}
-		return "", err
-	}
-
-	return strings.TrimSpace(sb.String()), nil
+// aiEmit forwards a provider event to the Wails runtime. It is injected into
+// providers.Request as the Emit closure so the providers package never imports
+// the Wails runtime.
+func (a *App) aiEmit(event string, data any) {
+	runtime.EventsEmit(a.ctx, event, data)
 }
 
 // dispatchAI routes the AI request to the appropriate provider based on settings.
@@ -1581,20 +1253,30 @@ func (a *App) dispatchAI(system, userMsg string, profile aiRequestProfile) types
 		if s.AILocalEndpoint == "" {
 			return types.AIRewriteResult{Error: "no local endpoint configured — set it in App Settings"}
 		}
-		return a.callLocalAI(ctx, system, userMsg)
+		return providers.Local(providers.Request{
+			Ctx: ctx, System: system, UserMsg: userMsg, Settings: s, Emit: a.aiEmit,
+		})
 	default: // "api"
 		if s.AIProvider == "" || a.getAPIKey() == "" {
 			return types.AIRewriteResult{Error: "no API provider configured — add your key in App Settings"}
 		}
+		req := providers.Request{
+			Ctx: ctx, System: system, UserMsg: userMsg,
+			APIKey: a.getAPIKey(), Settings: s, Emit: a.aiEmit,
+		}
 		switch s.AIProvider {
 		case "claude":
-			return a.callClaude(ctx, system, userMsg, profile)
+			req.Model = a.resolveRequestModel("claude-sonnet-4-6", "claude-haiku-4-5-20251001", profile)
+			return providers.Claude(req)
 		case "openai":
-			return a.callOpenAI(ctx, system, userMsg, profile)
+			req.Model = a.resolveRequestModel("gpt-4o", "gpt-4o-mini", profile)
+			return providers.OpenAI(req)
 		case "gemini":
-			return a.callGemini(ctx, system, userMsg, profile)
+			req.Model = a.resolveRequestModel("gemini-1.5-pro", "gemini-1.5-flash", profile)
+			return providers.Gemini(req)
 		case "grok":
-			return a.callGrok(ctx, system, userMsg, profile)
+			req.Model = a.resolveRequestModel("grok-2", "", profile)
+			return providers.Grok(req)
 		default:
 			return types.AIRewriteResult{Error: "unknown provider: " + s.AIProvider}
 		}
@@ -1667,7 +1349,10 @@ func (a *App) callClaudeCode(ctx context.Context, system, userMsg string, profil
 			runtime.EventsEmit(a.ctx, "ai:log", "Fast edit model: Claude Haiku")
 		}
 		runtime.EventsEmit(a.ctx, "ai:log", "Connecting to Anthropic API…")
-		result, err := a.streamAnthropic(ctx, apiKey, model, system, userMsg)
+		result, err := providers.StreamAnthropic(providers.Request{
+			Ctx: ctx, System: system, UserMsg: userMsg,
+			Model: model, APIKey: apiKey, Emit: a.aiEmit,
+		})
 		if err != nil {
 			return types.AIRewriteResult{Error: err.Error()}
 		}
@@ -1712,7 +1397,7 @@ func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string, pro
 	// .cmd-shim fallback, where argv metacharacters would be interpreted) and
 	// sidesteps the ~32K Windows command-line length limit.
 	fullPrompt := system + "\n\n" + userMsg
-	claudeArgs := claudeCodeExecArgs(model, profile.lightweight)
+	claudeArgs := providers.ClaudeCodeExecArgs(model, profile.lightweight)
 	cmd := claudeExec(ctx, path, claudeArgs...)
 	cmd.Stdin = strings.NewReader(fullPrompt)
 	cmd.Dir = tempHome
@@ -1755,7 +1440,7 @@ func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string, pro
 		go func() {
 			defer wg.Done()
 			streamed := false
-			drainLines(stdoutPipe, func(line string) {
+			providers.DrainLines(stdoutPipe, func(line string) {
 				// Raw stream-json lines contain prompt/manuscript-derived
 				// content. Keep them only in the opt-in debug log; never emit
 				// them to the ai:log runtime event (which can appear in
@@ -1790,7 +1475,7 @@ func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string, pro
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			drainLines(stderrPipe, func(line string) {
+			providers.DrainLines(stderrPipe, func(line string) {
 				stderrBuf.WriteString(line + "\n")
 				// stderr may echo prompt/manuscript-derived content; keep it in
 				// the opt-in debug log only, not the screenshot-visible ai:log.
@@ -1809,251 +1494,12 @@ func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string, pro
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			return types.AIRewriteResult{Error: "timed out — try a shorter chapter or check your Claude Code connection"}
 		}
-		return types.AIRewriteResult{Error: claudeFailureMessage(stderrBuf.String(), runErr)}
+		return types.AIRewriteResult{Error: providers.ClaudeFailureMessage(stderrBuf.String(), runErr)}
 	}
 	if strings.TrimSpace(resultText) == "" {
 		return types.AIRewriteResult{Error: "Claude produced no output — check that you are signed in (Settings › AI Studio)"}
 	}
 	return types.AIRewriteResult{Result: strings.TrimSpace(resultText)}
-}
-
-// extractHTMLParagraphs returns each <p>...</p> element from HTML as a full tag string.
-
-func (a *App) callLocalAI(ctx context.Context, system, userMsg string) types.AIRewriteResult {
-	s := a.getSettings()
-	model := s.AILocalModel
-	if model == "" {
-		model = "llama3"
-	}
-	type msg struct {
-		Role    string `json:"role"`
-		Content string `json:"content"`
-	}
-	reqBody, _ := json.Marshal(map[string]any{
-		"model":    model,
-		"messages": []msg{{Role: "system", Content: system}, {Role: "user", Content: userMsg}},
-	})
-	endpoint := strings.TrimRight(s.AILocalEndpoint, "/") + "/chat/completions"
-	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewReader(reqBody))
-	if err != nil {
-		return types.AIRewriteResult{Error: err.Error()}
-	}
-	req.Header.Set("Content-Type", "application/json")
-	// No client timeout: the request context's 180-second deadline governs,
-	// and a shorter competing timeout would mask cancellation.
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		if errors.Is(ctx.Err(), context.Canceled) {
-			return types.AIRewriteResult{Error: "cancelled"}
-		}
-		return types.AIRewriteResult{Error: "local AI request failed: " + err.Error()}
-	}
-	defer func() { _ = resp.Body.Close() }()
-	var result struct {
-		Choices []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-		} `json:"choices"`
-		Error struct{ Message string } `json:"error"`
-	}
-	body, err := readAIResponseBody(resp.Body)
-	if err != nil {
-		return types.AIRewriteResult{Error: err.Error()}
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return types.AIRewriteResult{Error: "failed to parse response: " + err.Error()}
-	}
-	if result.Error.Message != "" {
-		return types.AIRewriteResult{Error: result.Error.Message}
-	}
-	if len(result.Choices) == 0 {
-		return types.AIRewriteResult{Error: "empty response from local AI"}
-	}
-	return types.AIRewriteResult{Result: strings.TrimSpace(result.Choices[0].Message.Content)}
-}
-
-func (a *App) callClaude(ctx context.Context, system, userMsg string, profile aiRequestProfile) types.AIRewriteResult {
-	model := a.resolveRequestModel("claude-sonnet-4-6", "claude-haiku-4-5-20251001", profile)
-	runtime.EventsEmit(a.ctx, "ai:log", "Connecting to Claude API…")
-	result, err := a.streamAnthropic(ctx, a.getAPIKey(), model, system, userMsg)
-	if err != nil {
-		return types.AIRewriteResult{Error: err.Error()}
-	}
-	return types.AIRewriteResult{Result: result}
-}
-
-func (a *App) callOpenAI(ctx context.Context, system, userMsg string, profile aiRequestProfile) types.AIRewriteResult {
-	model := a.resolveRequestModel("gpt-4o", "gpt-4o-mini", profile)
-	reqBody, _ := json.Marshal(map[string]any{
-		"model": model,
-		"messages": []map[string]string{
-			{"role": "system", "content": system},
-			{"role": "user", "content": userMsg},
-		},
-	})
-	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.openai.com/v1/chat/completions", bytes.NewBuffer(reqBody))
-	if err != nil {
-		return types.AIRewriteResult{Error: err.Error()}
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+a.getAPIKey())
-
-	// No client timeout: the request context's 180-second deadline governs.
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		if errors.Is(ctx.Err(), context.Canceled) {
-			return types.AIRewriteResult{Error: "cancelled"}
-		}
-		return types.AIRewriteResult{Error: err.Error()}
-	}
-	defer func() { _ = resp.Body.Close() }()
-	body, err := readAIResponseBody(resp.Body)
-	if err != nil {
-		return types.AIRewriteResult{Error: err.Error()}
-	}
-
-	var result struct {
-		Choices []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-		} `json:"choices"`
-		Error *struct {
-			Message string `json:"message"`
-		} `json:"error"`
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return types.AIRewriteResult{Error: "failed to parse OpenAI response"}
-	}
-	if result.Error != nil {
-		return types.AIRewriteResult{Error: result.Error.Message}
-	}
-	if len(result.Choices) == 0 {
-		return types.AIRewriteResult{Error: "empty response from OpenAI"}
-	}
-	return types.AIRewriteResult{Result: strings.TrimSpace(result.Choices[0].Message.Content)}
-}
-
-func (a *App) callGemini(ctx context.Context, system, userMsg string, profile aiRequestProfile) types.AIRewriteResult {
-	model := a.resolveRequestModel("gemini-1.5-pro", "gemini-1.5-flash", profile)
-
-	// Gemini API uses a different format
-	reqBody, _ := json.Marshal(map[string]any{
-		"contents": []map[string]any{
-			{
-				"role":  "user",
-				"parts": []map[string]string{{"text": userMsg}},
-			},
-		},
-		"systemInstruction": map[string]any{
-			"parts": []map[string]string{{"text": system}},
-		},
-		"generationConfig": map[string]any{
-			"temperature":     0.7,
-			"maxOutputTokens": 8192,
-		},
-	})
-
-	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent", model)
-	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(reqBody))
-	if err != nil {
-		return types.AIRewriteResult{Error: err.Error()}
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-goog-api-key", a.getAPIKey())
-
-	// No client timeout: the request context's 180-second deadline governs.
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		if errors.Is(ctx.Err(), context.Canceled) {
-			return types.AIRewriteResult{Error: "cancelled"}
-		}
-		return types.AIRewriteResult{Error: "Failed to connect to Gemini API: " + err.Error()}
-	}
-	defer func() { _ = resp.Body.Close() }()
-	body, err := readAIResponseBody(resp.Body)
-	if err != nil {
-		return types.AIRewriteResult{Error: err.Error()}
-	}
-
-	var result struct {
-		Candidates []struct {
-			Content struct {
-				Parts []struct {
-					Text string `json:"text"`
-				} `json:"parts"`
-			} `json:"content"`
-		} `json:"candidates"`
-		Error *struct {
-			Message string `json:"message"`
-		} `json:"error"`
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return types.AIRewriteResult{Error: "Failed to parse Gemini response"}
-	}
-	if result.Error != nil {
-		return types.AIRewriteResult{Error: result.Error.Message}
-	}
-	if len(result.Candidates) == 0 || len(result.Candidates[0].Content.Parts) == 0 {
-		return types.AIRewriteResult{Error: "Empty response from Gemini"}
-	}
-	return types.AIRewriteResult{Result: strings.TrimSpace(result.Candidates[0].Content.Parts[0].Text)}
-}
-
-func (a *App) callGrok(ctx context.Context, system, userMsg string, profile aiRequestProfile) types.AIRewriteResult {
-	model := a.resolveRequestModel("grok-2", "", profile)
-
-	// Grok uses OpenAI-compatible API format
-	reqBody, _ := json.Marshal(map[string]any{
-		"model": model,
-		"messages": []map[string]string{
-			{"role": "system", "content": system},
-			{"role": "user", "content": userMsg},
-		},
-	})
-
-	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.x.ai/v1/chat/completions", bytes.NewBuffer(reqBody))
-	if err != nil {
-		return types.AIRewriteResult{Error: err.Error()}
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+a.getAPIKey())
-
-	// No client timeout: the request context's 180-second deadline governs.
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		if errors.Is(ctx.Err(), context.Canceled) {
-			return types.AIRewriteResult{Error: "cancelled"}
-		}
-		return types.AIRewriteResult{Error: "Failed to connect to Grok API: " + err.Error()}
-	}
-	defer func() { _ = resp.Body.Close() }()
-	body, err := readAIResponseBody(resp.Body)
-	if err != nil {
-		return types.AIRewriteResult{Error: err.Error()}
-	}
-
-	var result struct {
-		Choices []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-		} `json:"choices"`
-		Error *struct {
-			Message string `json:"message"`
-		} `json:"error"`
-	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return types.AIRewriteResult{Error: "Failed to parse Grok response"}
-	}
-	if result.Error != nil {
-		return types.AIRewriteResult{Error: result.Error.Message}
-	}
-	if len(result.Choices) == 0 {
-		return types.AIRewriteResult{Error: "Empty response from Grok"}
-	}
-	return types.AIRewriteResult{Result: strings.TrimSpace(result.Choices[0].Message.Content)}
 }
 
 func (a *App) writeBook(b types.BookData, path string) types.SaveResult {

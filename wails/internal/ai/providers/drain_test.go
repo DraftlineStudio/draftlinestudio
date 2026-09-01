@@ -1,4 +1,4 @@
-package main
+package providers
 
 import (
 	"io"
@@ -9,7 +9,7 @@ import (
 
 func TestDrainLines_BasicLines(t *testing.T) {
 	var got []string
-	drainLines(strings.NewReader("a\nb\nc\n"), func(l string) { got = append(got, l) })
+	DrainLines(strings.NewReader("a\nb\nc\n"), func(l string) { got = append(got, l) })
 	if strings.Join(got, ",") != "a,b,c" {
 		t.Fatalf("got %v", got)
 	}
@@ -17,7 +17,7 @@ func TestDrainLines_BasicLines(t *testing.T) {
 
 func TestDrainLines_NoTrailingNewline(t *testing.T) {
 	var got []string
-	drainLines(strings.NewReader("a\nb"), func(l string) { got = append(got, l) })
+	DrainLines(strings.NewReader("a\nb"), func(l string) { got = append(got, l) })
 	if strings.Join(got, ",") != "a,b" {
 		t.Fatalf("got %v", got)
 	}
@@ -25,7 +25,7 @@ func TestDrainLines_NoTrailingNewline(t *testing.T) {
 
 func TestDrainLines_CRLFAndEmptyLines(t *testing.T) {
 	var got []string
-	drainLines(strings.NewReader("a\r\n\r\nb\r\n"), func(l string) { got = append(got, l) })
+	DrainLines(strings.NewReader("a\r\n\r\nb\r\n"), func(l string) { got = append(got, l) })
 	if len(got) != 3 || got[0] != "a" || got[1] != "" || got[2] != "b" {
 		t.Fatalf("got %#v", got)
 	}
@@ -33,7 +33,7 @@ func TestDrainLines_CRLFAndEmptyLines(t *testing.T) {
 
 func TestDrainLines_Empty(t *testing.T) {
 	called := false
-	drainLines(strings.NewReader(""), func(l string) { called = true })
+	DrainLines(strings.NewReader(""), func(l string) { called = true })
 	if called {
 		t.Fatal("callback should not fire on empty input")
 	}
@@ -50,14 +50,14 @@ func TestDrainLines_OverLongLineDoesNotStall(t *testing.T) {
 	done := make(chan struct{})
 	var lines []string
 	go func() {
-		drainLines(strings.NewReader(input), func(l string) { lines = append(lines, l) })
+		DrainLines(strings.NewReader(input), func(l string) { lines = append(lines, l) })
 		close(done)
 	}()
 
 	select {
 	case <-done:
 	case <-time.After(10 * time.Second):
-		t.Fatal("drainLines stalled on an over-long line")
+		t.Fatal("DrainLines stalled on an over-long line")
 	}
 
 	if len(lines) != 2 {
@@ -88,7 +88,7 @@ func (s *slowReader) Read(p []byte) (int, error) {
 
 func TestDrainLines_PartialReads(t *testing.T) {
 	var got []string
-	drainLines(&slowReader{data: []byte("hello\nworld\n")}, func(l string) { got = append(got, l) })
+	DrainLines(&slowReader{data: []byte("hello\nworld\n")}, func(l string) { got = append(got, l) })
 	if strings.Join(got, ",") != "hello,world" {
 		t.Fatalf("got %v", got)
 	}
