@@ -2,6 +2,19 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02492] - 2026-09-01
+
+### Added
+- Added CPU profiles for background analysis.
+
+### Changed
+- The Intertwined view now shows the full Story Graph with story beats.
+- Character rails now show gaps where a character is absent.
+- Added zoom and layer toggles to the Intertwined view.
+
+### Fixed
+- Background analyses no longer run at the same time and compete for CPU.
+
 ## [0.16.02491] - 2026-09-01
 
 ### Added

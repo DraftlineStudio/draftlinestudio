@@ -12,6 +12,7 @@ export default function ApplicationSection({
   autoThemeDawn, setAutoThemeDawn,
   autoThemeDusk, setAutoThemeDusk,
   activityAutoSaveEnabled, setActivityAutoSaveEnabled,
+  analysisCPUProfile, setAnalysisCPUProfile,
   onBrowse,
 }: ApplicationSectionProps) {
   return (
@@ -133,6 +134,23 @@ export default function ApplicationSection({
         </label>
         <div className="settings-hint">
           Saves paused edits and records changed chapter versions during active writing. When disabled, Draftline saves only when you ask it to.
+        </div>
+      </div>
+      <div className="settings-section-label">Background Analysis</div>
+      <div className="dialog-field">
+        <label className="dialog-label">CPU usage</label>
+        <select
+          className="dialog-select"
+          value={analysisCPUProfile}
+          onChange={event => setAnalysisCPUProfile(event.target.value as typeof analysisCPUProfile)}
+        >
+          <option value="adaptive">Adaptive (recommended)</option>
+          <option value="gentle">Gentle — 1–2 analysis cores</option>
+          <option value="balanced">Balanced — up to 4 analysis cores</option>
+          <option value="fast">Fast — use available CPU</option>
+        </select>
+        <div className="settings-hint">
+          Adaptive automatically switches large manuscripts to Gentle. These are concurrency budgets rather than exact CPU percentages; Draftline leaves capacity for the editor in Adaptive, Gentle, and Balanced modes.
         </div>
       </div>
     </>
