@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02490] - 2026-09-01
+
+### Changed
+- Rebuilt Continuity as a question queue with a detail pane.
+
+### Added
+- Continuity questions can be marked reviewed or dismissed, and decisions are saved.
+
 ## [0.16.02489] - 2026-09-01
 
 ### Removed

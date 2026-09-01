@@ -90,6 +90,11 @@ type AnalysisData struct {
 	// timeline, continuity, and future Storyboard views share one evidence set.
 	Evidence *EvidenceData `json:"evidence,omitempty"`
 
+	// Continuity stores only the author's decisions on continuity questions
+	// (reviewed/dismissed). The report itself is rebuilt on demand and is
+	// never persisted, so it can never drift from the manuscript.
+	Continuity *ContinuityData `json:"continuity,omitempty"`
+
 	// Future analysis types can be added here:
 	// PlotAnalysis     *PlotAnalysisData    `json:"plot_analysis,omitempty"`
 	// ThemeAnalysis    *ThemeAnalysisData   `json:"theme_analysis,omitempty"`

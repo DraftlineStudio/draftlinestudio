@@ -420,12 +420,17 @@ func signal(kind, category, severity, title, detail string, characterIDs, charac
 }
 
 func finishReport(report *types.ContinuityReport, book types.BookData) {
+	applyDecisions(report, book)
 	categories, characters := map[string]*types.ContinuityFacet{}, map[string]*types.ContinuityFacet{}
 	for _, item := range report.Signals {
-		if item.Severity == "review" {
-			report.ReviewCount++
-		} else {
-			report.InfoCount++
+		// Counts describe outstanding work, so a question the author has already
+		// reviewed or dismissed is still listed but no longer counted.
+		if item.Status == "" {
+			if item.Severity == "review" {
+				report.ReviewCount++
+			} else {
+				report.InfoCount++
+			}
 		}
 		incrementFacet(categories, item.Category, categoryLabel(item.Category))
 		for index, id := range item.CharacterIDs {
@@ -442,6 +447,24 @@ func finishReport(report *types.ContinuityReport, book types.BookData) {
 		if indexing.ShouldAnalyzeChapter(chapter) {
 			report.ChaptersChecked++
 		}
+	}
+}
+
+// applyDecisions stamps stored author decisions onto freshly built signals. A
+// decision whose signal no longer exists is simply ignored: the question it
+// answered is gone, so the record has nothing to say about this manuscript.
+func applyDecisions(report *types.ContinuityReport, book types.BookData) {
+	if book.Analysis.Continuity == nil {
+		return
+	}
+	status := make(map[string]string, len(book.Analysis.Continuity.Decisions))
+	for _, decision := range book.Analysis.Continuity.Decisions {
+		if decision.Status == "reviewed" || decision.Status == "dismissed" {
+			status[decision.SignalID] = decision.Status
+		}
+	}
+	for index := range report.Signals {
+		report.Signals[index].Status = status[report.Signals[index].ID]
 	}
 }
 
