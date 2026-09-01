@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02485] - 2026-09-01
+
+### Added
+- Added the Ask Draftline explorer with suggested questions about the manuscript.
+
 ## [0.16.02484] - 2026-09-01
 
 ### Added

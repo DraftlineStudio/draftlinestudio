@@ -4,12 +4,15 @@ import { SearchStory } from '../../wailsjs/go/main/App'
 import { types } from '../../wailsjs/go/models'
 import { useAppStore } from '../store/appStore'
 import { useBookStore } from '../store/bookStore'
-import type { Section } from '../types/draftline'
+import type { BookData, Section } from '../types/draftline'
+import { isConfirmedCharacter } from '../utils/characterStatus'
 import DetailInsightPanel from './storysearch/DetailInsightPanel'
 import EvidenceIndexPanel from './storysearch/EvidenceIndexPanel'
 
 type SearchResult = types.StorySearchResult
 type SearchMatch = types.StorySearchMatch
+type SearchStarter = { label: string; detail: string; query: string }
+type SearchStarterGroup = { id: string; label: string; starters: SearchStarter[] }
 
 export default function StorySearchToolWindow() {
   const { book, setCurrentChapter, setViewMode } = useBookStore(useShallow(s => ({
@@ -82,6 +85,7 @@ export default function StorySearchToolWindow() {
   }
 
   const aliases = useMemo(() => result?.resolved_entities ?? [], [result])
+  const starterGroups = useMemo(() => buildSearchStarters(book), [book])
   const truncated = result ? result.total > result.matches.length : false
 
   return (
@@ -92,7 +96,7 @@ export default function StorySearchToolWindow() {
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.25">
             <circle cx="5" cy="5" r="3.4" /><path d="M7.5 7.5 11 11" />
           </svg>
-          Detail Search
+          Ask Draftline
         </button>
         <span className="story-search-header-hint">{activeView === 'search' ? 'Source-backed manuscript trails · no AI' : 'Everything Draftline has indexed'}</span>
         <button
@@ -119,13 +123,13 @@ export default function StorySearchToolWindow() {
             ref={inputRef}
             value={query}
             onChange={event => setQuery(event.target.value)}
-            placeholder={'Trace a character, place, object, discovery, or exact phrase'}
+            placeholder={'Ask a question about your story, or search for any detail'}
             aria-label="Trace names, details, and phrases across the story"
           />
           {query && <button type="button" className="story-search-clear" onClick={() => { setQuery(''); setResult(null); inputRef.current?.focus() }} aria-label="Clear search">×</button>}
         </div>
         <button className="story-search-submit" type="submit" disabled={!query.trim() || loading}>
-          {loading ? 'Tracing…' : 'Trace'}
+          {loading ? 'Searching…' : 'Ask'}
         </button>
       </form>}
 
@@ -142,10 +146,7 @@ export default function StorySearchToolWindow() {
 
       {activeView === 'search' ? <div className="story-search-body">
         {!result && !loading && (
-          <div className="story-search-empty">
-            <strong>Follow a detail through the manuscript.</strong>
-            <span>Trace where something begins, returns, or connects. Ask about a character's first name, a discovery, or several details that should converge.</span>
-          </div>
+          <SearchStarterPanel groups={starterGroups} onSelect={value => { setQuery(value); void runSearch(value) }} />
         )}
         {loading && <div className="story-search-empty"><span className="story-search-spinner" />Building the source trail…</div>}
         {result?.error && <div className="story-search-empty story-search-error">{result.error}</div>}
@@ -200,6 +201,88 @@ export default function StorySearchToolWindow() {
       </div> : book ? <EvidenceIndexPanel book={book} onNavigate={navigateSource} /> : null}
     </section>
   )
+}
+
+function SearchStarterPanel({ groups, onSelect }: { groups: SearchStarterGroup[]; onSelect: (query: string) => void }) {
+  const [active, setActive] = useState(groups[0]?.id ?? '')
+  useEffect(() => {
+    if (!groups.some(group => group.id === active)) setActive(groups[0]?.id ?? '')
+  }, [active, groups])
+  const selected = groups.find(group => group.id === active) ?? groups[0]
+  return (
+    <div className="story-search-start">
+      <div className="story-search-start-lede">
+        <strong>What do you want to know about this story?</strong>
+        <span>You do not need search syntax. Choose a trail Draftline found in this manuscript, or ask in your own words.</span>
+      </div>
+      <div className="story-search-start-tabs" role="tablist" aria-label="Story search suggestions">
+        {groups.map(group => <button type="button" role="tab" aria-selected={group.id === selected?.id} className={group.id === selected?.id ? 'active' : ''} key={group.id} onClick={() => setActive(group.id)}>{group.label}</button>)}
+      </div>
+      <div className="story-search-starters">
+        {selected?.starters.map((starter, index) => (
+          <button type="button" key={`${starter.query}-${index}`} onClick={() => onSelect(starter.query)}>
+            <strong>{starter.label}</strong>
+            <span>{starter.detail}</span>
+            <i>Explore →</i>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function buildSearchStarters(book: BookData | null): SearchStarterGroup[] {
+  if (!book) return []
+  const characters = [...(book.story_bible?.characters ?? [])]
+    .filter(isConfirmedCharacter)
+    .sort((a, b) => (b.mention_count ?? 0) - (a.mention_count ?? 0))
+    .slice(0, 6)
+    .map(character => ({
+      label: `Follow ${character.name}`,
+      detail: `See where ${character.name} appears and which details travel with them.`,
+      query: character.name,
+    }))
+  const records = book.analysis?.evidence?.records ?? []
+  const knowledge: SearchStarter[] = []
+  const discoveries: SearchStarter[] = []
+  const seenKnowledge = new Set<string>()
+  for (const record of records) {
+    if (knowledge.length < 6) {
+      for (const state of record.knowledge_states ?? []) {
+        const name = state.character_names?.[0]
+        if (!name) continue
+        const key = `${name}:${state.state}`
+        if (seenKnowledge.has(key)) continue
+        seenKnowledge.add(key)
+        knowledge.push({ label: knowledgeStarterLabel(name, state.state), detail: record.text, query: `"${record.text.replace(/"/g, '')}"` })
+        if (knowledge.length >= 6) break
+      }
+    }
+    if (discoveries.length < 6 && record.evidence_type === 'discovery') {
+      discoveries.push({ label: `A discovery in ${chapterLabel(book, record.section, record.section_index)}`, detail: record.text, query: `"${record.text.replace(/"/g, '')}"` })
+    }
+    if (knowledge.length >= 6 && discoveries.length >= 6) break
+  }
+  return [
+    { id: 'characters', label: 'Characters', starters: characters },
+    { id: 'knowledge', label: 'Who knows what', starters: knowledge },
+    { id: 'discoveries', label: 'Discoveries', starters: discoveries },
+  ].filter(group => group.starters.length > 0)
+}
+
+function knowledgeStarterLabel(name: string, state: string): string {
+  if (state === 'shared') return `What did ${name} share?`
+  if (state === 'withheld') return `What did ${name} withhold?`
+  if (state === 'learned') return `What did ${name} learn?`
+  if (state === 'does_not_know') return `What didn't ${name} know?`
+  if (state === 'believes' || state === 'does_not_believe') return `What did ${name} believe?`
+  if (state === 'suspects' || state === 'does_not_suspect') return `What did ${name} suspect?`
+  return `What did ${name} know?`
+}
+
+function chapterLabel(book: BookData, section: string, index: number): string {
+  const chapters = section === 'front_matter' ? book.front_matter : section === 'back_matter' ? book.back_matter : book.body
+  return chapters?.[index]?.title || `chapter ${index + 1}`
 }
 
 function labelEvidenceType(value: string): string {
