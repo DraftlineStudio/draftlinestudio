@@ -4,6 +4,18 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02472] - 2026-09-01
+
+### Added
+- Defined Storiverse as a persistent universe context around the existing Draftline editor. The manuscript/navigation pane gains Manuscript and Storiverse tabs; the latter begins with linked book titles, and clicking an available title opens its original `.draftline` for editing while keeping the universe loaded.
+- Specified live book-to-universe propagation: edits mark the book fingerprint and dependent universe views stale immediately, the existing idle pipeline refreshes only that book, and affected cross-book joins update after the fingerprint is atomically committed.
+- Added synchronization safeguards for obsolete analysis revisions, unavailable-source fingerprint views, per-book analysis state, and normal unsaved-change handling while switching linked books.
+
+### Changed
+- Removed the obsolete trial/upgrade lock from the planned Storiverse tab. Manuscript and Storiverse are two views of the same open-source Draftline workspace, not separate products or mutually exclusive file modes.
+
+---
+
 ## [0.16.02471] - 2026-09-01
 
 ### Added
