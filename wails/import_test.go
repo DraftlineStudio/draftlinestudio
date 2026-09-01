@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"draftline/internal/export"
 	"draftline/internal/types"
 )
 
@@ -202,14 +203,120 @@ func TestImportSkipsOversizedSpineDoc(t *testing.T) {
 	}
 }
 
-func TestSplitImportedChaptersUsesInternalHeadings(t *testing.T) {
-	body := `<div><h2>1</h2><p>Mara arrived.</p><h2>2</h2><p>Hanlon answered.</p><h2>3</h2><p>Ruiz waited.</p></div>`
-	parts := splitImportedChapters("Novel", body)
-	if len(parts) != 3 {
-		t.Fatalf("expected 3 chapters, got %d: %+v", len(parts), parts)
+// Conservative chaptering: a spine document is one chapter unless it clearly
+// contains several (multiple h1s, or multiple h2s with no h1). The chapter
+// heading becomes the title and leaves the content — the app renders titles
+// itself and the exporter re-adds an <h1>.
+func TestAssembleChaptersConservativeSplit(t *testing.T) {
+	doc := func(body string) []importedBlock {
+		t.Helper()
+		_, blocks, _, err := parseSpineDoc([]byte("<body>" + body + "</body>"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return blocks
 	}
-	if parts[0].Title != "1" || parts[1].Title != "2" || parts[2].Title != "3" {
-		t.Fatalf("heading titles not preserved: %+v", parts)
+
+	t.Run("h1 with scene headings stays one chapter", func(t *testing.T) {
+		parts, _ := assembleChapters("Doc", doc(`<h1>The Crossing</h1><p>Mara arrived.</p><h3>Later</h3><p>Night fell.</p>`))
+		if len(parts) != 1 {
+			t.Fatalf("expected 1 chapter, got %d: %+v", len(parts), parts)
+		}
+		if parts[0].Title != "The Crossing" {
+			t.Fatalf("wrong title: %q", parts[0].Title)
+		}
+		if strings.Contains(parts[0].Content, "The Crossing") {
+			t.Fatalf("title heading left in content: %s", parts[0].Content)
+		}
+		if !strings.Contains(parts[0].Content, "<h3>Later</h3>") {
+			t.Fatalf("scene heading lost: %s", parts[0].Content)
+		}
+	})
+
+	t.Run("one h1 with h2 part headers stays one chapter", func(t *testing.T) {
+		parts, _ := assembleChapters("Doc", doc(`<h1>One</h1><p>Start.</p><h2>Part A</h2><p>Middle.</p><h2>Part B</h2><p>End.</p>`))
+		if len(parts) != 1 {
+			t.Fatalf("expected 1 chapter, got %d", len(parts))
+		}
+		if !strings.Contains(parts[0].Content, "<h2>Part A</h2>") || !strings.Contains(parts[0].Content, "<h2>Part B</h2>") {
+			t.Fatalf("h2 part headers lost: %s", parts[0].Content)
+		}
+	})
+
+	t.Run("multiple h1s split", func(t *testing.T) {
+		parts, _ := assembleChapters("Doc", doc(`<h1>1</h1><p>Mara arrived.</p><h1>2</h1><p>Hanlon answered.</p><h1>3</h1><p>Ruiz waited.</p>`))
+		if len(parts) != 3 {
+			t.Fatalf("expected 3 chapters, got %d: %+v", len(parts), parts)
+		}
+		if parts[0].Title != "1" || parts[1].Title != "2" || parts[2].Title != "3" {
+			t.Fatalf("heading titles not preserved: %+v", parts)
+		}
+		if strings.Contains(parts[1].Content, "<h1>") {
+			t.Fatalf("split heading left in content: %s", parts[1].Content)
+		}
+	})
+
+	t.Run("multiple h2s split when no h1 exists", func(t *testing.T) {
+		parts, _ := assembleChapters("Doc", doc(`<h2>1</h2><p>Mara arrived.</p><h2>2</h2><p>Hanlon answered.</p>`))
+		if len(parts) != 2 {
+			t.Fatalf("expected 2 chapters, got %d", len(parts))
+		}
+	})
+
+	t.Run("prefix content merges into first chapter", func(t *testing.T) {
+		parts, _ := assembleChapters("Doc", doc(`<p>An epigraph.</p><h1>One</h1><p>Prose.</p><h1>Two</h1><p>More.</p>`))
+		if len(parts) != 2 {
+			t.Fatalf("expected 2 chapters, got %d: %+v", len(parts), parts)
+		}
+		if parts[0].Title != "One" || !strings.Contains(parts[0].Content, "An epigraph.") {
+			t.Fatalf("prefix did not merge into first chapter: %+v", parts[0])
+		}
+	})
+
+	t.Run("leading h3 is not a title", func(t *testing.T) {
+		parts, _ := assembleChapters("Doc Title", doc(`<h3>Scene</h3><p>Prose.</p>`))
+		if parts[0].Title != "Doc Title" {
+			t.Fatalf("h3 stole the title: %q", parts[0].Title)
+		}
+		if !strings.Contains(parts[0].Content, "<h3>Scene</h3>") {
+			t.Fatalf("leading h3 lost: %s", parts[0].Content)
+		}
+	})
+}
+
+// Export → import must not stack titles: the exporter writes <h1>{title}</h1>
+// and the importer must take it back out of the content.
+func TestImportExportRoundTripNoDoubleTitle(t *testing.T) {
+	dir := t.TempDir()
+	epub := filepath.Join(dir, "roundtrip.epub")
+	book := types.BookData{
+		Version:  "2.0",
+		Metadata: types.Metadata{Title: "Round Trip", Author: "Tester"},
+		Body: []types.ChapterItem{
+			{Title: "The Crossing", Type: "Chapter", Content: "<p>Mara arrived at dusk.</p>"},
+			{Title: "The Ledger", Type: "Chapter", Content: "<p>Hanlon counted twice.</p>"},
+		},
+	}
+	if res := export.EPUB(epub, book, types.ExportOptions{}); !res.Success {
+		t.Fatalf("export failed: %s", res.Error)
+	}
+
+	a := &App{}
+	res := a.ImportEPUB(epub)
+	if !res.Success {
+		t.Fatalf("import failed: %s", res.Error)
+	}
+	if len(res.Book.Body) != 2 {
+		t.Fatalf("expected 2 chapters, got %d: %+v", len(res.Book.Body), res.Book.Body)
+	}
+	for i, want := range []string{"The Crossing", "The Ledger"} {
+		ch := res.Book.Body[i]
+		if ch.Title != want {
+			t.Fatalf("chapter %d title = %q, want %q", i, ch.Title, want)
+		}
+		if strings.Contains(ch.Content, "<h1>") {
+			t.Fatalf("chapter %d content still carries its title heading: %s", i, ch.Content)
+		}
 	}
 }
 

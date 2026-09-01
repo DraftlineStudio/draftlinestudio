@@ -20,6 +20,8 @@ import (
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/encoding/unicode"
+
+	"draftline/internal/types"
 )
 
 // importedBlock is one top-level block of sanitized chapter content.
@@ -422,4 +424,112 @@ func joinBlocks(blocks []importedBlock) string {
 		parts = append(parts, b.html)
 	}
 	return strings.Join(parts, "\n")
+}
+
+// ── Chaptering ──────────────────────────────────────────────────────────────
+
+const (
+	// maxImportedChapterHTML truncates a single chapter's sanitized HTML so no
+	// chapter can stall TipTap's synchronous setContent.
+	maxImportedChapterHTML = 2 << 20
+	// maxImportedBookHTML caps the whole imported book crossing the bridge.
+	maxImportedBookHTML = 40 << 20
+	// maxImportedChapters caps chapter explosion from pathological documents.
+	maxImportedChapters = 500
+)
+
+// assembleChapters converts one spine document's sanitized blocks into
+// chapters. A spine document is one chapter by default; it splits only at
+// multiple h1s, or at multiple h2s when it has no h1 — books that use h2/h3
+// for part titles and scene headings keep them inline instead of being
+// shattered into bogus chapters. The chapter-opening heading becomes the
+// title and is removed from content: the app renders titles itself and the
+// EPUB exporter re-adds an <h1>, so leaving it in doubles the title on every
+// round trip.
+func assembleChapters(docTitle string, blocks []importedBlock) ([]types.ChapterItem, []string) {
+	h1s, h2s := 0, 0
+	for _, b := range blocks {
+		switch b.level {
+		case 1:
+			h1s++
+		case 2:
+			h2s++
+		}
+	}
+	splitLevel := 0
+	if h1s >= 2 {
+		splitLevel = 1
+	} else if h1s == 0 && h2s >= 2 {
+		splitLevel = 2
+	}
+
+	var chapters []types.ChapterItem
+	var warnings []string
+	emit := func(title string, content []importedBlock) {
+		html, truncated := renderChapterHTML(content)
+		if truncated {
+			warnings = append(warnings, fmt.Sprintf("Chapter %q was truncated during import (over %d MB)", title, maxImportedChapterHTML>>20))
+		}
+		chapters = append(chapters, types.ChapterItem{Title: title, Content: html})
+	}
+
+	if splitLevel == 0 {
+		title := docTitle
+		content := blocks
+		// A document-leading h1/h2 is the chapter title; a leading h3 is a
+		// scene heading and stays in the content.
+		if len(blocks) > 0 && (blocks[0].level == 1 || blocks[0].level == 2) {
+			title = blocks[0].text
+			content = blocks[1:]
+		}
+		emit(title, content)
+		return chapters, warnings
+	}
+
+	// Blocks before the first split heading stay accumulated so they land at
+	// the top of the first chapter instead of becoming a spurious chapter.
+	var current []importedBlock
+	currentTitle := docTitle
+	started := false
+	for _, b := range blocks {
+		if b.level == splitLevel {
+			if started {
+				emit(currentTitle, current)
+				current = nil
+			}
+			started = true
+			currentTitle = b.text
+			continue
+		}
+		current = append(current, b)
+	}
+	emit(currentTitle, current)
+	return chapters, warnings
+}
+
+// renderChapterHTML joins blocks into chapter HTML, truncating at a block
+// boundary once the per-chapter cap is exceeded.
+func renderChapterHTML(blocks []importedBlock) (string, bool) {
+	var sb strings.Builder
+	truncated := false
+	for _, b := range blocks {
+		if sb.Len()+len(b.html) > maxImportedChapterHTML {
+			truncated = true
+			break
+		}
+		if sb.Len() > 0 {
+			sb.WriteString("\n")
+		}
+		sb.WriteString(b.html)
+	}
+	if truncated {
+		if sb.Len() > 0 {
+			sb.WriteString("\n")
+		}
+		sb.WriteString("<p>[Content truncated on import]</p>")
+	}
+	if sb.Len() == 0 {
+		return "<p></p>", truncated
+	}
+	return sb.String(), truncated
 }
