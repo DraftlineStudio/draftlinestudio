@@ -386,6 +386,49 @@ export interface StoryTimelineResult {
   relative_time_count: number
 }
 
+export interface ContinuitySource {
+  evidence_id?: string
+  text?: string
+  chapter_id?: string
+  chapter_index: number
+  chapter_title: string
+  section: Section | string
+  section_index: number
+  paragraph_index?: number
+  start_offset?: number
+}
+
+export interface ContinuitySignal {
+  id: string
+  kind: string
+  category: string
+  severity: 'review' | 'info' | string
+  title: string
+  detail: string
+  character_ids?: string[]
+  character_names?: string[]
+  sources?: ContinuitySource[]
+  confidence: number
+}
+
+export interface ContinuityFacet {
+  id: string
+  label: string
+  count: number
+}
+
+export interface ContinuityReport {
+  success: boolean
+  error?: string
+  engine: string
+  signals: ContinuitySignal[]
+  categories: ContinuityFacet[]
+  characters: ContinuityFacet[]
+  review_count: number
+  info_count: number
+  chapters_checked: number
+}
+
 export interface TermCount {
   term: string
   count: number

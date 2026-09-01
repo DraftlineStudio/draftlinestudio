@@ -16,6 +16,7 @@ Draftline is under active pre-1.0 development. Windows is the primary developmen
 - Chapter-scoped find and replace
 - Local evidence-backed Ask Draftline explorer with manuscript-generated starting points, natural questions, confirmed-character aliases, chapter and character-knowledge trails, missing-name and singleton signals, exact excerpts, and source navigation
 - Automatic source-backed Story Timeline with chapter density, event/character/place/time filters, explicit uncertainty, and direct manuscript navigation
+- Source-backed Continuity review for identity gaps, one-off characters, knowledge ordering, conflicting physical facts, suspicious clock movement, and thin plot coverage
 - Persistent local fact/event evidence indexing with exact source sentences, durable author review decisions, a ranked review queue, and an inspectable Evidence Archive
 - Optional activity-based local saves, embedded chapter version history with side-by-side restore, and rolling manuscript backups
 - EPUB and DOCX import, with export support currently being redesigned

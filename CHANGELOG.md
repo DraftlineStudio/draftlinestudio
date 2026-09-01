@@ -4,6 +4,19 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02487] - 2026-09-01
+
+### Added
+- Added a deterministic, source-backed **Continuity** workspace beside Ask Draftline and Timeline. Signals are review questions rather than declarations, explain why they fired, and open one or both supporting manuscript passages.
+- Added continuity checks for recurring characters without an established given name, strong one-chapter or late one-off characters, closely matched knowledge reversals, knowledge stated before a later acquisition, conflicting eye/hair/age/handedness facts, nearby clock-time regressions, and unusually thin chapter event coverage.
+- Added importance, category, confirmed-character, and free-text filters plus explicit cue-strength labels.
+- Added regression coverage for character identity gaps, late one-offs, paired knowledge states, physical-detail conflicts, countdown-safe clock comparisons, missing analysis data, and exact paired sources.
+
+### Changed
+- Continuity character checks use only manually created characters or accepted person entities with strong detection evidence. Low-confidence names, organizations, objects, and places are excluded from author-facing warnings.
+
+---
+
 ## [0.16.02486] - 2026-09-01
 
 ### Added

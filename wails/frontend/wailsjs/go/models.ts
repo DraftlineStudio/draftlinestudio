@@ -1328,6 +1328,146 @@ export namespace types {
 	        this.error = source["error"];
 	    }
 	}
+	export class ContinuityFacet {
+	    id: string;
+	    label: string;
+	    count: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ContinuityFacet(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.label = source["label"];
+	        this.count = source["count"];
+	    }
+	}
+	export class ContinuitySource {
+	    evidence_id?: string;
+	    text?: string;
+	    chapter_id?: string;
+	    chapter_index: number;
+	    chapter_title: string;
+	    section: string;
+	    section_index: number;
+	    paragraph_index?: number;
+	    start_offset?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ContinuitySource(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.evidence_id = source["evidence_id"];
+	        this.text = source["text"];
+	        this.chapter_id = source["chapter_id"];
+	        this.chapter_index = source["chapter_index"];
+	        this.chapter_title = source["chapter_title"];
+	        this.section = source["section"];
+	        this.section_index = source["section_index"];
+	        this.paragraph_index = source["paragraph_index"];
+	        this.start_offset = source["start_offset"];
+	    }
+	}
+	export class ContinuitySignal {
+	    id: string;
+	    kind: string;
+	    category: string;
+	    severity: string;
+	    title: string;
+	    detail: string;
+	    character_ids?: string[];
+	    character_names?: string[];
+	    sources?: ContinuitySource[];
+	    confidence: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ContinuitySignal(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.kind = source["kind"];
+	        this.category = source["category"];
+	        this.severity = source["severity"];
+	        this.title = source["title"];
+	        this.detail = source["detail"];
+	        this.character_ids = source["character_ids"];
+	        this.character_names = source["character_names"];
+	        this.sources = this.convertValues(source["sources"], ContinuitySource);
+	        this.confidence = source["confidence"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ContinuityReport {
+	    success: boolean;
+	    error?: string;
+	    engine: string;
+	    signals: ContinuitySignal[];
+	    categories: ContinuityFacet[];
+	    characters: ContinuityFacet[];
+	    review_count: number;
+	    info_count: number;
+	    chapters_checked: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ContinuityReport(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.error = source["error"];
+	        this.engine = source["engine"];
+	        this.signals = this.convertValues(source["signals"], ContinuitySignal);
+	        this.categories = this.convertValues(source["categories"], ContinuityFacet);
+	        this.characters = this.convertValues(source["characters"], ContinuityFacet);
+	        this.review_count = source["review_count"];
+	        this.info_count = source["info_count"];
+	        this.chapters_checked = source["chapters_checked"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
 	
 	
 	
