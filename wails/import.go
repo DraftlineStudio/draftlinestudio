@@ -91,6 +91,8 @@ func (a *App) importEPUB(path string) types.ImportResult {
 	var chapters []types.ChapterItem
 	var warnings []string
 	imagesDropped := 0
+	totalHTML := 0
+	capReached := false
 	chapterNum := 1
 
 	for _, itemRef := range spine {
@@ -136,8 +138,7 @@ func (a *App) importEPUB(path string) types.ImportResult {
 			continue
 		}
 		imagesDropped += imgDropped
-		body := joinBlocks(blocks)
-		if strings.TrimSpace(body) == "" {
+		if len(blocks) == 0 {
 			continue
 		}
 
@@ -146,14 +147,31 @@ func (a *App) importEPUB(path string) types.ImportResult {
 			title = fmt.Sprintf("Chapter %d", chapterNum)
 		}
 
-		parts := splitImportedChapters(title, body)
+		parts, partWarnings := assembleChapters(title, blocks)
+		warnings = append(warnings, partWarnings...)
 		for _, part := range parts {
+			if len(chapters) >= maxImportedChapters {
+				warnings = append(warnings, fmt.Sprintf(
+					"Import stopped at %d chapters; remaining spine documents were skipped", maxImportedChapters))
+				capReached = true
+				break
+			}
+			totalHTML += len(part.Content)
+			if totalHTML > maxImportedBookHTML {
+				warnings = append(warnings, fmt.Sprintf(
+					"Import stopped after %d MB of content; remaining spine documents were skipped", maxImportedBookHTML>>20))
+				capReached = true
+				break
+			}
 			if strings.TrimSpace(part.Title) == "" {
 				part.Title = fmt.Sprintf("Chapter %d", chapterNum)
 			}
 			part.Type = classifyImportedSection(part.Title, part.Content)
 			chapters = append(chapters, part)
 			chapterNum++
+		}
+		if capReached {
+			break
 		}
 	}
 
@@ -333,33 +351,6 @@ func parseOPF(data []byte) (opfMetadata, []opfSpineItem, map[string]opfManifestI
 	}
 
 	return meta, spine, manifest, nil
-}
-
-var importedHeadingRe = regexp.MustCompile(`(?is)<h[1-3]\b[^>]*>.*?</h[1-3]>`)
-
-// splitImportedChapters handles EPUBs that store many chapters in one spine
-// document. A file with zero or one heading remains one section; two or more
-// headings become independent chapter items for accurate Codex heatmaps.
-func splitImportedChapters(fallbackTitle, body string) []types.ChapterItem {
-	matches := importedHeadingRe.FindAllStringIndex(body, -1)
-	if len(matches) < 2 {
-		return []types.ChapterItem{{Title: fallbackTitle, Content: body}}
-	}
-
-	parts := make([]types.ChapterItem, 0, len(matches)+1)
-	if prefix := strings.TrimSpace(body[:matches[0][0]]); plainImportedText(prefix) != "" {
-		parts = append(parts, types.ChapterItem{Title: fallbackTitle, Content: prefix})
-	}
-	for i, match := range matches {
-		end := len(body)
-		if i+1 < len(matches) {
-			end = matches[i+1][0]
-		}
-		headingHTML := body[match[0]:match[1]]
-		title := plainImportedText(headingHTML)
-		parts = append(parts, types.ChapterItem{Title: title, Content: strings.TrimSpace(body[match[0]:end])})
-	}
-	return parts
 }
 
 func plainImportedText(fragment string) string {

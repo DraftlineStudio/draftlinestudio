@@ -4,6 +4,18 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02460] - 2026-08-31
+
+### Fixed
+- EPUB chapter layouts are no longer butchered by over-eager splitting: a spine document is now one chapter by default and splits only at multiple `<h1>`s (or multiple `<h2>`s when the document has no `<h1>`). Books that use h2/h3 for part titles and scene headings keep them inline instead of being shattered into dozens of bogus chapters.
+- The chapter-opening heading now becomes the chapter title and is removed from the content, so exporting and re-importing no longer stacks a duplicate title heading at the top of every chapter.
+- Content before the first chapter heading merges into the first chapter instead of becoming a spurious extra chapter.
+
+### Changed
+- Import size guards: a single chapter truncates at 2 MB of content with a visible notice, and imports stop with a warning at 40 MB of total content or 500 chapters — well before the editor could be frozen by a pathological file.
+
+---
+
 ## [0.16.02459] - 2026-08-31
 
 ### Fixed
