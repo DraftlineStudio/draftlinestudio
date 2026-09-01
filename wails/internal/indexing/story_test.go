@@ -35,8 +35,11 @@ func TestAnalyzeStoryProducesChapterMetricsAndProgress(t *testing.T) {
 
 func TestAnalyzeStorySkipsNonNarrativeSections(t *testing.T) {
 	book := types.BookData{
-		FrontMatter: []types.ChapterItem{{Title: "Acknowledgments", Type: "Acknowledgments", Content: "<p>Thanks to Alice and Bob.</p>"}},
-		Body:        []types.ChapterItem{{Title: "Chapter One", Type: "Chapter", Content: "<p>Mara entered the room.</p>"}},
+		FrontMatter: []types.ChapterItem{
+			{Title: "Acknowledgments", Type: "Acknowledgments", Content: "<p>Thanks to Alice and Bob.</p>"},
+			{Title: "Author's Note", Type: "Author's Note", Content: "<p>A note about writing this book.</p>"},
+		},
+		Body: []types.ChapterItem{{Title: "Chapter One", Type: "Chapter", Content: "<p>Mara entered the room.</p>"}},
 	}
 	analysis := AnalyzeStory(&book, nil)
 	if len(analysis.Chapters) != 1 || analysis.Chapters[0].Title != "Chapter One" {

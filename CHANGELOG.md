@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02457] - 2026-08-31
+
+### Changed
+- Redesigned Pacing with a tempo score, labeled bands, and chapter-to-chapter changes.
+
+### Fixed
+- Author's notes are no longer included in story analysis.
+
 ## [0.16.02456] - 2026-08-31
 
 ### Changed
