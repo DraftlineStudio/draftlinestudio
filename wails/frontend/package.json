@@ -1,7 +1,7 @@
 {
   "name": "draftline",
   "private": true,
-  "version": "0.16.02457",
+  "version": "0.16.02458",
   "type": "module",
   "scripts": {
     "dev": "vite",

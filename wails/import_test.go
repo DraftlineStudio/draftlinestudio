@@ -2,13 +2,17 @@ package main
 
 import (
 	"archive/zip"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"draftline/internal/types"
 )
 
-// writeMinimalEPUB creates a tiny valid EPUB at path.
-func writeMinimalEPUB(t *testing.T, path string) {
+// writeEPUB creates an EPUB at path from the given zip entries.
+func writeEPUB(t *testing.T, path string, entries map[string]string) {
 	t.Helper()
 	f, err := os.Create(path)
 	if err != nil {
@@ -16,27 +20,6 @@ func writeMinimalEPUB(t *testing.T, path string) {
 	}
 	defer f.Close()
 	w := zip.NewWriter(f)
-	entries := map[string]string{
-		"mimetype": "application/epub+zip",
-		"META-INF/container.xml": `<?xml version="1.0"?>
-<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
-  <rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles>
-</container>`,
-		"OEBPS/content.opf": `<?xml version="1.0"?>
-<package xmlns="http://www.idpf.org/2007/opf" version="3.0">
-  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
-    <dc:title>Fixture Book</dc:title>
-    <dc:creator>Test Author</dc:creator>
-  </metadata>
-  <manifest>
-    <item id="ch1" href="ch1.xhtml" media-type="application/xhtml+xml"/>
-  </manifest>
-  <spine><itemref idref="ch1"/></spine>
-</package>`,
-		"OEBPS/ch1.xhtml": `<?xml version="1.0"?>
-<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter One</title></head>
-<body><h1>Chapter One</h1><p>It was a dark and stormy fixture.</p></body></html>`,
-	}
 	for name, content := range entries {
 		e, err := w.Create(name)
 		if err != nil {
@@ -49,6 +32,56 @@ func writeMinimalEPUB(t *testing.T, path string) {
 	if err := w.Close(); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// epubManifestSpec describes one manifest+spine item for buildEPUBOPF.
+type epubManifestSpec struct {
+	id, href, mediaType, properties string
+}
+
+// buildEPUBOPF renders a minimal OPF for the given items, all of which are
+// also placed on the spine in order.
+func buildEPUBOPF(items []epubManifestSpec) string {
+	manifest := ""
+	spine := ""
+	for _, it := range items {
+		props := ""
+		if it.properties != "" {
+			props = ` properties="` + it.properties + `"`
+		}
+		manifest += `    <item id="` + it.id + `" href="` + it.href + `" media-type="` + it.mediaType + `"` + props + "/>\n"
+		spine += `<itemref idref="` + it.id + `"/>`
+	}
+	return `<?xml version="1.0"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:title>Fixture Book</dc:title>
+    <dc:creator>Test Author</dc:creator>
+  </metadata>
+  <manifest>
+` + manifest + `  </manifest>
+  <spine>` + spine + `</spine>
+</package>`
+}
+
+const epubContainerXML = `<?xml version="1.0"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles>
+</container>`
+
+// writeMinimalEPUB creates a tiny valid EPUB at path.
+func writeMinimalEPUB(t *testing.T, path string) {
+	t.Helper()
+	writeEPUB(t, path, map[string]string{
+		"mimetype":               "application/epub+zip",
+		"META-INF/container.xml": epubContainerXML,
+		"OEBPS/content.opf": buildEPUBOPF([]epubManifestSpec{
+			{id: "ch1", href: "ch1.xhtml", mediaType: "application/xhtml+xml"},
+		}),
+		"OEBPS/ch1.xhtml": `<?xml version="1.0"?>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter One</title></head>
+<body><h1>Chapter One</h1><p>It was a dark and stormy fixture.</p></body></html>`,
+	})
 }
 
 // Regression test for the import overwrite bug: importing a book while a
@@ -87,6 +120,85 @@ func TestFailedImportKeepsCurrentFile(t *testing.T) {
 	}
 	if a.currentFile != prev {
 		t.Fatalf("failed import changed currentFile: %q", a.currentFile)
+	}
+}
+
+// A panic anywhere inside an importer must surface as a failed result, not
+// kill the process — main.go binds App with no recover of its own.
+func TestImportRecoversFromPanic(t *testing.T) {
+	res := safeImport("EPUB", func() types.ImportResult { panic("boom") })
+	if res.Success {
+		t.Fatal("panicking import reported success")
+	}
+	if !strings.Contains(res.Error, "boom") {
+		t.Fatalf("panic message lost: %q", res.Error)
+	}
+}
+
+// EPUB 3 nav documents and SVG cover pages are machine/graphic resources, not
+// chapters; they used to import as garbage chapters.
+func TestImportSkipsNavAndSVGSpineItems(t *testing.T) {
+	dir := t.TempDir()
+	epub := filepath.Join(dir, "fixture.epub")
+	writeEPUB(t, epub, map[string]string{
+		"mimetype":               "application/epub+zip",
+		"META-INF/container.xml": epubContainerXML,
+		"OEBPS/content.opf": buildEPUBOPF([]epubManifestSpec{
+			{id: "cover", href: "cover.svg", mediaType: "image/svg+xml"},
+			{id: "nav", href: "nav.xhtml", mediaType: "application/xhtml+xml", properties: "nav"},
+			{id: "ch1", href: "ch1.xhtml", mediaType: "application/xhtml+xml"},
+		}),
+		"OEBPS/cover.svg": `<svg xmlns="http://www.w3.org/2000/svg"><text>Cover Art</text></svg>`,
+		"OEBPS/nav.xhtml": `<html xmlns="http://www.w3.org/1999/xhtml"><body><nav epub:type="toc"><ol><li><a href="ch1.xhtml">One</a></li></ol></nav></body></html>`,
+		"OEBPS/ch1.xhtml": `<html xmlns="http://www.w3.org/1999/xhtml"><body><h1>One</h1><p>Real prose.</p></body></html>`,
+	})
+
+	a := &App{}
+	res := a.ImportEPUB(epub)
+	if !res.Success {
+		t.Fatalf("import failed: %s", res.Error)
+	}
+	if len(res.Book.Body) != 1 {
+		t.Fatalf("expected only the real chapter, got %d: %+v", len(res.Book.Body), res.Book.Body)
+	}
+	if res.Book.Body[0].Title != "One" {
+		t.Fatalf("wrong chapter imported: %+v", res.Book.Body[0])
+	}
+}
+
+// Oversized spine documents are skipped with a warning instead of being
+// pushed through the sanitizer and the JSON bridge.
+func TestImportSkipsOversizedSpineDoc(t *testing.T) {
+	dir := t.TempDir()
+	epub := filepath.Join(dir, "fixture.epub")
+	// Number sequences keep the deflate ratio well under ziputil's 200:1
+	// zip-bomb guard while still exceeding the per-document import cap.
+	var filler strings.Builder
+	for i := 0; filler.Len() <= maxSpineDocBytes; i++ {
+		fmt.Fprintf(&filler, "%d ", i*7919)
+	}
+	huge := "<html><body><h1>Huge</h1><p>" + filler.String() + "</p></body></html>"
+	writeEPUB(t, epub, map[string]string{
+		"mimetype":               "application/epub+zip",
+		"META-INF/container.xml": epubContainerXML,
+		"OEBPS/content.opf": buildEPUBOPF([]epubManifestSpec{
+			{id: "huge", href: "huge.xhtml", mediaType: "application/xhtml+xml"},
+			{id: "ch1", href: "ch1.xhtml", mediaType: "application/xhtml+xml"},
+		}),
+		"OEBPS/huge.xhtml": huge,
+		"OEBPS/ch1.xhtml":  `<html><body><h1>One</h1><p>Real prose.</p></body></html>`,
+	})
+
+	a := &App{}
+	res := a.ImportEPUB(epub)
+	if !res.Success {
+		t.Fatalf("import failed: %s", res.Error)
+	}
+	if len(res.Book.Body) != 1 {
+		t.Fatalf("oversized doc was not skipped, got %d chapters", len(res.Book.Body))
+	}
+	if len(res.Warnings) == 0 || !strings.Contains(res.Warnings[0], "huge.xhtml") {
+		t.Fatalf("expected a warning naming the skipped document, got %v", res.Warnings)
 	}
 }
 

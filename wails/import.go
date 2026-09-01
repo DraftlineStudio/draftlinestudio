@@ -34,8 +34,31 @@ func (a *App) ImportEPUBDialog() types.ImportResult {
 	return a.ImportEPUB(path)
 }
 
+// safeImport converts a panic anywhere inside an importer into a failed
+// ImportResult instead of killing the process: main.go binds App directly, so
+// an unrecovered panic in a bound method takes down the whole Wails app.
+func safeImport(kind string, fn func() types.ImportResult) (res types.ImportResult) {
+	defer func() {
+		if r := recover(); r != nil {
+			res = types.ImportResult{
+				Success: false,
+				Error:   fmt.Sprintf("%s import failed unexpectedly: %v", kind, r),
+			}
+		}
+	}()
+	return fn()
+}
+
+// maxSpineDocBytes caps a single spine document's raw size. Anything larger is
+// not a text chapter and would stall the sanitizer and the JSON bridge.
+const maxSpineDocBytes = 8 << 20
+
 // ImportEPUB parses an EPUB file and converts it to types.BookData
 func (a *App) ImportEPUB(path string) types.ImportResult {
+	return safeImport("EPUB", func() types.ImportResult { return a.importEPUB(path) })
+}
+
+func (a *App) importEPUB(path string) types.ImportResult {
 	r, err := zip.OpenReader(path)
 	if err != nil {
 		return types.ImportResult{Success: false, Error: fmt.Sprintf("Failed to open EPUB: %v", err)}
@@ -66,6 +89,7 @@ func (a *App) ImportEPUB(path string) types.ImportResult {
 
 	// Step 3: Extract chapters in spine order
 	var chapters []types.ChapterItem
+	var warnings []string
 	chapterNum := 1
 
 	for _, itemRef := range spine {
@@ -75,8 +99,14 @@ func (a *App) ImportEPUB(path string) types.ImportResult {
 			continue
 		}
 
-		// Skip non-content items (CSS, images, etc.)
-		if !strings.Contains(item.MediaType, "html") && !strings.Contains(item.MediaType, "xml") {
+		// Only real chapter documents. A contains-check let image/svg+xml
+		// covers and other XML resources through as garbage chapters.
+		if !isImportableSpineType(item.MediaType) {
+			continue
+		}
+
+		// EPUB 3 navigation documents are a machine-readable TOC, not content.
+		if hasManifestProperty(item.Properties, "nav") {
 			continue
 		}
 
@@ -89,6 +119,11 @@ func (a *App) ImportEPUB(path string) types.ImportResult {
 
 		contentBytes, err := readEpubEntry(r, contentPath)
 		if err != nil {
+			continue
+		}
+		if len(contentBytes) > maxSpineDocBytes {
+			warnings = append(warnings, fmt.Sprintf(
+				"Skipped %s: document is larger than %d MB", item.Href, maxSpineDocBytes>>20))
 			continue
 		}
 
@@ -146,7 +181,30 @@ func (a *App) ImportEPUB(path string) types.ImportResult {
 	// the import — Ctrl+S on an imported book must go through Save As.
 	a.setCurrentFile("")
 
-	return types.ImportResult{Success: true, Book: book}
+	return types.ImportResult{Success: true, Book: book, Warnings: warnings}
+}
+
+// isImportableSpineType reports whether a spine item's media type is a
+// chapter document (XHTML/HTML) rather than an image, stylesheet, or other
+// resource that happens to be XML.
+func isImportableSpineType(mediaType string) bool {
+	switch strings.ToLower(strings.TrimSpace(mediaType)) {
+	case "application/xhtml+xml", "text/html":
+		return true
+	default:
+		return false
+	}
+}
+
+// hasManifestProperty reports whether a space-separated OPF properties
+// attribute contains the given token (e.g. "nav", "cover-image").
+func hasManifestProperty(properties, token string) bool {
+	for _, p := range strings.Fields(properties) {
+		if strings.EqualFold(p, token) {
+			return true
+		}
+	}
+	return false
 }
 
 // readEpubEntry reads a file from the EPUB ZIP with case-insensitive path
@@ -194,9 +252,10 @@ type opfMetadata struct {
 }
 
 type opfManifestItem struct {
-	ID        string
-	Href      string
-	MediaType string
+	ID         string
+	Href       string
+	MediaType  string
+	Properties string
 }
 
 type opfSpineItem struct {
@@ -213,9 +272,10 @@ func parseOPF(data []byte) (opfMetadata, []opfSpineItem, map[string]opfManifestI
 		} `xml:"metadata"`
 		Manifest struct {
 			Items []struct {
-				ID        string `xml:"id,attr"`
-				Href      string `xml:"href,attr"`
-				MediaType string `xml:"media-type,attr"`
+				ID         string `xml:"id,attr"`
+				Href       string `xml:"href,attr"`
+				MediaType  string `xml:"media-type,attr"`
+				Properties string `xml:"properties,attr"`
 			} `xml:"item"`
 		} `xml:"manifest"`
 		Spine struct {
@@ -243,9 +303,10 @@ func parseOPF(data []byte) (opfMetadata, []opfSpineItem, map[string]opfManifestI
 	manifest := make(map[string]opfManifestItem)
 	for _, item := range opf.Manifest.Items {
 		manifest[item.ID] = opfManifestItem{
-			ID:        item.ID,
-			Href:      item.Href,
-			MediaType: item.MediaType,
+			ID:         item.ID,
+			Href:       item.Href,
+			MediaType:  item.MediaType,
+			Properties: item.Properties,
 		}
 	}
 
@@ -401,6 +462,10 @@ func (a *App) ImportDOCXDialog() types.ImportResult {
 
 // ImportDOCX parses a DOCX file and converts it to types.BookData
 func (a *App) ImportDOCX(path string) types.ImportResult {
+	return safeImport("DOCX", func() types.ImportResult { return a.importDOCX(path) })
+}
+
+func (a *App) importDOCX(path string) types.ImportResult {
 	r, err := zip.OpenReader(path)
 	if err != nil {
 		return types.ImportResult{Success: false, Error: fmt.Sprintf("Failed to open DOCX: %v", err)}
