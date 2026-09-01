@@ -4,6 +4,19 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02461] - 2026-08-31
+
+### Added
+- EPUB imports now route sections where they belong instead of dumping everything into the body: dedications, epigraphs, title pages, forewords, prefaces, introductions, prologues, and author's notes land in Front Matter; epilogues, afterwords, appendices, acknowledgments, about-the-author pages, glossaries, and colophons land in Back Matter — all with the app's canonical section types.
+- The copyright page now fills the book's dedicated Copyright section, and cover, table-of-contents, and index pages are skipped entirely (Draftline generates its own navigation on export).
+- The import preview now lists any import warnings (skipped documents, dropped images, truncation) and notes how many front/back matter sections were detected alongside the chapter list.
+- Documented the import pipeline, sanitizer whitelist, chaptering rules, and routing table in `docs/backend/import/IMPORT.md`.
+
+### Changed
+- Untitled imported sections are numbered "Chapter N" counting body chapters only, so front and back matter no longer shift the numbering.
+
+---
+
 ## [0.16.02460] - 2026-08-31
 
 ### Fixed

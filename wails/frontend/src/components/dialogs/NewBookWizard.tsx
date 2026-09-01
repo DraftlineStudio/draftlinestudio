@@ -12,6 +12,9 @@ interface ImportedBook {
   publisher: string
   chapterCount: number
   chapters: Array<{ title: string; wordCount: number }>
+  frontMatterCount: number
+  backMatterCount: number
+  warnings: string[]
 }
 
 interface NewBookWizardProps {
@@ -65,6 +68,9 @@ export default function NewBookWizard({ onCreated }: NewBookWizardProps) {
         publisher: book.metadata.publisher || '',
         chapterCount: chapters.length,
         chapters,
+        frontMatterCount: book.front_matter?.length || 0,
+        backMatterCount: book.back_matter?.length || 0,
+        warnings: result.warnings || [],
       })
       setImportedBookData(book)
       setTitle(book.metadata.title)
@@ -271,7 +277,20 @@ export default function NewBookWizard({ onCreated }: NewBookWizardProps) {
                 </div>
               )}
             </div>
+            {(importedBook.frontMatterCount > 0 || importedBook.backMatterCount > 0) && (
+              <p className="settings-hint" style={{ marginTop: 6 }}>
+                Also detected {importedBook.frontMatterCount} front matter and {importedBook.backMatterCount} back matter section{importedBook.backMatterCount === 1 ? '' : 's'}.
+              </p>
+            )}
           </div>
+
+          {importedBook.warnings.length > 0 && (
+            <div className="import-warnings">
+              {importedBook.warnings.map((warning, i) => (
+                <div key={i} className="import-warning-item">{warning}</div>
+              ))}
+            </div>
+          )}
 
           <div className="dialog-actions">
             <button className="dialog-btn" onClick={() => setStep('choose')}>Back</button>

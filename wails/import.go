@@ -87,13 +87,15 @@ func (a *App) importEPUB(path string) types.ImportResult {
 		return types.ImportResult{Success: false, Error: err.Error()}
 	}
 
-	// Step 3: Extract chapters in spine order
-	var chapters []types.ChapterItem
+	// Step 3: Extract sections in spine order, routed to their destination.
+	front := []types.ChapterItem{}
+	body := []types.ChapterItem{}
+	back := []types.ChapterItem{}
+	copyright := ""
 	var warnings []string
 	imagesDropped := 0
 	totalHTML := 0
 	capReached := false
-	chapterNum := 1
 
 	for _, itemRef := range spine {
 		// Find the item in manifest
@@ -144,13 +146,13 @@ func (a *App) importEPUB(path string) types.ImportResult {
 
 		// Use extracted title or generate one
 		if title == "" {
-			title = fmt.Sprintf("Chapter %d", chapterNum)
+			title = fmt.Sprintf("Chapter %d", len(body)+1)
 		}
 
 		parts, partWarnings := assembleChapters(title, blocks)
 		warnings = append(warnings, partWarnings...)
 		for _, part := range parts {
-			if len(chapters) >= maxImportedChapters {
+			if len(front)+len(body)+len(back) >= maxImportedChapters {
 				warnings = append(warnings, fmt.Sprintf(
 					"Import stopped at %d chapters; remaining spine documents were skipped", maxImportedChapters))
 				capReached = true
@@ -164,18 +166,38 @@ func (a *App) importEPUB(path string) types.ImportResult {
 				break
 			}
 			if strings.TrimSpace(part.Title) == "" {
-				part.Title = fmt.Sprintf("Chapter %d", chapterNum)
+				part.Title = fmt.Sprintf("Chapter %d", len(body)+1)
 			}
-			part.Type = classifyImportedSection(part.Title, part.Content)
-			chapters = append(chapters, part)
-			chapterNum++
+			route, typeLabel := routeImportedSection(part.Title, plainImportedText(part.Content))
+			switch route {
+			case routeSkip:
+				continue
+			case routeCopyright:
+				// The first copyright page fills the book's dedicated
+				// copyright section; any further ones stay visible up front.
+				if copyright == "" {
+					copyright = part.Content
+					continue
+				}
+				part.Type = "Copyright"
+				front = append(front, part)
+			case routeFront:
+				part.Type = typeLabel
+				front = append(front, part)
+			case routeBack:
+				part.Type = typeLabel
+				back = append(back, part)
+			default:
+				part.Type = typeLabel
+				body = append(body, part)
+			}
 		}
 		if capReached {
 			break
 		}
 	}
 
-	if len(chapters) == 0 {
+	if len(front)+len(body)+len(back) == 0 && copyright == "" {
 		return types.ImportResult{Success: false, Error: "No readable chapters found in EPUB"}
 	}
 
@@ -199,10 +221,10 @@ func (a *App) importEPUB(path string) types.ImportResult {
 			Created:   now,
 			Modified:  now,
 		},
-		Copyright:   "",
-		FrontMatter: []types.ChapterItem{},
-		Body:        chapters,
-		BackMatter:  []types.ChapterItem{},
+		Copyright:   copyright,
+		FrontMatter: front,
+		Body:        body,
+		BackMatter:  back,
 		StoryBible:  types.StoryBible{Characters: []types.Character{}},
 	}
 
@@ -358,28 +380,83 @@ func plainImportedText(fragment string) string {
 	return strings.TrimSpace(html.UnescapeString(withoutTags))
 }
 
-func classifyImportedSection(title, content string) string {
+// sectionRoute is the destination of an imported section within BookData.
+type sectionRoute int
+
+const (
+	routeBody sectionRoute = iota
+	routeFront
+	routeBack
+	routeCopyright
+	routeSkip
+)
+
+// routeImportedSection classifies a section by its title (and, for unlabeled
+// sections, its leading text) and returns its destination plus the canonical
+// Type label the frontend's section vocabulary uses.
+func routeImportedSection(title, plainText string) (sectionRoute, string) {
 	normalized := strings.ToLower(strings.TrimSpace(title))
-	prefix := strings.ToLower(plainImportedText(content))
+	normalized = strings.Trim(normalized, " .:;,-–—")
+	prefix := strings.ToLower(plainText)
 	if len(prefix) > 500 {
 		prefix = prefix[:500]
 	}
+
 	switch normalized {
-	case "cover", "title page", "copyright", "dedication", "epigraph",
-		"contents", "table of contents", "acknowledgments", "acknowledgements",
-		"about the author", "also by", "glossary", "index", "colophon":
-		return normalized
-	default:
-		for _, marker := range []string{"acknowledgments", "acknowledgements", "table of contents"} {
-			if strings.HasPrefix(prefix, marker) {
-				return marker
-			}
-		}
-		if strings.Contains(prefix, "publishing plc") && strings.Contains(prefix, "trademark") {
-			return "copyright"
-		}
-		return "Chapter"
+	case "cover", "contents", "table of contents", "toc", "index", "landmarks", "guide", "nav", "navigation":
+		return routeSkip, ""
+	case "copyright", "copyright page":
+		return routeCopyright, ""
+	case "title page", "half title", "half title page":
+		return routeFront, "Title Page"
+	case "dedication":
+		return routeFront, "Dedication"
+	case "epigraph":
+		return routeFront, "Epigraph"
+	case "foreword":
+		return routeFront, "Foreword"
+	case "preface":
+		return routeFront, "Preface"
+	case "introduction":
+		return routeFront, "Introduction"
+	case "prologue":
+		return routeFront, "Prologue"
+	case "author's note", "authors note", "author's notes", "a note on the text", "note to the reader":
+		return routeFront, "Author's Note"
+	case "epilogue":
+		return routeBack, "Epilogue"
+	case "afterword":
+		return routeBack, "Afterword"
+	case "appendix", "notes", "endnotes":
+		return routeBack, "Appendix"
+	case "acknowledgments", "acknowledgements":
+		return routeBack, "Acknowledgments"
+	case "about the author":
+		return routeBack, "About the Author"
+	case "glossary":
+		return routeBack, "Glossary"
+	case "colophon":
+		return routeBack, "Colophon"
 	}
+	if strings.HasPrefix(normalized, "also by") {
+		return routeFront, "Also By"
+	}
+
+	// Content-prefix heuristics for sections whose title is unhelpful.
+	for _, marker := range []string{"acknowledgments", "acknowledgements"} {
+		if strings.HasPrefix(prefix, marker) {
+			return routeBack, "Acknowledgments"
+		}
+	}
+	if strings.HasPrefix(prefix, "table of contents") {
+		return routeSkip, ""
+	}
+	if strings.Contains(prefix, "all rights reserved") ||
+		(strings.Contains(prefix, "publishing plc") && strings.Contains(prefix, "trademark")) {
+		return routeCopyright, ""
+	}
+
+	return routeBody, "Chapter"
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
