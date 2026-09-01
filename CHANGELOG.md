@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02487] - 2026-09-01
+
+### Added
+- Added the Continuity workspace with checks for character names, knowledge, physical details, and time references.
+
 ## [0.16.02486] - 2026-09-01
 
 ### Added
