@@ -41,6 +41,15 @@ func TestLaunchFilePath(t *testing.T) {
 			t.Fatalf("expected empty, got %q", got)
 		}
 	})
+
+	t.Run("a leading executable path never masks the document", func(t *testing.T) {
+		// Second-instance args may or may not include argv[0]; either way the
+		// exe must be skipped by the extension allowlist, not by position.
+		got := launchFilePath([]string{`C:\SRV\draftline\build\bin\draftline.exe`, book}, dir)
+		if got != book {
+			t.Fatalf("got %q want %q", got, book)
+		}
+	})
 }
 
 func TestTakePendingOpenPathIsOneShot(t *testing.T) {

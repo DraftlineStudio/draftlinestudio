@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02479] - 2026-09-01
+
+### Fixed
+- Opening a file while Draftline is already running now opens that file.
+
 ## [0.16.02478] - 2026-09-01
 
 ### Added
