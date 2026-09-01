@@ -65,6 +65,15 @@ retrieval, indexing, review, and refactoring must not depend on generative AI.
 
 ## Storiverse: connect book fingerprints
 
+- [ ] Storiverse is a universe context inside the Draftline editor, not an
+      alternative to it. Opening a universe adds **Manuscript** and
+      **Storiverse** tabs to the manuscript/navigation pane while retaining the
+      same editor, commands, history, spellcheck, and analysis tools.
+- [ ] The Storiverse tab begins with the linked book titles. Clicking an
+      available title opens that original `.draftline` in the editor and
+      switches to Manuscript, while the universe remains loaded around it.
+- [ ] If a source is unavailable, open its fingerprint overview with a clear
+      Locate/Relink action rather than pretending the manuscript is editable.
 - [ ] A Storiverse is a normal portable folder containing its manifest and a
       hidden `.storiverse/` data directory. Source manuscripts may be dropped
       beside it or selected from anywhere, but are inputs—not files Storiverse
@@ -76,6 +85,13 @@ retrieval, indexing, review, and refactoring must not depend on generative AI.
       that book in Draftline schedules its Storiverse fingerprint refresh;
       opening or reindexing the universe also compares source hashes so edits
       made outside universe context cannot leave a silently stale fingerprint.
+- [ ] Mark the active fingerprint and its dependent universe views stale as
+      soon as manuscript content changes. After the existing idle delay,
+      reanalyze only the changed book, atomically refresh its fingerprint, then
+      recompute only affected cross-book joins. Never block typing or rescan
+      every book for one chapter edit.
+- [ ] Use analysis revision tokens so a result produced from older text cannot
+      overwrite a newer edit; discard it and queue the current revision.
 - [ ] Store an independent snapshot of every book's Story Fingerprint under
       `.storiverse/fingerprints/`. The universe can therefore retain character,
       timeline, continuity, and knowledge context when a linked manuscript is
