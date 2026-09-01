@@ -80,11 +80,11 @@ func (a *App) onSecondInstanceLaunch(data options.SecondInstanceData) {
 	}
 	runtime.WindowUnminimise(a.ctx)
 	runtime.Show(a.ctx)
-	args := data.Args
-	if len(args) > 0 {
-		args = args[1:] // drop the executable path
-	}
-	if path := launchFilePath(args, data.WorkingDirectory); path != "" {
+	// Pass Args through unfiltered: Wails versions differ on whether the
+	// executable path is included, and stripping the first element blindly
+	// can discard the document path. launchFilePath's extension allowlist
+	// already ignores an exe path, so filtering is unnecessary.
+	if path := launchFilePath(data.Args, data.WorkingDirectory); path != "" {
 		runtime.EventsEmit(a.ctx, "file:open", path)
 	}
 }

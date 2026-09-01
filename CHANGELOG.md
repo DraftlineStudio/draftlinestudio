@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02479] - 2026-09-01
+
+### Fixed
+- Double-clicking a .draftline (or .epub/.docx) while Draftline was already running focused the window but discarded the file path: the second-instance handler stripped the first argument assuming it was the executable, which could be the document itself. Arguments are now filtered by extension, not position, so the forwarded file always opens.
+
+---
+
 ## [0.16.02478] - 2026-09-01
 
 ### Added
