@@ -2,6 +2,15 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02458] - 2026-08-31
+
+### Fixed
+- A bad EPUB or DOCX file can no longer crash Draftline.
+- A rendering error in the editor now shows a retry screen instead of a blank window.
+
+### Changed
+- EPUB imports skip covers, navigation documents, and very large files.
+
 ## [0.16.02457] - 2026-08-31
 
 ### Changed

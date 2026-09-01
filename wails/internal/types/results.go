@@ -19,6 +19,9 @@ type ImportResult struct {
 	Success bool     `json:"success"`
 	Book    BookData `json:"book,omitempty"`
 	Error   string   `json:"error,omitempty"`
+	// Warnings lists non-fatal issues (skipped or truncated content) so the
+	// frontend can show what the import left out instead of losing it silently.
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 // AIRewriteResult contains the result of an AI rewrite operation.
