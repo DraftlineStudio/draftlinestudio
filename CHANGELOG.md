@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02463] - 2026-08-31
+
+### Changed
+- Removed readability grade estimates from Signals and moved readability formulas into Prose details.
+
 ## [0.16.02462] - 2026-08-31
 
 ### Fixed

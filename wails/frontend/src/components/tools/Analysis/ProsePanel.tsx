@@ -208,13 +208,18 @@ export default function ProsePanel() {
         <StatRow label="Paragraphs" value={overview.paragraph_count.toLocaleString()} />
       </div>
 
-      <div className="an-block">
-        <div className="an-label prose-block-title">Readability</div>
-        <StatRow label="Reading ease" value={overview.reading_ease.toFixed(1)} />
-        <StatRow label="Composite grade estimate" value={overview.mean_grade_level.toFixed(1)} />
-        <div className="an-footnote prose-readability-note">
-          Average of five readability formulas, not a reading age. Different analyzers can vary widely.
-        </div>
+      <div className="an-block prose-mechanical-block">
+        <details className="prose-mechanical-details">
+          <summary>Traditional readability formulas</summary>
+          <div className="prose-mechanical-content">
+            <StatRow label="Reading-ease score" value={overview.reading_ease.toFixed(1)} />
+            <StatRow label="Grade-formula average" value={overview.mean_grade_level.toFixed(1)} />
+            <div className="an-footnote prose-readability-note">
+              Mechanical estimates based on sentence and word shape only. They do not measure
+              subject knowledge, terminology, narrative complexity, audience, or comprehension.
+            </div>
+          </div>
+        </details>
       </div>
 
       <div className="an-block">
