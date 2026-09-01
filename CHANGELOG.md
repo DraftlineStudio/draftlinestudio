@@ -4,6 +4,19 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02489] - 2026-09-01
+
+### Removed
+- **Timeline view**, superseded by the Story Graph. The graph shows the same source-backed events with more context — lanes, chapter placement, connections between beats, and the same "Open source →" navigation — so keeping a second list of the same data would have meant two places to look for one answer.
+- Deleted `StoryTimelinePanel.tsx` and its 66 lines of CSS. The `BuildStoryTimeline` backend is unchanged and still in use: it remains the Story Graph's data source.
+
+### Changed
+- The bottom bar is now Ask Draftline · Story Graph · Continuity, plus the detections icon.
+- The Story Graph owns its loading and empty states (`story-graph-state`) rather than borrowing the timeline's, so removing the timeline could not strand them.
+- Reworded the graph's empty state from "No timeline events are indexed yet" to "No story beats are indexed yet" — it referred to a view that no longer exists.
+
+---
+
 ## [0.16.02488] - 2026-09-01
 
 ### Added

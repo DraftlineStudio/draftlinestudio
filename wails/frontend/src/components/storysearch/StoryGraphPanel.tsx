@@ -58,14 +58,14 @@ export default function StoryGraphPanel({ book, onNavigate, onOpenCodex }: Props
 
   useEffect(() => { setFocus(null) }, [mode])
 
-  if (loading) return <div className="story-timeline-state"><span className="story-search-spinner" />Building the story graph…</div>
-  if (error || (result && !result.success)) return <div className="story-timeline-state error">{error || result?.error}</div>
+  if (loading) return <div className="story-graph-state"><span className="story-search-spinner" />Building the story graph…</div>
+  if (error || (result && !result.success)) return <div className="story-graph-state error">{error || result?.error}</div>
   if (!graph || graph.nodes.length === 0) {
     return (
-      <div className="story-timeline-state">
+      <div className="story-graph-state">
         {result?.events.length
           ? 'No beats are plotted at this zoom level. Widen the zoom to include notable and minor beats.'
-          : 'No timeline events are indexed yet. Let the on-open story analysis finish, then return here.'}
+          : 'No story beats are indexed yet. Let the on-open story analysis finish, then return here.'}
       </div>
     )
   }
