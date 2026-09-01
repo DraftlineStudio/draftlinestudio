@@ -50,8 +50,12 @@ function dialogueClause(dialoguePercent: number): string {
   return 'dialogue-heavy'
 }
 
-function audienceClause(meanGradeLevel: number): string {
-  return `composite readability estimate: grade ${meanGradeLevel.toFixed(1)}`
+export function buildSignalSummary(
+  averageSentenceWords: number,
+  dialoguePercent: number,
+  tempo: 'measured' | 'balanced' | 'brisk',
+): string {
+  return `${sentenceClause(averageSentenceWords)}, ${dialogueClause(dialoguePercent)}, ${tempo} prose tempo.`
 }
 
 interface TileProps {
@@ -120,7 +124,11 @@ export default function SignalsPanel() {
   // tile, its note, and the one-line read can never disagree at a boundary.
   const tempoScore = Math.round(overview.tempo_score)
   const tempo = tempoDescriptor(tempoScore)
-  const oneLine = `${sentenceClause(overview.average_sentence_words)}, ${dialogueClause(overview.dialogue_percent)}, ${tempo} tempo — ${audienceClause(overview.mean_grade_level)}.`
+  const oneLine = buildSignalSummary(
+    overview.average_sentence_words,
+    overview.dialogue_percent,
+    tempo,
+  )
 
   const deltaNote = (current: number, prev: number | undefined, digits: number) =>
     formatDelta(current, prev, digits) ?? 'first run'
@@ -172,9 +180,9 @@ export default function SignalsPanel() {
             note={deltaNote(overview.dialogue_percent, previous?.dialogue_percent, 1)}
           />
           <Tile
-            label="Reading ease"
-            value={overview.reading_ease.toFixed(1)}
-            note={`composite grade estimate ${overview.mean_grade_level.toFixed(1)}`}
+            label="Manuscript"
+            value={overview.word_count.toLocaleString()}
+            note={deltaNote(overview.word_count, previous?.word_count, 0)}
           />
           <Tile
             label="Tempo"

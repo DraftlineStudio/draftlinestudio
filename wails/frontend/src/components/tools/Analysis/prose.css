@@ -53,7 +53,7 @@
   flex-shrink: 0;
 }
 
-/* ── Stat rows (Sentences / Readability) ──────────────────────────────────── */
+/* ── Stat rows and optional mechanical-readability details ───────────────── */
 .prose-block-title { margin-bottom: 4px; }
 .prose-stat-row {
   display: flex;
@@ -77,6 +77,16 @@
   color: var(--text-primary);
   flex-shrink: 0;
 }
+.prose-mechanical-block { padding-top: 9px; padding-bottom: 9px; }
+.prose-mechanical-details > summary {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+.prose-mechanical-details[open] > summary { color: var(--text-secondary); }
+.prose-mechanical-content { margin-top: 7px; }
 .prose-readability-note { margin-top: 7px; }
 
 /* ── Word classes ─────────────────────────────────────────────────────────── */
