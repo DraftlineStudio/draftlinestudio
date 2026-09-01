@@ -90,6 +90,7 @@ func (a *App) importEPUB(path string) types.ImportResult {
 	// Step 3: Extract chapters in spine order
 	var chapters []types.ChapterItem
 	var warnings []string
+	imagesDropped := 0
 	chapterNum := 1
 
 	for _, itemRef := range spine {
@@ -127,8 +128,15 @@ func (a *App) importEPUB(path string) types.ImportResult {
 			continue
 		}
 
-		// Extract title and body from XHTML
-		title, body := parseXHTMLContent(string(contentBytes))
+		// Decode, parse, and sanitize the document down to the editor's
+		// dialect before it can reach TipTap.
+		title, blocks, imgDropped, err := parseSpineDoc(contentBytes)
+		if err != nil {
+			warnings = append(warnings, fmt.Sprintf("Skipped %s: %v", item.Href, err))
+			continue
+		}
+		imagesDropped += imgDropped
+		body := joinBlocks(blocks)
 		if strings.TrimSpace(body) == "" {
 			continue
 		}
@@ -151,6 +159,15 @@ func (a *App) importEPUB(path string) types.ImportResult {
 
 	if len(chapters) == 0 {
 		return types.ImportResult{Success: false, Error: "No readable chapters found in EPUB"}
+	}
+
+	if imagesDropped > 0 {
+		noun := "images were"
+		if imagesDropped == 1 {
+			noun = "image was"
+		}
+		warnings = append(warnings, fmt.Sprintf(
+			"%d %s removed during import (Draftline does not support embedded images)", imagesDropped, noun))
 	}
 
 	// Build the types.BookData
@@ -318,39 +335,6 @@ func parseOPF(data []byte) (opfMetadata, []opfSpineItem, map[string]opfManifestI
 	return meta, spine, manifest, nil
 }
 
-// parseXHTMLContent extracts the title and body HTML from XHTML content
-func parseXHTMLContent(xhtml string) (title string, body string) {
-	// Prefer the visible document heading. EPUB <title> tags commonly repeat
-	// the book title across every spine item, hiding labels such as
-	// Acknowledgments and Copyright from section classification.
-	if heading := importedHeadingRe.FindString(xhtml); heading != "" {
-		title = plainImportedText(heading)
-	}
-
-	// Fall back to the metadata title when the document has no heading.
-	titleRe := regexp.MustCompile(`(?i)<title[^>]*>([^<]*)</title>`)
-	if title == "" {
-		match := titleRe.FindStringSubmatch(xhtml)
-		if len(match) > 1 {
-			title = strings.TrimSpace(match[1])
-		}
-	}
-
-	// Extract body content
-	bodyRe := regexp.MustCompile(`(?is)<body[^>]*>(.*)</body>`)
-	if match := bodyRe.FindStringSubmatch(xhtml); len(match) > 1 {
-		body = match[1]
-	} else {
-		// No body tag, use the whole content
-		body = xhtml
-	}
-
-	// Clean up the body HTML
-	body = cleanHTML(body)
-
-	return title, body
-}
-
 var importedHeadingRe = regexp.MustCompile(`(?is)<h[1-3]\b[^>]*>.*?</h[1-3]>`)
 
 // splitImportedChapters handles EPUBs that store many chapters in one spine
@@ -364,7 +348,7 @@ func splitImportedChapters(fallbackTitle, body string) []types.ChapterItem {
 
 	parts := make([]types.ChapterItem, 0, len(matches)+1)
 	if prefix := strings.TrimSpace(body[:matches[0][0]]); plainImportedText(prefix) != "" {
-		parts = append(parts, types.ChapterItem{Title: fallbackTitle, Content: cleanHTML(prefix)})
+		parts = append(parts, types.ChapterItem{Title: fallbackTitle, Content: prefix})
 	}
 	for i, match := range matches {
 		end := len(body)
@@ -373,7 +357,7 @@ func splitImportedChapters(fallbackTitle, body string) []types.ChapterItem {
 		}
 		headingHTML := body[match[0]:match[1]]
 		title := plainImportedText(headingHTML)
-		parts = append(parts, types.ChapterItem{Title: title, Content: cleanHTML(body[match[0]:end])})
+		parts = append(parts, types.ChapterItem{Title: title, Content: strings.TrimSpace(body[match[0]:end])})
 	}
 	return parts
 }
@@ -405,37 +389,6 @@ func classifyImportedSection(title, content string) string {
 		}
 		return "Chapter"
 	}
-}
-
-// cleanHTML normalizes HTML content for the editor
-func cleanHTML(html string) string {
-	// Remove XML declarations and doctype
-	html = regexp.MustCompile(`(?i)<\?xml[^>]*\?>`).ReplaceAllString(html, "")
-	html = regexp.MustCompile(`(?i)<!DOCTYPE[^>]*>`).ReplaceAllString(html, "")
-
-	// Remove HTML namespace declarations
-	html = regexp.MustCompile(`\s+xmlns[^=]*="[^"]*"`).ReplaceAllString(html, "")
-
-	// Remove epub:type attributes
-	html = regexp.MustCompile(`\s+epub:[^=]*="[^"]*"`).ReplaceAllString(html, "")
-
-	// Remove class and id attributes (optional - keeps HTML cleaner)
-	// html = regexp.MustCompile(`\s+(class|id)="[^"]*"`).ReplaceAllString(html, "")
-
-	// Convert common EPUB elements to standard HTML
-	html = regexp.MustCompile(`(?i)<section[^>]*>`).ReplaceAllString(html, "<div>")
-	html = regexp.MustCompile(`(?i)</section>`).ReplaceAllString(html, "</div>")
-
-	// Remove empty paragraphs
-	html = regexp.MustCompile(`(?i)<p[^>]*>\s*</p>`).ReplaceAllString(html, "")
-
-	// Normalize whitespace
-	html = regexp.MustCompile(`\s+`).ReplaceAllString(html, " ")
-
-	// Trim
-	html = strings.TrimSpace(html)
-
-	return html
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -4,6 +4,19 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02459] - 2026-08-31
+
+### Fixed
+- Replaced the EPUB importer's regex HTML munging with a real, fault-tolerant XHTML parser and a whitelist sanitizer that emits only the editor's dialect. Imported chapters no longer lose structure invisibly: divs and sections become clean paragraph boundaries, legacy `<b>/<i>/<strike>` map to proper marks, spans/anchors/classes unwrap to their text, `h4–h6` clamp to `h3`, tables flatten to one paragraph per cell, and text alignment survives.
+- A missing `</body>` can no longer leak `<head>`/`<style>`/script content into chapter text, and entities (`&mdash;`, numeric references) now decode correctly.
+- Verse and preformatted text survive import: whitespace is collapsed per block instead of across the whole document, `<br>` line breaks are kept, and `<pre>` content imports as a code block with its spacing intact.
+- Non-UTF-8 EPUBs no longer import as mojibake: UTF-16 (BOM or declared), Latin-1/Windows-1252, and invalid-UTF-8 documents are detected and decoded to clean UTF-8.
+
+### Changed
+- Embedded images and vector art are removed during import (the editor cannot represent them); the import now reports how many were dropped instead of losing them silently.
+
+---
+
 ## [0.16.02458] - 2026-08-31
 
 ### Fixed
