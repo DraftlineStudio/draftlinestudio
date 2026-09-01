@@ -12,6 +12,8 @@ export function AnalyzeRelationships(arg1:types.BookData):Promise<types.Relation
 
 export function BrowseForDirectory():Promise<string>;
 
+export function BuildStoryTimeline(arg1:types.BookData):Promise<types.StoryTimelineResult>;
+
 export function CancelRewrite():Promise<void>;
 
 export function CheckClaudeCode():Promise<types.ClaudeCodeStatus>;

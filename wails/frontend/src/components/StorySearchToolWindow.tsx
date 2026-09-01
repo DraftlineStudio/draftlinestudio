@@ -8,6 +8,7 @@ import type { BookData, Section } from '../types/draftline'
 import { isConfirmedCharacter } from '../utils/characterStatus'
 import DetailInsightPanel from './storysearch/DetailInsightPanel'
 import EvidenceIndexPanel from './storysearch/EvidenceIndexPanel'
+import StoryTimelinePanel from './storysearch/StoryTimelinePanel'
 
 type SearchResult = types.StorySearchResult
 type SearchMatch = types.StorySearchMatch
@@ -27,7 +28,7 @@ export default function StorySearchToolWindow() {
   })))
   const [panelHeight, setPanelHeight] = useState(height)
   const [query, setQuery] = useState('')
-  const [activeView, setActiveView] = useState<'search' | 'evidence'>('search')
+  const [activeView, setActiveView] = useState<'search' | 'timeline' | 'evidence'>('search')
   const [result, setResult] = useState<SearchResult | null>(null)
   const [loading, setLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -89,7 +90,7 @@ export default function StorySearchToolWindow() {
   const truncated = result ? result.total > result.matches.length : false
 
   return (
-    <section className="story-search-window" style={{ height: panelHeight }} aria-label="Story Search">
+    <section className="story-search-window" style={{ height: panelHeight }} aria-label="Ask Draftline and Story Timeline">
       <div className="story-search-resizer" onPointerDown={beginResize} />
       <header className="story-search-header">
         <button type="button" className={`story-search-tab ${activeView === 'search' ? 'active' : ''}`} onClick={() => setActiveView('search')}>
@@ -98,7 +99,13 @@ export default function StorySearchToolWindow() {
           </svg>
           Ask Draftline
         </button>
-        <span className="story-search-header-hint">{activeView === 'search' ? 'Source-backed manuscript trails · no AI' : 'Everything Draftline has indexed'}</span>
+        <button type="button" className={`story-search-tab ${activeView === 'timeline' ? 'active' : ''}`} onClick={() => setActiveView('timeline')}>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
+            <path d="M2 1.5v9M2 3.1h3.2M2 6h6.3M2 8.9h4.8" /><circle cx="5.7" cy="3.1" r=".8" /><circle cx="8.8" cy="6" r=".8" /><circle cx="7.3" cy="8.9" r=".8" />
+          </svg>
+          Timeline
+        </button>
+        <span className="story-search-header-hint">{activeView === 'search' ? 'Source-backed manuscript trails · no AI' : activeView === 'timeline' ? 'Automatic events · explicit uncertainty' : 'Everything Draftline has indexed'}</span>
         <button
           type="button"
           className={`story-search-archive-toggle ${activeView === 'evidence' ? 'active' : ''}`}
@@ -111,7 +118,7 @@ export default function StorySearchToolWindow() {
           </svg>
           {!!book?.analysis?.evidence?.records.length && <small>{book.analysis.evidence.records.length}</small>}
         </button>
-        <button className="story-search-close" onClick={close} title="Close Story Search" aria-label="Close Story Search">×</button>
+        <button className="story-search-close" onClick={close} title="Close bottom tool" aria-label="Close bottom tool">×</button>
       </header>
 
       {activeView === 'search' && <form className="story-search-form" onSubmit={submit}>
@@ -198,7 +205,7 @@ export default function StorySearchToolWindow() {
             </div>
           </>
         )}
-      </div> : book ? <EvidenceIndexPanel book={book} onNavigate={navigateSource} /> : null}
+      </div> : activeView === 'timeline' && book ? <StoryTimelinePanel book={book} onNavigate={navigateSource} /> : book ? <EvidenceIndexPanel book={book} onNavigate={navigateSource} /> : null}
     </section>
   )
 }

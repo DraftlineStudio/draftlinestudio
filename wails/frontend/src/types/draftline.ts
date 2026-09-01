@@ -334,6 +334,58 @@ export interface EvidenceData {
   version: number
 }
 
+export interface StoryTimelineFacet {
+  id: string
+  label: string
+  count: number
+}
+
+export interface StoryTimelineEvent {
+  id: string
+  evidence_ids: string[]
+  primary_type: string
+  event_types: string[]
+  text: string
+  source_text: string
+  chapter_id: string
+  chapter_index: number
+  chapter_title: string
+  section: Section | string
+  section_index: number
+  paragraph_index: number
+  sentence_index: number
+  start_offset: number
+  character_ids?: string[]
+  character_names?: string[]
+  locations?: EvidenceTerm[]
+  time_expressions?: string[]
+  time_kind: 'anchored' | 'relative' | 'manuscript' | string
+  time_label: string
+  confidence: number
+  status: string
+  pinned?: boolean
+}
+
+export interface StoryTimelineChapter {
+  chapter_index: number
+  chapter_title: string
+  event_count: number
+  explicit_time_count: number
+}
+
+export interface StoryTimelineResult {
+  success: boolean
+  error?: string
+  engine: string
+  events: StoryTimelineEvent[]
+  chapters: StoryTimelineChapter[]
+  characters: StoryTimelineFacet[]
+  locations: StoryTimelineFacet[]
+  event_types: StoryTimelineFacet[]
+  explicit_time_count: number
+  relative_time_count: number
+}
+
 export interface TermCount {
   term: string
   count: number

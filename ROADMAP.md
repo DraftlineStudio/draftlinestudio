@@ -45,8 +45,10 @@ retrieval, indexing, review, and refactoring must not depend on generative AI.
       knowledge, and discovery trails generated from the open book; answers
       lead while technical search coverage stays available on demand
       (`0.16.02485`).
-- [ ] Automatic timeline draft assembled from confirmed events and explicit
-      time expressions, with ambiguity shown instead of silently guessed.
+- [x] Automatic timeline draft assembled from source-backed events and explicit
+      time expressions, with chapter density, character/place/type/time filters,
+      source navigation, and ambiguity shown instead of silently guessed
+      (`0.16.02486`).
 - [ ] Continuity checks over confirmed facts: conflicting attributes,
       impossible knowledge, reintroductions, unexplained singleton characters,
       chronology conflicts, and unresolved plants/payoffs.
