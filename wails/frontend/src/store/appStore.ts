@@ -75,6 +75,11 @@ interface AppStore {
   showChapterHistory: boolean
   openChapterHistory: () => void
   closeChapterHistory: () => void
+  bottomToolOpen: boolean
+  bottomToolHeight: number
+  openStorySearch: () => void
+  closeBottomTool: () => void
+  setBottomToolHeight: (height: number) => void
 
   loadSettings: () => Promise<void>
   saveSettings: (patch: Partial<AppSettings>) => Promise<void>
@@ -158,6 +163,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
   showChapterHistory: false,
   openChapterHistory: () => set({ showChapterHistory: true }),
   closeChapterHistory: () => set({ showChapterHistory: false }),
+  bottomToolOpen: false,
+  bottomToolHeight: 280,
+  openStorySearch: () => set({ bottomToolOpen: true }),
+  closeBottomTool: () => set({ bottomToolOpen: false }),
+  setBottomToolHeight: (height) => set({ bottomToolHeight: Math.max(170, Math.min(height, 560)) }),
 
   loadSettings: async () => {
     try {

@@ -14,6 +14,7 @@ import CharactersView from './components/characters/CharactersView'
 import ToolsPanel from './components/ToolsPanel'
 import StatusBar from './components/StatusBar'
 import AnalysisCoordinator from './components/AnalysisCoordinator'
+import StorySearchToolWindow from './components/StorySearchToolWindow'
 import MetadataDialog from './components/dialogs/MetadataDialog'
 import NewChapterDialog from './components/dialogs/NewChapterDialog'
 import NewBookWizard from './components/dialogs/NewBookWizard'
@@ -39,7 +40,7 @@ export default function App() {
     viewMode: s.viewMode,
     setViewMode: s.setViewMode,
   })))
-  const { loadSettings, settings, showSettings, showWelcome, setShowWelcome, loadRecentProjects, showNewUniverse, setShowNewUniverse, toggleLeftPanel, showMetadata, showNewChapter, newChapterSection, showExportWizard, showChapterHistory } = useAppStore()
+  const { loadSettings, settings, showSettings, showWelcome, setShowWelcome, loadRecentProjects, showNewUniverse, setShowNewUniverse, toggleLeftPanel, showMetadata, showNewChapter, newChapterSection, showExportWizard, showChapterHistory, bottomToolOpen, openStorySearch, closeBottomTool } = useAppStore()
   const prevThemeRef = useRef<'light' | 'dark' | null>(null)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [targetTheme, setTargetTheme] = useState<'light' | 'dark'>('dark')
@@ -127,10 +128,17 @@ export default function App() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (!e.ctrlKey) return
-      switch (e.key) {
+      switch (e.key.toLocaleLowerCase()) {
         case 'n': e.preventDefault(); void newBook(); break
         case 'o': e.preventDefault(); void openBook(); break
         case '[': e.preventDefault(); toggleLeftPanel(); break
+        case 'f':
+          if (e.shiftKey && hasBook) {
+            e.preventDefault()
+            setViewMode('editor')
+            openStorySearch()
+          }
+          break
         case 's':
           e.preventDefault()
           if (e.shiftKey) void saveBookAs()
@@ -140,7 +148,7 @@ export default function App() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [newBook, openBook, saveBook, saveBookAs, toggleLeftPanel])
+  }, [hasBook, newBook, openBook, openStorySearch, saveBook, saveBookAs, setViewMode, toggleLeftPanel])
 
   // When book is opened from NewBookWizard, hide welcome screen
   useEffect(() => {
@@ -154,6 +162,10 @@ export default function App() {
   useEffect(() => {
     if (!settings.cast_enabled && viewMode === 'cast') setViewMode('editor')
   }, [settings.cast_enabled, viewMode, setViewMode])
+
+  useEffect(() => {
+    if (!hasBook && bottomToolOpen) closeBottomTool()
+  }, [bottomToolOpen, closeBottomTool, hasBook])
 
   // Show welcome screen
   if (showWelcome) {
@@ -189,6 +201,7 @@ export default function App() {
         )}
         {viewMode !== 'cast' && <ToolsPanel />}
       </div>
+      {bottomToolOpen && viewMode !== 'cast' && <StorySearchToolWindow />}
       <StatusBar />
       <AnalysisCoordinator />
       {showMetadata && <MetadataDialog />}

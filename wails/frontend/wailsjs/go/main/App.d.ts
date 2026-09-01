@@ -92,6 +92,8 @@ export function SaveBookSnapshots(arg1:types.BookData,arg2:Array<types.ChapterSn
 
 export function SaveSettings(arg1:types.AppSettings):Promise<void>;
 
+export function SearchStory(arg1:types.BookData,arg2:types.StorySearchRequest):Promise<types.StorySearchResult>;
+
 export function SetAPIKey(arg1:string):Promise<void>;
 
 export function SetupClaudeCode():Promise<types.ClaudeCodeStatus>;
