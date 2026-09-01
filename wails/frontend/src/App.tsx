@@ -9,6 +9,7 @@ import WelcomeScreen from './components/WelcomeScreen'
 import TitleBar from './components/TitleBar'
 import ChapterPanel from './components/ChapterPanel'
 import EditorPanel from './components/EditorPanel'
+import ErrorBoundary from './components/ErrorBoundary'
 import CharactersView from './components/characters/CharactersView'
 import ToolsPanel from './components/ToolsPanel'
 import StatusBar from './components/StatusBar'
@@ -186,7 +187,13 @@ export default function App() {
       <TitleBar />
       <div className="main-layout">
         <ChapterPanel />
-        {viewMode === 'cast' ? <CharactersView /> : <EditorPanel />}
+        {viewMode === 'cast' ? (
+          <CharactersView />
+        ) : (
+          <ErrorBoundary name="Editor">
+            <EditorPanel />
+          </ErrorBoundary>
+        )}
         {viewMode !== 'cast' && <ToolsPanel />}
       </div>
       <StatusBar />

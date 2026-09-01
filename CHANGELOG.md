@@ -4,6 +4,18 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02458] - 2026-08-31
+
+### Fixed
+- EPUB and DOCX imports can no longer crash Draftline: a panic anywhere inside an importer now returns a normal import error instead of killing the process (the Wails bridge previously had no recovery, so one bad file took the whole app down).
+- The editor pane is now wrapped in the error boundary, so a rendering failure on pathological imported content shows a retry fallback instead of a blank window.
+
+### Changed
+- EPUB spine hygiene: only real chapter documents (`application/xhtml+xml`, `text/html`) are imported — SVG covers and other XML resources no longer appear as garbage chapters — and EPUB 3 navigation documents (`properties="nav"`) are skipped.
+- Spine documents larger than 8 MB are skipped with a warning instead of being pushed through the importer and the JSON bridge; import results now carry a warnings list for non-fatal issues.
+
+---
+
 ## [0.16.02457] - 2026-08-31
 
 ### Changed
