@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useBookStore } from '../../store/bookStore'
+import { useAppStore } from '../../store/appStore'
 import type { Section } from '../../types/draftline'
 import { FRONT_MATTER_TYPES, BODY_TYPES, BACK_MATTER_TYPES } from '../../types/draftline'
 
@@ -22,7 +23,8 @@ function getSectionLabel(section: Section): string {
 }
 
 export default function NewChapterDialog({ section }: Props) {
-  const { addChapter, closeNewChapterDialog } = useBookStore()
+  const { addChapter } = useBookStore()
+  const closeNewChapterDialog = useAppStore(s => s.closeNewChapterDialog)
   const types = getTypesForSection(section)
   const [type, setType] = useState(types[0] || 'Chapter')
   const [title, setTitle] = useState('')
