@@ -13,6 +13,12 @@ import (
 // Keeping orchestration here prevents app.go from regaining the analysis
 // responsibility removed by its package refactor.
 func (a *App) AnalyzeBook(bookData types.BookData) types.FullAnalysisResult {
+	done, ok := a.beginAnalysis(bookData)
+	if !ok {
+		return types.FullAnalysisResult{Success: false, Error: analysisBusyMessage}
+	}
+	defer done()
+
 	chapterCount := len(indexing.AllChapters(&bookData))
 	a.emitAnalysisProgress(types.StoryAnalysisProgress{
 		Phase: "characters", Message: fmt.Sprintf("Analyzing characters across %d chapters", chapterCount),

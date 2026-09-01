@@ -5,7 +5,7 @@ import { useAppStore } from '../../../store/appStore'
 import { TestLocalAI, CheckClaudeCode, SetupClaudeCode, OpenClaudeAuth, CheckCodexCLI, SetupCodexCLI, OpenCodexAuth, GetAppVersion, SetAPIKey, ClearAPIKey } from '../../../../wailsjs/go/main/App'
 import { EventsOn } from '../../../../wailsjs/runtime/runtime'
 import type { types } from '../../../../wailsjs/go/models'
-import type { SettingsSection, AIMode, AIProvider, ThemeMode, EditorFontSize, ClaudeCodeSetupStep, TestStatus } from './types'
+import type { SettingsSection, AIMode, AIProvider, ThemeMode, EditorFontSize, AnalysisCPUProfile, ClaudeCodeSetupStep, TestStatus } from './types'
 import ApplicationSection from './ApplicationSection'
 import AIStudioSection from './AIStudioSection'
 import BookSection from './BookSection'
@@ -37,6 +37,7 @@ export default function AppSettingsDialog() {
   const [grammarCheckEnabled, setGrammarCheckEnabled] = useState(settings.grammar_check_enabled)
   const [castEnabled, setCastEnabled] = useState(settings.cast_enabled)
   const [analysisEnabled, setAnalysisEnabled] = useState(settings.analysis_enabled)
+  const [analysisCPUProfile, setAnalysisCPUProfile] = useState<AnalysisCPUProfile>(settings.analysis_cpu_profile)
 
   // AI state
   const [aiEnabled, setAiEnabled]         = useState(settings.ai_enabled)
@@ -233,6 +234,7 @@ export default function AppSettingsDialog() {
       grammar_check_enabled: grammarCheckEnabled,
       cast_enabled: castEnabled,
       analysis_enabled: analysisEnabled,
+      analysis_cpu_profile: analysisCPUProfile,
       ai_enabled: aiEnabled,
       ai_mode: aiMode,
       ai_provider: provider,
@@ -325,6 +327,7 @@ export default function AppSettingsDialog() {
                 autoThemeDawn={autoThemeDawn} setAutoThemeDawn={setAutoThemeDawn}
                 autoThemeDusk={autoThemeDusk} setAutoThemeDusk={setAutoThemeDusk}
                 activityAutoSaveEnabled={activityAutoSaveEnabled} setActivityAutoSaveEnabled={setActivityAutoSaveEnabled}
+                analysisCPUProfile={analysisCPUProfile} setAnalysisCPUProfile={setAnalysisCPUProfile}
                 onBrowse={handleBrowse}
               />
             )}

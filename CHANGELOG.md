@@ -4,6 +4,24 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02492] - 2026-09-01
+
+### Added
+- **Background analysis CPU profiles** under Settings → Application: Adaptive, Gentle, Balanced, and Fast. Adaptive is the new default and automatically gives manuscripts of roughly 750 KB or larger the Gentle 1–2 core budget; ordinary books use Balanced's maximum of four analysis cores.
+
+### Changed
+- All in-process prose/v3 work now runs beneath one cross-platform Go scheduler budget. The limit covers character NER, entity resolution, relationship mapping, fact/event extraction, pacing, readability, keywords, and summaries rather than throttling only one worker pool.
+- CPU choices are described as concurrency budgets instead of exact percentages because operating-system scheduling and non-analysis work can vary. Adaptive, Gentle, and Balanced deliberately leave processing capacity for the editor and the rest of the computer.
+
+### Fixed
+- Prevented automatic whole-book analysis, manual character detection, and manual relationship analysis from running concurrently and competing for every available core. The backend now enforces one manuscript-scale analysis job at a time, and an automatic job waits and retries when a manual job is finishing.
+- Large novels no longer start prose/v3's former eight-worker character pass at full machine concurrency by default. On an eight-core machine, a large manuscript now receives two analysis cores in Adaptive mode.
+
+### Internal
+- Added deterministic tests for adaptive manuscript thresholds, every CPU profile, low-core machines, full-section size accounting, and the backend analysis single-flight lifecycle.
+
+---
+
 ## [0.16.02491] - 2026-09-01
 
 ### Added
