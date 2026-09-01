@@ -12,6 +12,9 @@ func TestAnalyzeEvidenceIndexesDiscoveryWithExactSourceAndCharacters(t *testing.
 	book := evidenceTestBook(text, map[string]string{"Hanlon": "hanlon", "Ruiz": "ruiz"})
 
 	result := AnalyzeEvidence(&book, nil)
+	if result.Engine != "prose-v3-evidence-v2" || result.Version != 2 {
+		t.Fatalf("unexpected evidence schema identity: engine=%s version=%d", result.Engine, result.Version)
+	}
 	record := findEvidenceType(result.Records, "discovery")
 	if record == nil {
 		t.Fatalf("expected discovery evidence, got %+v", result.Records)
@@ -105,6 +108,72 @@ func TestAnalyzeEvidenceDoesNotIndexUnanchoredOrdinaryProse(t *testing.T) {
 	result := AnalyzeEvidence(&book, nil)
 	if len(result.Records) != 0 {
 		t.Fatalf("ordinary unanchored prose became evidence: %+v", result.Records)
+	}
+}
+
+func TestAnalyzeEvidenceLinksKnowledgeAcquisitionToSourceCharacter(t *testing.T) {
+	book := evidenceTestBook("Ruiz learned that IBM controlled the tunnel.", map[string]string{"Ruiz": "ruiz"})
+	record := findEvidenceType(AnalyzeEvidence(&book, nil).Records, "discovery")
+	if record == nil || len(record.KnowledgeStates) != 1 {
+		t.Fatalf("expected source-backed knowledge acquisition, got %+v", record)
+	}
+	claim := record.KnowledgeStates[0]
+	if claim.State != "learned" || len(claim.CharacterIDs) != 1 || claim.CharacterIDs[0] != "ruiz" || claim.Cue != "learned" {
+		t.Fatalf("knowledge acquisition linked to the wrong character: %+v", claim)
+	}
+}
+
+func TestAnalyzeEvidenceLinksKnowledgeTransferParticipants(t *testing.T) {
+	book := evidenceTestBook("Hanlon told Ruiz that IBM controlled the tunnel.", map[string]string{"Hanlon": "hanlon", "Ruiz": "ruiz"})
+	record := findEvidenceType(AnalyzeEvidence(&book, nil).Records, "interaction")
+	if record == nil || len(record.KnowledgeStates) != 1 {
+		t.Fatalf("expected source-backed knowledge transfer, got %+v", record)
+	}
+	claim := record.KnowledgeStates[0]
+	if claim.State != "shared" || len(claim.CharacterIDs) != 1 || claim.CharacterIDs[0] != "hanlon" ||
+		len(claim.CounterpartyIDs) != 1 || claim.CounterpartyIDs[0] != "ruiz" {
+		t.Fatalf("knowledge transfer participants are wrong: %+v", claim)
+	}
+}
+
+func TestAnalyzeEvidenceDoesNotInventSpeakerWithoutCharacterBeforeCue(t *testing.T) {
+	book := evidenceTestBook("The report informed Ruiz about the tunnel.", map[string]string{"Ruiz": "ruiz"})
+	result := AnalyzeEvidence(&book, nil)
+	for _, record := range result.Records {
+		if len(record.KnowledgeStates) > 0 {
+			t.Fatalf("passive or non-character source was promoted to a speaker: %+v", record.KnowledgeStates)
+		}
+	}
+}
+
+func TestAnalyzeEvidencePreservesExplicitLackOfKnowledge(t *testing.T) {
+	book := evidenceTestBook("Hanlon didn't know the tunnel existed.", map[string]string{"Hanlon": "hanlon"})
+	record := findEvidenceType(AnalyzeEvidence(&book, nil).Records, "state")
+	if record == nil || len(record.KnowledgeStates) != 1 || record.KnowledgeStates[0].State != "does_not_know" {
+		t.Fatalf("negative knowledge was flattened into positive knowledge: %+v", record)
+	}
+}
+
+func TestAnalyzeEvidenceDistinguishesBeliefFromKnowledge(t *testing.T) {
+	book := evidenceTestBook("Hanlon believed the tunnel was beneath IBM.", map[string]string{"Hanlon": "hanlon"})
+	record := findEvidenceType(AnalyzeEvidence(&book, nil).Records, "state")
+	if record == nil || len(record.KnowledgeStates) != 1 || record.KnowledgeStates[0].State != "believes" {
+		t.Fatalf("belief was promoted to certain knowledge: %+v", record)
+	}
+}
+
+func TestAnalyzeEvidencePreservesDisbeliefAndWithholding(t *testing.T) {
+	disbeliefBook := evidenceTestBook("Keller would never believe the scream was real.", map[string]string{"Keller": "keller"})
+	disbelief := findEvidenceType(AnalyzeEvidence(&disbeliefBook, nil).Records, "state")
+	if disbelief == nil || len(disbelief.KnowledgeStates) != 1 || disbelief.KnowledgeStates[0].State != "does_not_believe" {
+		t.Fatalf("disbelief was flattened into belief: %+v", disbelief)
+	}
+
+	withheldBook := evidenceTestBook("Hanlon didn't tell Ruiz about the tunnel.", map[string]string{"Hanlon": "hanlon", "Ruiz": "ruiz"})
+	withheld := findEvidenceType(AnalyzeEvidence(&withheldBook, nil).Records, "interaction")
+	if withheld == nil || len(withheld.KnowledgeStates) != 1 || withheld.KnowledgeStates[0].State != "withheld" ||
+		len(withheld.KnowledgeStates[0].CounterpartyIDs) != 1 || withheld.KnowledgeStates[0].CounterpartyIDs[0] != "ruiz" {
+		t.Fatalf("withholding was flattened into sharing: %+v", withheld)
 	}
 }
 

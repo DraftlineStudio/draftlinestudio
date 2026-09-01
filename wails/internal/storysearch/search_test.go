@@ -166,6 +166,46 @@ func TestSearchRelatedTermsExcludePrimaryPossessivesAndPronounContractions(t *te
 	}
 }
 
+func TestSearchAnswersWhoKnewWithSourceBackedKnowledgeTrail(t *testing.T) {
+	book := testBook(`<p>Hanlon knew the underground tunnel opened at midnight.</p>`)
+	book.Analysis.Evidence = &types.EvidenceData{Records: []types.EvidenceRecord{{
+		ID: "knowledge", Kind: "fact", EvidenceType: "state", ChapterIndex: 0,
+		Text: "Hanlon knew the underground tunnel opened at midnight.", Status: "detected",
+		KnowledgeStates: []types.EvidenceKnowledgeState{{
+			State: "knows", CharacterIDs: []string{"hanlon"}, CharacterNames: []string{"Daniel Hanlon"}, Cue: "knew", Confidence: .82,
+		}},
+	}}}
+
+	result := Search(book, types.StorySearchRequest{Query: "Who knew about the underground tunnel?"})
+	if result.Total != 1 || result.Insight == nil || result.Insight.Intent != "knowledge" || result.Insight.InterpretedQuery != "underground tunnel" {
+		t.Fatalf("knowledge question was not interpreted: %+v", result.Insight)
+	}
+	if len(result.Insight.KnowledgeStates) != 1 || result.Insight.KnowledgeStates[0].CharacterNames[0] != "Daniel Hanlon" {
+		t.Fatalf("knowledge trail did not retain its source-backed character: %+v", result.Insight.KnowledgeStates)
+	}
+}
+
+func TestSearchReportsWhoSharedDetailWithWhom(t *testing.T) {
+	book := testBook(`<p>Hanlon told Ruiz about the IBM tunnel.</p>`)
+	book.Analysis.Evidence = &types.EvidenceData{Records: []types.EvidenceRecord{{
+		ID: "transfer", Kind: "event", EvidenceType: "interaction", ChapterIndex: 0,
+		Text: "Hanlon told Ruiz about the IBM tunnel.", Status: "confirmed",
+		KnowledgeStates: []types.EvidenceKnowledgeState{{
+			State: "shared", CharacterIDs: []string{"hanlon"}, CharacterNames: []string{"Daniel Hanlon"},
+			CounterpartyIDs: []string{"ruiz"}, CounterpartyNames: []string{"Ruiz"}, Cue: "told", Confidence: .82,
+		}},
+	}}}
+
+	result := Search(book, types.StorySearchRequest{Query: "Who told Ruiz about IBM?"})
+	if result.Total != 1 || result.Insight == nil || len(result.Insight.KnowledgeStates) != 1 {
+		t.Fatalf("knowledge transfer was not found: %+v", result)
+	}
+	state := result.Insight.KnowledgeStates[0]
+	if state.State != "shared" || state.CharacterNames[0] != "Daniel Hanlon" || state.CounterpartyNames[0] != "Ruiz" {
+		t.Fatalf("knowledge transfer participants are wrong: %+v", state)
+	}
+}
+
 func testBook(content string) types.BookData {
 	return types.BookData{
 		Body: []types.ChapterItem{{ID: "chapter-1", Title: "First", Type: "chapter", Content: content}},

@@ -37,8 +37,10 @@ retrieval, indexing, review, and refactoring must not depend on generative AI.
       missing-given-name answers, singleton warnings, discovery signals,
       relevant event/fact counts, and clickable related-detail pivots
       (`0.16.02475`).
-- [ ] Knowledge-state queries: who learned or knew a fact, when it changed,
-      whether knowledge was shared, and where the source establishes it.
+- [x] Knowledge-state queries: who learned, knew, did not know, believed,
+      suspected, tried to recall, shared, or withheld a searched detail, when
+      the state appears in manuscript order, and the exact source establishing
+      it (`0.16.02484`).
 - [ ] Automatic timeline draft assembled from confirmed events and explicit
       time expressions, with ambiguity shown instead of silently guessed.
 - [ ] Continuity checks over confirmed facts: conflicting attributes,

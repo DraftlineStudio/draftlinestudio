@@ -27,4 +27,13 @@ describe('evidence review ranking', () => {
     ])
     expect(ranked.map(item => item.record.id)).toEqual(['pinned'])
   })
+
+  it('promotes source-backed knowledge states into the review queue', () => {
+    const ranked = rankEvidenceForReview([record({
+      id: 'knowledge',
+      knowledge_states: [{ state: 'does_not_know', character_names: ['Hanlon'], cue: 'did not know', confidence: .82 }],
+    })])
+    expect(ranked.map(item => item.record.id)).toEqual(['knowledge'])
+    expect(ranked[0].reasons).toContain('Establishes a character knowledge state')
+  })
 })

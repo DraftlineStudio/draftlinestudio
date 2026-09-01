@@ -128,6 +128,14 @@ and review timestamps follow stable evidence IDs through reanalysis. The
 frontend derives a bounded local review queue from high-value and suspicious
 records while the complete archive remains available for inspection.
 
+Build 02484 upgrades the evidence engine to `prose-v3-evidence-v2`. Evidence
+records can now carry sentence-local knowledge claims for learning, knowing,
+explicitly not knowing, attempting to recall, belief, suspicion, communication,
+and withholding. Claims require a confirmed named character in a conservative
+local grammatical position; Draftline does not resolve pronouns or distant
+clause subjects by guesswork. Existing evidence classifications remain stable
+so the upgrade does not orphan compatible author review decisions.
+
 ### storysearch/
 Deterministic whole-manuscript evidence retrieval. Searches explicit query
 submissions by scene, expands only confirmed character aliases, and returns
@@ -142,6 +150,12 @@ phrases; the engine then summarizes complete chapter coverage, relevant
 event/fact evidence, related named details, missing confirmed names, singleton
 occurrences, and discovery cues. Evidence association is limited to the actual
 query-bearing paragraphs rather than every record in a matching chapter.
+
+Knowledge questions are interpreted separately from general discovery queries.
+The returned manuscript-order trail identifies named knowers or communicators,
+explicit counterparties when present, epistemic state, cue, confidence, exact
+source sentence, and chapter navigation. Rejected evidence is excluded through
+the same source pipeline as every other Detail Search conclusion.
 
 ### [logging/](logging/LOGGING.md)
 Debug logging for AI operations.

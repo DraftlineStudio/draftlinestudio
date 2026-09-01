@@ -15,6 +15,8 @@ var (
 	discoveryIntentRe    = regexp.MustCompile(`(?i)\b(?:discover(?:ed|s|ing)?|finds?|found|learn(?:ed|t|s|ing)?|reveal(?:ed|s|ing)?|uncover(?:ed|s|ing)?)\b`)
 	researchIntentRe     = regexp.MustCompile(`(?i)\b(?:research(?:ed|es|ing)?|investigat(?:ed|es|ing|ion)|look(?:ed|s|ing)?\s+into)\b`)
 	firstIntentRe        = regexp.MustCompile(`(?i)\b(?:first|earliest|initial)\s+(?:appear(?:ance)?|mention|occurrence|establish(?:ment|ed)?|introduc(?:tion|ed)?)\b`)
+	knowledgeIntentRe    = regexp.MustCompile(`(?i)\b(?:knows?|knew|learn(?:ed|t|s|ing)?|underst(?:ood|ands?|anding)|remembers?|remembered|believes?|believed|suspects?|suspected|tells?|told|informs?|informed|warns?|warned|explains?|explained|shares?|shared|shows?|showed|withholds?|withheld|withholding|was\s+told)\b`)
+	knowledgeNoiseRe     = regexp.MustCompile(`(?i)\b(?:who|whom|what|which|when|how|did|does|do|is|are|was|were|about|with|to|from|the|a|an|this|that|it|chapter|chapters|scene|scenes|story|book)\b`)
 	questionNoiseRe      = regexp.MustCompile(`(?i)\b(?:what|which|where|when|how|did|does|do|is|are|was|were|chapter|chapters|scene|scenes|story|book|mentioned|mention|appears?|occurs?|established|introduc(?:e|ed|tion)|and)\b`)
 	pronounContractionRe = regexp.MustCompile(`(?i)^(?:he|she|it|i|we|you|they)[\x{2019}'](?:d|s|ve|ll|re|m|t)$`)
 )
@@ -31,11 +33,15 @@ type insightAccumulator struct {
 	eventCount       int
 	factCount        int
 	discoveryCount   int
+	knowledgeSeen    map[string]bool
+	knowledgeStates  []types.StorySearchKnowledgeState
 }
 
 func interpretDetailQuery(query string) (string, string) {
 	intent := "trail"
 	switch {
+	case knowledgeIntentRe.MatchString(query):
+		intent = "knowledge"
 	case identityIntentRe.MatchString(query):
 		intent = "identity"
 	case discoveryIntentRe.MatchString(query):
@@ -48,6 +54,10 @@ func interpretDetailQuery(query string) (string, string) {
 
 	protected, phrases := protectQuotedPhrases(query)
 	cleaned := identityIntentRe.ReplaceAllString(protected, " ")
+	if intent == "knowledge" {
+		cleaned = knowledgeIntentRe.ReplaceAllString(cleaned, " ")
+		cleaned = knowledgeNoiseRe.ReplaceAllString(cleaned, " ")
+	}
 	cleaned = discoveryIntentRe.ReplaceAllString(cleaned, " ")
 	cleaned = researchIntentRe.ReplaceAllString(cleaned, " ")
 	cleaned = firstIntentRe.ReplaceAllString(cleaned, " ")
@@ -86,7 +96,7 @@ func newInsightAccumulator(intent, interpretedQuery string, resolved []types.Sto
 	return &insightAccumulator{
 		intent: intent, interpretedQuery: interpretedQuery, resolved: resolved,
 		chapters: make(map[int]*types.StorySearchChapterSummary), evidenceSeen: make(map[string]bool),
-		related: make(map[string]*types.StorySearchRelatedTerm),
+		related: make(map[string]*types.StorySearchRelatedTerm), knowledgeSeen: make(map[string]bool),
 	}
 }
 
@@ -117,6 +127,9 @@ func (a *insightAccumulator) add(ref chapterRef, evidence []types.EvidenceRecord
 		if record.EvidenceType == "discovery" {
 			a.discoveryCount++
 		}
+		for _, state := range record.KnowledgeStates {
+			a.addKnowledge(ref, record, state)
+		}
 		for _, name := range record.CharacterNames {
 			a.addRelated(name, "character")
 		}
@@ -124,6 +137,21 @@ func (a *insightAccumulator) add(ref chapterRef, evidence []types.EvidenceRecord
 			a.addRelated(entity.Text, strings.ToLower(entity.Label))
 		}
 	}
+}
+
+func (a *insightAccumulator) addKnowledge(ref chapterRef, record types.EvidenceRecord, state types.EvidenceKnowledgeState) {
+	key := record.ID + "\x00" + state.State + "\x00" + strings.Join(state.CharacterIDs, "\x00") + "\x00" + strings.Join(state.CounterpartyIDs, "\x00")
+	if a.knowledgeSeen[key] {
+		return
+	}
+	a.knowledgeSeen[key] = true
+	a.knowledgeStates = append(a.knowledgeStates, types.StorySearchKnowledgeState{
+		EvidenceID: record.ID, State: state.State,
+		CharacterIDs: state.CharacterIDs, CharacterNames: state.CharacterNames,
+		CounterpartyIDs: state.CounterpartyIDs, CounterpartyNames: state.CounterpartyNames,
+		ChapterIndex: ref.globalIndex, ChapterTitle: chapterTitle(ref), Section: ref.section, SectionIndex: ref.sectionIndex,
+		Text: record.Text, Cue: state.Cue, Confidence: state.Confidence,
+	})
 }
 
 func (a *insightAccumulator) addRelated(text, label string) {
@@ -178,6 +206,7 @@ func (a *insightAccumulator) finish(total int) *types.StorySearchInsight {
 		Intent: a.intent, InterpretedQuery: a.interpretedQuery,
 		ChapterCount: len(a.chapterOrder), EvidenceCount: a.evidenceCount,
 		EventCount: a.eventCount, FactCount: a.factCount, DiscoveryCount: a.discoveryCount,
+		KnowledgeCount: len(a.knowledgeStates), KnowledgeStates: a.knowledgeStates,
 		Chapters: make([]types.StorySearchChapterSummary, 0, len(a.chapterOrder)),
 	}
 	for _, chapterIndex := range a.chapterOrder {
@@ -220,6 +249,19 @@ func (a *insightAccumulator) signals(total int) []types.StorySearchSignal {
 			signals = append(signals, types.StorySearchSignal{
 				Kind: "attention", Title: "No indexed discovery event",
 				Detail: "The passages mention these details, but the evidence index does not classify any as the moment of discovery.",
+			})
+		}
+	}
+	if a.intent == "knowledge" {
+		if len(a.knowledgeStates) == 0 {
+			signals = append(signals, types.StorySearchSignal{
+				Kind: "attention", Title: "No explicit knowledge state found",
+				Detail: "The detail appears in these passages, but Draftline cannot prove who learned, knew, or shared it from the indexed grammar.",
+			})
+		} else {
+			signals = append(signals, types.StorySearchSignal{
+				Kind: "answer", Title: pluralCount(len(a.knowledgeStates), "source-backed knowledge point", "source-backed knowledge points"),
+				Detail: "Each point below names only characters directly tied to knowledge or communication wording in the source sentence.",
 			})
 		}
 	}

@@ -8,9 +8,10 @@ interface Props {
   onFirst: () => void
   onLast: () => void
   onRelated: (term: string) => void
+  onKnowledge: (state: types.StorySearchKnowledgeState) => void
 }
 
-export default function DetailInsightPanel({ insight, total, truncated, shown, onFirst, onLast, onRelated }: Props) {
+export default function DetailInsightPanel({ insight, total, truncated, shown, onFirst, onLast, onRelated, onKnowledge }: Props) {
   return (
     <section className="detail-insight" aria-label="Story detail trail">
       <div className="detail-insight-lede">
@@ -43,6 +44,24 @@ export default function DetailInsightPanel({ insight, total, truncated, shown, o
         </div>
       )}
 
+      {!!insight.knowledge_states?.length && (
+        <div className="detail-insight-knowledge">
+          <span>Knowledge trail</span>
+          <div>
+            {insight.knowledge_states.map((state, index) => (
+              <button type="button" key={`${state.evidence_id}-${state.state}-${index}`} onClick={() => onKnowledge(state)} title={`Open source in ${state.chapter_title}`}>
+                <i className={state.state}>{knowledgeIcon(state.state)}</i>
+                <span>
+                  <strong>{knowledgeHeadline(state)}</strong>
+                  <small>{state.chapter_title} · “{state.text}”</small>
+                </span>
+                <b>Open →</b>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="detail-insight-chapters">
         <span>Chapter trail</span>
         <div>
@@ -71,6 +90,31 @@ export default function DetailInsightPanel({ insight, total, truncated, shown, o
       {truncated && <div className="detail-insight-limit">Showing the first {shown} source scenes; fingerprint counts cover all {total}.</div>}
     </section>
   )
+}
+
+function knowledgeIcon(state: string): string {
+  if (state === 'shared') return '→'
+  if (state === 'withheld') return '×'
+  if (state === 'learned') return '+'
+  if (state === 'does_not_know') return '?'
+  if (state === 'attempts_to_recall') return '…'
+  if (state === 'believes' || state === 'suspects') return '~'
+  return '•'
+}
+
+function knowledgeHeadline(state: types.StorySearchKnowledgeState): string {
+  const characters = state.character_names?.join(' and ') || 'A confirmed character'
+  const counterparties = state.counterparty_names?.join(' and ')
+  if (state.state === 'shared') return counterparties ? `${characters} shares this with ${counterparties}` : `${characters} communicates this`
+  if (state.state === 'withheld') return counterparties ? `${characters} withholds this from ${counterparties}` : `${characters} withholds this`
+  if (state.state === 'learned') return counterparties ? `${characters} learns this from ${counterparties}` : `${characters} learns or realizes this`
+  if (state.state === 'does_not_know') return `${characters} is explicitly shown not knowing this`
+  if (state.state === 'attempts_to_recall') return `${characters} tries to remember this`
+  if (state.state === 'believes') return `${characters} believes this`
+  if (state.state === 'does_not_believe') return `${characters} is explicitly shown not believing this`
+  if (state.state === 'suspects') return `${characters} suspects this`
+  if (state.state === 'does_not_suspect') return `${characters} is explicitly shown not suspecting this`
+  return `${characters} is shown knowing this`
 }
 
 function InsightStat({ value, label }: { value: number; label: string }) {
