@@ -4,6 +4,19 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02469] - 2026-08-31
+
+### Added
+- Added a JetBrains-style Story Search tool window along the bottom of the editor. It opens from the project menu, the status bar, or `Ctrl+Shift+F`, resizes vertically without displacing the analysis sidebars, and keeps supporting excerpts visible beside one-click navigation that opens the source chapter and highlights the matching evidence.
+- Added deterministic whole-manuscript evidence search in a dedicated `internal/storysearch` package. Multi-term queries find scenes where details converge, quoted text performs phrase search, results stay in manuscript order with first/last occurrence controls, and confirmed characters expand to their known aliases while Needs Review candidates do not.
+- Added focused regression coverage for alias expansion, review-candidate exclusion, exact phrases, scene boundaries, result limits, and manuscript ordering.
+
+### Changed
+- Story Search runs only on explicit submission rather than every keystroke, avoiding repeated full-manuscript transfer across the Wails bridge. It is entirely local, stores no duplicate manuscript data, and does not invoke AI.
+- Preserved the 02468 backend refactor: the search engine and its shared result types live under `internal/`, while the new Wails method is isolated in `story_search.go`; no search logic or duplicated helpers were added back to `app.go`.
+
+---
+
 ## [0.16.02468] - 2026-08-31
 
 ### Changed

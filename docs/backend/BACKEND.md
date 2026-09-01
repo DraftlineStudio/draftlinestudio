@@ -7,7 +7,8 @@ The Draftline backend is written in Go and uses [Wails v2](https://wails.io/) to
 ```
 wails/
 ├── main.go                    # Application entry point
-├── app.go                     # App struct facade (~1,250 lines)
+├── app.go                     # App struct facade (~1,500 lines; guarded against growth)
+├── story_search.go            # Thin Story Search Wails binding
 ├── import.go                  # EPUB/DOCX import pipeline + routing (see import/IMPORT.md)
 ├── import_sanitize.go         # Import decoder, XHTML sanitizer, chaptering
 ├── debt_guardrail_test.go     # 800-line file-size ratchet (see docs/TECHNICAL-DEBT.md)
@@ -48,6 +49,9 @@ wails/
     │   ├── patterns.go        # Common words, regex patterns
     │   ├── characters.go      # Name detection, attribute extraction
     │   └── indexer.go         # Book/chapter indexing
+    │
+    ├── storysearch/           # Local scene/phrase search + confirmed alias expansion
+    │   └── search.go           # Wails-independent search engine
     │
     └── logging/               # Debug logging
         └── debug.go           # AI operation logging
@@ -108,6 +112,12 @@ AI prompt building and response parsing. Since 0.16.02468 the HTTP provider tran
 ### [indexing/](indexing/INDEXING.md)
 Character name detection and attribute extraction for Story Bible.
 
+### storysearch/
+Deterministic whole-manuscript evidence retrieval. Searches explicit query
+submissions by scene, expands only confirmed character aliases, and returns
+source excerpts and chapter coordinates without storing another manuscript
+copy or calling AI. `story_search.go` contains only the Wails-facing delegate.
+
 ### [logging/](logging/LOGGING.md)
 Debug logging for AI operations.
 
@@ -116,7 +126,8 @@ Platform-specific utilities (Windows console hiding).
 
 ## AI Provider Integration
 
-Provider-specific API calls remain in app.go because they require:
+Provider-neutral HTTP transport lives in `internal/ai/providers`; the managed
+Claude Code and Codex CLI drivers remain in `app.go` because they require:
 - App context for cancellation
 - Settings for API keys and endpoints
 - Wails event emission for streaming

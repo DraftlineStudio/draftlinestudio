@@ -182,6 +182,10 @@ export function SaveSettings(arg1) {
   return window['go']['main']['App']['SaveSettings'](arg1);
 }
 
+export function SearchStory(arg1, arg2) {
+  return window['go']['main']['App']['SearchStory'](arg1, arg2);
+}
+
 export function SetAPIKey(arg1) {
   return window['go']['main']['App']['SetAPIKey'](arg1);
 }
