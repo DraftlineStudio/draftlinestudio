@@ -4,6 +4,14 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02478] - 2026-09-01
+
+### Added
+- Windows: Draftline now self-registers per-user file associations on launch (HKCU, no admin needed): .draftline becomes Draftline's own document type with the app icon, and .epub/.docx gain an "Open with → Draftline" entry without displacing the default ebook reader or Word. Registration is skipped for dev builds and heals itself if the exe moves; removal instructions are in docs/backend/FILE-ASSOCIATIONS.md.
+- macOS/Linux packaging assets: a static Info.plist declaring the document types (.draftline as owner, epub/docx as open-with alternates) and a .desktop file + shared-mime-info definition, ready for when those platforms ship. Documented in docs/backend/FILE-ASSOCIATIONS.md.
+
+---
+
 ## [0.16.02477] - 2026-09-01
 
 ### Added

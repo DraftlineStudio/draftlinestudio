@@ -10,6 +10,8 @@ wails/
 ├── app.go                     # App struct facade (~1,470 lines; guarded against growth)
 ├── analysis.go                # Full local-analysis pipeline orchestration + progress
 ├── story_search.go            # Thin Story Search Wails binding
+├── fileopen.go                # OS file-open plumbing (see FILE-ASSOCIATIONS.md)
+├── fileassoc_windows.go       # Per-user HKCU association self-registration
 ├── import.go                  # EPUB/DOCX import pipeline + routing (see import/IMPORT.md)
 ├── import_sanitize.go         # Import decoder, XHTML sanitizer, chaptering
 ├── debt_guardrail_test.go     # 800-line file-size ratchet (see docs/TECHNICAL-DEBT.md)
