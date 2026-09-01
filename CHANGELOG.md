@@ -4,6 +4,18 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02468] - 2026-08-31
+
+### Changed
+- Extracted the AI HTTP transport layer from `app.go` into a new `internal/ai/providers` package (2,065 → 1,511 lines): Anthropic (with streaming), Gemini, and a single OpenAI-compatible implementation replacing the three near-verbatim OpenAI/Grok/local copies. Providers receive an injected emit closure, so the package never touches the Wails runtime; cancellation, the keyring, and all bound methods stay on the app. Event names and payloads (`ai:token`, `ai:log`) are unchanged.
+- The pure Claude Code / Codex CLI helpers (argument building, model resolution, prompt-safe failure messages) moved to the new package with their tests, including the security invariants that prompts never echo into error messages. The CLI drivers themselves deliberately remain in `app.go` next to setup's exec helpers (recorded as backlog).
+
+### Added
+- Added an automated size guardrail (`debt_guardrail_test.go`): any source file over 800 lines fails `go test` unless it has a ratchet allowlist entry recorded at its current size — allowlisted files may shrink but never grow. CSS is exempt (`global.css` is an intentional single-file stylesheet).
+- Rebuilt `docs/TECHNICAL-DEBT.md` from measured counts: all three active regressions resolved (builds 02465–02468), the CSS co-location recommendation withdrawn per owner direction, and the CLI-driver deferral recorded.
+
+---
+
 ## [0.16.02467] - 2026-08-31
 
 ### Removed
