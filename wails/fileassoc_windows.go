@@ -12,6 +12,8 @@ package main
 // so associations can't end up pointing at a wails-dev build.
 
 import (
+	"bytes"
+	_ "embed"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -22,6 +24,34 @@ import (
 )
 
 const draftlineProgID = "Draftline.Project"
+
+// Document icon: the dl-icon mark on the brand-blue rounded square
+// (generated from reference-assets/imgs/dl-icon.png; PNG-compressed
+// multi-size ICO). Extracted to %LOCALAPPDATA%\Draftline at registration
+// because DefaultIcon needs a stable on-disk path.
+//
+//go:embed build/windows/draftline-doc.ico
+var docIconData []byte
+
+// ensureDocIcon writes the document icon beside the user's app data and
+// returns its path, or "" to fall back to the exe's own icon.
+func ensureDocIcon() string {
+	base, err := os.UserCacheDir() // %LOCALAPPDATA%
+	if err != nil {
+		return ""
+	}
+	dir := filepath.Join(base, "Draftline")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return ""
+	}
+	path := filepath.Join(dir, "draftline-doc.ico")
+	if existing, err := os.ReadFile(path); err != nil || !bytes.Equal(existing, docIconData) {
+		if err := os.WriteFile(path, docIconData, 0o644); err != nil {
+			return ""
+		}
+	}
+	return path
+}
 
 func registerFileAssociations() error {
 	exe, err := os.Executable()
@@ -36,6 +66,10 @@ func registerFileAssociations() error {
 		return nil // dev or renamed binary: don't claim associations
 	}
 	command := fmt.Sprintf(`"%s" "%%1"`, exe)
+	docIcon := ensureDocIcon()
+	if docIcon == "" {
+		docIcon = fmt.Sprintf(`"%s",0`, exe) // fall back to the app icon
+	}
 
 	type entry struct {
 		path  string
@@ -46,10 +80,10 @@ func registerFileAssociations() error {
 		// Bump this value whenever the registration schema changes: it forces
 		// one changed=true pass (and thus one shell refresh) for users whose
 		// entries are otherwise already correct.
-		{`Software\Classes\` + draftlineProgID, "RegistrationVersion", "2"},
+		{`Software\Classes\` + draftlineProgID, "RegistrationVersion", "3"},
 		// Owned document type for .draftline.
 		{`Software\Classes\` + draftlineProgID, "", "Draftline Project"},
-		{`Software\Classes\` + draftlineProgID + `\DefaultIcon`, "", fmt.Sprintf(`"%s",0`, exe)},
+		{`Software\Classes\` + draftlineProgID + `\DefaultIcon`, "", docIcon},
 		{`Software\Classes\` + draftlineProgID + `\shell\open\command`, "", command},
 		{`Software\Classes\.draftline`, "", draftlineProgID},
 		{`Software\Classes\.draftline\OpenWithProgids`, draftlineProgID, ""},
