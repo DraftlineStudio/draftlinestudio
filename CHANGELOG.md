@@ -4,6 +4,18 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02471] - 2026-09-01
+
+### Added
+- Defined the Story Fingerprint as Draftline's versioned, evidence-backed representation of a book: entities, relationships, facts, events, time and knowledge changes, recurring details, structural signals, author review provenance, and the exact excerpts required to justify its conclusions.
+- Preserved the complete raw evidence browser in the roadmap as the Evidence Archive, opened from later editorial screens through a small archive-folder action while ranked views keep routine writing interfaces uncluttered.
+- Made connected Story Fingerprints the core Storiverse architecture. A portable universe folder owns per-book fingerprint snapshots under `.storiverse/fingerprints/`, enabling cross-book continuity, chronology, relationships, knowledge tracking, and search when a linked manuscript is moved, offline, or intentionally absent.
+
+### Changed
+- Established that Storiverse never keeps a second full manuscript copy. Adding a book creates a live per-device link to the original `.draftline`; saves and universe reindexing refresh its stable-ID fingerprint, while another device can relink any updated copy without creating a duplicate. DOCX/EPUB conversion creates one author-owned `.draftline`, and portable universe exports retain fingerprints by default.
+
+---
+
 ## [0.16.02470] - 2026-09-01
 
 ### Added
