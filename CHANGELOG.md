@@ -2,6 +2,13 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02461] - 2026-08-31
+
+### Added
+- EPUB imports now sort dedications, prologues, epilogues, and similar sections into front and back matter.
+- Imported copyright pages fill the Copyright section.
+- The import preview now shows warnings and detected sections.
+
 ## [0.16.02460] - 2026-08-31
 
 ### Fixed
