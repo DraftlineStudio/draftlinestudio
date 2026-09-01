@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02481] - 2026-09-01
+
+### Changed
+- .draftline files now carry a dedicated document icon: the Draftline mark on the brand-blue rounded square (generated from the preferred dl-icon asset, which is white-on-transparent and needed a backdrop to stay visible in Explorer's light theme). The multi-size .ico is embedded in the exe, extracted to %LOCALAPPDATA%Draftline at registration, and self-heals if deleted; registration falls back to the app icon if extraction fails.
+
+---
+
 ## [0.16.02480] - 2026-09-01
 
 ### Fixed
