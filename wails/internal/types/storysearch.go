@@ -26,6 +26,50 @@ type StorySearchEvidence struct {
 	Confidence   float64 `json:"confidence"`
 }
 
+// StorySearchChapterSummary describes how a searched detail travels through
+// one chapter. Counts cover every matching scene, even when the source list is
+// capped for display.
+type StorySearchChapterSummary struct {
+	ChapterIndex  int    `json:"chapter_index"`
+	ChapterTitle  string `json:"chapter_title"`
+	Occurrences   int    `json:"occurrences"`
+	EvidenceCount int    `json:"evidence_count"`
+	EventCount    int    `json:"event_count"`
+	FactCount     int    `json:"fact_count"`
+}
+
+// StorySearchRelatedTerm is a named detail that repeatedly occurs in indexed
+// evidence supporting the search trail.
+type StorySearchRelatedTerm struct {
+	Text  string `json:"text"`
+	Label string `json:"label"`
+	Count int    `json:"count"`
+}
+
+// StorySearchSignal is a deterministic, source-backed observation about a
+// detail trail. Kind is answer, attention, or context.
+type StorySearchSignal struct {
+	Kind   string `json:"kind"`
+	Title  string `json:"title"`
+	Detail string `json:"detail"`
+}
+
+// StorySearchInsight turns raw scene hits into a compact manuscript trail.
+// It summarizes only measured occurrences and indexed evidence; it never
+// invents an answer when the source does not establish one.
+type StorySearchInsight struct {
+	Intent           string                      `json:"intent"`
+	InterpretedQuery string                      `json:"interpreted_query"`
+	ChapterCount     int                         `json:"chapter_count"`
+	EvidenceCount    int                         `json:"evidence_count"`
+	EventCount       int                         `json:"event_count"`
+	FactCount        int                         `json:"fact_count"`
+	DiscoveryCount   int                         `json:"discovery_count"`
+	Chapters         []StorySearchChapterSummary `json:"chapters"`
+	RelatedTerms     []StorySearchRelatedTerm    `json:"related_terms,omitempty"`
+	Signals          []StorySearchSignal         `json:"signals,omitempty"`
+}
+
 // StorySearchMatch is one scene-sized evidence hit in manuscript order.
 type StorySearchMatch struct {
 	Section        string                `json:"section"`
@@ -46,6 +90,7 @@ type StorySearchResult struct {
 	Query            string              `json:"query"`
 	Matches          []StorySearchMatch  `json:"matches"`
 	ResolvedEntities []StorySearchEntity `json:"resolved_entities,omitempty"`
+	Insight          *StorySearchInsight `json:"insight,omitempty"`
 	Total            int                 `json:"total"`
 	Error            string              `json:"error,omitempty"`
 }

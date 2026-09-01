@@ -4,6 +4,21 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02475] - 2026-09-01
+
+### Added
+- Evolved Story Search into evidence-backed Detail Search. Queries now produce a compact Story Trail covering every matching chapter, relevant indexed event/fact counts, chronological source passages, and the named details that repeatedly travel with the searched concept.
+- Added deterministic question intent for identity, discovery, research, and first-occurrence wording. Searches such as `Ruiz first name` can report that no confirmed given name exists without inventing one, while singleton details receive an explicit one-scene warning and discovery questions distinguish an indexed discovery from later mentions.
+- Added clickable related-detail pivots, allowing an author to move directly from one fingerprint association to the complete trail for a connected character, place, organization, or object.
+- Added regression coverage for full-trail counts beyond the display limit, natural research questions, confirmed and missing character names, singleton details, related-term noise, and evidence-backed chapter summaries.
+
+### Changed
+- Moved the complete raw index behind a compact Evidence Archive folder action while keeping every record browsable. The primary surface now emphasizes author-facing conclusions and exact source trails.
+- Restricted supporting evidence to the paragraphs that actually contain query matches. A chapter-sized scene previously attached hundreds of unrelated facts and events to a common character; Detail Search now reports only evidence that genuinely accompanies the searched wording.
+- Themed the Story Trail's horizontal chapter and related-detail scrollbars to match Draftline instead of displaying the native bright Windows scrollbar.
+
+---
+
 ## [0.16.02474] - 2026-09-01
 
 ### Fixed

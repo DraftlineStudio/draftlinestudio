@@ -1712,6 +1712,28 @@
 	
 	
 	
+	export class StorySearchChapterSummary {
+	    chapter_index: number;
+	    chapter_title: string;
+	    occurrences: number;
+	    evidence_count: number;
+	    event_count: number;
+	    fact_count: number;
+
+	    static createFrom(source: any = {}) {
+	        return new StorySearchChapterSummary(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.chapter_index = source["chapter_index"];
+	        this.chapter_title = source["chapter_title"];
+	        this.occurrences = source["occurrences"];
+	        this.evidence_count = source["evidence_count"];
+	        this.event_count = source["event_count"];
+	        this.fact_count = source["fact_count"];
+	    }
+	}
 	export class StorySearchEntity {
 	    id: string;
 	    canonical: string;
@@ -1747,6 +1769,86 @@
 	        this.status = source["status"];
 	        this.confidence = source["confidence"];
 	    }
+	}
+	export class StorySearchSignal {
+	    kind: string;
+	    title: string;
+	    detail: string;
+
+	    static createFrom(source: any = {}) {
+	        return new StorySearchSignal(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.title = source["title"];
+	        this.detail = source["detail"];
+	    }
+	}
+	export class StorySearchRelatedTerm {
+	    text: string;
+	    label: string;
+	    count: number;
+
+	    static createFrom(source: any = {}) {
+	        return new StorySearchRelatedTerm(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.text = source["text"];
+	        this.label = source["label"];
+	        this.count = source["count"];
+	    }
+	}
+	export class StorySearchInsight {
+	    intent: string;
+	    interpreted_query: string;
+	    chapter_count: number;
+	    evidence_count: number;
+	    event_count: number;
+	    fact_count: number;
+	    discovery_count: number;
+	    chapters: StorySearchChapterSummary[];
+	    related_terms?: StorySearchRelatedTerm[];
+	    signals?: StorySearchSignal[];
+
+	    static createFrom(source: any = {}) {
+	        return new StorySearchInsight(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.intent = source["intent"];
+	        this.interpreted_query = source["interpreted_query"];
+	        this.chapter_count = source["chapter_count"];
+	        this.evidence_count = source["evidence_count"];
+	        this.event_count = source["event_count"];
+	        this.fact_count = source["fact_count"];
+	        this.discovery_count = source["discovery_count"];
+	        this.chapters = this.convertValues(source["chapters"], StorySearchChapterSummary);
+	        this.related_terms = this.convertValues(source["related_terms"], StorySearchRelatedTerm);
+	        this.signals = this.convertValues(source["signals"], StorySearchSignal);
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class StorySearchMatch {
 	    section: string;
@@ -1796,6 +1898,7 @@
 		    return a;
 		}
 	}
+
 	export class StorySearchRequest {
 	    query: string;
 	    limit?: number;
@@ -1814,6 +1917,7 @@
 	    query: string;
 	    matches: StorySearchMatch[];
 	    resolved_entities?: StorySearchEntity[];
+	    insight?: StorySearchInsight;
 	    total: number;
 	    error?: string;
 
@@ -1826,6 +1930,7 @@
 	        this.query = source["query"];
 	        this.matches = this.convertValues(source["matches"], StorySearchMatch);
 	        this.resolved_entities = this.convertValues(source["resolved_entities"], StorySearchEntity);
+	        this.insight = this.convertValues(source["insight"], StorySearchInsight);
 	        this.total = source["total"];
 	        this.error = source["error"];
 	    }
@@ -1850,5 +1955,6 @@
 	}
 	
 	
+
 
 }
