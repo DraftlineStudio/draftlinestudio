@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02476] - 2026-09-01
+
+### Added
+- Added a Worth Reviewing queue to the Evidence Archive.
+- Evidence can be annotated, pinned, and marked reviewed.
+
 ## [0.16.02475] - 2026-09-01
 
 ### Added

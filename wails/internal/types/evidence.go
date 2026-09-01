@@ -37,7 +37,10 @@ type EvidenceRecord struct {
 	Rationale       string         `json:"rationale"`
 	Status          string         `json:"status"` // detected | confirmed | rejected
 	Source          string         `json:"source"` // auto | author
+	AuthorText      string         `json:"author_text,omitempty"`
 	AuthorNote      string         `json:"author_note,omitempty"`
+	Pinned          bool           `json:"pinned,omitempty"`
+	ReviewedAt      string         `json:"reviewed_at,omitempty"`
 }
 
 // EvidenceTerm preserves a named term and prose/v3's local entity label.
