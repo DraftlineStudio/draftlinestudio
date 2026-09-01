@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02480] - 2026-09-01
+
+### Fixed
+- .draftline files now show the Draftline icon in Explorer right away.
+
 ## [0.16.02479] - 2026-09-01
 
 ### Fixed
