@@ -10,6 +10,7 @@ wails/
 ├── app.go                     # App struct facade (~1,250 lines)
 ├── import.go                  # EPUB/DOCX import pipeline + routing (see import/IMPORT.md)
 ├── import_sanitize.go         # Import decoder, XHTML sanitizer, chaptering
+├── debt_guardrail_test.go     # 800-line file-size ratchet (see docs/TECHNICAL-DEBT.md)
 ├── setup.go                   # Claude Code + Node.js setup
 ├── hidewindow_windows.go      # Windows-specific process hiding
 ├── hidewindow_other.go        # No-op for non-Windows
@@ -39,7 +40,9 @@ wails/
     │
     ├── ai/                    # AI rewriting system
     │   ├── prompt.go          # System prompt building
-    │   └── diff.go            # Paragraph diff format parsing
+    │   ├── diff.go            # Paragraph diff format parsing
+    │   └── providers/         # AI HTTP transport (Anthropic/OpenAI-compat/Gemini
+    │                          # + pure CLI helpers); app.go injects an Emit closure
     │
     ├── indexing/              # Character detection
     │   ├── patterns.go        # Common words, regex patterns
@@ -100,7 +103,7 @@ Automatic backup creation before saves. Keeps last 10 backups per file.
 Multi-format export: EPUB, DOCX, PDF, and print-ready PDF.
 
 ### [ai/](../ai/AI-REWRITING.md)
-AI prompt building and response parsing. Provider API calls remain in app.go due to context/settings dependencies.
+AI prompt building and response parsing. Since 0.16.02468 the HTTP provider transport lives in `ai/providers` (`Request` carries the resolved model, API key, settings, and an `Emit` closure, so the package never imports the Wails runtime). The Claude Code / Codex CLI drivers stay in app.go alongside setup.go's exec helpers; their pure helpers (arg building, prompt-safe failure messages) are in `ai/providers/cli.go`.
 
 ### [indexing/](indexing/INDEXING.md)
 Character name detection and attribute extraction for Story Bible.
