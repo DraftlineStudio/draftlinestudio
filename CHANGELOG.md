@@ -4,6 +4,18 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02464] - 2026-08-31
+
+### Changed
+- Rebuilt `docs/TECHNICAL-DEBT.md` from measured line counts instead of remembered ones. The previous version reported `app.go` as resolved at 1,259 lines and test coverage at 0%, both of which had been wrong for some time, and never tracked `global.css` at all.
+- Recorded three active regressions: `app.go` regrew to 2,065 lines (+66% since the March refactor, ~800 of them added across two days), `styles/global.css` is a 5,014-line untracked monolith and the largest file in the repo, and the `bookStore.ts` split is a facade — `plotStore` and `storyBibleStore` are stateless transform bags that `bookStore` re-exports through 39 delegating wrappers, so no component imports them directly and the coupling never changed.
+- Documented that `callOpenAI`, `callGrok`, and `callLocalAI` are near-verbatim copies of the same OpenAI-compatible request, and that the stated reason for keeping AI providers in `app.go` no longer holds now that `dispatchAI` threads context explicitly.
+- Marked the parts of the refactor that held — 11 internal Go packages, the six Analysis panels (all under 320 lines), the settings and editor module splits, `ToolsPanel.tsx` still a slim router, and 31 test files where the doc claimed zero — and named `Analysis/` as the reference shape for the components still to be split.
+- Removed the stale `tools/StoryBible/` and `tools/PlotWalker/` module listings; both sidebars were retired in `1b3587c` and `416d64e`.
+- Added a guardrail: refresh counts with the reproducible commands in the doc rather than from memory, and treat any file crossing 800 lines as needing a deliberate split-or-justify decision.
+
+---
+
 ## [0.16.02463] - 2026-08-31
 
 ### Changed
