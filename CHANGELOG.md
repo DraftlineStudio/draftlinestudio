@@ -2,6 +2,15 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02470] - 2026-09-01
+
+### Added
+- Added a local fact and event index built during analysis.
+- Added an Evidence Index tab to Story Search.
+
+### Changed
+- Evidence analysis is about three times faster.
+
 ## [0.16.02469] - 2026-08-31
 
 ### Added

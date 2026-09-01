@@ -27,7 +27,7 @@ const debtLineThreshold = 800
 // line count. Values are the measured size at 0.16.02468 plus a small margin
 // so routine edits don't trip the gate; shrink them as the files shrink.
 var debtRatchet = map[string]int{
-	"app.go":                          1560, // 1,511 at 02468; AI transport extracted, CLI drivers still here
+	"app.go":                          1500, // 1,468 at 02470; analysis orchestration extracted, CLI drivers still here
 	"import.go":                       780,  // 722 at 02468; EPUB+DOCX importers (backlog: internal/importer)
 	"frontend/src/store/bookStore.ts": 860,  // 825 at 02468
 	"frontend/src/components/dialogs/ExportWizard.tsx":      860, // 833; oldest open backlog item
