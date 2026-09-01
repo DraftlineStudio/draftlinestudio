@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02481] - 2026-09-01
+
+### Changed
+- Added a dedicated document icon for .draftline files.
+
 ## [0.16.02480] - 2026-09-01
 
 ### Fixed
