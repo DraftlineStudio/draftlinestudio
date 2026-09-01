@@ -320,23 +320,93 @@ func TestImportExportRoundTripNoDoubleTitle(t *testing.T) {
 	}
 }
 
-func TestClassifyImportedNonStorySection(t *testing.T) {
-	for _, title := range []string{"Copyright", "ACKNOWLEDGMENTS", "Table of Contents", "Glossary"} {
-		if got := classifyImportedSection(title, ""); got == "Chapter" {
-			t.Fatalf("%q should not be classified as story prose", title)
+func TestRouteImportedSection(t *testing.T) {
+	cases := []struct {
+		title     string
+		plainText string
+		route     sectionRoute
+		typeLabel string
+	}{
+		{"Cover", "", routeSkip, ""},
+		{"Table of Contents", "", routeSkip, ""},
+		{"Copyright", "", routeCopyright, ""},
+		{"Untitled", "© 2026 Example House. All rights reserved.", routeCopyright, ""},
+		{"Title Page", "", routeFront, "Title Page"},
+		{"Dedication", "", routeFront, "Dedication"},
+		{"Epigraph", "", routeFront, "Epigraph"},
+		{"PROLOGUE", "", routeFront, "Prologue"},
+		{"Also by Jane Doe", "", routeFront, "Also By"},
+		{"ACKNOWLEDGMENTS", "", routeBack, "Acknowledgments"},
+		{"Untitled", "Acknowledgements go to everyone.", routeBack, "Acknowledgments"},
+		{"About the Author", "", routeBack, "About the Author"},
+		{"Epilogue", "", routeBack, "Epilogue"},
+		{"Glossary", "", routeBack, "Glossary"},
+		{"The Crossing", "Mara arrived at dusk.", routeBody, "Chapter"},
+		{"Chapter 7", "", routeBody, "Chapter"},
+	}
+	for _, tc := range cases {
+		route, typeLabel := routeImportedSection(tc.title, tc.plainText)
+		if route != tc.route || typeLabel != tc.typeLabel {
+			t.Fatalf("routeImportedSection(%q, %q) = (%v, %q), want (%v, %q)",
+				tc.title, tc.plainText, route, typeLabel, tc.route, tc.typeLabel)
 		}
 	}
 }
 
+// End-to-end routing: sections land in the right BookData destination.
+func TestImportRoutesSections(t *testing.T) {
+	dir := t.TempDir()
+	epub := filepath.Join(dir, "fixture.epub")
+	writeEPUB(t, epub, map[string]string{
+		"mimetype":               "application/epub+zip",
+		"META-INF/container.xml": epubContainerXML,
+		"OEBPS/content.opf": buildEPUBOPF([]epubManifestSpec{
+			{id: "copy", href: "copyright.xhtml", mediaType: "application/xhtml+xml"},
+			{id: "ded", href: "dedication.xhtml", mediaType: "application/xhtml+xml"},
+			{id: "ch1", href: "ch1.xhtml", mediaType: "application/xhtml+xml"},
+			{id: "ch2", href: "ch2.xhtml", mediaType: "application/xhtml+xml"},
+			{id: "ack", href: "ack.xhtml", mediaType: "application/xhtml+xml"},
+		}),
+		"OEBPS/copyright.xhtml":  `<html><body><h2>Copyright</h2><p>© 2026 Example House. All rights reserved.</p></body></html>`,
+		"OEBPS/dedication.xhtml": `<html><body><h2>Dedication</h2><p>For the fixtures.</p></body></html>`,
+		"OEBPS/ch1.xhtml":        `<html><body><h1>The Crossing</h1><p>Mara arrived at dusk.</p></body></html>`,
+		"OEBPS/ch2.xhtml":        `<html><body><h1>The Ledger</h1><p>Hanlon counted twice.</p></body></html>`,
+		"OEBPS/ack.xhtml":        `<html><body><h2>Acknowledgments</h2><p>Thanks, everyone.</p></body></html>`,
+	})
+
+	a := &App{}
+	res := a.ImportEPUB(epub)
+	if !res.Success {
+		t.Fatalf("import failed: %s", res.Error)
+	}
+	if !strings.Contains(res.Book.Copyright, "All rights reserved") {
+		t.Fatalf("copyright page did not fill the Copyright field: %q", res.Book.Copyright)
+	}
+	if len(res.Book.FrontMatter) != 1 || res.Book.FrontMatter[0].Type != "Dedication" {
+		t.Fatalf("dedication not routed to front matter: %+v", res.Book.FrontMatter)
+	}
+	if len(res.Book.Body) != 2 || res.Book.Body[0].Title != "The Crossing" || res.Book.Body[1].Title != "The Ledger" {
+		t.Fatalf("body chapters wrong: %+v", res.Book.Body)
+	}
+	for _, ch := range res.Book.Body {
+		if ch.Type != "Chapter" {
+			t.Fatalf("body chapter has wrong type: %+v", ch)
+		}
+	}
+	if len(res.Book.BackMatter) != 1 || res.Book.BackMatter[0].Type != "Acknowledgments" {
+		t.Fatalf("acknowledgments not routed to back matter: %+v", res.Book.BackMatter)
+	}
+}
+
 func TestParseSpineDocPrefersVisibleSectionHeading(t *testing.T) {
-	title, blocks, _, err := parseSpineDoc([]byte(`<html><head><title>Book Title</title></head><body><h2>ACKNOWLEDGMENTS</h2><p>Thanks.</p></body></html>`))
+	title, _, _, err := parseSpineDoc([]byte(`<html><head><title>Book Title</title></head><body><h2>ACKNOWLEDGMENTS</h2><p>Thanks.</p></body></html>`))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if title != "ACKNOWLEDGMENTS" {
 		t.Fatalf("visible heading should win over repeated EPUB title, got %q", title)
 	}
-	if got := classifyImportedSection(title, joinBlocks(blocks)); got != "acknowledgments" {
-		t.Fatalf("wrong semantic section type: %q", got)
+	if route, _ := routeImportedSection(title, "Thanks."); route != routeBack {
+		t.Fatalf("acknowledgments heading not routed to back matter: %v", route)
 	}
 }

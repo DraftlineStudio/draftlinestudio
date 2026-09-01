@@ -1243,6 +1243,7 @@ export namespace types {
 	    success: boolean;
 	    book?: BookData;
 	    error?: string;
+	    warnings?: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new ImportResult(source);
@@ -1253,6 +1254,7 @@ export namespace types {
 	        this.success = source["success"];
 	        this.book = this.convertValues(source["book"], BookData);
 	        this.error = source["error"];
+	        this.warnings = source["warnings"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

@@ -8,7 +8,8 @@ The Draftline backend is written in Go and uses [Wails v2](https://wails.io/) to
 wails/
 ├── main.go                    # Application entry point
 ├── app.go                     # App struct facade (~1,250 lines)
-├── import.go                  # EPUB/DOCX import logic
+├── import.go                  # EPUB/DOCX import pipeline + routing (see import/IMPORT.md)
+├── import_sanitize.go         # Import decoder, XHTML sanitizer, chaptering
 ├── setup.go                   # Claude Code + Node.js setup
 ├── hidewindow_windows.go      # Windows-specific process hiding
 ├── hidewindow_other.go        # No-op for non-Windows

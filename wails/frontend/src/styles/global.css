@@ -2619,6 +2619,25 @@ html, body, #root {
   background: var(--bg-panel);
 }
 
+.import-warnings {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 96px;
+  overflow-y: auto;
+}
+.import-warning-item {
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--status-warning);
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--status-warning);
+  border-radius: 3px;
+  background: var(--bg-surface-alt);
+}
+
 /* ===== EXPORT WIZARD ===== */
 .export-wizard {
   max-width: 480px;
