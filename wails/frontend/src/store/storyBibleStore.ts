@@ -38,8 +38,6 @@ interface StoryBibleStore {
   addCharacter: (book: BookData, char: Character) => BookData
   updateCharacter: (book: BookData, char: Character) => BookData
   deleteCharacter: (book: BookData, id: string) => BookData
-  // Story Bible text
-  updateStoryBibleText: (book: BookData, field: 'plot_notes' | 'timeline', text: string) => BookData
 
   // Helper to get highlighted character names
   getHighlightedCharacterNames: (book: BookData | null) => string[]
@@ -66,11 +64,6 @@ export const useStoryBibleStore = create<StoryBibleStore>((set, get) => ({
     const char = bible.characters.find(candidate => candidate.id === id)
     const updated = { ...book, story_bible: { ...bible, characters: bible.characters.filter(c => c.id !== id) } }
     return char?.is_auto_detected ? applyCharacterDecision(updated, char, 'rejected') : updated
-  },
-
-  updateStoryBibleText: (book, field, text) => {
-    const bible: StoryBible = book.story_bible ?? { characters: [], plot_notes: '', timeline: '' }
-    return { ...book, story_bible: { ...bible, [field]: text } }
   },
 
   getHighlightedCharacterNames: (book) => {

@@ -4,6 +4,17 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02465] - 2026-08-31
+
+### Removed
+- Deleted the dead frontend planning-transform layer flagged by the technical-debt audit: `plotStore` (beats, foreshadowing, secrets, knowledge-matrix wrappers) and the story-bible text wrapper had zero callers since the planning sidebars were retired in 0.16.02449. The `.draftline` file-format fields are untouched — only unused code was removed.
+- Removed vestigial UI state that was written but never read: the book store's `darkMode` mirror (theming is driven by settings) and the right-panel toggle, whose Ctrl+] shortcut had silently done nothing.
+
+### Added
+- Added test coverage for the live character store path (add/update/delete, highlighting, and the entity-resolution accept/reject rewrite), which the audit found completely uncovered.
+
+---
+
 ## [0.16.02464] - 2026-08-31
 
 ### Changed

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useAppStore } from '../../../store/appStore'
-import { useBookStore } from '../../../store/bookStore'
 import { TestLocalAI, CheckClaudeCode, SetupClaudeCode, OpenClaudeAuth, CheckCodexCLI, SetupCodexCLI, OpenCodexAuth, GetAppVersion, SetAPIKey, ClearAPIKey } from '../../../../wailsjs/go/main/App'
 import { EventsOn } from '../../../../wailsjs/runtime/runtime'
 import type { types } from '../../../../wailsjs/go/models'
@@ -15,7 +14,6 @@ import type { FeatureSettingKey } from '../../../features/registry'
 
 export default function AppSettingsDialog() {
   const { settings, saveSettings, closeSettings, browseForDirectory, loadSettings } = useAppStore()
-  const { setDarkMode } = useBookStore()
 
   const [section, setSection] = useState<SettingsSection>('application')
   const [appVersion, setAppVersion] = useState('')
@@ -251,7 +249,6 @@ export default function AppSettingsDialog() {
       book_trim_size: bookTrimSize,
     })
     await loadSettings() // refresh has_api_key from the backend
-    setDarkMode(newDarkMode)
     closeSettings()
   }
 
