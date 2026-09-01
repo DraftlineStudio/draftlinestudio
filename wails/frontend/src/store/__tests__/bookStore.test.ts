@@ -30,6 +30,8 @@ const mocks = vi.hoisted(() => ({
   IndexBook: vi.fn(),
   MergeEntities: vi.fn(),
   SplitEntity: vi.fn(),
+  ImportEPUB: vi.fn(),
+  ImportDOCX: vi.fn(),
   AnalyzeBook: vi.fn(),
   // appStore.ts imports (bookStore imports appStore)
   LoadSettings: vi.fn(),
@@ -345,5 +347,43 @@ describe('finding 1 — failed or cancelled saves block transitions', () => {
     await store().saveBookAs()
     expect(appStoreMod.useAppStore.getState().statusMessage).toBe('Ready') // user dismissed the picker: no error banner
     expect(store().isDirty).toBe(true)
+  })
+})
+
+// OS file associations (0.16.02475): a specific file path must survive the
+// unsaved-changes dialog instead of degrading to the generic file picker.
+describe('external file opens', () => {
+  it('a dirty book defers the .draftline path and opens it after discard', async () => {
+    bookStoreMod.useBookStore.setState({ book: makeBook(), isDirty: true })
+    const target = makeBook({ file_path: 'C:/books/other.draftline', metadata: { title: 'Other', author: '', publisher: '', created: '', modified: '' } as any })
+    mocks.OpenRecentProject.mockResolvedValue(target)
+
+    await store().openExternalFile('C:/books/other.draftline')
+    expect(store().dialogs.showUnsavedWarning).toBe(true)
+    expect(store().dialogs.pendingAction).toEqual({ openPath: 'C:/books/other.draftline' })
+    expect(mocks.OpenRecentProject).not.toHaveBeenCalled()
+
+    await store().discardAndProceed()
+    expect(mocks.OpenRecentProject).toHaveBeenCalledWith('C:/books/other.draftline')
+    expect(mocks.OpenBookDialog).not.toHaveBeenCalled() // no picker fallback
+    expect(store().book?.file_path).toBe('C:/books/other.draftline')
+  })
+
+  it('an .epub routes through the importer and loads as an unsaved project', async () => {
+    const imported = makeBook({ file_path: '', metadata: { title: 'Imported Epub', author: '', publisher: '', created: '', modified: '' } as any })
+    mocks.ImportEPUB.mockResolvedValue({ success: true, book: imported, warnings: ['1 image was removed'] })
+
+    await store().openExternalFile('C:/books/story.epub')
+    expect(mocks.ImportEPUB).toHaveBeenCalledWith('C:/books/story.epub')
+    expect(store().book?.metadata.title).toBe('Imported Epub')
+    expect(store().isDirty).toBe(true) // imported books are new, unsaved projects
+    expect(appStoreMod.useAppStore.getState().statusMessage).toContain('1 import warning')
+  })
+
+  it('unsupported extensions are ignored', async () => {
+    await store().openExternalFile('C:/books/story.pdf')
+    expect(mocks.ImportEPUB).not.toHaveBeenCalled()
+    expect(mocks.OpenRecentProject).not.toHaveBeenCalled()
+    expect(store().dialogs.showUnsavedWarning).toBe(false)
   })
 })

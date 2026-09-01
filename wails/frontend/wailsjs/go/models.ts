@@ -1,4 +1,4 @@
-﻿export namespace types {
+export namespace types {
 	
 	export class AIRewriteResult {
 	    result: string;
@@ -17,11 +17,11 @@
 	export class EvidenceTerm {
 	    text: string;
 	    label: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new EvidenceTerm(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.text = source["text"];
@@ -54,11 +54,11 @@
 	    author_note?: string;
 	    pinned?: boolean;
 	    reviewed_at?: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new EvidenceRecord(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -87,7 +87,7 @@
 	        this.pinned = source["pinned"];
 	        this.reviewed_at = source["reviewed_at"];
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -113,11 +113,11 @@
 	    records: EvidenceRecord[];
 	    truncated?: boolean;
 	    version: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new EvidenceData(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.content_hash = source["content_hash"];
@@ -127,7 +127,7 @@
 	        this.truncated = source["truncated"];
 	        this.version = source["version"];
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1305,9 +1305,9 @@
 	
 	
 	
-
-
-
+	
+	
+	
 	export class ExportOptions {
 	    includeCopyright: boolean;
 	    includeFrontMatter: boolean;
@@ -1725,11 +1725,11 @@
 	    evidence_count: number;
 	    event_count: number;
 	    fact_count: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new StorySearchChapterSummary(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.chapter_index = source["chapter_index"];
@@ -1744,11 +1744,11 @@
 	    id: string;
 	    canonical: string;
 	    aliases: string[];
-
+	
 	    static createFrom(source: any = {}) {
 	        return new StorySearchEntity(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -1762,11 +1762,11 @@
 	    evidence_type: string;
 	    status: string;
 	    confidence: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new StorySearchEvidence(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -1780,11 +1780,11 @@
 	    kind: string;
 	    title: string;
 	    detail: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new StorySearchSignal(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.kind = source["kind"];
@@ -1796,11 +1796,11 @@
 	    text: string;
 	    label: string;
 	    count: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new StorySearchRelatedTerm(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.text = source["text"];
@@ -1819,11 +1819,11 @@
 	    chapters: StorySearchChapterSummary[];
 	    related_terms?: StorySearchRelatedTerm[];
 	    signals?: StorySearchSignal[];
-
+	
 	    static createFrom(source: any = {}) {
 	        return new StorySearchInsight(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.intent = source["intent"];
@@ -1837,7 +1837,7 @@
 	        this.related_terms = this.convertValues(source["related_terms"], StorySearchRelatedTerm);
 	        this.signals = this.convertValues(source["signals"], StorySearchSignal);
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1867,11 +1867,11 @@
 	    matched_terms: string[];
 	    additional_hits?: number;
 	    evidence?: StorySearchEvidence[];
-
+	
 	    static createFrom(source: any = {}) {
 	        return new StorySearchMatch(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.section = source["section"];
@@ -1885,7 +1885,7 @@
 	        this.additional_hits = source["additional_hits"];
 	        this.evidence = this.convertValues(source["evidence"], StorySearchEvidence);
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1904,15 +1904,15 @@
 		    return a;
 		}
 	}
-
+	
 	export class StorySearchRequest {
 	    query: string;
 	    limit?: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new StorySearchRequest(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.query = source["query"];
@@ -1926,11 +1926,11 @@
 	    insight?: StorySearchInsight;
 	    total: number;
 	    error?: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new StorySearchResult(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.query = source["query"];
@@ -1940,7 +1940,7 @@
 	        this.total = source["total"];
 	        this.error = source["error"];
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -1961,6 +1961,7 @@
 	}
 	
 	
-
+	
 
 }
+

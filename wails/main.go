@@ -2,10 +2,12 @@ package main
 
 import (
 	"embed"
+	"os"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 )
 
@@ -14,6 +16,13 @@ var assets embed.FS
 
 func main() {
 	app := NewApp()
+
+	// File passed by the OS (file association / "Open with") at launch.
+	if wd, err := os.Getwd(); err == nil {
+		if path := launchFilePath(os.Args[1:], wd); path != "" {
+			setPendingOpenPath(path)
+		}
+	}
 
 	err := wails.Run(&options.App{
 		Title:     "Draftline",
@@ -34,6 +43,16 @@ func main() {
 			WebviewIsTransparent: false,
 			WindowIsTranslucent:  false,
 			DisableWindowIcon:    true,
+		},
+		Mac: &mac.Options{
+			OnFileOpen: app.onMacFileOpen,
+		},
+		// Double-clicking a document while Draftline is running focuses the
+		// existing window and forwards the file instead of starting a second
+		// process.
+		SingleInstanceLock: &options.SingleInstanceLock{
+			UniqueId:               "com.draftline.app.single-instance",
+			OnSecondInstanceLaunch: app.onSecondInstanceLaunch,
 		},
 	})
 

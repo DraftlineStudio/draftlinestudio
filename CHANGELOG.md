@@ -4,6 +4,20 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02477] - 2026-09-01
+
+### Added
+- Draftline now handles files handed to it by the operating system: a .draftline passed at launch opens the project, and .epub/.docx imports it — the runtime half of file associations. Launching a second copy (double-clicking a document while the app is running) focuses the existing window and opens the file there instead of starting another instance; macOS open-file events are wired through the same path.
+- All OS-initiated opens route through the normal flows, so the unsaved-changes dialog is always respected, and imported books arrive as new unsaved projects exactly as wizard imports do.
+
+### Fixed
+- Opening a recent project while the current book had unsaved changes used to degrade to the generic file picker after Save/Discard; the specific file now survives the dialog and opens directly.
+
+### Changed
+- bookStore's guardrail ratchet raised 860 → 910 (recorded in docs/TECHNICAL-DEBT.md): legitimate growth from Story Search state and the new file-open routing.
+
+---
+
 ## [0.16.02476] - 2026-09-01
 
 ### Added
