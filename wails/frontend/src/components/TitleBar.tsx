@@ -100,7 +100,7 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
         <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3">
           <circle cx="5.5" cy="5.5" r="3.8" /><path d="M8.3 8.3 12 12" />
         </svg>
-        <span>Search Story…</span><kbd>Ctrl+Shift+F</kbd>
+        <span>Ask Draftline…</span><kbd>Ctrl+Shift+F</kbd>
       </button>
 
       <div className="titlebar-dropdown-sep" />

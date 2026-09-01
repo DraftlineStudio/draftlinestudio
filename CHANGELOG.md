@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02486] - 2026-09-01
+
+### Added
+- Added an automatic Story Timeline with filters for characters, places, and event types.
+
 ## [0.16.02485] - 2026-09-01
 
 ### Added

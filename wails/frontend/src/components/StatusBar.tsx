@@ -51,11 +51,11 @@ export default function StatusBar() {
       )}
       <div className="statusbar-right">
         {book && (
-          <button className="statusbar-story-search" onClick={() => { setViewMode('editor'); openStorySearch() }} title="Search the whole story (Ctrl+Shift+F)">
+          <button className="statusbar-story-search" onClick={() => { setViewMode('editor'); openStorySearch() }} title="Ask Draftline or open the story timeline (Ctrl+Shift+F)">
             <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.25">
               <circle cx="5" cy="5" r="3.4" /><path d="M7.5 7.5 11 11" />
             </svg>
-            Story Search
+            Ask Draftline
           </button>
         )}
         {book && (
