@@ -169,11 +169,24 @@ interface AppState {
   settings: AppSettings
   claudeStatus: ClaudeCodeStatus
 
+  // App-level UI state (moved from bookStore in 0.16.02466):
+  // statusMessage, leftPanelOpen, and the self-contained dialogs
+  // (metadata, new chapter, export wizard, chapter history)
+  statusMessage: string
+  setStatusMessage: (msg: string) => void
+
   loadSettings: () => Promise<void>
   saveSettings: (settings: AppSettings) => Promise<void>
   checkClaudeCode: () => Promise<void>
 }
 ```
+
+Ownership rule: appStore holds app-level UI state (settings, status bar,
+panel toggles, self-contained dialogs); bookStore keeps only the dialogs
+entangled with the save pipeline (unsaved-changes warning, new-book wizard)
+plus book data, file I/O, autosave, chapter history, characters, and the
+editor bridge. bookStore's save/index flows report status through a module
+`setStatus` helper that writes to appStore.
 
 ## The Editor
 

@@ -225,7 +225,7 @@ describe('finding 1 — failed or cancelled saves block transitions', () => {
 
     await store().saveAndProceed()
 
-    expect(store().statusMessage).toContain('Save failed: disk full')
+    expect(appStoreMod.useAppStore.getState().statusMessage).toContain('Save failed: disk full')
     expect(store().dialogs.showUnsavedWarning).toBe(true)
     expect(store().dialogs.pendingAction).toBe('open')
     expect(mocks.OpenBookDialog).not.toHaveBeenCalled()
@@ -243,7 +243,7 @@ describe('finding 1 — failed or cancelled saves block transitions', () => {
     expect(store().dialogs.pendingAction).toBe('open')
     expect(mocks.OpenBookDialog).not.toHaveBeenCalled()
     expect(store().isDirty).toBe(true)
-    expect(store().statusMessage).not.toContain('Save failed')
+    expect(appStoreMod.useAppStore.getState().statusMessage).not.toContain('Save failed')
   })
 
   it('saveAndProceed on a successful save closes the dialog and proceeds to open', async () => {
@@ -272,7 +272,7 @@ describe('finding 1 — failed or cancelled saves block transitions', () => {
     expect(store().book).not.toBe(null)
     expect(store().isDirty).toBe(true)
     expect(appStoreMod.useAppStore.getState().showWelcome).toBe(false)
-    expect(store().statusMessage).toContain('not closed')
+    expect(appStoreMod.useAppStore.getState().statusMessage).toContain('not closed')
   })
 
   it('closeProject proceeds when the save succeeds', async () => {
@@ -303,7 +303,7 @@ describe('finding 1 — failed or cancelled saves block transitions', () => {
     expect(store().dialogs.showUnsavedWarning).toBe(true)
     expect(store().dialogs.pendingAction).toBe('open')
     expect(mocks.OpenBookDialog).not.toHaveBeenCalled()
-    expect(store().statusMessage).toContain('Newer edits')
+    expect(appStoreMod.useAppStore.getState().statusMessage).toContain('Newer edits')
   })
 
   it('an old autosave cannot mutate a replacement project', async () => {
@@ -337,13 +337,13 @@ describe('finding 1 — failed or cancelled saves block transitions', () => {
     mocks.SaveBookAs.mockResolvedValue({ success: false, file_path: '', error: 'permission denied' })
 
     await store().saveBookAs()
-    expect(store().statusMessage).toBe('Save failed: permission denied')
+    expect(appStoreMod.useAppStore.getState().statusMessage).toBe('Save failed: permission denied')
 
-    bookStoreMod.useBookStore.setState({ statusMessage: 'Ready' })
+    appStoreMod.useAppStore.setState({ statusMessage: 'Ready' })
     mocks.SaveBookAs.mockResolvedValue({ success: false, file_path: '', error: 'cancelled' })
 
     await store().saveBookAs()
-    expect(store().statusMessage).toBe('Ready') // user dismissed the picker: no error banner
+    expect(appStoreMod.useAppStore.getState().statusMessage).toBe('Ready') // user dismissed the picker: no error banner
     expect(store().isDirty).toBe(true)
   })
 })

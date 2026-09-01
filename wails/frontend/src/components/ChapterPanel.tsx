@@ -17,6 +17,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useBookStore } from '../store/bookStore'
+import { useAppStore } from '../store/appStore'
 import type { Section } from '../types/draftline'
 import { FRONT_MATTER_TYPES, BODY_TYPES, BACK_MATTER_TYPES } from '../types/draftline'
 import ContextMenu, { ContextMenuItem } from './ContextMenu'
@@ -218,17 +219,17 @@ interface SectionListProps {
 }
 
 function SectionList({ section, label, types: _types }: SectionListProps) {
-  const { book, currentSection, currentIndex, setCurrentChapter, deleteChapter, moveChapter, openNewChapterDialog, updateChapterTitle, updateChapterSubtitle } = useBookStore(useShallow(s => ({
+  const { book, currentSection, currentIndex, setCurrentChapter, deleteChapter, moveChapter, updateChapterTitle, updateChapterSubtitle } = useBookStore(useShallow(s => ({
     book: s.book,
     currentSection: s.currentSection,
     currentIndex: s.currentIndex,
     setCurrentChapter: s.setCurrentChapter,
     deleteChapter: s.deleteChapter,
     moveChapter: s.moveChapter,
-    openNewChapterDialog: s.openNewChapterDialog,
     updateChapterTitle: s.updateChapterTitle,
     updateChapterSubtitle: s.updateChapterSubtitle,
   })))
+  const openNewChapterDialog = useAppStore(s => s.openNewChapterDialog)
   if (!book) return null
 
   const items = section === 'front_matter' ? book.front_matter
@@ -285,10 +286,12 @@ function SectionList({ section, label, types: _types }: SectionListProps) {
 }
 
 export default function ChapterPanel() {
-  const { book, currentSection, setCurrentChapter, leftPanelOpen, toggleLeftPanel } = useBookStore(useShallow(s => ({
+  const { book, currentSection, setCurrentChapter } = useBookStore(useShallow(s => ({
     book: s.book,
     currentSection: s.currentSection,
     setCurrentChapter: s.setCurrentChapter,
+  })))
+  const { leftPanelOpen, toggleLeftPanel } = useAppStore(useShallow(s => ({
     leftPanelOpen: s.leftPanelOpen,
     toggleLeftPanel: s.toggleLeftPanel,
   })))

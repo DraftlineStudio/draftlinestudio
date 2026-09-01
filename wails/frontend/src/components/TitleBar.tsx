@@ -10,8 +10,8 @@ interface TitleBarProps {
 }
 
 export default function TitleBar({ minimal = false }: TitleBarProps) {
-  const { book, currentSection, newBook, openBook, saveBook, saveBookAs, openMetadataDialog, openExportWizard, openChapterHistory, closeProject } = useBookStore()
-  const { settings, openSettings } = useAppStore()
+  const { book, currentSection, newBook, openBook, saveBook, saveBookAs, closeProject } = useBookStore()
+  const { settings, openSettings, openMetadataDialog, openExportWizard, openChapterHistory } = useAppStore()
   const [dropOpen, setDropOpen] = useState(false)
   const [dropPos, setDropPos] = useState({ top: 0, left: 0 })
   const btnRef = useRef<HTMLButtonElement>(null)

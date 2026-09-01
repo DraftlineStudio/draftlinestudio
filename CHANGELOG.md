@@ -4,6 +4,14 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02466] - 2026-08-31
+
+### Changed
+- Moved app-level UI state out of the book store into the app store where the rest of it already lived: the status-bar message, the left-panel toggle, and the four self-contained dialogs (book info, new chapter, export wizard, chapter history). Only the save-entangled dialogs (unsaved-changes warning, new-book wizard) remain with the book data.
+- The book store now owns exactly its domain — book data, file I/O, autosave, chapter history, characters, and the editor bridge — completing the store decoupling flagged by the technical-debt audit (956 → 825 lines across the two builds).
+
+---
+
 ## [0.16.02465] - 2026-08-31
 
 ### Removed
