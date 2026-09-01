@@ -4,6 +4,17 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02473] - 2026-09-01
+
+### Changed
+- Simplified the status bar's right side to just the three analysis module chips, now labeled **Characters / Plot / Prose** (previously Characters / Story / Pacing; internal module keys are unchanged).
+- Added a **Character Map** button next to Story Search that opens the full-screen character codex.
+
+### Removed
+- Removed the status-bar AI detection meter (AI analysis lives in its own sidebar panel) and the whole-book word count (already shown at the bottom of the chapter list and in the Writing Dashboard), along with their now-dead styles.
+
+---
+
 ## [0.16.02472] - 2026-09-01
 
 ### Added

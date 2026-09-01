@@ -2343,43 +2343,6 @@ html, body, #root {
   color: var(--text-secondary);
   font-weight: 500;
 }
-.statusbar-words { color: var(--text-section); }
-
-/* AI Score Indicator */
-.statusbar-ai-score {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 2px 8px;
-  background: var(--bg-secondary);
-  border-radius: 3px;
-  margin-right: 8px;
-}
-.ai-score-label {
-  font-size: 9px;
-  font-weight: 700;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.ai-score-bar {
-  width: 40px;
-  height: 4px;
-  background: var(--bg-tertiary);
-  border-radius: 2px;
-  overflow: hidden;
-}
-.ai-score-fill {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.3s ease, background 0.3s ease;
-}
-.ai-score-value {
-  font-size: 10px;
-  font-weight: 600;
-  min-width: 28px;
-  text-align: right;
-}
 
 /* ===== DIALOGS ===== */
 .dialog-overlay {
