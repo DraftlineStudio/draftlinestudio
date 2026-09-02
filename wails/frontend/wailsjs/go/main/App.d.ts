@@ -80,6 +80,8 @@ export function OpenCodexAuth():Promise<void>;
 
 export function OpenRecentProject(arg1:string):Promise<types.BookData>;
 
+export function QueryStoryFingerprint(arg1:types.BookData,arg2:types.FingerprintQueryRequest):Promise<types.FingerprintQueryAnswer>;
+
 export function RemoveRecentProject(arg1:string):Promise<void>;
 
 export function RestoreBackup(arg1:number):Promise<types.SaveResult>;
@@ -111,3 +113,5 @@ export function SplitEntity(arg1:types.BookData,arg2:string,arg3:Array<string>,a
 export function TakePendingOpenPath():Promise<string>;
 
 export function TestLocalAI(arg1:string):Promise<types.AIRewriteResult>;
+
+export function UpdateStoryAuthorModel(arg1:types.BookData,arg2:types.StoryAuthorModel):Promise<types.FullAnalysisResult>;

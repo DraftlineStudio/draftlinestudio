@@ -44,6 +44,26 @@ func TestBuildPreservesAuthorModelAndMarksDeletedCorrectionOrphaned(t *testing.T
 	}
 }
 
+func TestRelativeClaimAnchorsToConversationTimeAcrossPastContext(t *testing.T) {
+	book := testBook([]types.EvidenceRecord{
+		record("friday", 0, 0, "It was Friday in the interrogation room."),
+		record("claim", 0, 2, `"Three days ago we found the tunnel," Ruiz said.`),
+	})
+	model := Build(&book, nil)
+	if model.Events[1].StoryTime.DayOffset == nil || *model.Events[1].StoryTime.DayOffset != 2 {
+		t.Fatalf("expected Friday minus three days, got %#v", model.Events[1].StoryTime)
+	}
+	var posture string
+	for _, constraint := range model.TemporalConstraints {
+		if constraint.FromEvidenceID == "claim" && constraint.Relation == "offset" {
+			posture = constraint.Posture
+		}
+	}
+	if posture != "claimed" {
+		t.Fatalf("expected dialogue time to remain a claim, got %q", posture)
+	}
+}
+
 func testBook(records []types.EvidenceRecord) types.BookData {
 	return types.BookData{Body: []types.ChapterItem{{ID: "chapter-1", Title: "Chapter 1", Type: "chapter"}, {ID: "chapter-2", Title: "Chapter 2", Type: "chapter"}}, Analysis: types.AnalysisData{Evidence: &types.EvidenceData{ContentHash: "hash", Records: records}}}
 }

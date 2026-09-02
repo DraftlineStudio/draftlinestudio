@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02496] - 2026-09-01
+
+### Added
+- Added continuity checks for conflicting character details, locations, and dormant plot threads.
+- Added story questions about chronology, character locations, and what characters know.
+
 ## [0.16.02495] - 2026-09-01
 
 ### Added
