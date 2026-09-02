@@ -3,6 +3,7 @@ package fingerprint
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"strconv"
 	"strings"
 
 	"draftline/internal/types"
@@ -13,17 +14,78 @@ func stableID(kind string, parts ...string) string {
 	return kind + "-" + hex.EncodeToString(hash[:8])
 }
 
+func applyEvidenceContextCorrections(corrections []types.FingerprintCorrection, contexts map[string]string) {
+	for _, correction := range corrections {
+		if correction.Kind != "context" || correction.Value == "" {
+			continue
+		}
+		for _, evidenceID := range correction.EvidenceIDs {
+			if _, exists := contexts[evidenceID]; exists {
+				contexts[evidenceID] = correction.Value
+			}
+		}
+	}
+}
+
+func applyEventCorrections(events []types.FingerprintEvent, corrections []types.FingerprintCorrection) {
+	for _, correction := range corrections {
+		for index := range events {
+			event := &events[index]
+			if correction.TargetID != event.ID && evidenceSimilarity(correction.EvidenceIDs, event.EvidenceIDs) == 0 {
+				continue
+			}
+			switch correction.Kind {
+			case "context":
+				if correction.Value != "" {
+					event.ContextID = correction.Value
+					event.StoryTime.ContextID = correction.Value
+				}
+			case "story_day":
+				if value, err := strconv.ParseFloat(correction.Value, 64); err == nil {
+					event.StoryTime.DayOffset = &value
+					event.StoryTime.EarliestDay = &value
+					event.StoryTime.LatestDay = &value
+					event.StoryTime.Precision = "exact"
+					event.StoryTime.Confidence = 1
+				}
+			case "summary":
+				if correction.Value != "" {
+					event.AuthorSummary = correction.Value
+					event.Summary = correction.Value
+				}
+			case "importance":
+				if value, err := strconv.ParseFloat(correction.Value, 64); err == nil {
+					if value < 0 {
+						value = 0
+					}
+					if value > 1 {
+						value = 1
+					}
+					event.Importance = value
+				}
+			}
+		}
+	}
+}
+
 func reconcileCorrections(model *types.StoryFingerprint) {
 	known := map[string]bool{}
 	for _, event := range model.Events {
 		known[event.ID] = true
+		for _, evidenceID := range event.EvidenceIDs {
+			known[evidenceID] = true
+		}
 	}
 	for _, context := range model.Contexts {
 		known[context.ID] = true
 	}
 	for index := range model.AuthorModel.Corrections {
 		correction := &model.AuthorModel.Corrections[index]
-		if known[correction.TargetID] {
+		active := known[correction.TargetID]
+		for _, evidenceID := range correction.EvidenceIDs {
+			active = active || known[evidenceID]
+		}
+		if active {
 			correction.Status = "active"
 		} else {
 			correction.Status = "orphaned"

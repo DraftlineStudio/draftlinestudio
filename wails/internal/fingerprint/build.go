@@ -36,18 +36,22 @@ func Build(book *types.BookData, progress func(types.StoryAnalysisProgress)) *ty
 	records := eligibleEvidence(book.Analysis.Evidence.Records)
 	contexts, contextByEvidence := inferContexts(records, result.AuthorModel.Contexts)
 	result.Contexts = contexts
+	applyEvidenceContextCorrections(result.AuthorModel.Corrections, contextByEvidence)
 	result.TemporalConstraints = inferTemporalConstraints(records, contextByEvidence)
 	points, diagnostics := solveTemporal(records, contextByEvidence, result.TemporalConstraints)
 	result.Diagnostics = append(result.Diagnostics, diagnostics...)
 	result.Assertions = buildAssertions(records, contextByEvidence)
 	seeded := seedEvents(book, records, contextByEvidence, points)
 	result.Events = consolidateEvents(seeded, records, result.Assertions, prior)
+	applyEventCorrections(result.Events, result.AuthorModel.Corrections)
 	result.States = buildStates(result.Events, records, result.Assertions)
 	result.Profiles = deriveProfiles(records, result.AuthorModel.Profiles)
 	result.Threads = buildThreads(result.Events, records, result.Contexts)
 	result.AuthorModel.Checkpoints, diagnostics = evaluateCheckpoints(result.AuthorModel.Checkpoints, result.Events, records)
 	result.Diagnostics = append(result.Diagnostics, diagnostics...)
+	result.Diagnostics = append(result.Diagnostics, buildDiagnostics(book, result, records)...)
 	reconcileCorrections(result)
+	result.Diagnostics = append(result.Diagnostics, correctionDiagnostics(result.AuthorModel.Corrections)...)
 	if progress != nil {
 		progress(types.StoryAnalysisProgress{Phase: "chronology", Message: "Chronology model current", Current: len(records), Total: len(records), Percent: 82})
 	}

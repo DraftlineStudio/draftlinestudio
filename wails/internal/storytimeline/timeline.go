@@ -23,6 +23,9 @@ var typePriority = map[string]int{
 // It intentionally preserves manuscript order. Relative expressions are
 // labelled, not resolved against an invented calendar.
 func Build(book types.BookData) types.StoryTimelineResult {
+	if book.Analysis.Fingerprint != nil && len(book.Analysis.Fingerprint.Events) > 0 {
+		return buildFromFingerprint(book)
+	}
 	result := types.StoryTimelineResult{Success: true, Engine: engine, Events: []types.StoryTimelineEvent{}, Chapters: []types.StoryTimelineChapter{}, Characters: []types.StoryTimelineFacet{}, Locations: []types.StoryTimelineFacet{}, EventTypes: []types.StoryTimelineFacet{}}
 	if book.Analysis.Evidence == nil {
 		result.Success = false
@@ -46,6 +49,46 @@ func Build(book types.BookData) types.StoryTimelineResult {
 		result.Events = append(result.Events, event)
 	}
 	sort.SliceStable(result.Events, func(i, j int) bool { return eventLess(result.Events[i], result.Events[j]) })
+	finish(&result)
+	return result
+}
+
+func buildFromFingerprint(book types.BookData) types.StoryTimelineResult {
+	model := book.Analysis.Fingerprint
+	result := types.StoryTimelineResult{Success: true, Engine: model.Engine, Events: []types.StoryTimelineEvent{}, Chapters: []types.StoryTimelineChapter{}, Characters: []types.StoryTimelineFacet{}, Locations: []types.StoryTimelineFacet{}, EventTypes: []types.StoryTimelineFacet{}, ChronologyAvailable: true}
+	records := map[string]types.EvidenceRecord{}
+	if book.Analysis.Evidence != nil {
+		for _, record := range book.Analysis.Evidence.Records {
+			records[record.ID] = record
+		}
+	}
+	for _, event := range model.Events {
+		primary := "event"
+		if len(event.Kinds) > 0 {
+			primary = event.Kinds[0]
+		}
+		timeKind := "manuscript"
+		if event.StoryTime.DayOffset != nil {
+			timeKind = "anchored"
+		} else if event.StoryTime.Precision == "relative" {
+			timeKind = "relative"
+		}
+		sources, times := []string{}, []string{}
+		for _, id := range event.EvidenceIDs {
+			if record, ok := records[id]; ok {
+				sources = append(sources, record.Text)
+				times = appendUnique(times, record.TimeExpressions...)
+			}
+		}
+		result.Events = append(result.Events, types.StoryTimelineEvent{ID: event.ID, EvidenceIDs: append([]string(nil), event.EvidenceIDs...), PrimaryType: primary, EventTypes: append([]string(nil), event.Kinds...), Text: event.Summary, SourceText: strings.Join(sources, " "), ChapterID: event.ChapterID, ChapterIndex: event.ChapterIndex, ChapterTitle: event.ChapterTitle, ParagraphIndex: event.ParagraphIndex, StartOffset: event.StartOffset, CharacterIDs: append([]string(nil), event.CharacterIDs...), CharacterNames: append([]string(nil), event.CharacterNames...), ThreadTerms: append([]types.EvidenceTerm(nil), event.Objects...), Locations: append([]types.EvidenceTerm(nil), event.Locations...), TimeExpressions: times, TimeKind: timeKind, TimeLabel: event.StoryTime.Label, ContextID: event.ContextID, StoryDay: event.StoryTime.DayOffset, NarrativeOrder: event.NarrativeOrder, Importance: event.Importance, Confidence: event.Confidence, Status: event.Status})
+	}
+	sort.SliceStable(result.Events, func(i, j int) bool {
+		left, right := result.Events[i], result.Events[j]
+		if left.ContextID == right.ContextID && left.StoryDay != nil && right.StoryDay != nil && *left.StoryDay != *right.StoryDay {
+			return *left.StoryDay < *right.StoryDay
+		}
+		return left.NarrativeOrder < right.NarrativeOrder
+	})
 	finish(&result)
 	return result
 }

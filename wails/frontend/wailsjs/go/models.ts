@@ -62,6 +62,522 @@ export namespace types {
 		    return a;
 		}
 	}
+	export class FingerprintCorrection {
+	    id: string;
+	    target_id: string;
+	    target_signature?: string;
+	    kind: string;
+	    value: string;
+	    evidence_ids?: string[];
+	    status: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new FingerprintCorrection(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.target_id = source["target_id"];
+	        this.target_signature = source["target_signature"];
+	        this.kind = source["kind"];
+	        this.value = source["value"];
+	        this.evidence_ids = source["evidence_ids"];
+	        this.status = source["status"];
+	    }
+	}
+	export class CanonRule {
+	    id: string;
+	    subject: string;
+	    predicate: string;
+	    object: string;
+	    polarity: string;
+	    context_id?: string;
+	    note?: string;
+	    evidence_ids?: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new CanonRule(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.subject = source["subject"];
+	        this.predicate = source["predicate"];
+	        this.object = source["object"];
+	        this.polarity = source["polarity"];
+	        this.context_id = source["context_id"];
+	        this.note = source["note"];
+	        this.evidence_ids = source["evidence_ids"];
+	    }
+	}
+	export class CheckpointRequirement {
+	    text: string;
+	    entity_id?: string;
+	    predicate?: string;
+	    object?: string;
+	    satisfied: boolean;
+	    evidence_id?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CheckpointRequirement(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.text = source["text"];
+	        this.entity_id = source["entity_id"];
+	        this.predicate = source["predicate"];
+	        this.object = source["object"];
+	        this.satisfied = source["satisfied"];
+	        this.evidence_id = source["evidence_id"];
+	    }
+	}
+	export class StoryCheckpoint {
+	    id: string;
+	    title: string;
+	    description?: string;
+	    kind: string;
+	    status: string;
+	    requirements?: CheckpointRequirement[];
+	    negative_conditions?: CheckpointRequirement[];
+	    before_chapter?: number;
+	    after_chapter?: number;
+	    matched_event_ids?: string[];
+	    source: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new StoryCheckpoint(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	        this.description = source["description"];
+	        this.kind = source["kind"];
+	        this.status = source["status"];
+	        this.requirements = this.convertValues(source["requirements"], CheckpointRequirement);
+	        this.negative_conditions = this.convertValues(source["negative_conditions"], CheckpointRequirement);
+	        this.before_chapter = source["before_chapter"];
+	        this.after_chapter = source["after_chapter"];
+	        this.matched_event_ids = source["matched_event_ids"];
+	        this.source = source["source"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class StoryAuthorModel {
+	    contexts?: StoryContext[];
+	    checkpoints?: StoryCheckpoint[];
+	    canon?: CanonRule[];
+	    corrections?: FingerprintCorrection[];
+	    profiles?: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new StoryAuthorModel(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.contexts = this.convertValues(source["contexts"], StoryContext);
+	        this.checkpoints = this.convertValues(source["checkpoints"], StoryCheckpoint);
+	        this.canon = this.convertValues(source["canon"], CanonRule);
+	        this.corrections = this.convertValues(source["corrections"], FingerprintCorrection);
+	        this.profiles = source["profiles"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class StoryProfile {
+	    id: string;
+	    label: string;
+	    confidence: number;
+	    source: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new StoryProfile(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.label = source["label"];
+	        this.confidence = source["confidence"];
+	        this.source = source["source"];
+	    }
+	}
+	export class FingerprintDiagnostic {
+	    id: string;
+	    kind: string;
+	    severity: string;
+	    title: string;
+	    detail: string;
+	    event_ids?: string[];
+	    evidence_ids?: string[];
+	    chapter_indices?: number[];
+	    confidence: number;
+	    status?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new FingerprintDiagnostic(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.kind = source["kind"];
+	        this.severity = source["severity"];
+	        this.title = source["title"];
+	        this.detail = source["detail"];
+	        this.event_ids = source["event_ids"];
+	        this.evidence_ids = source["evidence_ids"];
+	        this.chapter_indices = source["chapter_indices"];
+	        this.confidence = source["confidence"];
+	        this.status = source["status"];
+	    }
+	}
+	export class StoryThread {
+	    id: string;
+	    label: string;
+	    kind: string;
+	    state: string;
+	    opened_by_event_id?: string;
+	    resolved_by_event_id?: string;
+	    event_ids?: string[];
+	    evidence_ids?: string[];
+	    entity_ids?: string[];
+	    parent_ids?: string[];
+	    child_ids?: string[];
+	    resolution: number;
+	    dormant_chapters?: number;
+	    dormant_words?: number;
+	    confidence: number;
+	    source: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new StoryThread(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.label = source["label"];
+	        this.kind = source["kind"];
+	        this.state = source["state"];
+	        this.opened_by_event_id = source["opened_by_event_id"];
+	        this.resolved_by_event_id = source["resolved_by_event_id"];
+	        this.event_ids = source["event_ids"];
+	        this.evidence_ids = source["evidence_ids"];
+	        this.entity_ids = source["entity_ids"];
+	        this.parent_ids = source["parent_ids"];
+	        this.child_ids = source["child_ids"];
+	        this.resolution = source["resolution"];
+	        this.dormant_chapters = source["dormant_chapters"];
+	        this.dormant_words = source["dormant_words"];
+	        this.confidence = source["confidence"];
+	        this.source = source["source"];
+	    }
+	}
+	export class StoryStateInterval {
+	    id: string;
+	    entity_id: string;
+	    entity_name: string;
+	    kind: string;
+	    value: string;
+	    qualifier?: string;
+	    context_id: string;
+	    start_event_id: string;
+	    end_event_id?: string;
+	    evidence_ids: string[];
+	    persistent: boolean;
+	    confidence: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new StoryStateInterval(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.entity_id = source["entity_id"];
+	        this.entity_name = source["entity_name"];
+	        this.kind = source["kind"];
+	        this.value = source["value"];
+	        this.qualifier = source["qualifier"];
+	        this.context_id = source["context_id"];
+	        this.start_event_id = source["start_event_id"];
+	        this.end_event_id = source["end_event_id"];
+	        this.evidence_ids = source["evidence_ids"];
+	        this.persistent = source["persistent"];
+	        this.confidence = source["confidence"];
+	    }
+	}
+	export class StoryTime {
+	    context_id: string;
+	    label?: string;
+	    day_offset?: number;
+	    earliest_day?: number;
+	    latest_day?: number;
+	    precision: string;
+	    confidence: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new StoryTime(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.context_id = source["context_id"];
+	        this.label = source["label"];
+	        this.day_offset = source["day_offset"];
+	        this.earliest_day = source["earliest_day"];
+	        this.latest_day = source["latest_day"];
+	        this.precision = source["precision"];
+	        this.confidence = source["confidence"];
+	    }
+	}
+	export class FingerprintEvent {
+	    id: string;
+	    summary: string;
+	    author_summary?: string;
+	    evidence_ids: string[];
+	    assertion_ids?: string[];
+	    character_ids?: string[];
+	    character_names?: string[];
+	    locations?: EvidenceTerm[];
+	    objects?: EvidenceTerm[];
+	    kinds: string[];
+	    context_id: string;
+	    story_time: StoryTime;
+	    chapter_id: string;
+	    chapter_index: number;
+	    chapter_title: string;
+	    paragraph_index: number;
+	    start_offset: number;
+	    narrative_order: number;
+	    importance: number;
+	    confidence: number;
+	    status: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new FingerprintEvent(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.summary = source["summary"];
+	        this.author_summary = source["author_summary"];
+	        this.evidence_ids = source["evidence_ids"];
+	        this.assertion_ids = source["assertion_ids"];
+	        this.character_ids = source["character_ids"];
+	        this.character_names = source["character_names"];
+	        this.locations = this.convertValues(source["locations"], EvidenceTerm);
+	        this.objects = this.convertValues(source["objects"], EvidenceTerm);
+	        this.kinds = source["kinds"];
+	        this.context_id = source["context_id"];
+	        this.story_time = this.convertValues(source["story_time"], StoryTime);
+	        this.chapter_id = source["chapter_id"];
+	        this.chapter_index = source["chapter_index"];
+	        this.chapter_title = source["chapter_title"];
+	        this.paragraph_index = source["paragraph_index"];
+	        this.start_offset = source["start_offset"];
+	        this.narrative_order = source["narrative_order"];
+	        this.importance = source["importance"];
+	        this.confidence = source["confidence"];
+	        this.status = source["status"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class StoryAssertion {
+	    id: string;
+	    evidence_ids: string[];
+	    subject_id?: string;
+	    subject?: string;
+	    predicate: string;
+	    object_id?: string;
+	    object?: string;
+	    posture: string;
+	    polarity: string;
+	    context_id: string;
+	    confidence: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new StoryAssertion(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.evidence_ids = source["evidence_ids"];
+	        this.subject_id = source["subject_id"];
+	        this.subject = source["subject"];
+	        this.predicate = source["predicate"];
+	        this.object_id = source["object_id"];
+	        this.object = source["object"];
+	        this.posture = source["posture"];
+	        this.polarity = source["polarity"];
+	        this.context_id = source["context_id"];
+	        this.confidence = source["confidence"];
+	    }
+	}
+	export class TemporalConstraint {
+	    id: string;
+	    from_evidence_id: string;
+	    to_evidence_id?: string;
+	    relation: string;
+	    offset_days?: number;
+	    label: string;
+	    posture: string;
+	    confidence: number;
+	    source: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TemporalConstraint(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.from_evidence_id = source["from_evidence_id"];
+	        this.to_evidence_id = source["to_evidence_id"];
+	        this.relation = source["relation"];
+	        this.offset_days = source["offset_days"];
+	        this.label = source["label"];
+	        this.posture = source["posture"];
+	        this.confidence = source["confidence"];
+	        this.source = source["source"];
+	    }
+	}
+	export class StoryContext {
+	    id: string;
+	    kind: string;
+	    label: string;
+	    parent_id?: string;
+	    evidence_ids?: string[];
+	    confidence: number;
+	    source: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new StoryContext(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.kind = source["kind"];
+	        this.label = source["label"];
+	        this.parent_id = source["parent_id"];
+	        this.evidence_ids = source["evidence_ids"];
+	        this.confidence = source["confidence"];
+	        this.source = source["source"];
+	    }
+	}
+	export class StoryFingerprint {
+	    content_hash: string;
+	    engine: string;
+	    last_analyzed: string;
+	    version: number;
+	    contexts: StoryContext[];
+	    temporal_constraints: TemporalConstraint[];
+	    assertions: StoryAssertion[];
+	    events: FingerprintEvent[];
+	    states: StoryStateInterval[];
+	    threads: StoryThread[];
+	    diagnostics: FingerprintDiagnostic[];
+	    profiles?: StoryProfile[];
+	    author_model: StoryAuthorModel;
+	
+	    static createFrom(source: any = {}) {
+	        return new StoryFingerprint(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.content_hash = source["content_hash"];
+	        this.engine = source["engine"];
+	        this.last_analyzed = source["last_analyzed"];
+	        this.version = source["version"];
+	        this.contexts = this.convertValues(source["contexts"], StoryContext);
+	        this.temporal_constraints = this.convertValues(source["temporal_constraints"], TemporalConstraint);
+	        this.assertions = this.convertValues(source["assertions"], StoryAssertion);
+	        this.events = this.convertValues(source["events"], FingerprintEvent);
+	        this.states = this.convertValues(source["states"], StoryStateInterval);
+	        this.threads = this.convertValues(source["threads"], StoryThread);
+	        this.diagnostics = this.convertValues(source["diagnostics"], FingerprintDiagnostic);
+	        this.profiles = this.convertValues(source["profiles"], StoryProfile);
+	        this.author_model = this.convertValues(source["author_model"], StoryAuthorModel);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class EvidenceKnowledgeState {
 	    state: string;
 	    character_ids?: string[];
@@ -689,6 +1205,7 @@ export namespace types {
 	    relationships?: RelationshipData;
 	    story?: StoryAnalysisData;
 	    evidence?: EvidenceData;
+	    fingerprint?: StoryFingerprint;
 	    continuity?: ContinuityData;
 	    version?: number;
 	
@@ -702,6 +1219,7 @@ export namespace types {
 	        this.relationships = this.convertValues(source["relationships"], RelationshipData);
 	        this.story = this.convertValues(source["story"], StoryAnalysisData);
 	        this.evidence = this.convertValues(source["evidence"], EvidenceData);
+	        this.fingerprint = this.convertValues(source["fingerprint"], StoryFingerprint);
 	        this.continuity = this.convertValues(source["continuity"], ContinuityData);
 	        this.version = source["version"];
 	    }
@@ -1223,6 +1741,7 @@ export namespace types {
 		}
 	}
 	
+	
 	export class ChapterHistoryEntry {
 	    id: string;
 	    chapter_id: string;
@@ -1360,6 +1879,7 @@ export namespace types {
 		    return a;
 		}
 	}
+	
 	export class ClaudeCodeStatus {
 	    installed: boolean;
 	    authenticated: boolean;
@@ -1561,6 +2081,71 @@ export namespace types {
 	        this.success = source["success"];
 	        this.file_path = source["file_path"];
 	        this.error = source["error"];
+	    }
+	}
+	
+	
+	
+	export class FingerprintQueryAnswer {
+	    success: boolean;
+	    error?: string;
+	    interpretation?: string;
+	    answer?: string;
+	    events?: FingerprintEvent[];
+	    states?: StoryStateInterval[];
+	    threads?: StoryThread[];
+	    diagnostics?: FingerprintDiagnostic[];
+	    evidence_ids?: string[];
+	    confidence: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new FingerprintQueryAnswer(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.error = source["error"];
+	        this.interpretation = source["interpretation"];
+	        this.answer = source["answer"];
+	        this.events = this.convertValues(source["events"], FingerprintEvent);
+	        this.states = this.convertValues(source["states"], StoryStateInterval);
+	        this.threads = this.convertValues(source["threads"], StoryThread);
+	        this.diagnostics = this.convertValues(source["diagnostics"], FingerprintDiagnostic);
+	        this.evidence_ids = source["evidence_ids"];
+	        this.confidence = source["confidence"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class FingerprintQueryRequest {
+	    query: string;
+	    limit?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new FingerprintQueryRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.query = source["query"];
+	        this.limit = source["limit"];
 	    }
 	}
 	
@@ -1941,6 +2526,12 @@ export namespace types {
 	
 	
 	
+	
+	
+	
+	
+	
+	
 	export class StorySearchChapterSummary {
 	    chapter_index: number;
 	    chapter_title: string;
@@ -2224,6 +2815,9 @@ export namespace types {
 		}
 	}
 	
+	
+	
+	
 	export class StoryTimelineChapter {
 	    chapter_index: number;
 	    chapter_title: string;
@@ -2264,6 +2858,10 @@ export namespace types {
 	    time_expressions?: string[];
 	    time_kind: string;
 	    time_label: string;
+	    context_id?: string;
+	    story_day?: number;
+	    narrative_order?: number;
+	    importance?: number;
 	    confidence: number;
 	    status: string;
 	    pinned?: boolean;
@@ -2295,6 +2893,10 @@ export namespace types {
 	        this.time_expressions = source["time_expressions"];
 	        this.time_kind = source["time_kind"];
 	        this.time_label = source["time_label"];
+	        this.context_id = source["context_id"];
+	        this.story_day = source["story_day"];
+	        this.narrative_order = source["narrative_order"];
+	        this.importance = source["importance"];
 	        this.confidence = source["confidence"];
 	        this.status = source["status"];
 	        this.pinned = source["pinned"];
@@ -2345,6 +2947,7 @@ export namespace types {
 	    event_types: StoryTimelineFacet[];
 	    explicit_time_count: number;
 	    relative_time_count: number;
+	    chronology_available?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new StoryTimelineResult(source);
@@ -2362,6 +2965,7 @@ export namespace types {
 	        this.event_types = this.convertValues(source["event_types"], StoryTimelineFacet);
 	        this.explicit_time_count = source["explicit_time_count"];
 	        this.relative_time_count = source["relative_time_count"];
+	        this.chronology_available = source["chronology_available"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -2384,5 +2988,7 @@ export namespace types {
 	}
 	
 	
+	
 
 }
+

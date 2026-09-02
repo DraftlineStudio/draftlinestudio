@@ -4,6 +4,27 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02496] - 2026-09-01
+
+### Added
+- Added source-backed Story Fingerprint diagnostics for conflicting persistent attributes and first names, declared-canon conflicts, opposite location directions, dormant obligations, near-duplicate chapters, orphaned manual corrections, one-off character introductions, and unresolved physical presence.
+- The presence ledger now catches cases such as introducing Kyle beside Hanlon, never removing Kyle, and later declaring Hanlon alone. The warning retains the exact evidence instead of assuming whether the prose or extraction is wrong.
+- Added deterministic story questions over chronology, events, character location/presence, knowledge and belief, open threads, and continuity diagnostics. “After” questions first locate the anchor event, then search only later narrative evidence.
+- Added backend author-model updates for contexts, checkpoints, canon, summaries, importance, and explicit story-day corrections. This rebuilds only the semantic model—never prose/v3, manuscript text, or the filesystem.
+
+### Changed
+- The existing Story Graph timeline contract now projects consolidated fingerprint events and exposes context, approximate story day, narrative order, and importance. Within a shared context, solvable events default to in-universe chronology while ambiguous events retain manuscript order.
+- The existing Continuity report now includes fingerprint diagnostics alongside its earlier character, knowledge, attribute, clock, and thin-chapter checks.
+- Manual event corrections can remain attached through stable evidence IDs after surrounding prose changes. Deleted dependencies become reviewable orphan conflicts rather than leaking onto a new event.
+- First-open analysis progress now advances monotonically through evidence, chronology/fingerprint construction, and prose metrics instead of jumping backward when the new semantic pass begins.
+
+### Internal
+- Regenerated Wails bindings for the new Story Fingerprint model and APIs.
+- Obligation resolution uses a per-event token posting index instead of comparing every open thread with every later event. Continuity source projection also uses direct evidence lookup, keeping both passes linear around large novels rather than quadratic.
+- Added regression coverage for unresolved room presence, contradictory appearance/name facts, near-duplicate loop chapters, chronological questions, and evidence-backed author time corrections.
+
+---
+
 ## [0.16.02495] - 2026-09-01
 
 ### Added
