@@ -4,6 +4,23 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02497] - 2026-09-01
+
+### Added
+- Added source-backed **character voice fingerprints** for the forthcoming Character Center flows. Each speaking character can now carry attributed dialogue samples, sample/word counts, average utterance length, contraction/question/exclamation rates, recurring vocabulary, direct-address forms, and confidence.
+- Added observable vernacular signals for constructions such as `y'all`/`ain't`, dropped-final-g spellings, negative concord, and habitual `be`. Signals retain representative quotations and counts; Draftline does not infer ethnicity, nationality, or regional identity from those patterns.
+- Added durable author voice notes per character: declared dialect, preferred vernacular, speaking traits, avoided wording, and freeform guidance. These survive reanalysis and remain distinct from automatic observations.
+- Story Fingerprint questions now understand requests such as “How does Mara speak?” and return the matching voice profile.
+
+### Changed
+- Dialogue enters a voice profile only when Draftline finds an explicit nearby name-and-speech attribution. Unattributed dialogue remains unassigned instead of contaminating the wrong character's voice.
+- Duplicate quotations in one chapter now retain distinct stable sample identities through their source offsets.
+
+### Internal
+- Added isolated voice extraction and aggregation under `internal/fingerprint`, with tests for forward and backward speaker attribution, vernacular signals, address forms, author-note persistence, voice queries, and refusal to guess unattributed speakers.
+
+---
+
 ## [0.16.02496] - 2026-09-01
 
 ### Added

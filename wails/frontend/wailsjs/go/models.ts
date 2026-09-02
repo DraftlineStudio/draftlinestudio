@@ -190,6 +190,7 @@ export namespace types {
 	    canon?: CanonRule[];
 	    corrections?: FingerprintCorrection[];
 	    profiles?: string[];
+	    voice_notes?: CharacterVoiceNotes[];
 	
 	    static createFrom(source: any = {}) {
 	        return new StoryAuthorModel(source);
@@ -202,6 +203,145 @@ export namespace types {
 	        this.canon = this.convertValues(source["canon"], CanonRule);
 	        this.corrections = this.convertValues(source["corrections"], FingerprintCorrection);
 	        this.profiles = source["profiles"];
+	        this.voice_notes = this.convertValues(source["voice_notes"], CharacterVoiceNotes);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CharacterVoiceNotes {
+	    character_id: string;
+	    dialect?: string;
+	    vernacular?: string[];
+	    speaking_traits?: string[];
+	    avoids?: string[];
+	    notes?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CharacterVoiceNotes(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.character_id = source["character_id"];
+	        this.dialect = source["dialect"];
+	        this.vernacular = source["vernacular"];
+	        this.speaking_traits = source["speaking_traits"];
+	        this.avoids = source["avoids"];
+	        this.notes = source["notes"];
+	    }
+	}
+	export class DialogueSample {
+	    id: string;
+	    text: string;
+	    chapter_id: string;
+	    chapter_index: number;
+	    chapter_title: string;
+	    start_offset: number;
+	    attribution_cue: string;
+	    confidence: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DialogueSample(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.text = source["text"];
+	        this.chapter_id = source["chapter_id"];
+	        this.chapter_index = source["chapter_index"];
+	        this.chapter_title = source["chapter_title"];
+	        this.start_offset = source["start_offset"];
+	        this.attribution_cue = source["attribution_cue"];
+	        this.confidence = source["confidence"];
+	    }
+	}
+	export class VoiceSignal {
+	    kind: string;
+	    label: string;
+	    count: number;
+	    examples?: string[];
+	    confidence: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new VoiceSignal(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.label = source["label"];
+	        this.count = source["count"];
+	        this.examples = source["examples"];
+	        this.confidence = source["confidence"];
+	    }
+	}
+	export class VoiceTerm {
+	    text: string;
+	    count: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new VoiceTerm(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.text = source["text"];
+	        this.count = source["count"];
+	    }
+	}
+	export class CharacterVoiceProfile {
+	    character_id: string;
+	    character_name: string;
+	    sample_count: number;
+	    word_count: number;
+	    average_words: number;
+	    contraction_percent: number;
+	    question_percent: number;
+	    exclamation_percent: number;
+	    vocabulary?: VoiceTerm[];
+	    address_forms?: VoiceTerm[];
+	    dialect_signals?: VoiceSignal[];
+	    samples?: DialogueSample[];
+	    confidence: number;
+	    author_notes?: CharacterVoiceNotes;
+	
+	    static createFrom(source: any = {}) {
+	        return new CharacterVoiceProfile(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.character_id = source["character_id"];
+	        this.character_name = source["character_name"];
+	        this.sample_count = source["sample_count"];
+	        this.word_count = source["word_count"];
+	        this.average_words = source["average_words"];
+	        this.contraction_percent = source["contraction_percent"];
+	        this.question_percent = source["question_percent"];
+	        this.exclamation_percent = source["exclamation_percent"];
+	        this.vocabulary = this.convertValues(source["vocabulary"], VoiceTerm);
+	        this.address_forms = this.convertValues(source["address_forms"], VoiceTerm);
+	        this.dialect_signals = this.convertValues(source["dialect_signals"], VoiceSignal);
+	        this.samples = this.convertValues(source["samples"], DialogueSample);
+	        this.confidence = source["confidence"];
+	        this.author_notes = this.convertValues(source["author_notes"], CharacterVoiceNotes);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -537,6 +677,7 @@ export namespace types {
 	    threads: StoryThread[];
 	    diagnostics: FingerprintDiagnostic[];
 	    profiles?: StoryProfile[];
+	    voices?: CharacterVoiceProfile[];
 	    author_model: StoryAuthorModel;
 	
 	    static createFrom(source: any = {}) {
@@ -557,6 +698,7 @@ export namespace types {
 	        this.threads = this.convertValues(source["threads"], StoryThread);
 	        this.diagnostics = this.convertValues(source["diagnostics"], FingerprintDiagnostic);
 	        this.profiles = this.convertValues(source["profiles"], StoryProfile);
+	        this.voices = this.convertValues(source["voices"], CharacterVoiceProfile);
 	        this.author_model = this.convertValues(source["author_model"], StoryAuthorModel);
 	    }
 	
@@ -1880,6 +2022,8 @@ export namespace types {
 		}
 	}
 	
+	
+	
 	export class ClaudeCodeStatus {
 	    installed: boolean;
 	    authenticated: boolean;
@@ -2051,6 +2195,7 @@ export namespace types {
 	
 	
 	
+	
 	export class ExportOptions {
 	    includeCopyright: boolean;
 	    includeFrontMatter: boolean;
@@ -2095,6 +2240,7 @@ export namespace types {
 	    states?: StoryStateInterval[];
 	    threads?: StoryThread[];
 	    diagnostics?: FingerprintDiagnostic[];
+	    voices?: CharacterVoiceProfile[];
 	    evidence_ids?: string[];
 	    confidence: number;
 	
@@ -2112,6 +2258,7 @@ export namespace types {
 	        this.states = this.convertValues(source["states"], StoryStateInterval);
 	        this.threads = this.convertValues(source["threads"], StoryThread);
 	        this.diagnostics = this.convertValues(source["diagnostics"], FingerprintDiagnostic);
+	        this.voices = this.convertValues(source["voices"], CharacterVoiceProfile);
 	        this.evidence_ids = source["evidence_ids"];
 	        this.confidence = source["confidence"];
 	    }
@@ -2986,6 +3133,8 @@ export namespace types {
 		    return a;
 		}
 	}
+	
+	
 	
 	
 	
