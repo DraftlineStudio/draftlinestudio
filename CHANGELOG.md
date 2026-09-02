@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02494] - 2026-09-01
+
+### Changed
+- Improved event detection by combining nearby sentences that describe the same event.
+
 ## [0.16.02493] - 2026-09-01
 
 ### Added
