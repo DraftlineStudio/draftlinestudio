@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02498] - 2026-09-01
+
+### Added
+- Redesigned the bottom bar with Story Map, Threads, Review, Continuity, and Ask Draftline tabs.
+
+### Removed
+- Removed the Story Graph tab, replaced by the Story Map.
+
 ## [0.16.02497] - 2026-09-01
 
 ### Added

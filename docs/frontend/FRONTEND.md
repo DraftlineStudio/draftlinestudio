@@ -118,6 +118,12 @@ The bundled feature catalog lives in `features/registry.ts`. Stable IDs, capabil
 
 `AnalysisCoordinator.tsx` keeps manuscript-scale work off the typing path. Content mutations increment a lightweight revision, mark Characters/Story/Pacing stale, and reset a 15-second idle timer. `analysisStore.ts` runs the consolidated Wails analysis call, rejects results if a newer revision exists, and consumes `analysis:progress` events for the bottom status bar. The status bar's right side shows only the three module chips — **Characters / Plot / Prose**. Since 0.16.02474 they map to distinct pipeline phases: Characters ← `characters`/`relationships`, Plot ← `evidence` (the fact/event index), Prose ← `story` (the tempo/readability/keyword statistics pass). The chip keys are ephemeral frontend state; the Go phase names are unchanged. The old AI-score meter and whole-book word count were removed in 0.16.02473 — word count lives at the bottom of the chapter list and in the Writing Dashboard, AI detection in its sidebar panel. The analysis sidebar suite (`tools/Analysis/`, see `ANALYSIS-SIDEBARS.md`) reads the persisted results from `book.analysis.story`.
 
+## Bottom Bar
+
+The resizable bottom tool window is the Story Fingerprint UI — five tabs
+(Story Map, Threads, Review, Continuity, Ask Draftline) plus the Evidence
+index. See `docs/frontend/BOTTOM-BAR.md`.
+
 ## State Management
 
 ### bookStore.ts (Zustand)
