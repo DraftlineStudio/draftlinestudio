@@ -101,6 +101,7 @@ func solveTemporal(records []types.EvidenceRecord, contexts map[string]string, c
 	points := map[string]types.StoryTime{}
 	diagnostics := []types.FingerprintDiagnostic{}
 	anchors := map[string]float64{}
+	var lastNarrativeAnchor *float64
 	for _, record := range records {
 		contextID := contexts[record.ID]
 		point := types.StoryTime{ContextID: contextID, Precision: "unknown", Confidence: .35}
@@ -116,6 +117,8 @@ func solveTemporal(records []types.EvidenceRecord, contexts map[string]string, c
 				// A second weekday is valid; keep it as a new anchor rather than forcing manuscript order.
 			}
 			anchors[contextID] = day
+			anchorCopy := day
+			lastNarrativeAnchor = &anchorCopy
 		} else {
 			for _, expression := range record.TimeExpressions {
 				if days, ok := relativeDays(expression); ok {
@@ -124,6 +127,11 @@ func solveTemporal(records []types.EvidenceRecord, contexts map[string]string, c
 					point.Confidence = .72
 					if anchor, exists := anchors[contextID]; exists {
 						value := anchor + days
+						point.DayOffset = &value
+						point.EarliestDay = &value
+						point.LatestDay = &value
+					} else if lastNarrativeAnchor != nil {
+						value := *lastNarrativeAnchor + days
 						point.DayOffset = &value
 						point.EarliestDay = &value
 						point.LatestDay = &value

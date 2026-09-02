@@ -32,6 +32,10 @@ type StoryTimelineEvent struct {
 	TimeExpressions []string       `json:"time_expressions,omitempty"`
 	TimeKind        string         `json:"time_kind"` // anchored | relative | manuscript
 	TimeLabel       string         `json:"time_label"`
+	ContextID       string         `json:"context_id,omitempty"`
+	StoryDay        *float64       `json:"story_day,omitempty"`
+	NarrativeOrder  int            `json:"narrative_order,omitempty"`
+	Importance      float64        `json:"importance,omitempty"`
 	Confidence      float64        `json:"confidence"`
 	Status          string         `json:"status"`
 	Pinned          bool           `json:"pinned,omitempty"`
@@ -48,14 +52,15 @@ type StoryTimelineChapter struct {
 // StoryTimelineResult is the deterministic timeline projection of the local
 // evidence index.
 type StoryTimelineResult struct {
-	Success           bool                   `json:"success"`
-	Error             string                 `json:"error,omitempty"`
-	Engine            string                 `json:"engine"`
-	Events            []StoryTimelineEvent   `json:"events"`
-	Chapters          []StoryTimelineChapter `json:"chapters"`
-	Characters        []StoryTimelineFacet   `json:"characters"`
-	Locations         []StoryTimelineFacet   `json:"locations"`
-	EventTypes        []StoryTimelineFacet   `json:"event_types"`
-	ExplicitTimeCount int                    `json:"explicit_time_count"`
-	RelativeTimeCount int                    `json:"relative_time_count"`
+	Success             bool                   `json:"success"`
+	Error               string                 `json:"error,omitempty"`
+	Engine              string                 `json:"engine"`
+	Events              []StoryTimelineEvent   `json:"events"`
+	Chapters            []StoryTimelineChapter `json:"chapters"`
+	Characters          []StoryTimelineFacet   `json:"characters"`
+	Locations           []StoryTimelineFacet   `json:"locations"`
+	EventTypes          []StoryTimelineFacet   `json:"event_types"`
+	ExplicitTimeCount   int                    `json:"explicit_time_count"`
+	RelativeTimeCount   int                    `json:"relative_time_count"`
+	ChronologyAvailable bool                   `json:"chronology_available,omitempty"`
 }

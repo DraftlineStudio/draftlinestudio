@@ -158,6 +158,10 @@ export function OpenRecentProject(arg1) {
   return window['go']['main']['App']['OpenRecentProject'](arg1);
 }
 
+export function QueryStoryFingerprint(arg1, arg2) {
+  return window['go']['main']['App']['QueryStoryFingerprint'](arg1, arg2);
+}
+
 export function RemoveRecentProject(arg1) {
   return window['go']['main']['App']['RemoveRecentProject'](arg1);
 }
@@ -220,4 +224,8 @@ export function TakePendingOpenPath() {
 
 export function TestLocalAI(arg1) {
   return window['go']['main']['App']['TestLocalAI'](arg1);
+}
+
+export function UpdateStoryAuthorModel(arg1, arg2) {
+  return window['go']['main']['App']['UpdateStoryAuthorModel'](arg1, arg2);
 }

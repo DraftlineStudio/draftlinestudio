@@ -46,6 +46,7 @@ func Build(book types.BookData) types.ContinuityReport {
 	report.Signals = append(report.Signals, characterSignals(book)...)
 	report.Signals = append(report.Signals, knowledgeSignals(book)...)
 	report.Signals = append(report.Signals, attributeSignals(book)...)
+	report.Signals = append(report.Signals, fingerprintSignals(book)...)
 	timeline := storytimeline.Build(book)
 	if timeline.Success {
 		report.Signals = append(report.Signals, clockSignals(timeline)...)
@@ -54,6 +55,27 @@ func Build(book types.BookData) types.ContinuityReport {
 	sortSignals(report.Signals)
 	finishReport(&report, book)
 	return report
+}
+
+func fingerprintSignals(book types.BookData) []types.ContinuitySignal {
+	if book.Analysis.Fingerprint == nil {
+		return nil
+	}
+	result := []types.ContinuitySignal{}
+	records := map[string]types.EvidenceRecord{}
+	for _, record := range book.Analysis.Evidence.Records {
+		records[record.ID] = record
+	}
+	for _, item := range book.Analysis.Fingerprint.Diagnostics {
+		sources := []types.ContinuitySource{}
+		for _, evidenceID := range item.EvidenceIDs {
+			if record, ok := records[evidenceID]; ok {
+				sources = append(sources, sourceFromRecord(book, record))
+			}
+		}
+		result = append(result, signal("fingerprint-"+item.Kind, "story", item.Severity, item.Title, item.Detail, nil, nil, sources, item.Confidence))
+	}
+	return result
 }
 
 func characterSignals(book types.BookData) []types.ContinuitySignal {

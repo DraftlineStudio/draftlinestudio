@@ -15,13 +15,22 @@ var (
 	escalationCueRe = regexp.MustCompile(`(?i)\b(?:but|however|failed|blocked|worse|another|deeper|threat|attack|urgent)\b`)
 )
 
+const (
+	maxAutoThreads      = 5000
+	maxThreadCandidates = 4096
+)
+
 func buildThreads(events []types.FingerprintEvent, records []types.EvidenceRecord, contexts []types.StoryContext) []types.StoryThread {
 	recordByID := map[string]types.EvidenceRecord{}
 	for _, record := range records {
 		recordByID[record.ID] = record
 	}
+	eventTokens, postings := indexThreadEvents(events, recordByID)
 	threads := contextThreads(events, contexts)
 	for eventIndex, event := range events {
+		if len(threads) >= maxAutoThreads {
+			break
+		}
 		text := eventSourceText(event, recordByID)
 		kind, opens := obligationKind(text, event)
 		if !opens {
@@ -29,7 +38,7 @@ func buildThreads(events []types.FingerprintEvent, records []types.EvidenceRecor
 		}
 		label := obligationLabel(text)
 		thread := types.StoryThread{ID: stableID("thread", event.ID, kind, strings.ToLower(label)), Label: label, Kind: kind, State: "seeded", OpenedByEventID: event.ID, EventIDs: []string{event.ID}, EvidenceIDs: clone(event.EvidenceIDs), EntityIDs: clone(event.CharacterIDs), Confidence: event.Confidence, Source: "auto"}
-		advanceThread(&thread, eventIndex, events, recordByID)
+		advanceThread(&thread, eventIndex, events, recordByID, eventTokens, postings)
 		threads = append(threads, thread)
 	}
 	markConvergence(threads)
@@ -80,12 +89,40 @@ func obligationKind(text string, event types.FingerprintEvent) (string, bool) {
 	return "", false
 }
 
-func advanceThread(thread *types.StoryThread, opened int, events []types.FingerprintEvent, records map[string]types.EvidenceRecord) {
+func advanceThread(thread *types.StoryThread, opened int, events []types.FingerprintEvent, records map[string]types.EvidenceRecord, eventTokens []map[string]bool, postings map[string][]int) {
 	seedTokens := meaningfulTokens(thread.Label)
+	for _, name := range events[opened].CharacterNames {
+		for token := range meaningfulTokens(name) {
+			delete(seedTokens, token)
+		}
+	}
 	lastChapter := events[opened].ChapterIndex
-	for index := opened + 1; index < len(events); index++ {
+	// The rarest meaningful seed term is the best deterministic discriminator
+	// and prevents common characters/verbs from turning this into O(n²).
+	var candidates []int
+	for token := range seedTokens {
+		future := []int{}
+		for _, index := range postings[token] {
+			if index > opened {
+				future = append(future, index)
+			}
+		}
+		if len(future) > 0 && (candidates == nil || len(future) < len(candidates)) {
+			candidates = future
+		}
+	}
+	filtered := make([]int, 0, min(len(candidates), maxThreadCandidates))
+	for _, index := range candidates {
+		filtered = append(filtered, index)
+	}
+	if len(filtered) > maxThreadCandidates {
+		half := maxThreadCandidates / 2
+		filtered = append(append([]int(nil), filtered[:half]...), filtered[len(filtered)-half:]...)
+	}
+	candidates = filtered
+	for _, index := range candidates {
 		event := events[index]
-		score := tokenOverlap(seedTokens, meaningfulTokens(eventSourceText(event, records)))
+		score := tokenOverlap(seedTokens, eventTokens[index])
 		if overlap(thread.EntityIDs, event.CharacterIDs) {
 			score += .18
 		}
@@ -116,6 +153,18 @@ func advanceThread(thread *types.StoryThread, opened int, events []types.Fingerp
 		thread.State = "dormant"
 		thread.DormantChapters = gap
 	}
+}
+
+func indexThreadEvents(events []types.FingerprintEvent, records map[string]types.EvidenceRecord) ([]map[string]bool, map[string][]int) {
+	tokens := make([]map[string]bool, len(events))
+	postings := map[string][]int{}
+	for index, event := range events {
+		tokens[index] = meaningfulTokens(eventSourceText(event, records))
+		for token := range tokens[index] {
+			postings[token] = append(postings[token], index)
+		}
+	}
+	return tokens, postings
 }
 
 func markConvergence(threads []types.StoryThread) {

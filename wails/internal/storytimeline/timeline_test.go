@@ -116,6 +116,19 @@ func TestBuildReportsMissingEvidenceIndex(t *testing.T) {
 	}
 }
 
+func TestBuildProjectsFingerprintInStoryTimeWithinContext(t *testing.T) {
+	late, early := float64(5), float64(2)
+	book := timelineBook([]types.EvidenceRecord{{ID: "late-source", Text: "Friday evidence"}, {ID: "early-source", Text: "Tuesday evidence"}})
+	book.Analysis.Fingerprint = &types.StoryFingerprint{Engine: "draftline-story-fingerprint-v2", Events: []types.FingerprintEvent{
+		{ID: "late", Summary: "Friday event", EvidenceIDs: []string{"late-source"}, Kinds: []string{"state"}, ContextID: "present", StoryTime: types.StoryTime{ContextID: "present", DayOffset: &late, Label: "Friday"}, NarrativeOrder: 0},
+		{ID: "early", Summary: "Tuesday event", EvidenceIDs: []string{"early-source"}, Kinds: []string{"discovery"}, ContextID: "present", StoryTime: types.StoryTime{ContextID: "present", DayOffset: &early, Label: "Tuesday"}, NarrativeOrder: 1},
+	}}
+	result := Build(book)
+	if !result.ChronologyAvailable || len(result.Events) != 2 || result.Events[0].ID != "early" {
+		t.Fatalf("expected fingerprint story-time projection, got %#v", result)
+	}
+}
+
 func TestBuildKeepsExactSourceWhenAuthorInterpretationIsDisplayed(t *testing.T) {
 	event := record("author", 0, 10, "event", "discovery", "Hanlon found the original source.", nil)
 	event.AuthorText = "Hanlon discovers the hidden evidence."

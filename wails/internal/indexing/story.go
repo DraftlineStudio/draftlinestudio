@@ -64,7 +64,7 @@ func AnalyzeStory(book *types.BookData, progress func(types.StoryAnalysisProgres
 				ChapterTitle: item.chapter.Title,
 				Current:      current,
 				Total:        len(analyzable),
-				Percent:      65 + int(math.Round(float64(position)*34/float64(maxInt(1, len(analyzable))))),
+				Percent:      83 + int(math.Round(float64(position)*16/float64(maxInt(1, len(analyzable))))),
 			})
 		}
 		chapter := analyzeStoryChapter(item.chapter, item.index, item.text)

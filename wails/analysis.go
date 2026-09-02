@@ -43,8 +43,8 @@ func (a *App) AnalyzeBook(bookData types.BookData) types.FullAnalysisResult {
 	}
 	bookData.Analysis.Relationships = relationships
 	bookData.Analysis.Evidence = indexing.AnalyzeEvidence(&bookData, a.emitAnalysisProgress)
-	bookData.Analysis.Story = indexing.AnalyzeStory(&bookData, a.emitAnalysisProgress)
 	bookData.Analysis.Fingerprint = fingerprint.Build(&bookData, a.emitAnalysisProgress)
+	bookData.Analysis.Story = indexing.AnalyzeStory(&bookData, a.emitAnalysisProgress)
 	if bookData.Analysis.Version < 4 {
 		bookData.Analysis.Version = 4
 	}
