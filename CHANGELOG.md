@@ -4,6 +4,22 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02493] - 2026-09-01
+
+### Added
+- Introduced the versioned, source-backed **Story Fingerprint v2** archive contract. It has explicit homes for reality contexts, temporal constraints, structured assertions, consolidated events, persistent state, plot obligations, author checkpoints, canon, corrections, and diagnostics without embedding a second manuscript copy.
+- Added the first deterministic chronology pass. Manuscript order and in-universe story time are now separate values; weekday and relative-time evidence retain confidence and truth posture, and explicit past, dream, and simulation cues create distinct contexts instead of being flattened into chapter order.
+- Author-defined contexts, canon, checkpoints, and corrections survive reanalysis. A correction whose source disappears is retained as an orphan for review rather than silently applied to unrelated prose or discarded.
+
+### Changed
+- Whole-book analysis now builds the fingerprint after the shared evidence and prose passes and advances the analysis schema to version 4. Existing `.draftline` archives remain readable and gain the new model on their next analysis.
+
+### Internal
+- Added the isolated `internal/fingerprint` package so semantic analysis does not expand `app.go` or couple persistence to presentation code.
+- Added chronology regression coverage for narrative-order/story-time separation, explicit weekday placement, inferred past contexts, durable author canon, and orphaned corrections.
+
+---
+
 ## [0.16.02492] - 2026-09-01
 
 ### Added
