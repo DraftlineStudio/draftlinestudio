@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02495] - 2026-09-01
+
+### Added
+- Added plot threads based on questions, promises, goals, and threats in the story.
+- Added author checkpoints for tracking plot requirements.
+
 ## [0.16.02494] - 2026-09-01
 
 ### Changed
