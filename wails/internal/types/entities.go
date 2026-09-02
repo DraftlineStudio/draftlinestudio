@@ -90,6 +90,10 @@ type AnalysisData struct {
 	// timeline, continuity, and future Storyboard views share one evidence set.
 	Evidence *EvidenceData `json:"evidence,omitempty"`
 
+	// Fingerprint is Draftline's deterministic, source-backed semantic model.
+	// Derived records are rebuildable; AuthorModel holds durable author intent.
+	Fingerprint *StoryFingerprint `json:"fingerprint,omitempty"`
+
 	// Continuity stores only the author's decisions on continuity questions
 	// (reviewed/dismissed). The report itself is rebuilt on demand and is
 	// never persisted, so it can never drift from the manuscript.

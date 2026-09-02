@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02493] - 2026-09-01
+
+### Added
+- Added story chronology that separates story time from manuscript order.
+- Author corrections now survive reanalysis.
+
 ## [0.16.02492] - 2026-09-01
 
 ### Added
