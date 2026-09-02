@@ -4,6 +4,20 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02498] - 2026-09-01
+
+### Added
+- Redesigned the bottom bar to the v7 layout: five tabs — Story Map, Threads, Review, Continuity, Ask Draftline — over the Story Fingerprint engine, with per-tab subtitles, an undecided-detections badge on Review, and the Evidence index behind the fingerprint button.
+- Story Map: the manuscript drawn as a story-time map — era bands per reality/context, day-anchored segments with weekday ticks, and the manuscript-order path weaving across present and recalled lanes. Clicking an event opens a detail pane with its source quote, state changes, thread obligations, cast, prev/next stepping, and one-click open-in-chapter. Weakly-placed events show a dashed ring with a "Confirm Day N / Leave floating" prompt that pins the day through the author model; fulfilled checkpoints get flag lines, open threads trail off as dashed curves, and a first/last-chapter near-duplicate draws a "possible loop — see Review" loop-back. Rendering caps at the 120 most important events.
+- Threads: every story obligation plotted across story time — solid while active, sparse-dashed through dormancy gaps, dashed to the edge with OPEN flags while unresolved, ringed at resolution, REOPENED flagged in red when a resolution is contradicted, and CONVERGE bracketing where plotlines merge. Filter chips fade non-matching rows; clicking a row jumps to the opening scene.
+- Review: fingerprint detections as decision cards sorted by urgency, the top call in a wide lead column. "It's a reset" records an author simulation context; "Discard" removes an orphaned correction and rebuilds the fingerprint; reviewed/dismissed decisions persist and also dim the matching Continuity question (ids derived from the backend's hashing scheme, test-verified).
+- Continuity: redesigned as a master-detail review desk — severity-dotted issue list beside a paired "The claim" / "Established" evidence comparison, with go-to-source and decision actions carried over.
+
+### Removed
+- The Story Graph tab: the Story Map supersedes it, built from the fingerprint itself rather than the timeline projection. Its panel, derivation module, and styles were removed.
+
+---
+
 ## [0.16.02497] - 2026-09-01
 
 ### Added

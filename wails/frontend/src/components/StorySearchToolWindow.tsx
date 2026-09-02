@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAppStore } from '../store/appStore'
 import { useBookStore } from '../store/bookStore'
@@ -6,16 +6,11 @@ import type { Section } from '../types/draftline'
 import AskPanel from './storysearch/AskPanel'
 import ContinuityPanel from './storysearch/ContinuityPanel'
 import EvidenceIndexPanel from './storysearch/EvidenceIndexPanel'
-import StoryGraphPanel from './storysearch/StoryGraphPanel'
+import StoryMapPanel from './storysearch/StoryMapPanel'
+import ThreadsPanel from './storysearch/ThreadsPanel'
+import ReviewDeskPanel from './storysearch/ReviewDeskPanel'
 
-type ToolView = 'search' | 'graph' | 'continuity' | 'evidence'
-
-const HINTS: Record<ToolView, string> = {
-  search: 'Source-backed manuscript trails · no AI',
-  graph: 'Derived threads and beats · manuscript order',
-  continuity: 'Review questions · paired sources',
-  evidence: 'Everything Draftline has indexed',
-}
+type ToolView = 'map' | 'threads' | 'review' | 'continuity' | 'search' | 'evidence'
 
 /** Collapsed height of the bar; the expand toggle swaps between this and tall. */
 const TALL_HEIGHT = 560
@@ -33,11 +28,51 @@ export default function StorySearchToolWindow() {
   })))
   const [panelHeight, setPanelHeight] = useState(height)
   const [restoreHeight, setRestoreHeight] = useState(height)
-  const [activeView, setActiveView] = useState<ToolView>('search')
+  const [activeView, setActiveView] = useState<ToolView>('map')
   const [continuityCounts, setContinuityCounts] = useState<{ review: number; info: number } | null>(null)
-  // Stable identity: the panel reports counts from an effect, so a new function
-  // each render would loop.
+  const [reviewUndecided, setReviewUndecided] = useState<number | null>(null)
+  // Stable identities: the panels report counts from effects, so a new
+  // function each render would loop.
   const reportCounts = useCallback((counts: { review: number; info: number } | null) => setContinuityCounts(counts), [])
+  const reportReviewCount = useCallback((undecided: number) => setReviewUndecided(undecided), [])
+  const openThreadsTab = useCallback(() => setActiveView('threads'), [])
+
+  const fingerprint = book?.analysis?.fingerprint
+
+  // Tab badge before the Review panel has ever mounted: raw detection count
+  // minus recorded decisions.
+  const reviewBadge = useMemo(() => {
+    if (reviewUndecided !== null) return reviewUndecided
+    const diagnostics = fingerprint?.diagnostics ?? []
+    const decided = new Set((book?.analysis?.continuity?.decisions ?? []).map(d => d.signal_id))
+    return diagnostics.filter(d => !decided.has(d.id)).length
+  }, [reviewUndecided, fingerprint, book?.analysis?.continuity?.decisions])
+
+  const subtitle = useMemo(() => {
+    switch (activeView) {
+      case 'map': {
+        const events = fingerprint?.events?.length ?? 0
+        return events > 0
+          ? `story time · ${events} events · the manuscript path weaves through it`
+          : 'story time · builds after analysis runs'
+      }
+      case 'threads': {
+        const threads = fingerprint?.threads ?? []
+        if (threads.length === 0) return 'obligations the story has opened'
+        const open = threads.filter(t => !['resolved', 'abandoned'].includes(t.state)).length
+        const dormant = threads.filter(t => t.state === 'dormant').length
+        return `${threads.length} threads · ${open} open${dormant ? ` · ${dormant} dormant` : ''}`
+      }
+      case 'review':
+        return `${reviewBadge} detection${reviewBadge === 1 ? '' : 's'} · deterministic · sorted by severity`
+      case 'continuity':
+        return 'review questions · paired sources'
+      case 'search':
+        return 'answers assembled from evidence · source-backed · no AI'
+      case 'evidence':
+        return 'everything Draftline has indexed'
+    }
+  }, [activeView, fingerprint, reviewBadge])
 
   function beginResize(event: React.PointerEvent<HTMLDivElement>) {
     event.preventDefault()
@@ -80,26 +115,37 @@ export default function StorySearchToolWindow() {
   const evidenceCount = book?.analysis?.evidence?.records.length ?? 0
 
   return (
-    <section className="story-search-window" style={{ height: panelHeight }} aria-label="Ask Draftline and Story Graph">
+    <section className="story-search-window" style={{ height: panelHeight }} aria-label="Story tools">
       <div className="story-search-resizer" onPointerDown={beginResize} />
       <header className="story-search-header">
-        <Tab view="search" active={activeView} onSelect={setActiveView} label="Ask Draftline">
+        <Tab view="map" active={activeView} onSelect={setActiveView} label="Story Map">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
+            <path d="M3 12h4l2-7 4 14 2-7h6" />
           </svg>
         </Tab>
-        <Tab view="graph" active={activeView} onSelect={setActiveView} label="Story Graph">
+        <Tab view="threads" active={activeView} onSelect={setActiveView} label="Threads">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="5" cy="6" r="2.2" /><circle cx="12" cy="12" r="2.2" /><circle cx="19" cy="6" r="2.2" /><path d="M7 7.5l3 3M14 10.5l3-3" />
+            <path d="M5 4v13M5 6h11l-2 3.5L16 13H5" />
           </svg>
+        </Tab>
+        <Tab view="review" active={activeView} onSelect={setActiveView} label="Review">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3l9 5-9 5-9-5 9-5M3 13l9 5 9-5" />
+          </svg>
+          {reviewBadge > 0 && <small className="story-search-tab-badge">{reviewBadge > 99 ? '99+' : reviewBadge}</small>}
         </Tab>
         <Tab view="continuity" active={activeView} onSelect={setActiveView} label="Continuity">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="9" /><path d="M8.5 12l2.5 2.5 4.5-5" />
           </svg>
         </Tab>
+        <Tab view="search" active={activeView} onSelect={setActiveView} label="Ask Draftline">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
+          </svg>
+        </Tab>
 
-        <span className="story-search-header-hint">{HINTS[activeView]}</span>
+        <span className="story-search-header-hint">{subtitle}</span>
         <div className="story-search-header-spacer" />
 
         {activeView === 'continuity' && continuityCounts && (
@@ -112,7 +158,7 @@ export default function StorySearchToolWindow() {
         <button
           type="button"
           className={`story-search-icon-btn ${activeView === 'evidence' ? 'active' : ''}`}
-          onClick={() => setActiveView(activeView === 'evidence' ? 'search' : 'evidence')}
+          onClick={() => setActiveView(activeView === 'evidence' ? 'map' : 'evidence')}
           title={`All deterministic detections${evidenceCount ? ` · ${evidenceCount} records` : ''}`}
           aria-label="Open all deterministic detections"
         >
@@ -153,9 +199,11 @@ export default function StorySearchToolWindow() {
         </button>
       </header>
 
-      {activeView === 'search' && book && <AskPanel book={book} onNavigate={navigateSource} />}
-      {activeView === 'graph' && book && <StoryGraphPanel book={book} onNavigate={navigateSource} onOpenCodex={() => setViewMode('cast')} />}
+      {activeView === 'map' && book && <StoryMapPanel book={book} onNavigate={navigateSource} />}
+      {activeView === 'threads' && book && <ThreadsPanel book={book} onNavigate={navigateSource} />}
+      {activeView === 'review' && book && <ReviewDeskPanel book={book} onNavigate={navigateSource} onCount={reportReviewCount} onOpenThreads={openThreadsTab} />}
       {activeView === 'continuity' && book && <ContinuityPanel book={book} onNavigate={navigateSource} onCounts={reportCounts} />}
+      {activeView === 'search' && book && <AskPanel book={book} onNavigate={navigateSource} />}
       {activeView === 'evidence' && book && <EvidenceIndexPanel book={book} onNavigate={navigateSource} />}
     </section>
   )

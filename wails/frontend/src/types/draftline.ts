@@ -276,6 +276,10 @@ export interface AnalysisData {
   story?: StoryAnalysisData
   evidence?: EvidenceData
   continuity?: ContinuityData
+  // Story Fingerprint v2 — full contract lives in the generated bindings
+  // (wailsjs/go/models.ts types.StoryFingerprint); typed there to avoid
+  // hand-mirroring a large evolving surface.
+  fingerprint?: import('../../wailsjs/go/models').types.StoryFingerprint
   // Future analysis types:
   // plot_analysis?: PlotAnalysisData
   // theme_analysis?: ThemeAnalysisData
