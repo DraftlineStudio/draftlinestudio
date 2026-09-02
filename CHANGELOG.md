@@ -4,6 +4,23 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02494] - 2026-09-01
+
+### Added
+- Story Fingerprint assertions now preserve subject, action, object, polarity, confidence, reality context, and whether a statement is narration, dialogue claim, memory, belief, suspicion, or dream material. Knowledge and lack-of-knowledge claims remain distinct instead of becoming one undifferentiated fact.
+- Added typed state intervals for physical presence, durable attributes, physical custody, knowledge, and belief. Persistent facts can span chapters; passage presence closes conservatively at the chapter boundary unless later analysis provides a stronger transition.
+
+### Changed
+- Adjacent evidence describing one occurrence now consolidates into a single fingerprint event with all supporting source IDs. This removes the one-sentence/one-node failure mode while retaining drill-down evidence.
+- Fingerprint events receive composite identities derived from context, chapter, participants, action, and normalized source content. Compatible prior events retain author-written summaries after reanalysis.
+- Event summaries are now mechanically constructed from extracted roles when possible; raw source text remains attached as evidence rather than being treated as the display model.
+
+### Internal
+- Split semantic extraction into focused assertion, event-consolidation, persistent-state, chronology, and identity modules under `internal/fingerprint`; no orchestration was added to `app.go`.
+- Added regression tests for multi-sentence event consolidation, claim/negation posture, persistent character attributes, and bounded physical presence.
+
+---
+
 ## [0.16.02493] - 2026-09-01
 
 ### Added

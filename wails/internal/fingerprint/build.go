@@ -39,7 +39,10 @@ func Build(book *types.BookData, progress func(types.StoryAnalysisProgress)) *ty
 	result.TemporalConstraints = inferTemporalConstraints(records, contextByEvidence)
 	points, diagnostics := solveTemporal(records, contextByEvidence, result.TemporalConstraints)
 	result.Diagnostics = append(result.Diagnostics, diagnostics...)
-	result.Events = seedEvents(book, records, contextByEvidence, points)
+	result.Assertions = buildAssertions(records, contextByEvidence)
+	seeded := seedEvents(book, records, contextByEvidence, points)
+	result.Events = consolidateEvents(seeded, records, result.Assertions, prior)
+	result.States = buildStates(result.Events, records, result.Assertions)
 	reconcileCorrections(result)
 	if progress != nil {
 		progress(types.StoryAnalysisProgress{Phase: "chronology", Message: "Chronology model current", Current: len(records), Total: len(records), Percent: 82})
