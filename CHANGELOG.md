@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.16.02497] - 2026-09-01
+
+### Added
+- Added character voice profiles built from attributed dialogue.
+- Added per-character voice notes.
+
 ## [0.16.02496] - 2026-09-01
 
 ### Added

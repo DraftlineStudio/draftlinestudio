@@ -30,6 +30,14 @@ func Query(book types.BookData, request types.FingerprintQueryRequest) types.Fin
 	}
 	lower := strings.ToLower(query)
 	switch {
+	case strings.Contains(lower, "voice") || strings.Contains(lower, "dialect") || strings.Contains(lower, "speak") || strings.Contains(lower, "vernacular"):
+		answer.Interpretation = "character voice and speaking traits"
+		answer.Voices = rankedVoices(model.Voices, query, limit)
+		if len(answer.Voices) > 0 {
+			profile := answer.Voices[0]
+			answer.Answer = fmt.Sprintf("%s has %d attributed dialogue samples averaging %.1f words; %.1f%% contractions.", profile.CharacterName, profile.SampleCount, profile.AverageWords, profile.ContractionPercent)
+			answer.Confidence = profile.Confidence
+		}
 	case strings.Contains(lower, "open thread") || strings.Contains(lower, "unresolved") || strings.Contains(lower, "loose thread"):
 		answer.Interpretation = "unresolved story obligations"
 		for _, thread := range model.Threads {
@@ -81,6 +89,38 @@ func Query(book types.BookData, request types.FingerprintQueryRequest) types.Fin
 		answer.Answer = "The current fingerprint does not contain enough matching evidence to answer that confidently."
 	}
 	return answer
+}
+
+type scoredVoice struct {
+	score float64
+	voice types.CharacterVoiceProfile
+}
+
+func rankedVoices(voices []types.CharacterVoiceProfile, query string, limit int) []types.CharacterVoiceProfile {
+	tokens := meaningfulTokens(query)
+	items := []scoredVoice{}
+	for _, voice := range voices {
+		text := voice.CharacterName
+		if voice.AuthorNotes != nil {
+			text += " " + voice.AuthorNotes.Dialect + " " + strings.Join(voice.AuthorNotes.Vernacular, " ") + " " + strings.Join(voice.AuthorNotes.SpeakingTraits, " ")
+		}
+		for _, signal := range voice.DialectSignals {
+			text += " " + signal.Label
+		}
+		score := tokenOverlap(tokens, meaningfulTokens(text))
+		if score > .05 {
+			items = append(items, scoredVoice{score, voice})
+		}
+	}
+	sort.SliceStable(items, func(i, j int) bool { return items[i].score > items[j].score })
+	result := []types.CharacterVoiceProfile{}
+	for _, item := range items {
+		result = append(result, item.voice)
+		if len(result) >= limit {
+			break
+		}
+	}
+	return result
 }
 
 type scoredEvent struct {

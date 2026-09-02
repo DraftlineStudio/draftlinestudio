@@ -16,6 +16,7 @@ type StoryFingerprint struct {
 	Threads             []StoryThread           `json:"threads"`
 	Diagnostics         []FingerprintDiagnostic `json:"diagnostics"`
 	Profiles            []StoryProfile          `json:"profiles,omitempty"`
+	Voices              []CharacterVoiceProfile `json:"voices,omitempty"`
 	AuthorModel         StoryAuthorModel        `json:"author_model"`
 }
 
@@ -24,6 +25,59 @@ type StoryProfile struct {
 	Label      string  `json:"label"`
 	Confidence float64 `json:"confidence"`
 	Source     string  `json:"source"` // inferred | author
+}
+
+// CharacterVoiceProfile describes recurring, source-backed speaking habits.
+// DialectSignal labels name observable text features, not demographic or
+// regional identities that cannot be established safely from prose alone.
+type CharacterVoiceProfile struct {
+	CharacterID        string               `json:"character_id"`
+	CharacterName      string               `json:"character_name"`
+	SampleCount        int                  `json:"sample_count"`
+	WordCount          int                  `json:"word_count"`
+	AverageWords       float64              `json:"average_words"`
+	ContractionPercent float64              `json:"contraction_percent"`
+	QuestionPercent    float64              `json:"question_percent"`
+	ExclamationPercent float64              `json:"exclamation_percent"`
+	Vocabulary         []VoiceTerm          `json:"vocabulary,omitempty"`
+	AddressForms       []VoiceTerm          `json:"address_forms,omitempty"`
+	DialectSignals     []VoiceSignal        `json:"dialect_signals,omitempty"`
+	Samples            []DialogueSample     `json:"samples,omitempty"`
+	Confidence         float64              `json:"confidence"`
+	AuthorNotes        *CharacterVoiceNotes `json:"author_notes,omitempty"`
+}
+
+type DialogueSample struct {
+	ID             string  `json:"id"`
+	Text           string  `json:"text"`
+	ChapterID      string  `json:"chapter_id"`
+	ChapterIndex   int     `json:"chapter_index"`
+	ChapterTitle   string  `json:"chapter_title"`
+	StartOffset    int     `json:"start_offset"`
+	AttributionCue string  `json:"attribution_cue"`
+	Confidence     float64 `json:"confidence"`
+}
+
+type VoiceTerm struct {
+	Text  string `json:"text"`
+	Count int    `json:"count"`
+}
+
+type VoiceSignal struct {
+	Kind       string   `json:"kind"`
+	Label      string   `json:"label"`
+	Count      int      `json:"count"`
+	Examples   []string `json:"examples,omitempty"`
+	Confidence float64  `json:"confidence"`
+}
+
+type CharacterVoiceNotes struct {
+	CharacterID    string   `json:"character_id"`
+	Dialect        string   `json:"dialect,omitempty"`
+	Vernacular     []string `json:"vernacular,omitempty"`
+	SpeakingTraits []string `json:"speaking_traits,omitempty"`
+	Avoids         []string `json:"avoids,omitempty"`
+	Notes          string   `json:"notes,omitempty"`
 }
 
 // StoryContext separates incompatible clocks or realities without assuming
@@ -184,6 +238,7 @@ type StoryAuthorModel struct {
 	Canon       []CanonRule             `json:"canon,omitempty"`
 	Corrections []FingerprintCorrection `json:"corrections,omitempty"`
 	Profiles    []string                `json:"profiles,omitempty"`
+	VoiceNotes  []CharacterVoiceNotes   `json:"voice_notes,omitempty"`
 }
 
 type FingerprintDiagnostic struct {
@@ -213,6 +268,7 @@ type FingerprintQueryAnswer struct {
 	States         []StoryStateInterval    `json:"states,omitempty"`
 	Threads        []StoryThread           `json:"threads,omitempty"`
 	Diagnostics    []FingerprintDiagnostic `json:"diagnostics,omitempty"`
+	Voices         []CharacterVoiceProfile `json:"voices,omitempty"`
 	EvidenceIDs    []string                `json:"evidence_ids,omitempty"`
 	Confidence     float64                 `json:"confidence"`
 }
