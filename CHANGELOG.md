@@ -4,6 +4,22 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.16.02495] - 2026-09-01
+
+### Added
+- Added deterministic obligation-based plot threads for questions, promises, goals, threats, mysteries, and explicitly separated temporal/reality contexts. Threads retain their opening evidence, subsequent contributing events, entity participants, dormancy, partial progress, convergence, and conservative resolution.
+- Added author checkpoints with multiple positive requirements, negative conditions, and optional before/after chapter windows. A matching passage produces `partial` or `proposed` status; Draftline never silently declares the author's milestone fulfilled.
+- Added overlapping inferred analysis profiles for domains such as police procedural, mystery/thriller, speculative science fiction, military science fiction, and romance. Author-declared profiles remain authoritative while deterministic profiles stay visibly inferred.
+
+### Changed
+- Plot-thread identity is now based on narrative obligations and their evidence trail instead of recurring words or exact cast combinations. A later event can connect multiple prior obligations and expose their convergence.
+- Thread resolution is deliberately conservative: related evidence advances an obligation, while explicit result language plus sufficiently matching subject matter is required to resolve it. Long manuscript gaps leave a visible dormant thread rather than dropping it.
+
+### Internal
+- Added isolated profile, obligation/thread, and checkpoint evaluators plus regression coverage for promises resolved by later events, partially met multi-criterion checkpoints, and multi-genre manuscripts.
+
+---
+
 ## [0.16.02494] - 2026-09-01
 
 ### Added

@@ -15,7 +15,15 @@ type StoryFingerprint struct {
 	States              []StoryStateInterval    `json:"states"`
 	Threads             []StoryThread           `json:"threads"`
 	Diagnostics         []FingerprintDiagnostic `json:"diagnostics"`
+	Profiles            []StoryProfile          `json:"profiles,omitempty"`
 	AuthorModel         StoryAuthorModel        `json:"author_model"`
+}
+
+type StoryProfile struct {
+	ID         string  `json:"id"`
+	Label      string  `json:"label"`
+	Confidence float64 `json:"confidence"`
+	Source     string  `json:"source"` // inferred | author
 }
 
 // StoryContext separates incompatible clocks or realities without assuming
