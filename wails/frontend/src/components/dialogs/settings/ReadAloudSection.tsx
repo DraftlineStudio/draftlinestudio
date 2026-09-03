@@ -138,7 +138,7 @@ export default function ReadAloudSection({
       <div className="dialog-field">
         <label className="dialog-label">Speed</label>
         <select className="dialog-select" value={String(Math.round(speed * 10) / 10)} onChange={e => setSpeed(Number(e.target.value))}>
-          {SPEED_STEPS.map(s => <option key={s} value={String(s)}>{s.toFixed(1)}× {s === 1.2 ? '(default)' : s === 1.0 ? '(natural)' : ''}</option>)}
+          {SPEED_STEPS.map(s => <option key={s} value={String(s)}>{s.toFixed(1)}× {s === 1.1 ? '(default)' : s === 1.0 ? '(natural)' : ''}</option>)}
         </select>
       </div>
 
