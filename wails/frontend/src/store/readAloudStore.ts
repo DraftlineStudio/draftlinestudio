@@ -336,8 +336,12 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
         const ctrl = ensureController()
         // If the buffer was pre-filled for exactly this queue while the
         // player sat open, arm it — first audio is already synthesized.
+        // Only valid from the top: beginPlayback always plays from the
+        // prepared start (0), so any other startUnit must fall through to a
+        // fresh start() at the requested position.
         if (
-          ctrl.isPreparedFor(units.length)
+          startUnit === 0
+          && ctrl.isPreparedFor(units.length)
           && currentUnits.length === units.length
           && currentUnits.every((u, i) => u.text === units[i].text)
           && ctrl.beginPlayback()

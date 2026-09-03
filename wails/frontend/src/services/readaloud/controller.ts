@@ -60,9 +60,14 @@ const CACHE_BEHIND = 4
 
 export interface ControllerEvents {
   onStatus(status: ControllerStatus): void
-  onSentenceStart(index: number): void
+  // durationSec is the audible length of the unit that just started (0 when
+  // its chunk is unexpectedly absent).
+  onSentenceStart(index: number, durationSec: number): void
   onError(message: string): void
   onFinished(): void
+  // Fired whenever a unit's audio lands in the cache — the raw material for
+  // elapsed/remaining time estimation. Optional; playback ignores it.
+  onUnitAudio?(index: number, durationSec: number): void
 }
 
 export interface ControllerOptions {
@@ -74,6 +79,10 @@ export class ReadAloudController {
   private status: ControllerStatus = 'idle'
   private sentences: string[] = []
   private voice = ''
+  // Per-unit voice overrides (cast mode): index-aligned with sentences; null
+  // entries fall back to the base voice. null altogether = base voice only,
+  // and every code path behaves exactly as before overrides existed.
+  private voiceOverrides: (string | null)[] | null = null
   private speed = 1
   private generation = 0
   private nextRequestId = 1
@@ -104,7 +113,7 @@ export class ReadAloudController {
   // autoplay=false prepares: the producer pre-fills the buffer from
   // startIndex but nothing becomes audible until beginPlayback(). Used to
   // warm the pipeline the moment the player opens, before play is pressed.
-  start(sentences: string[], startIndex: number, voice: string, speed: number, autoplay = true): void {
+  start(sentences: string[], startIndex: number, voice: string, speed: number, autoplay = true, voiceOverrides: (string | null)[] | null = null): void {
     this.reset()
     if (!sentences.length) {
       if (autoplay) this.events.onFinished()
@@ -112,6 +121,7 @@ export class ReadAloudController {
     }
     this.sentences = sentences
     this.voice = voice
+    this.voiceOverrides = voiceOverrides
     this.speed = speed
     const clamped = Math.max(0, Math.min(startIndex, sentences.length - 1))
     this.preparedStart = clamped
@@ -186,6 +196,18 @@ export class ReadAloudController {
     this.reprimeLookahead()
   }
 
+  // Replaces the per-unit voice map (cast changes mid-play or while
+  // prepared). Cheap no-op when the effective per-unit voices are unchanged.
+  setVoiceOverrides(next: (string | null)[] | null): void {
+    const prev = this.voiceOverrides
+    const allNull = (o: (string | null)[] | null) => !o || o.every(v => v === null)
+    const unchanged = prev === next
+      || (allNull(prev) && allNull(next))
+      || (!!prev && !!next && prev.length === next.length && prev.every((v, i) => v === next[i]))
+    this.voiceOverrides = next
+    if (!unchanged) this.reprimeLookahead()
+  }
+
   setSpeed(speed: number): void {
     if (speed === this.speed) return
     this.speed = speed
@@ -205,6 +227,11 @@ export class ReadAloudController {
     this.softReset()
     this.cache.clear()
     this.sentences = []
+    this.voiceOverrides = null
+  }
+
+  private effectiveVoice(index: number): string {
+    return this.voiceOverrides?.[index] ?? this.voice
   }
 
   // Teardown that keeps the cache (skip back can replay instantly).
@@ -251,7 +278,7 @@ export class ReadAloudController {
     if (index >= this.sentences.length || this.cache.has(index)) return
     if (this.pendingSynth.has(index)) return
     const generation = this.generation
-    const voice = this.voice
+    const voice = this.effectiveVoice(index)
     const speed = this.speed
     const id = this.nextRequestId++
     this.pendingSynth.set(index, id)
@@ -260,11 +287,12 @@ export class ReadAloudController {
         if (generation !== this.generation || this.pendingSynth.get(index) !== id) return
         this.pendingSynth.delete(index)
         // A voice/speed change while synthesizing makes this chunk stale.
-        if (voice !== this.voice || speed !== this.speed) {
+        if (voice !== this.effectiveVoice(index) || speed !== this.speed) {
           this.request(index)
           return
         }
         this.cache.set(index, chunk)
+        this.events.onUnitAudio?.(index, chunk.sampleRate > 0 ? chunk.samples.length / chunk.sampleRate : 0)
         this.deliver(index, chunk)
         this.tryStartWaiting()
         // Producer pump: every completed unit immediately requests the next
@@ -341,7 +369,8 @@ export class ReadAloudController {
     if (this.scheduledNext?.index === index) this.scheduledNext = null
     this.playingIndex = index
     if (this.status !== 'paused') this.setStatus('playing')
-    this.events.onSentenceStart(index)
+    const chunk = this.cache.get(index)
+    this.events.onSentenceStart(index, chunk && chunk.sampleRate > 0 ? chunk.samples.length / chunk.sampleRate : 0)
     // Evict chunks that have fallen behind the replay window so long plays
     // hold a bounded number of audio buffers.
     for (const cachedIndex of this.cache.keys()) {
@@ -386,7 +415,17 @@ export class ReadAloudController {
 
   // After a voice/speed change: keep what is audible, rebuild the lookahead.
   private reprimeLookahead(): void {
-    if (this.status === 'idle') return
+    if (this.status === 'idle') {
+      // A prepared (autoplay=false) queue sits at status idle but owns cached
+      // audio and in-flight requests in the OLD voice/speed. Silently re-fill
+      // the buffer with the new parameters so arming it never plays stale
+      // chunks.
+      if (this.preparedStart === null) return
+      this.cache.clear()
+      this.cancelPending()
+      this.topUp()
+      return
+    }
     this.cache.clear()
     this.cancelPending()
     if (this.scheduledNext) {
