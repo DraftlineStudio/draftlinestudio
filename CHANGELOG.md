@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02503] - 2026-09-03
+
+### Added
+- Added offline voice synthesis for Read Aloud.
+
 ## [0.17.02502] - 2026-09-03
 
 ### Added
