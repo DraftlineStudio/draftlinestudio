@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02507] - 2026-09-03
+
+### Changed
+- Updated `docs/frontend/READ-ALOUD.md` for the reworked plugin: the docked player bar and rail-icon entry points, the explicit CPU/WASM q8 device policy with the experimental GPU opt-in, and the load-time diagnostic sequence.
+
+---
+
 ## [0.17.02506] - 2026-09-03
 
 ### Fixed

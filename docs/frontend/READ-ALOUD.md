@@ -23,7 +23,7 @@ Go downloader (internal/readaloud: pinned manifest, sha256, cancel/resume)
         ↓ installs to UserCacheDir/draftline/models/kokoro
 Wails AssetServer fallback Handler  →  GET /readaloud-models/*  (read-only, traversal-proof)
         ↓ fetched by
-readAloud.worker.ts (module worker: kokoro-js + transformers.js, WebGPU→WASM probe)
+readAloud.worker.ts (module worker: kokoro-js + transformers.js, explicit wasm+q8)
         ↓ Float32Array chunks (transferred)
 ReadAloudController (pure state machine: lookahead-1, gapless, generation-guarded)
         ↓ AudioChunks                     ↓ sentence index
@@ -37,23 +37,28 @@ WebAudioPort (one AudioContext clock)   ReadAloud extension (ProseMirror decorat
 
 ## Controls
 
+The player is a **bar docked at the bottom of the editor column** (the bottom counterpart of the chapter find bar), opened from the **rail icon pinned at the very bottom of the tools sidebar**. While the plugin is disabled neither exists; while the voice model is missing the rail icon carries a setup badge and both it and the bar's "Set up" button deep-link to Settings → Read Aloud (the AI Studio setup pattern).
+
 | Action | Where |
 |---|---|
-| Read selection / from cursor | Toolbar speaker button, or **Ctrl+Shift+L** |
-| Read chapter | Play button in the floating player when idle |
-| Pause / resume | Player, or **Ctrl+Shift+L** while active |
-| Skip ±1 sentence | Player, or **Ctrl+Shift+.** / **Ctrl+Shift+,** |
+| Open / close the player bar | Rail icon (bottom of the tools sidebar), or the bar's × |
+| Read from cursor | Bar play button, or **Ctrl+Shift+L** |
+| Read chapter | "Read chapter" button in the bar when idle |
+| Pause / resume | Bar, or **Ctrl+Shift+L** while active |
+| Skip ±1 sentence | Bar, or **Ctrl+Shift+.** / **Ctrl+Shift+,** |
 | Jump to a sentence | Click it in the editor while playing |
-| Stop | Player stop button; editing, switching chapters, or closing the player also stops |
-| Voice / speed (0.8×–1.6×, default 1.2×) | Player dropdowns or Settings → Read Aloud; persisted |
+| Stop | Bar stop button; editing, switching chapters, or closing the bar also stops |
+| Voice / speed (0.8×–1.6×, default 1.2×) | Bar dropdowns or Settings → Read Aloud; persisted |
 
 ## Segmentation rules
 
 Sentence-final punctuation inside closing quotes (`"Go away." Then he left.`); `?!` clusters; abbreviation and single-capital-initial suppression (`Mr.`, `J. R. R.`); decimals; `No.` only before a number; ellipses continue when prose resumes lowercase and end before a capital; em dashes never terminate; block boundaries always do. Ambiguity leans toward *not* splitting — a missed split just reads two sentences in one breath. Tests: `segmentation.test.ts` (26 cases), `controller.test.ts` (15 state-machine cases with fake ports), plus Go download/handler/security tests in `internal/readaloud`.
 
-## Device selection
+## Device selection & diagnostics
 
-If WebGPU is available the worker loads the q8 model on it and smoke-tests one utterance (some WebGPU stacks produce NaN/silence); on any failure it falls back to WASM and remembers the choice (`localStorage['draftline.readaloud.device']`). Without cross-origin isolation the WASM path runs single-threaded. Expectations: Windows WebView2 — WebGPU likely; macOS WKWebView and Linux WebKitGTK — usually WASM. The WASM fallback is the baseline the feature is built against.
+Synthesis runs on **CPU (WASM) with the q8 model, explicitly, on every platform** — never autodetected. WebGPU passed a naive load-time smoke test on real hardware while producing badly distorted audio, so it is only available as the explicit "GPU — experimental" option under Settings → Read Aloud → Performance, alongside a threads option (Single recommended / Auto; without cross-origin isolation WASM is single-threaded regardless). Device/thread changes tear the worker down and apply on the next playback session.
+
+Every model load logs a fixed diagnostic sequence — to the WebView console (`[readaloud]` prefix) and to the Diagnostics readout in settings: `navigator.gpu` presence; resolved device and dtype; `crossOriginIsolated`; ONNX-runtime wasm `numThreads`/`simd`; each runtime `.wasm` file actually fetched; model load time; and the wall time of the first synthesized sentence.
 
 ## Limitations
 
@@ -64,4 +69,4 @@ If WebGPU is available the worker loads the q8 model on it and smoke-tests one u
 
 ## File map
 
-Go: `internal/readaloud/{manifest,download,status,handler}.go`, bound methods in `wails/readaloud.go`, handler mounted in `main.go`. Frontend: `store/readAloudStore.ts`, `services/readaloud/{segmentation,docSentences,controller,tts,audio,voices}.ts`, `workers/readAloud.worker.ts`, `extensions/ReadAloud.ts`, `components/editor/ReadAloudPlayer.tsx`, settings in `components/dialogs/settings/ReadAloudSection.tsx`, styles under the `read-aloud-` prefix in `global.css`.
+Go: `internal/readaloud/{manifest,download,status,handler}.go`, bound methods in `wails/readaloud.go`, handler mounted in `main.go`. Frontend: `store/readAloudStore.ts`, `services/readaloud/{segmentation,docSentences,controller,tts,audio,voices}.ts`, `workers/readAloud.worker.ts`, `extensions/ReadAloud.ts`, `components/editor/ReadAloudBar.tsx` (docked player bar), the rail icon in `components/ToolsPanel.tsx`, settings in `components/dialogs/settings/ReadAloudSection.tsx`, styles under the `read-aloud-` prefix in `global.css`.
