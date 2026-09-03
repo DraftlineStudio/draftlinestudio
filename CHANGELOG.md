@@ -4,6 +4,17 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02503] - 2026-09-03
+
+### Added
+- The complete Read Aloud synthesis pipeline: a lazily created module worker loads Kokoro-82M strictly from the locally installed bundle (remote models disabled, onnxruntime `.wasm` served from the same local path, and kokoro-js's hardcoded Hugging Face voice URLs rewritten to local ones — after the one-time download the pipeline cannot touch the network), tries WebGPU with a smoke-test probe and falls back to WASM, and remembers the working device. Sentences play gaplessly through one AudioContext clock with exactly one sentence of synthesis lookahead.
+- Playback lives in a pure, port-injected controller: pause/resume suspend the audio clock; skip/jump cancel in-flight synthesis and restart at the target (replaying cached sentences instantly); voice or speed changes keep the audible sentence and re-synthesize only the lookahead; a generation counter makes stale audio unplayable. `readAloudStore` now drives it and exposes playback state to the UI landing next build.
+
+### Internal
+- `@huggingface/transformers` is pinned to the exact version kokoro-js resolves so both share one `env` instance; the worker configures that env directly (kokoro's own `env` re-export only forwards `wasmPaths`). Vite builds workers in ES format for code-splitting, excludes both libraries from pre-bundling, and drops the 21 MB onnxruntime `.wasm` that `import.meta.url` references would otherwise copy into the embedded `dist`. Controller behavior is covered by 15 fake-port state-machine tests.
+
+---
+
 ## [0.17.02502] - 2026-09-03
 
 ### Added
