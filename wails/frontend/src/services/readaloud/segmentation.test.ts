@@ -224,7 +224,7 @@ describe('collectSentences', () => {
     expect(splitLeadClause({ from: 0, to: 26, text: 'No clause breaks in here..' })).toHaveLength(1)
   })
 
-  it('splits long sentences into clause units that map back to their sentence', () => {
+  it('keeps ordinary multi-clause sentences whole for natural prosody', () => {
     const long = 'When the rain finally stopped falling over the ruined harbor town, the people came out slowly from their basements and doorways, blinking at the grey morning light, and nobody said a single word about the night before.'
     const short = 'Nobody slept.'
     const sentences = [
@@ -232,14 +232,9 @@ describe('collectSentences', () => {
       { from: long.length + 1, to: long.length + 1 + short.length, text: short },
     ]
     const units = buildGenerationUnits(sentences, 0)
-    // The 38-word sentence splits; the short one stays whole.
+    // Splitting normal prose at commas makes Kokoro reset its cadence.
     const firstSentenceUnits = units.filter(u => u.sentenceIndex === 0)
-    expect(firstSentenceUnits.length).toBeGreaterThan(1)
-    for (const unit of firstSentenceUnits) {
-      expect(unit.text.split(/\s+/).filter(Boolean).length).toBeLessThanOrEqual(25 + 4)
-    }
-    // Reassembled text loses only the cut whitespace.
-    expect(firstSentenceUnits.map(u => u.text).join(' ').replace(/\s+/g, ' ')).toBe(long.replace(/\s+/g, ' '))
+    expect(firstSentenceUnits).toEqual([{ text: long, sentenceIndex: 0 }])
     expect(units.filter(u => u.sentenceIndex === 1)).toHaveLength(1)
     // Unit lookup for sentence-level skip/jump.
     expect(firstUnitOfSentence(units, 0)).toBe(0)
@@ -247,11 +242,10 @@ describe('collectSentences', () => {
     expect(firstUnitOfSentence(units, 2)).toBe(-1)
   })
 
-  it('keeps the lead unit of the start sentence short for fast first audio', () => {
+  it('does not sacrifice the opening sentence cadence for a faster fragment', () => {
     const text = 'When the rain stopped, the whole town came out to see what was left of the harbor and the boats.'
     const units = buildGenerationUnits([{ from: 0, to: text.length, text }], 0)
-    expect(units[0].text).toBe('When the rain stopped,')
-    expect(units.length).toBeGreaterThan(1)
+    expect(units).toEqual([{ text, sentenceIndex: 0 }])
   })
 
   it('leaves an unbreakable long sentence whole rather than cutting mid-clause', () => {

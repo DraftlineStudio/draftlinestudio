@@ -11,7 +11,7 @@ import (
 
 // bundleVersion stamps the on-disk manifest; bump when the pinned artifact
 // set changes so old installs read as needing repair rather than verified.
-const bundleVersion = "1"
+const bundleVersion = "2"
 
 const manifestFileName = "manifest.json"
 
@@ -34,15 +34,16 @@ type ManifestEntry struct {
 
 // VerifyResult reports a full-hash audit of the install.
 type VerifyResult struct {
-	Installed   bool     `json:"installed"`    // any core file present at all
-	Verified    bool     `json:"verified"`     // every core file hash-matches
-	GPUVerified bool     `json:"gpu_verified"` // fp32 model present AND hash-matches
-	Version     string   `json:"version"`
-	InstalledAt string   `json:"installed_at"`
-	Bytes       int64    `json:"bytes"` // verified bytes on disk
-	Corrupt     []string `json:"corrupt,omitempty"`
-	Missing     []string `json:"missing,omitempty"`
-	Error       string   `json:"error,omitempty"`
+	Installed      bool     `json:"installed"`    // any core file present at all
+	Verified       bool     `json:"verified"`     // every core file hash-matches
+	GPUVerified    bool     `json:"gpu_verified"` // fp32 model present AND hash-matches
+	NativeVerified bool     `json:"native_verified"`
+	Version        string   `json:"version"`
+	InstalledAt    string   `json:"installed_at"`
+	Bytes          int64    `json:"bytes"` // verified bytes on disk
+	Corrupt        []string `json:"corrupt,omitempty"`
+	Missing        []string `json:"missing,omitempty"`
+	Error          string   `json:"error,omitempty"`
 }
 
 // WriteInstalledManifest records the currently hash-verified files. Called
@@ -50,7 +51,7 @@ type VerifyResult struct {
 // during Verify when the files themselves check out.
 func WriteInstalledManifest(dir string) error {
 	manifest := InstalledManifest{
-		ModelID:     "onnx-community/Kokoro-82M-v1.0-ONNX@" + kokoroRevision[:12],
+		ModelID:     "draftline-kokoro-local-bundle",
 		Version:     bundleVersion,
 		InstalledAt: time.Now().UTC().Format(time.RFC3339),
 		Files:       []ManifestEntry{},
@@ -89,6 +90,8 @@ func Verify(dir string) VerifyResult {
 	result := VerifyResult{Corrupt: []string{}, Missing: []string{}}
 	gpuPresent := false
 	gpuOK := true
+	nativePresent := NativeSupported()
+	nativeOK := NativeSupported()
 	for _, art := range Manifest() {
 		path := filepath.Join(dir, filepath.FromSlash(art.Name))
 		info, statErr := os.Stat(path)
@@ -106,6 +109,25 @@ func Verify(dir string) VerifyResult {
 			}
 			if sum, err := sha256File(path); err != nil || sum != art.SHA256 {
 				gpuOK = false
+				result.Corrupt = append(result.Corrupt, art.Name)
+				continue
+			}
+			result.Bytes += info.Size()
+			continue
+		}
+		if art.Group == GroupNative {
+			if !present {
+				nativePresent = false
+				nativeOK = false
+				continue
+			}
+			if info.Size() != art.Bytes {
+				nativeOK = false
+				result.Corrupt = append(result.Corrupt, art.Name)
+				continue
+			}
+			if sum, err := sha256File(path); err != nil || sum != art.SHA256 {
+				nativeOK = false
 				result.Corrupt = append(result.Corrupt, art.Name)
 				continue
 			}
@@ -130,6 +152,10 @@ func Verify(dir string) VerifyResult {
 	}
 	result.Verified = result.Installed && len(result.Missing) == 0 && !hasCoreCorruption(result.Corrupt)
 	result.GPUVerified = gpuPresent && gpuOK
+	// The archive is not usable until its eSpeak data has also been safely
+	// extracted. Check that derived install state instead of reporting a
+	// hash-valid but incomplete native bundle as ready.
+	result.NativeVerified = nativePresent && nativeOK && Check(dir).NativeInstalled
 
 	if manifest := readInstalledManifest(dir); manifest != nil {
 		result.Version = manifest.Version

@@ -4,7 +4,10 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
+	"sync"
 	"testing"
+	"time"
 )
 
 // TestInstallRealBundle downloads the actual pinned bundle (~130 MB) and so
@@ -31,6 +34,81 @@ func TestInstallRealBundle(t *testing.T) {
 		t.Errorf("bundle not fully installed; missing: %v", status.Missing)
 	}
 	t.Logf("bundle verified in %s (%d bytes)", dir, status.BytesOnDisk)
+}
+
+// TestNativeSynthesisRealBundle installs the pinned platform runtime into an
+// existing verified bundle, loads it without CGO, and measures two consecutive
+// syntheses. It is opt-in because it downloads roughly 40-70 MB in addition
+// to the shared fp32 model when those files are absent.
+func TestNativeSynthesisRealBundle(t *testing.T) {
+	if os.Getenv("READALOUD_NATIVE_E2E") == "" {
+		t.Skip("set READALOUD_NATIVE_E2E=1 and READALOUD_E2E_DIR to test native synthesis")
+	}
+	dir := os.Getenv("READALOUD_E2E_DIR")
+	if dir == "" {
+		t.Fatal("READALOUD_E2E_DIR is required so the native test can reuse the installed fp32 model")
+	}
+	if err := InstallNative(context.Background(), dir, nil); err != nil {
+		t.Fatalf("install native bundle: %v", err)
+	}
+	engine, err := NewNativeEngine(dir, min(2, max(1, runtime.NumCPU()-1)))
+	if err != nil {
+		t.Fatalf("load native engine: %v", err)
+	}
+	defer engine.Close()
+	texts := []string{
+		"A short sentence ended. Then the longer sentence arrived with enough detail to test whether continuous narration could stay ahead without an awkward pause.",
+		"Hanlon crossed the room, checked the map, and quietly asked Ruiz whether the signal had moved east of the river.",
+		"The answer arrived through the radio a moment later, carrying more static than certainty.",
+	}
+	for i, text := range texts {
+		started := time.Now()
+		bytes := 0
+		if err := engine.Synthesize(context.Background(), text, "af_heart", 1.2, func(block []byte) error {
+			bytes += len(block)
+			return nil
+		}); err != nil {
+			t.Fatalf("synthesis %d: %v", i+1, err)
+		}
+		audioSeconds := float64(bytes/4) / float64(engine.SampleRate())
+		wall := time.Since(started)
+		t.Logf("native synthesis %d: wall=%s audio=%.2fs RTF=%.3f", i+1, wall, audioSeconds, wall.Seconds()/audioSeconds)
+	}
+
+	// The controller requests several lookahead sentences concurrently. Two
+	// independent native sessions test aggregate throughput without relying on
+	// unsafe re-entry into one ONNX session.
+	second, err := NewNativeEngine(dir, 2)
+	if err != nil {
+		t.Fatalf("load second native engine: %v", err)
+	}
+	defer second.Close()
+	third, err := NewNativeEngine(dir, 2)
+	if err != nil {
+		t.Fatalf("load third native engine: %v", err)
+	}
+	defer third.Close()
+	parallelStarted := time.Now()
+	var wg sync.WaitGroup
+	var totalBytes int
+	var resultMu sync.Mutex
+	for i, engine := range []*NativeEngine{engine, second, third} {
+		wg.Add(1)
+		go func(i int, engine *NativeEngine) {
+			defer wg.Done()
+			localBytes := 0
+			if err := engine.Synthesize(context.Background(), texts[i], "af_heart", 1.2, func(block []byte) error { localBytes += len(block); return nil }); err != nil {
+				t.Errorf("parallel synthesis %d: %v", i+1, err)
+			}
+			resultMu.Lock()
+			totalBytes += localBytes
+			resultMu.Unlock()
+		}(i, engine)
+	}
+	wg.Wait()
+	combinedAudio := float64(totalBytes/4) / float64(engine.SampleRate())
+	wall := time.Since(parallelStarted)
+	t.Logf("three-session native pipeline: wall=%s combined-audio=%.2fs aggregate-RTF=%.3f", wall, combinedAudio, wall.Seconds()/combinedAudio)
 }
 
 // TestFreshInstallLifecycle walks the full install lifecycle against real

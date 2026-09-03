@@ -27,6 +27,9 @@ export default function ReadAloudSection({
   const diagnostics = useReadAloudStore(s => s.diagnostics)
   const gpuInstalled = useReadAloudStore(s => s.gpuInstalled)
   const gpuBytesTotal = useReadAloudStore(s => s.gpuBytesTotal)
+  const nativeSupported = useReadAloudStore(s => s.nativeSupported)
+  const nativeInstalled = useReadAloudStore(s => s.nativeInstalled)
+  const nativeBytesTotal = useReadAloudStore(s => s.nativeBytesTotal)
   const benchmarking = useReadAloudStore(s => s.benchmarking)
   const verified = useReadAloudStore(s => s.verified)
   const verifying = useReadAloudStore(s => s.verifying)
@@ -35,6 +38,7 @@ export default function ReadAloudSection({
   const verifyModel = useReadAloudStore(s => s.verifyModel)
   const downloadModel = useReadAloudStore(s => s.downloadModel)
   const downloadGPUModel = useReadAloudStore(s => s.downloadGPUModel)
+  const downloadNative = useReadAloudStore(s => s.downloadNative)
   const cancelDownload = useReadAloudStore(s => s.cancelDownload)
   const removeModel = useReadAloudStore(s => s.removeModel)
   const runBenchmark = useReadAloudStore(s => s.runBenchmark)
@@ -147,6 +151,26 @@ export default function ReadAloudSection({
       </div>
 
       <div className="settings-section-label">Performance</div>
+      {nativeSupported && (
+        <div className="settings-cc-card" style={{ marginBottom: 12 }}>
+          <div className="settings-cc-header">
+            <span className="settings-cc-title">Native continuous playback</span>
+            <span className={`settings-cc-badge ${nativeInstalled ? 'ok' : 'checking'}`}>
+              {nativeInstalled ? '✓ Active' : 'Optional'}
+            </span>
+          </div>
+          <p className="settings-cc-desc">
+            Uses the pinned sherpa-onnx runtime built for Windows, macOS, or Linux. It keeps
+            Kokoro native and hot between sentences, avoiding browser/WASM generation stalls.
+            The existing browser engine remains available as the fallback.
+          </p>
+          {!nativeInstalled && modelState !== 'downloading' && (
+            <button className="dialog-btn primary" onClick={downloadNative}>
+              Install native playback ({formatMB(nativeBytesTotal)})
+            </button>
+          )}
+        </div>
+      )}
       <div className="dialog-field">
         <label className="dialog-label">Synthesis Device</label>
         <div className="settings-theme-row">

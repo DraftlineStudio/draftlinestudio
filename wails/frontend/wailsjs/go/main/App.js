@@ -66,6 +66,10 @@ export function DownloadReadAloudModel() {
   return window['go']['main']['App']['DownloadReadAloudModel']();
 }
 
+export function DownloadReadAloudNative() {
+  return window['go']['main']['App']['DownloadReadAloudNative']();
+}
+
 export function ExportDOCX(arg1, arg2) {
   return window['go']['main']['App']['ExportDOCX'](arg1, arg2);
 }
@@ -236,6 +240,10 @@ export function SetupCodexCLI() {
 
 export function ShowInfoDialog(arg1, arg2) {
   return window['go']['main']['App']['ShowInfoDialog'](arg1, arg2);
+}
+
+export function ShutdownReadAloudNative() {
+  return window['go']['main']['App']['ShutdownReadAloudNative']();
 }
 
 export function SplitEntity(arg1, arg2, arg3, arg4) {

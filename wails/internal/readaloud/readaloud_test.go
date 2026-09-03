@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -345,6 +346,22 @@ func TestLoopbackServer(t *testing.T) {
 	if !strings.HasPrefix(base, "http://127.0.0.1:") {
 		t.Fatalf("server must bind loopback, got %s", base)
 	}
+	parsedBase, err := url.Parse(base)
+	if err != nil {
+		t.Fatalf("parse server URL: %v", err)
+	}
+	if len(strings.TrimPrefix(parsedBase.Path, "/")) != 32 {
+		t.Fatalf("server URL must carry a 128-bit capability path, got %q", parsedBase.Path)
+	}
+	unscoped := parsedBase.Scheme + "://" + parsedBase.Host + HandlerPrefix + "ort/runtime.wasm"
+	if resp, err := http.Get(unscoped); err != nil {
+		t.Fatalf("unscoped get: %v", err)
+	} else {
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusNotFound {
+			t.Errorf("unscoped request: got %d, want 404", resp.StatusCode)
+		}
+	}
 
 	resp, err := http.Get(base + HandlerPrefix + "ort/runtime.wasm")
 	if err != nil {
@@ -380,6 +397,9 @@ func TestLoopbackServer(t *testing.T) {
 		if resp.StatusCode != http.StatusNoContent {
 			t.Errorf("preflight: got %d, want 204", resp.StatusCode)
 		}
+		if methods := resp.Header.Get("Access-Control-Allow-Methods"); !strings.Contains(methods, "POST") {
+			t.Errorf("preflight methods %q do not permit native synthesis POST", methods)
+		}
 	}
 }
 
@@ -396,13 +416,15 @@ func TestManifestPinsAreWellFormed(t *testing.T) {
 		if a.Bytes <= 0 {
 			t.Errorf("%s: non-positive size", a.Name)
 		}
-		if !strings.Contains(a.URL, kokoroRevision) && !strings.Contains(a.URL, ortVersion) {
+		if !strings.Contains(a.URL, kokoroRevision) && !strings.Contains(a.URL, ortVersion) &&
+			!strings.Contains(a.URL, nativeRevision) && !strings.Contains(a.URL, nativeInt8Revision) &&
+			!strings.Contains(a.URL, sherpaVersion) && a.URL != espeakBundleURL {
 			t.Errorf("%s: URL %s is not pinned to a revision", a.Name, a.URL)
 		}
 		if strings.Contains(a.URL, "/resolve/main/") {
 			t.Errorf("%s: mutable branch URL forbidden", a.Name)
 		}
-		if a.Group != GroupCore && a.Group != GroupGPU {
+		if a.Group != GroupCore && a.Group != GroupGPU && a.Group != GroupNative {
 			t.Errorf("%s: unknown group %q", a.Name, a.Group)
 		}
 	}
@@ -411,6 +433,9 @@ func TestManifestPinsAreWellFormed(t *testing.T) {
 	}
 	if len(GroupManifest(GroupGPU)) == 0 || len(GroupManifest(GroupCore)) == 0 {
 		t.Error("both artifact groups must be non-empty")
+	}
+	if NativeSupported() && len(GroupManifest(GroupNative)) < 5 {
+		t.Error("native bundle must include support files and both platform libraries")
 	}
 	var coreSum int64
 	for _, a := range GroupManifest(GroupCore) {

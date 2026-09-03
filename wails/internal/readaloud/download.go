@@ -1,6 +1,8 @@
 package readaloud
 
 import (
+	"archive/tar"
+	"compress/bzip2"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -9,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -42,6 +45,111 @@ func Install(ctx context.Context, dir string, onProgress func(Progress)) error {
 // with the same verification and resume semantics as Install.
 func InstallGroup(ctx context.Context, dir, group string, onProgress func(Progress)) error {
 	return installManifest(ctx, dir, GroupManifest(group), onProgress)
+}
+
+// InstallNative installs the CPU-optimized native model and support bundle.
+// Each pass is resumable and checksum verified. Unsupported
+// platforms fail explicitly instead of downloading unusable binaries.
+func InstallNative(ctx context.Context, dir string, onProgress func(Progress)) error {
+	if !NativeSupported() {
+		return fmt.Errorf("native read aloud is not available for this platform")
+	}
+	manifest := GroupManifest(GroupNative)
+	if err := installManifest(ctx, dir, manifest, onProgress); err != nil {
+		return err
+	}
+	return extractEspeakData(ctx, dir)
+}
+
+func extractEspeakData(ctx context.Context, dir string) error {
+	modelDir := filepath.Join(dir, "native", "model")
+	destination := filepath.Join(modelDir, "espeak-ng-data")
+	if info, err := os.Stat(filepath.Join(destination, "phontab")); err == nil && !info.IsDir() {
+		return nil
+	}
+	staging := filepath.Join(modelDir, ".espeak-ng-data.extracting")
+	if filepath.Base(destination) != "espeak-ng-data" || filepath.Base(staging) != ".espeak-ng-data.extracting" {
+		return fmt.Errorf("refusing unsafe espeak extraction path")
+	}
+	_ = os.RemoveAll(staging)
+	if err := os.MkdirAll(staging, 0755); err != nil {
+		return err
+	}
+	failed := true
+	defer func() {
+		if failed {
+			_ = os.RemoveAll(staging)
+		}
+	}()
+
+	archive, err := os.Open(filepath.Join(modelDir, "espeak-ng-data.tar.bz2"))
+	if err != nil {
+		return err
+	}
+	defer archive.Close()
+	reader := tar.NewReader(bzip2.NewReader(archive))
+	var total int64
+	files := 0
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		header, err := reader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("read espeak archive: %w", err)
+		}
+		rel, ok := strings.CutPrefix(filepath.ToSlash(header.Name), "espeak-ng-data/")
+		if !ok || rel == "" {
+			continue
+		}
+		target, err := secureJoin(staging, rel)
+		if err != nil {
+			return fmt.Errorf("unsafe espeak archive entry %q", header.Name)
+		}
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(target, 0755); err != nil {
+				return err
+			}
+		case tar.TypeReg, tar.TypeRegA:
+			files++
+			total += header.Size
+			if files > 4096 || total > 64*1024*1024 {
+				return fmt.Errorf("espeak archive exceeds safety limits")
+			}
+			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+				return err
+			}
+			out, err := os.OpenFile(target, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+			if err != nil {
+				return err
+			}
+			_, copyErr := io.CopyN(out, reader, header.Size)
+			closeErr := out.Close()
+			if copyErr != nil {
+				return copyErr
+			}
+			if closeErr != nil {
+				return closeErr
+			}
+		default:
+			return fmt.Errorf("unsupported espeak archive entry %q", header.Name)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(staging, "phontab")); err != nil {
+		return fmt.Errorf("espeak archive is missing phontab")
+	}
+	if err := os.RemoveAll(destination); err != nil {
+		return err
+	}
+	if err := os.Rename(staging, destination); err != nil {
+		return err
+	}
+	failed = false
+	return nil
 }
 
 func installManifest(ctx context.Context, dir string, manifest []Artifact, onProgress func(Progress)) error {

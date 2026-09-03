@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { BuildStoryTimeline } from '../../../wailsjs/go/main/App'
 import { types } from '../../../wailsjs/go/models'
-import { eventTier, positionOfParagraph, typeColor } from '../storysearch/storyGraph'
 import type { BookData, Character, RelationshipRecord, Section, StoryTimelineEvent, StoryTimelineResult } from '../../types/draftline'
 import { characterColor } from '../../utils/characterVisuals'
 import { allChapters, chapterLocation, chapterName } from './shared'
@@ -10,8 +9,23 @@ const ROW_HEIGHT = 44
 const PAD_Y = 22
 const PAD_X = 16
 const NAME_WIDTH = 208
-/** Chapter column widths, narrow → wide. Matches the Story Graph's zoom feel. */
+/** Chapter column widths, narrow → wide. */
 const CHAPTER_WIDTHS = [46, 78, 128, 210] as const
+
+const KEY_BEAT_TYPES = new Set(['turning_point', 'conflict', 'resolution', 'discovery'])
+const NOTABLE_BEAT_TYPES = new Set(['introduction', 'first_interaction', 'time_reference'])
+const BEAT_TYPE_COLORS: Record<string, string> = {
+  introduction: '#5aafe0',
+  first_interaction: '#5aafe0',
+  interaction: '#5aafe0',
+  discovery: '#6699FF',
+  time_reference: '#E5C07B',
+  conflict: '#E5C07B',
+  turning_point: '#E06C75',
+  transition: '#868C96',
+  state: '#57A874',
+  resolution: '#4ade80',
+}
 
 interface Props {
   book: BookData
@@ -28,8 +42,8 @@ type Hover =
   | null
 
 /**
- * The Character Center's large-format weave: the same picture as the Story
- * Graph's character lanes, with the room to show what the bottom bar cannot.
+ * The Character Center's large-format weave: a manuscript-order view of
+ * character presence, interactions, and source-backed story beats.
  *
  * Presence is drawn as real segments so absences are visible rather than
  * smoothed over, source-backed story beats sit at their true position inside a
@@ -359,6 +373,31 @@ export function contiguousRuns(sorted: number[]): [number, number][] {
 export function clampChapter(chapter: number, count: number): number {
   if (!Number.isFinite(chapter)) return 0
   return Math.max(0, Math.min(count - 1, chapter))
+}
+
+/** Importance tier used only to vary beat markers in the character weave. */
+export function eventTier(event: StoryTimelineEvent): number {
+  const cast = event.character_ids?.length ?? 0
+  if (event.pinned || event.status === 'confirmed') return 0
+  if (KEY_BEAT_TYPES.has(event.primary_type)) return 0
+  if (cast >= 2 && event.time_kind === 'anchored') return 0
+  if (NOTABLE_BEAT_TYPES.has(event.primary_type) || cast >= 2) return 1
+  return 2
+}
+
+export function typeColor(type: string): string {
+  return BEAT_TYPE_COLORS[type] ?? '#868C96'
+}
+
+/**
+ * Fractional placement of a beat inside a chapter from its paragraph index.
+ * The logarithmic curve keeps both early and late beats distinguishable in
+ * chapters whose paragraph counts vary widely.
+ */
+export function positionOfParagraph(paragraph: number): number {
+  if (!Number.isFinite(paragraph) || paragraph <= 0) return 0.18
+  const eased = Math.log10(1 + Math.min(paragraph, 400)) / Math.log10(401)
+  return 0.12 + eased * 0.74
 }
 
 function locate(book: BookData, index: number): [Section, number] {
