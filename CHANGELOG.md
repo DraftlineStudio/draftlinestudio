@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02529] - 2026-09-03
+
+### Added
+- Expanded Read Aloud panel: the bar's chevron (or voice chip) opens a popover with a "Now reading" strip showing the current sentence in the speaker's color, the Voice Cast section (cast-mode toggle plus the narrator voice, moved out of the compact bar), and a Chapter Progress column with the large seek bar, speaker legend, time-left/elapsed/dialogue-line stats, and shortcut hints. The panel collapses on outside click; an engine badge notes the local Kokoro 82M · 24 kHz pipeline. The compact bar gained the current-speaker voice chip and a one-click cast-mode toggle.
+
+---
+
 ## [0.17.02528] - 2026-09-03
 
 ### Added
