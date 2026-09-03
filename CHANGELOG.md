@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02529] - 2026-09-03
+
+### Added
+- Added an expanded Read Aloud panel with the current sentence, voice cast, and progress.
+
 ## [0.17.02528] - 2026-09-03
 
 ### Added

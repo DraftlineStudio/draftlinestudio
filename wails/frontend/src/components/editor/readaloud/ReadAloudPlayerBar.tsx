@@ -13,6 +13,7 @@ import { READ_ALOUD_VOICES } from '../../../services/readaloud/voices'
 import { speedLabel } from '../../../services/readaloud/speeds'
 import { formatClock } from '../../../services/readaloud/estimates'
 import SeekBar from './SeekBar'
+import ReadAloudExpandedPanel from './ReadAloudExpandedPanel'
 
 function Eq({ playing, color }: { playing: boolean; color?: string }) {
   const style = {
@@ -107,7 +108,6 @@ export default function ReadAloudPlayerBar() {
   const stop = useReadAloudStore(s => s.stop)
   const skip = useReadAloudStore(s => s.skip)
   const seekToFraction = useReadAloudStore(s => s.seekToFraction)
-  const setVoice = useReadAloudStore(s => s.setVoice)
   const cycleSpeed = useReadAloudStore(s => s.cycleSpeed)
   const muted = useReadAloudStore(s => s.muted)
   const toggleMute = useReadAloudStore(s => s.toggleMute)
@@ -116,6 +116,9 @@ export default function ReadAloudPlayerBar() {
   const setPlayerVisible = useReadAloudStore(s => s.setPlayerVisible)
   const currentSpeaker = useReadAloudStore(s => s.currentSpeaker)
   const ticks = useReadAloudStore(s => s.ticks)
+  const castMode = useReadAloudStore(s => s.castMode)
+  const setCastMode = useReadAloudStore(s => s.setCastMode)
+  const speakers = useReadAloudStore(s => s.speakers)
 
   useEffect(() => {
     void refreshModelStatus()
@@ -165,9 +168,13 @@ export default function ReadAloudPlayerBar() {
 
   const speakerName = currentSpeaker?.name ?? 'Narration'
   const speakerColor = currentSpeaker?.color || ''
+  const chipVoiceId = (currentSpeaker ? speakers.find(sp => sp.name === currentSpeaker.name)?.voice : null)
+    ?? settings.read_aloud_voice
+  const chipVoice = READ_ALOUD_VOICES.find(v => v.id === chipVoiceId)?.label.split(' — ')[0] ?? chipVoiceId
 
   return (
     <div className="rap-dock" style={speakerColor ? ({ '--rap-speaker': speakerColor } as React.CSSProperties) : undefined}>
+      {expanded && <ReadAloudExpandedPanel chapterTitle={chapterTitle} />}
       <div className="rap-bar" role="region" aria-label="Read aloud player">
         <span className="rap-topline" aria-hidden="true">
           <span className="rap-topline-fill" style={{ width: `${(fraction * 100).toFixed(2)}%` }} />
@@ -234,15 +241,22 @@ export default function ReadAloudPlayerBar() {
         <span className="rap-divider" />
 
         <div className="rap-options">
-          <select
-            className="rap-select"
-            value={settings.read_aloud_voice}
-            onChange={e => setVoice(e.target.value)}
-            title="Voice"
-            aria-label="Voice"
+          <button className="rap-chip-btn rap-voice-chip" onClick={() => setExpanded(!expanded)} title="Voice cast" aria-label="Voice cast">
+            <span className="rap-chip-swatch" style={speakerColor ? { background: speakerColor } : undefined}>
+              {speakerName[0]}
+            </span>
+            <span className="rap-chip-voice">{chipVoice}</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 7a4 4 0 1 1 8 0 4 4 0 0 1-8 0z" /><path d="M5 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" /></svg>
+          </button>
+          <button
+            className={`rap-icon-btn rap-cast-btn${castMode ? ' rap-cast-btn--on' : ''}`}
+            onClick={() => setCastMode(!castMode)}
+            title={castMode ? 'Cast mode on — dialogue in character voices' : 'Cast mode off — single narrator'}
+            aria-label="Toggle cast mode"
+            aria-pressed={castMode}
           >
-            {READ_ALOUD_VOICES.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
-          </select>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="7" r="4" /><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /><path d="M21 21v-2a4 4 0 0 0-3-3.85" /></svg>
+          </button>
           <button className="rap-chip-btn rap-speed" onClick={cycleSpeed} title="Playback speed" aria-label="Playback speed">
             {speedLabel(settings.read_aloud_speed)}
           </button>
