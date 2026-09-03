@@ -41,6 +41,8 @@ interface ReadAloudStore {
   playbackError: string | null
   modelLoading: ModelLoadProgress | null
   device: 'wasm' | 'webgpu' | null
+  // Worker load diagnostics (also mirrored to the WebView console).
+  diagnostics: string[]
 
   refreshModelStatus: () => Promise<void>
   downloadModel: () => void
@@ -129,8 +131,13 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
   const ensureController = (): ReadAloudController => {
     if (controller) return controller
     synth = new WorkerSynth(
+      () => {
+        const settings = useAppStore.getState().settings
+        return { device: settings.read_aloud_device, threads: settings.read_aloud_threads }
+      },
       progress => set({ modelLoading: progress }),
       device => set({ device, modelLoading: null }),
+      line => set(s => ({ diagnostics: [...s.diagnostics.slice(-19), line] })),
     )
     audio = new WebAudioPort()
     controller = new ReadAloudController(synth, audio, {
@@ -177,6 +184,7 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
     playbackError: null,
     modelLoading: null,
     device: null,
+    diagnostics: [],
 
     refreshModelStatus: async () => {
       bindEvents()

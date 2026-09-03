@@ -25,6 +25,10 @@ type AppSettings struct {
 	ReadAloudEnabled bool    `json:"read_aloud_enabled"`
 	ReadAloudVoice   string  `json:"read_aloud_voice"`
 	ReadAloudSpeed   float64 `json:"read_aloud_speed"`
+	// ReadAloudDevice: "wasm" (default, works everywhere) | "webgpu"
+	// (experimental opt-in). ReadAloudThreads: "single" | "auto".
+	ReadAloudDevice  string `json:"read_aloud_device"`
+	ReadAloudThreads string `json:"read_aloud_threads"`
 	// AnalysisCPUProfile controls the approximate background core budget:
 	// "adaptive" | "gentle" | "balanced" | "fast".
 	AnalysisCPUProfile string `json:"analysis_cpu_profile"`

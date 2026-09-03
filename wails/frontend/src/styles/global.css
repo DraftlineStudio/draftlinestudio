@@ -4234,76 +4234,113 @@ html, body, #root {
   gap: 8px;
 }
 
-/* Read Aloud current-sentence highlight (decoration, never document content) */
+/* Read Aloud current-sentence highlight (decoration, never document content).
+   Deliberately strong — the reader must see at a glance which sentence is
+   being spoken, in both themes. */
 .read-aloud-current {
-  background: color-mix(in srgb, var(--app-accent) 22%, transparent);
+  background: color-mix(in srgb, var(--app-accent) 34%, transparent);
+  box-shadow: 0 2px 0 0 var(--app-accent);
   border-radius: 2px;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--app-accent) 22%, transparent);
   transition: background 0.15s ease;
 }
 
-/* Read Aloud floating player */
-.read-aloud-player {
-  position: fixed;
-  right: 18px;
-  bottom: 40px;
-  z-index: 100;
-  width: 264px;
-  background: var(--bg-sidebar);
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  padding: 10px 12px;
-}
-.read-aloud-player-header {
+/* Read Aloud player bar — docked at the bottom of the editor column, the
+   bottom counterpart of .chapter-find-bar. */
+.read-aloud-bar {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
+  gap: 5px;
+  min-height: 34px;
+  padding: 4px 10px;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.12);
+  animation: read-aloud-slide-in 120ms ease-out;
+  position: relative;
+  z-index: 3;
 }
-.read-aloud-player-title {
+@keyframes read-aloud-slide-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.read-aloud-bar-scope {
+  flex: 0 0 auto;
+  color: var(--text-muted);
   font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.25px;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
-  color: var(--text-muted);
+  margin-right: 4px;
 }
-.read-aloud-close {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
-  padding: 2px 4px;
-}
-.read-aloud-close:hover { color: var(--text); }
-.read-aloud-player-body { display: flex; flex-direction: column; gap: 8px; }
-.read-aloud-note {
-  font-size: 11px;
-  color: var(--text-muted);
-  margin: 0;
-}
-.read-aloud-transport {
+.read-aloud-bar-btn {
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
 }
-.read-aloud-position {
-  margin-left: auto;
+.read-aloud-bar-btn:hover:not(:disabled) { background: var(--bg-hover); }
+.read-aloud-bar-btn:disabled { color: var(--text-muted); opacity: 0.5; cursor: default; }
+.read-aloud-bar-close { margin-left: auto; font-size: 15px; line-height: 1; }
+.read-aloud-bar-position {
+  min-width: 56px;
   font-size: 11px;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
+  text-align: center;
 }
-.read-aloud-options { display: flex; gap: 6px; }
-.read-aloud-voice-select { flex: 1; min-width: 0; }
-.read-aloud-speed-select { width: 64px; }
+.read-aloud-bar-status {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.read-aloud-bar-text,
+.read-aloud-bar-setup {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 11px;
+  padding: 3px 9px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.read-aloud-bar-setup {
+  border-color: var(--app-accent);
+  color: var(--app-accent);
+}
+.read-aloud-bar-text:hover,
+.read-aloud-bar-setup:hover { background: var(--bg-hover); }
+.read-aloud-bar-select {
+  max-width: 190px;
+  height: 24px;
+  background: var(--bg-surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 11px;
+  padding: 0 4px;
+}
+.read-aloud-bar-select--speed { width: 62px; }
+
+/* Read Aloud rail glyph (pinned to the bottom of the tools rail) */
+.glyph-bar-spacer { flex: 1; }
+.glyph-badge--setup {
+  background: var(--app-accent);
+  color: #fff;
+}
 
 /* Read Aloud settings */
-.read-aloud-speed-slider {
-  width: 100%;
-  accent-color: var(--app-accent);
-}
 .read-aloud-progress {
   height: 6px;
   border-radius: 3px;
