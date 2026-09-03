@@ -4,6 +4,17 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02524] - 2026-09-03
+
+### Added
+- Read Aloud pipeline groundwork for the redesigned player: a master gain node (volume/mute with click-free ramps), one-shot preview playback outside the gapless schedule, per-unit voice overrides in the playback controller (the cast-mode seam; single-voice behavior is untouched), and unit-duration reporting for upcoming time estimates.
+
+### Fixed
+- A voice or speed change while the Read Aloud player sat open but idle silently kept the old pre-buffered audio; pressing play could speak the first seconds in the previous voice or speed. The prepared buffer now refills with the new parameters.
+- Starting Read Aloud playback at a specific sentence while a pre-filled buffer was standing by always began at the buffer's start instead of the requested sentence. (Latent today — no caller passes a non-zero start yet — but the upcoming seek bar does.)
+
+---
+
 ## [0.17.02523] - 2026-09-03
 
 ### Changed

@@ -359,4 +359,85 @@ describe('ReadAloudController', () => {
     expect(finishes).toBe(1)
     expect(statuses).toEqual([])
   })
+
+  it('voice overrides pick the per-unit voice with null falling back to base', () => {
+    controller.start(SENTENCES, 0, 'af_heart', 1.2, true, ['am_puck', null, 'bf_emma'])
+    expect(synth.requests.map(r => r.voice)).toEqual(['am_puck', 'af_heart', 'bf_emma'])
+  })
+
+  it('a voice-override change keeps the audible unit and re-synthesizes the lookahead', async () => {
+    controller.start(SENTENCES, 0, 'af_heart', 1.2, true, [null, null, null])
+    await synth.resolveNext() // 0 audible
+    await synth.resolveNext() // 1 scheduled
+    const scheduled = audio.queue[1]
+
+    controller.setVoiceOverrides(['am_puck', 'am_puck', 'am_puck'])
+    expect(scheduled.stopped).toBe(true)
+    // Audible unit 0 keeps playing; 1 re-requests in the override voice.
+    expect(started).toEqual([0])
+    expect(synth.requests.map(r => ({ text: r.text, voice: r.voice }))[0]).toEqual({ text: 'Two.', voice: 'am_puck' })
+  })
+
+  it('an equivalent voice-override map never disturbs the pipeline', async () => {
+    await startPlaying()
+    const stopAlls = audio.stopAllCalls
+    const pending = synth.requests.length
+    controller.setVoiceOverrides([null, null, null]) // same as no overrides
+    controller.setVoiceOverrides([null, null, null]) // and again, by value
+    expect(audio.stopAllCalls).toBe(stopAlls)
+    expect(synth.requests.length).toBe(pending)
+    expect(synth.cancelledIds).toEqual([])
+  })
+
+  it('a stale chunk from before an override change is discarded and re-requested', async () => {
+    controller.start(SENTENCES, 0, 'af_heart', 1.2)
+    const first = synth.requests[0]
+    controller.setVoiceOverrides(['am_puck', null, null])
+    // The pre-change request was cancelled and re-issued in the new voice.
+    expect(synth.cancelledIds).toContain(first.id)
+    expect(synth.requests.map(r => r.voice)[0]).toBe('am_puck')
+  })
+
+  it('a voice change while prepared-idle refills the silent buffer instead of arming stale audio', async () => {
+    controller.start(SENTENCES, 0, 'af_heart', 1.2, false)
+    await synth.resolveNext() // old-voice chunk cached silently
+    const staleIds = synth.requests.map(r => r.id)
+
+    controller.setVoice('bm_george')
+    // Still prepared, still silent — but the old cache/requests are gone and
+    // the buffer is refilling in the new voice.
+    expect(statuses).toEqual([])
+    expect(audio.queue).toHaveLength(0)
+    expect(staleIds.every(id => synth.cancelledIds.includes(id))).toBe(true)
+    expect(synth.requests.map(r => r.voice)).toEqual(['bm_george', 'bm_george', 'bm_george'])
+
+    await synth.resolveNext()
+    expect(controller.beginPlayback()).toBe(true)
+    expect(started).toEqual([0])
+  })
+
+  it('a speed change while nothing is prepared or playing is a no-op', () => {
+    controller.setSpeed(1.5)
+    expect(synth.requests).toHaveLength(0)
+    expect(audio.stopAllCalls).toBe(0)
+  })
+
+  it('reports unit durations as audio lands and on sentence start', async () => {
+    const unitAudio: Array<[number, number]> = []
+    const startDurations: number[] = []
+    controller = new ReadAloudController(synth, audio, {
+      onStatus: s => statuses.push(s),
+      onSentenceStart: (i, d) => { started.push(i); startDurations.push(d) },
+      onError: m => errors.push(m),
+      onFinished: () => finishes++,
+      onUnitAudio: (i, d) => unitAudio.push([i, d]),
+    }, { startBufferSeconds: 0, startBufferUnits: 1 })
+
+    controller.start(SENTENCES, 0, 'af_heart', 1.2)
+    synth.requests.shift()!.resolve({ samples: new Float32Array(48_000), sampleRate: 24_000 })
+    await flush()
+    expect(unitAudio).toEqual([[0, 2]])
+    expect(started).toEqual([0])
+    expect(startDurations).toEqual([2])
+  })
 })
