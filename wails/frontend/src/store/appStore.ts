@@ -25,6 +25,10 @@ export interface AppSettings {
   plot_walker_enabled: boolean
   analysis_enabled: boolean
   analysis_cpu_profile: 'adaptive' | 'gentle' | 'balanced' | 'fast'
+  // Read Aloud (opt-in local TTS)
+  read_aloud_enabled: boolean
+  read_aloud_voice: string
+  read_aloud_speed: number
   // AI
   ai_enabled: boolean
   ai_mode: 'claudecode' | 'codex' | 'api' | 'local'
@@ -120,6 +124,9 @@ const DEFAULT_SETTINGS: AppSettings = {
   plot_walker_enabled: true,
   analysis_enabled: true,
   analysis_cpu_profile: 'adaptive',
+  read_aloud_enabled: false,
+  read_aloud_voice: 'af_heart',
+  read_aloud_speed: 1.2,
   ai_enabled: false,
   ai_mode: 'claudecode',
   ai_provider: '',
@@ -188,6 +195,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
           ? raw.analysis_cpu_profile as AppSettings['analysis_cpu_profile']
           : 'adaptive',
         custom_dictionary: (raw as unknown as Partial<AppSettings>).custom_dictionary ?? [],
+        read_aloud_voice: raw.read_aloud_voice || 'af_heart',
+        read_aloud_speed: Math.min(1.6, Math.max(0.8, Number(raw.read_aloud_speed) || 1.2)),
       }
       set({ settings, loaded: true })
     } catch {

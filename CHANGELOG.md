@@ -4,6 +4,17 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02501] - 2026-09-03
+
+### Added
+- The **Read Aloud** plugin now appears in Settings → Plugins as an opt-in card (disabled by default) and gets its own Settings → Read Aloud section: voice picker over eight bundled English voices, a 0.8×–1.6× speed slider (default 1.2×), and voice-model management — download with live progress and cancel, resume after interruption, and "Remove downloaded model".
+- New `readAloudStore` tracks model install state over the `readaloud:progress`/`readaloud:done` events; voice and speed persist through the standard settings pipeline.
+
+### Internal
+- Added the `kokoro-js` dependency (Kokoro-82M TTS via transformers.js). It is only ever loaded on demand inside the forthcoming synthesis worker — enabling nothing loads while the plugin is off.
+
+---
+
 ## [0.17.02500] - 2026-09-03
 
 ### Added

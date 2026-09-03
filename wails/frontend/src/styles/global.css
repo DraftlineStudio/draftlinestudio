@@ -4234,6 +4234,27 @@ html, body, #root {
   gap: 8px;
 }
 
+/* Read Aloud settings */
+.read-aloud-speed-slider {
+  width: 100%;
+  accent-color: var(--app-accent);
+}
+.read-aloud-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg-surface-alt);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.read-aloud-progress-fill {
+  height: 100%;
+  background: var(--app-accent);
+  transition: width 0.2s ease;
+}
+.read-aloud-error {
+  color: #d65454;
+}
+
 /* Bundled plugin manager */
 .plugins-settings-heading {
   display: flex;

@@ -6,6 +6,7 @@ export type FeatureSettingKey =
   | 'cast_enabled'
   | 'analysis_enabled'
   | 'ai_enabled'
+  | 'read_aloud_enabled'
 
 export interface DraftlineFeature {
   id: string
@@ -46,6 +47,12 @@ export const FEATURE_REGISTRY: DraftlineFeature[] = [
     vendor: 'Draftline', version: '1.0', category: 'Intelligence', monogram: 'An', accent: '#4ba39a', bundled: true,
     description: 'Private Prose-powered chapter structure, pacing, readability, dialogue, and keyword analysis.',
     capabilities: ['analysis.structure', 'analysis.pacing', 'analysis.keywords', 'analysis.summary'], resourceProfile: 'light',
+  },
+  {
+    id: 'draftline.read-aloud', settingKey: 'read_aloud_enabled', name: 'Read Aloud',
+    vendor: 'Draftline', version: '1.0', category: 'Writing', monogram: 'Ra', accent: '#c9873d', bundled: true,
+    description: 'Fully local text-to-speech with sentence highlighting. Enabling offers a one-time ~130 MB voice model download; no text ever leaves your machine.',
+    capabilities: ['editor.tts'], resourceProfile: 'optional-model',
   },
   {
     id: 'draftline.ai-studio', settingKey: 'ai_enabled', name: 'AI Studio',

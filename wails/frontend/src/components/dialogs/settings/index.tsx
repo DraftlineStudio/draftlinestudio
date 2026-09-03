@@ -10,6 +10,7 @@ import ApplicationSection from './ApplicationSection'
 import AIStudioSection from './AIStudioSection'
 import BookSection from './BookSection'
 import PluginsSection from './PluginsSection'
+import ReadAloudSection from './ReadAloudSection'
 import type { FeatureSettingKey } from '../../../features/registry'
 
 export default function AppSettingsDialog() {
@@ -38,6 +39,11 @@ export default function AppSettingsDialog() {
   const [castEnabled, setCastEnabled] = useState(settings.cast_enabled)
   const [analysisEnabled, setAnalysisEnabled] = useState(settings.analysis_enabled)
   const [analysisCPUProfile, setAnalysisCPUProfile] = useState<AnalysisCPUProfile>(settings.analysis_cpu_profile)
+
+  // Read Aloud state
+  const [readAloudEnabled, setReadAloudEnabled] = useState(settings.read_aloud_enabled)
+  const [readAloudVoice, setReadAloudVoice] = useState(settings.read_aloud_voice)
+  const [readAloudSpeed, setReadAloudSpeed] = useState(settings.read_aloud_speed)
 
   // AI state
   const [aiEnabled, setAiEnabled]         = useState(settings.ai_enabled)
@@ -235,6 +241,9 @@ export default function AppSettingsDialog() {
       cast_enabled: castEnabled,
       analysis_enabled: analysisEnabled,
       analysis_cpu_profile: analysisCPUProfile,
+      read_aloud_enabled: readAloudEnabled,
+      read_aloud_voice: readAloudVoice,
+      read_aloud_speed: readAloudSpeed,
       ai_enabled: aiEnabled,
       ai_mode: aiMode,
       ai_provider: provider,
@@ -260,6 +269,7 @@ export default function AppSettingsDialog() {
     cast_enabled: castEnabled,
     analysis_enabled: analysisEnabled,
     ai_enabled: aiEnabled,
+    read_aloud_enabled: readAloudEnabled,
   }
 
   function handlePluginToggle(key: FeatureSettingKey, enabled: boolean) {
@@ -269,6 +279,7 @@ export default function AppSettingsDialog() {
       cast_enabled: setCastEnabled,
       analysis_enabled: setAnalysisEnabled,
       ai_enabled: setAiEnabled,
+      read_aloud_enabled: setReadAloudEnabled,
     }
     setters[key](enabled)
   }
@@ -305,6 +316,12 @@ export default function AppSettingsDialog() {
                 <rect x="1" y="3" width="12" height="8" rx="2"/><circle cx="4.5" cy="7" r="1"/><circle cx="7" cy="7" r="1"/><circle cx="9.5" cy="7" r="1"/>
               </svg>
               AI Studio
+            </button>
+            <button className={`settings-nav-item${section === 'readaloud' ? ' active' : ''}`} onClick={() => setSection('readaloud')}>
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
+                <path d="M2 5.5v3h2.2L7.5 11V3L4.2 5.5H2z"/><path d="M9.5 5a2.6 2.6 0 0 1 0 4"/><path d="M11 3.4a5 5 0 0 1 0 7.2"/>
+              </svg>
+              Read Aloud
             </button>
             <button className={`settings-nav-item${section === 'book' ? ' active' : ''}`} onClick={() => setSection('book')}>
               <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
@@ -355,6 +372,14 @@ export default function AppSettingsDialog() {
                 cxSetupStep={cxSetupStep} cxSetupLog={cxSetupLog}
                 onCheckCx={handleCheckCx} onSetupCx={handleSetupCx} onOpenCxAuth={handleOpenCxAuth}
                 testStatus={testStatus} testMsg={testMsg} onTestLocal={handleTestLocal}
+              />
+            )}
+
+            {section === 'readaloud' && (
+              <ReadAloudSection
+                readAloudEnabled={readAloudEnabled}
+                voice={readAloudVoice} setVoice={setReadAloudVoice}
+                speed={readAloudSpeed} setSpeed={setReadAloudSpeed}
               />
             )}
 
