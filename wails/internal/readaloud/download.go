@@ -83,7 +83,9 @@ func installManifest(ctx context.Context, dir string, manifest []Artifact, onPro
 			OverallReceived: overallDone, OverallTotal: overallTotal,
 		})
 	}
-	return nil
+	// Record what this machine now holds; verify/repair/uninstall work from
+	// this manifest plus the compiled pins.
+	return WriteInstalledManifest(dir)
 }
 
 // fileVerifies reports whether dest already matches the pinned artifact.

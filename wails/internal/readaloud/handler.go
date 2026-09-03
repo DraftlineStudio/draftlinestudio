@@ -24,7 +24,28 @@ var contentTypes = map[string]string{
 // NewHandler serves the installed bundle read-only under HandlerPrefix. It is
 // mounted as the Wails asset-server fallback handler, so it answers 404 for
 // every path outside its prefix and never shadows embedded frontend assets.
+// Responses carry the same-origin isolation headers (see fileHandler for why
+// the loopback server layers different ones).
 func NewHandler(dir string) http.Handler {
+	inner := fileHandler(dir)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// The webview runs cross-origin isolated (COOP/COEP set by the main
+		// asset middleware). Worker scripts loaded into an isolated agent
+		// cluster are blocked unless their own response carries COEP, so
+		// these headers must be present on this handler too.
+		h := w.Header()
+		h.Set("Cross-Origin-Opener-Policy", "same-origin")
+		h.Set("Cross-Origin-Embedder-Policy", "require-corp")
+		h.Set("Cross-Origin-Resource-Policy", "same-origin")
+		inner.ServeHTTP(w, r)
+	})
+}
+
+// fileHandler is the shared read-only serving core: prefix-scoped,
+// traversal-proof, extension-whitelisted, explicit MIME types. Callers layer
+// origin-policy headers on top (same-origin for the Wails asset path,
+// CORS + cross-origin CORP for the loopback server).
+func fileHandler(dir string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -57,15 +78,6 @@ func NewHandler(dir string) http.Handler {
 			return
 		}
 		w.Header().Set("Content-Type", ct)
-		// The webview runs cross-origin isolated (COOP/COEP set by the main
-		// asset middleware). The ONNX runtime spawns nested pthread workers
-		// from the .mjs served here, and a worker script loaded into an
-		// isolated agent cluster is BLOCKED unless its own response carries
-		// COEP — so these headers must be present on this handler too, not
-		// only on the embedded-asset chain.
-		w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
-		w.Header().Set("Cross-Origin-Embedder-Policy", "require-corp")
-		w.Header().Set("Cross-Origin-Resource-Policy", "same-origin")
 		http.ServeContent(w, r, "", info.ModTime(), f)
 	})
 }
