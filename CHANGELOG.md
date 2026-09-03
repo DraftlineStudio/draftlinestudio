@@ -4,6 +4,14 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02525] - 2026-09-03
+
+### Added
+- Deterministic per-sentence speaker attribution for Read Aloud (foundation for cast mode): a quote-span tracker that survives mid-quote sentence splits and multi-paragraph speech, plus tag parsing ("…," Marcus said / said Marcus / she said with pronoun resolution), action beats, nearby-mention lookup, two-speaker alternation, and single-speaker monologue continuation. Untagged multi-party dialogue lands in an explicit unknown bucket; em-dash and single-quote dialogue are out of scope for now and read as narration. Fully local — no AI calls.
+- Sentences collected for Read Aloud now carry their paragraph index, which the attributor uses for paragraph-boundary conventions and scene-break resets.
+
+---
+
 ## [0.17.02524] - 2026-09-03
 
 ### Added

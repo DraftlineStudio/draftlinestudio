@@ -10,6 +10,10 @@ export interface DocSentence {
   from: number
   to: number
   text: string
+  // Index of the textblock (paragraph) this sentence lives in, counted over
+  // the whole document walk. Optional because synthetic sentences (clause
+  // splits) don't carry it; speaker attribution needs paragraph boundaries.
+  block?: number
 }
 
 // collectSentences returns the spoken sentences of doc in order, as ProseMirror
@@ -19,9 +23,12 @@ export interface DocSentence {
 // sentence's beginning.
 export function collectSentences(doc: ProseMirrorNode, rangeFrom?: number, rangeTo?: number): DocSentence[] {
   const sentences: DocSentence[] = []
+  let block = -1
 
   doc.descendants((node, nodePosition) => {
     if (!node.isTextblock) return
+    // One id per textblock — every run inside it shares the paragraph.
+    block++
 
     const runs: Array<{ text: string; from: number }> = []
     node.descendants((child, relativePosition) => {
@@ -42,7 +49,7 @@ export function collectSentences(doc: ProseMirrorNode, rangeFrom?: number, range
         if (rangeTo !== undefined && from >= rangeTo) continue
         if (rangeFrom !== undefined && to <= rangeFrom) continue
         const text = run.text.slice(span.start, span.end).trim()
-        if (text) sentences.push({ from, to, text })
+        if (text) sentences.push({ from, to, text, block })
       }
     }
   })
