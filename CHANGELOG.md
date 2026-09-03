@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02528] - 2026-09-03
+
+### Added
+- Cast mode now reads each character's dialogue in their assigned voice.
+
 ## [0.17.02527] - 2026-09-03
 
 ### Changed
