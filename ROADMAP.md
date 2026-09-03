@@ -67,19 +67,27 @@ retrieval, indexing, review, and refactoring must not depend on generative AI.
       action in Detail Search, Timeline, Continuity, Storyboard, and other
       derived views opens everything Draftline's heuristics know about the
       book, including mundane and low-confidence records.
-- [ ] Derive a versioned **Story Fingerprint** from the manuscript's reviewed
+- [x] Derive a versioned **Story Fingerprint** from the manuscript's reviewed
       entities, aliases, relationships, appearances, interactions, notable
       quotes, facts, events, explicit times, character knowledge, locations,
       objects, recurring concepts, plot threads, pacing, and structural
       metrics. Every conclusion remains traceable to source evidence.
-- [ ] Present the useful fingerprint through ranked editorial views while
+- [x] Present the useful fingerprint through ranked editorial views while
       retaining the full archive for transparency, debugging, author review,
       and the possibility that an apparently mundane detail matters later.
-- [ ] Track fingerprint schema, analysis-engine version, source content hash,
+- [x] Track fingerprint schema, analysis-engine version, source content hash,
       generation time, and review provenance so Draftline can distinguish
       current, stale, partially upgraded, and source-unavailable fingerprints.
 - [ ] Treat fingerprints as local derived intellectual property: portable and
       user-owned, never uploaded or submitted to AI without explicit action.
+- [x] Aggregate atomic evidence into significant events, semantic scenes,
+      sequences, temporary narrative threads, and story arcs without dropping
+      supporting facts. Story Map semantic zoom exposes the appropriate level.
+- [x] Keep separate manuscript-order and partial story-time projections;
+      uncertain chronology remains visibly floating instead of being invented.
+- [ ] Extend the initial per-chapter evidence cache to paragraph-granular Prose
+      processing and persist EPUB spine/block provenance separately from story
+      structure.
 
 ## Storiverse: connect book fingerprints
 

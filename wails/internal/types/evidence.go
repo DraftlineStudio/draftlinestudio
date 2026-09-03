@@ -4,12 +4,13 @@ package types
 // analysis.json. Records always retain their exact source sentence and never
 // claim more certainty than the deterministic rule that admitted them.
 type EvidenceData struct {
-	ContentHash  string           `json:"content_hash"`
-	Engine       string           `json:"engine"`
-	LastAnalyzed string           `json:"last_analyzed"`
-	Records      []EvidenceRecord `json:"records"`
-	Truncated    bool             `json:"truncated,omitempty"`
-	Version      int              `json:"version"`
+	ContentHash   string            `json:"content_hash"`
+	ChapterHashes map[string]string `json:"chapter_hashes,omitempty"`
+	Engine        string            `json:"engine"`
+	LastAnalyzed  string            `json:"last_analyzed"`
+	Records       []EvidenceRecord  `json:"records"`
+	Truncated     bool              `json:"truncated,omitempty"`
+	Version       int               `json:"version"`
 }
 
 // EvidenceRecord is one source-located candidate fact or event. IDs are

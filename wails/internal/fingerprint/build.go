@@ -53,6 +53,7 @@ func Build(book *types.BookData, progress func(types.StoryAnalysisProgress)) *ty
 	result.Diagnostics = append(result.Diagnostics, buildDiagnostics(book, result, records)...)
 	reconcileCorrections(result)
 	result.Diagnostics = append(result.Diagnostics, correctionDiagnostics(result.AuthorModel.Corrections)...)
+	result.Structure = buildStructure(book, result, records)
 	if progress != nil {
 		progress(types.StoryAnalysisProgress{Phase: "chronology", Message: "Chronology model current", Current: len(records), Total: len(records), Percent: 82})
 	}

@@ -5,11 +5,16 @@ import { useBookStore } from '../../store/bookStore'
 import type { BookData, EvidenceRecord, Section } from '../../types/draftline'
 import {
   appendStoryDayCorrection,
-  buildStoryMapLayout,
-  describeEvent,
+  type AuthorModelDraft,
   type EraKind,
   type MapNode,
 } from './storyMapModel'
+import {
+  buildStructureMapLayout,
+  describeAggregate,
+  type StructureProjection,
+  type StructureZoom,
+} from './storyStructureMapModel'
 
 interface Props {
   book: BookData
@@ -33,9 +38,12 @@ export default function StoryMapPanel({ book, onNavigate }: Props) {
   const fingerprint = (book.analysis as { fingerprint?: types.StoryFingerprint } | undefined)?.fingerprint
   const records = book.analysis?.evidence?.records
 
+  const [projection, setProjection] = useState<StructureProjection>('story')
+  const [zoom, setZoom] = useState<StructureZoom>('overview')
+
   const layout = useMemo(
-    () => (fingerprint ? buildStoryMapLayout(fingerprint) : null),
-    [fingerprint],
+    () => (fingerprint ? buildStructureMapLayout(fingerprint, projection, zoom) : null),
+    [fingerprint, projection, zoom],
   )
 
   const evidenceById = useMemo(() => {
@@ -56,8 +64,8 @@ export default function StoryMapPanel({ book, onNavigate }: Props) {
   const selectedPos = selected ? nodes.indexOf(selected) : -1
 
   const detail = useMemo(
-    () => (fingerprint && selected ? describeEvent(fingerprint, evidenceById, selected.id) : null),
-    [fingerprint, evidenceById, selected],
+    () => (fingerprint && selected && layout ? describeAggregate(fingerprint, evidenceById, layout, selected.id) : null),
+    [fingerprint, evidenceById, selected, layout],
   )
 
   useEffect(() => { setAnchorError('') }, [selected?.id])
@@ -84,14 +92,22 @@ export default function StoryMapPanel({ book, onNavigate }: Props) {
 
   const confirmPlacement = async () => {
     if (!fingerprint || !detail || anchorBusy) return
-    const draft = appendStoryDayCorrection(fingerprint, detail.id)
-    if (!draft) return
+    let model: AuthorModelDraft = fingerprint.author_model as AuthorModelDraft
+    let day: number | null = null
+    for (const eventId of detail.fingerprintEventIds) {
+      const working = { ...fingerprint, author_model: model } as types.StoryFingerprint
+      const correction = appendStoryDayCorrection(working, eventId)
+      if (!correction) continue
+      model = correction.model
+      day ??= correction.day
+    }
+    if (day === null) return
     setAnchorBusy(true)
     setAnchorError('')
     try {
       const result = await UpdateStoryAuthorModel(
         book as types.BookData,
-        types.StoryAuthorModel.createFrom(draft.model),
+        types.StoryAuthorModel.createFrom(model),
       )
       if (result.success && result.book) {
         updateBook(result.book as unknown as BookData)
@@ -123,11 +139,30 @@ export default function StoryMapPanel({ book, onNavigate }: Props) {
     )
   }
 
-  const showAnchor = !!detail?.needsAnchor && !dismissedAnchors.has(detail.id)
+  const sourceEvent = detail?.fingerprintEventId
+    ? (fingerprint.events ?? []).find(event => event.id === detail.fingerprintEventId)
+    : undefined
+  const anchorDay = sourceEvent?.story_time?.day_offset ?? sourceEvent?.story_time?.earliest_day ?? 0
+  const showAnchor = projection === 'story' && !!sourceEvent &&
+    (sourceEvent.story_time?.precision === 'relative' || sourceEvent.story_time?.precision === 'unknown') &&
+    !dismissedAnchors.has(detail?.id ?? '')
   const tickBottom = layout.height - 40
 
   return (
     <div className="smap-root">
+      <div className="smap-view-controls" aria-label="Story Map view controls">
+        <div className="smap-segmented">
+          <button type="button" className={projection === 'story' ? 'active' : ''} onClick={() => setProjection('story')}>Story time</button>
+          <button type="button" className={projection === 'manuscript' ? 'active' : ''} onClick={() => setProjection('manuscript')}>Manuscript order</button>
+        </div>
+        <div className="smap-segmented">
+          {(['overview', 'sequence', 'scene', 'event'] as StructureZoom[]).map(level => (
+            <button type="button" key={level} className={zoom === level ? 'active' : ''} onClick={() => { setZoom(level); setSelectedId(null) }}>
+              {level === 'event' ? 'Details' : level[0].toUpperCase() + level.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="smap-scroll" ref={scrollRef}>
         <div className="smap-inner" style={{ width: layout.width }}>
           <div className="smap-eras">
@@ -191,7 +226,9 @@ export default function StoryMapPanel({ book, onNavigate }: Props) {
               </g>
             )}
 
-            <path d={layout.pathD} className="smap-path" />
+            {layout.threadPaths.length > 0
+              ? layout.threadPaths.map((path, index) => <path key={path.id} d={path.d} className={`smap-path smap-path--thread-${index % 6}`} />)
+              : <path d={layout.pathD} className="smap-path" />}
 
             {layout.dangles.map(dangle => (
               <g key={dangle.threadId}>
@@ -247,13 +284,17 @@ export default function StoryMapPanel({ book, onNavigate }: Props) {
             </div>
             <div className="smap-title">{detail.title}</div>
             <div className="smap-loc">{detail.location}</div>
-            {detail.quote && <div className="smap-quote">&ldquo;{detail.quote}&rdquo;</div>}
+            <div className="smap-confidence">{Math.round(detail.confidence * 100)}% confidence · {Math.round(detail.salience * 100)}% structural salience</div>
+            {detail.quotes.slice(0, 4).map(record => (
+              <div className="smap-quote" key={record.id}>&ldquo;{record.text}&rdquo;</div>
+            ))}
+            {detail.quotes.length > 4 && <div className="smap-more-evidence">+{detail.quotes.length - 4} supporting facts</div>}
 
             {showAnchor && (
               <div className="smap-anchor">
                 <div className="smap-anchor-head">
-                  Inferred placement · {detail.anchorPercent}%
-                  {detail.anchorLabel ? ` · “${detail.anchorLabel}”` : ''}
+                  Inferred placement · {Math.round((sourceEvent?.story_time?.confidence ?? 0) * 100)}%
+                  {sourceEvent?.story_time?.label ? ` · “${sourceEvent.story_time.label}”` : ''}
                 </div>
                 <div className="smap-anchor-actions">
                   <button
@@ -262,7 +303,7 @@ export default function StoryMapPanel({ book, onNavigate }: Props) {
                     disabled={anchorBusy}
                     onClick={() => { void confirmPlacement() }}
                   >
-                    {anchorBusy ? 'Saving…' : `Confirm Day ${detail.anchorDay}`}
+                    {anchorBusy ? 'Saving…' : `Confirm Day ${anchorDay}`}
                   </button>
                   <button
                     type="button"
@@ -290,8 +331,8 @@ export default function StoryMapPanel({ book, onNavigate }: Props) {
                 <>
                   <span className="smap-label">Obligations</span>
                   {detail.obligations.map(obligation => (
-                    <div className={`smap-obl-line smap-obl-line--${obligation.tone}`} key={`${obligation.symbol}-${obligation.text}`}>
-                      <i>{obligation.symbol}</i><span>{obligation.text}</span>
+                    <div className="smap-obl-line smap-obl-line--open" key={obligation}>
+                      <i>○</i><span>{obligation}</span>
                     </div>
                   ))}
                 </>
@@ -318,7 +359,7 @@ export default function StoryMapPanel({ book, onNavigate }: Props) {
                 onClick={openInChapter}
                 disabled={!detail.navigation}
               >
-                Open in {detail.chapterLabel} →
+                Open source →
               </button>
             </div>
           </>

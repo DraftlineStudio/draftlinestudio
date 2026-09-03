@@ -2756,7 +2756,34 @@ html, body, #root {
 
 /* ── Story Map (bottom bar v7) ──────────────────────────────────────────── */
 /* ── Story Map tab (bottom bar) ─────────────────────────────────────────── */
-.smap-root { display: flex; flex: 1; min-height: 0; }
+.smap-root { position: relative; display: flex; flex: 1; min-height: 0; padding-top: 32px; box-sizing: border-box; }
+.smap-view-controls {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-panel);
+  z-index: 3;
+}
+.smap-segmented { display: flex; align-items: center; }
+.smap-segmented button {
+  border: 1px solid var(--border);
+  border-right-width: 0;
+  padding: 2px 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 9.5px;
+  cursor: pointer;
+}
+.smap-segmented button:first-child { border-radius: 4px 0 0 4px; }
+.smap-segmented button:last-child { border-right-width: 1px; border-radius: 0 4px 4px 0; }
+.smap-segmented button.active { color: var(--text-primary); border-color: var(--app-accent-text); background: var(--accent-dim); }
 .smap-empty {
   display: flex;
   flex: 1;
@@ -2820,6 +2847,12 @@ html, body, #root {
 .smap-loop { fill: none; stroke: var(--status-warning); stroke-width: 1.2; stroke-dasharray: 5 4; opacity: 0.8; }
 .smap-loop-label { font-size: 8px; fill: var(--status-warning); }
 .smap-path { fill: none; stroke: var(--text-muted); stroke-width: 1.3; opacity: 0.75; }
+.smap-path--thread-0 { stroke: var(--section-front); }
+.smap-path--thread-1 { stroke: var(--section-back); }
+.smap-path--thread-2 { stroke: var(--status-warning); }
+.smap-path--thread-3 { stroke: var(--status-success); }
+.smap-path--thread-4 { stroke: var(--app-accent-text); }
+.smap-path--thread-5 { stroke: var(--text-secondary); }
 .smap-dangle { fill: none; stroke: var(--status-warning); stroke-width: 1.2; stroke-dasharray: 4 3; opacity: 0.8; }
 .smap-dangle-label { font-size: 8px; font-weight: 700; fill: var(--status-warning); }
 
@@ -2855,6 +2888,7 @@ html, body, #root {
   padding: 10px 13px 9px;
   gap: 6px;
   background: var(--bg-panel);
+  overflow: hidden;
 }
 .smap-detail-empty { display: flex; flex: 1; align-items: center; justify-content: center; color: var(--text-muted); font-size: 10.5px; }
 .smap-detail-head { display: flex; align-items: center; gap: 7px; }
@@ -2873,6 +2907,7 @@ html, body, #root {
 .smap-when { font-size: 10px; color: var(--text-muted); }
 .smap-title { font-size: 12.5px; font-weight: 600; }
 .smap-loc { font-size: 10.5px; color: var(--text-secondary); }
+.smap-confidence, .smap-more-evidence { font-size: 9px; color: var(--text-faint); }
 .smap-quote {
   font-family: 'Merriweather', serif;
   font-style: italic;

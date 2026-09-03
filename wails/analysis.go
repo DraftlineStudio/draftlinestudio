@@ -26,11 +26,19 @@ func (a *App) AnalyzeBook(bookData types.BookData) types.FullAnalysisResult {
 		Current: 0, Total: chapterCount, Percent: 5,
 	})
 
+	// IndexBook invalidates evidence because entity ids may change. Keep the
+	// previous cache available to AnalyzeEvidence so unchanged chapters can be
+	// reused after entity resolution instead of passing through ProseV3 again.
+	priorEvidence := bookData.Analysis.Evidence
+	priorEntities := bookData.Analysis.EntityResolution
 	indexResult := indexing.IndexBook(&bookData)
 	if !indexResult.Success {
 		return types.FullAnalysisResult{Success: false, Error: indexResult.Error}
 	}
 	bookData = indexResult.Book
+	if entityIDsStable(priorEntities, bookData.Analysis.EntityResolution) {
+		bookData.Analysis.Evidence = priorEvidence
+	}
 
 	a.emitAnalysisProgress(types.StoryAnalysisProgress{
 		Phase: "relationships", Message: "Mapping confirmed character relationships",
@@ -45,13 +53,29 @@ func (a *App) AnalyzeBook(bookData types.BookData) types.FullAnalysisResult {
 	bookData.Analysis.Evidence = indexing.AnalyzeEvidence(&bookData, a.emitAnalysisProgress)
 	bookData.Analysis.Fingerprint = fingerprint.Build(&bookData, a.emitAnalysisProgress)
 	bookData.Analysis.Story = indexing.AnalyzeStory(&bookData, a.emitAnalysisProgress)
-	if bookData.Analysis.Version < 4 {
-		bookData.Analysis.Version = 4
+	if bookData.Analysis.Version < 5 {
+		bookData.Analysis.Version = 5
 	}
 	a.emitAnalysisProgress(types.StoryAnalysisProgress{
 		Phase: "complete", Message: "Story analysis current", Current: chapterCount, Total: chapterCount, Percent: 100,
 	})
 	return types.FullAnalysisResult{Success: true, Book: bookData}
+}
+
+func entityIDsStable(before, after *types.EntityData) bool {
+	if before == nil || after == nil || len(before.Entities) != len(after.Entities) {
+		return false
+	}
+	ids := make(map[string]string, len(before.Entities))
+	for _, entity := range before.Entities {
+		ids[entity.Canonical] = entity.ID
+	}
+	for _, entity := range after.Entities {
+		if ids[entity.Canonical] != entity.ID {
+			return false
+		}
+	}
+	return true
 }
 
 func (a *App) emitAnalysisProgress(progress types.StoryAnalysisProgress) {

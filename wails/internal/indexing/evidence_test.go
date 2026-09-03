@@ -12,7 +12,7 @@ func TestAnalyzeEvidenceIndexesDiscoveryWithExactSourceAndCharacters(t *testing.
 	book := evidenceTestBook(text, map[string]string{"Hanlon": "hanlon", "Ruiz": "ruiz"})
 
 	result := AnalyzeEvidence(&book, nil)
-	if result.Engine != "prose-v3-evidence-v2" || result.Version != 2 {
+	if result.Engine != "prose-v3-evidence-v3" || result.Version != 3 {
 		t.Fatalf("unexpected evidence schema identity: engine=%s version=%d", result.Engine, result.Version)
 	}
 	record := findEvidenceType(result.Records, "discovery")
@@ -43,6 +43,23 @@ func TestAnalyzeEvidenceStableIDSurvivesUnrelatedEarlierParagraph(t *testing.T) 
 	}
 	if second.ParagraphIndex == first.ParagraphIndex {
 		t.Fatalf("test did not move the source paragraph: first=%d second=%d", first.ParagraphIndex, second.ParagraphIndex)
+	}
+}
+
+func TestAnalyzeEvidenceReusesUnchangedChapterCache(t *testing.T) {
+	book := evidenceTestBook("Hanlon discovered the tunnel beneath IBM.", map[string]string{"Hanlon": "hanlon"})
+	first := AnalyzeEvidence(&book, nil)
+	if first.ChapterHashes["chapter-one"] == "" {
+		t.Fatal("missing chapter cache hash")
+	}
+	book.Analysis.Evidence = first
+	// If the chapter were passed through extraction again this deliberately
+	// absent mention span would remove its confirmed character link.
+	book.Analysis.EntityResolution.Mentions = nil
+	second := AnalyzeEvidence(&book, nil)
+	discovery := findEvidenceType(second.Records, "discovery")
+	if discovery == nil || len(discovery.CharacterIDs) != 1 || discovery.CharacterIDs[0] != "hanlon" {
+		t.Fatalf("unchanged chapter was not reused: %+v", discovery)
 	}
 }
 

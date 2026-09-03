@@ -4,6 +4,27 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02499] - 2026-09-02
+
+### Added
+- Introduced the persisted, evidence-preserving **Story Structure** layer: significant events aggregate related fingerprint propositions, semantic scenes preserve continuous context, sequences group sustained action, narrative threads may converge and separate, and high-level arcs provide whole-book containers. Every level retains complete evidence and child links back to the lossless ProseV3 fingerprint.
+- Added independent salience components for state changes, movement, discoveries, temporal transitions, plot obligations, later references, contradictions, descriptive-only material, and low-confidence parsing. Overview selection now guarantees structural coverage for arcs, narrative threads, temporal contexts, convergence points, and plot-thread changes before filling remaining capacity by salience.
+- Added Story Map semantic zoom with Overview, Sequence, Scene, and Details levels, plus distinct **Story time** and **Manuscript order** projections. Unresolved chronology stays visibly floating rather than receiving invented dates.
+- Expanded the Story Map inspector from one representative quotation to multiple supporting facts, confidence and salience, state changes, obligations, source navigation, and the existing author-confirmable temporal placement flow.
+- Added persisted source-block hashes, evidence-to-aggregate reverse dependencies, and aggregate parent links as the invalidation foundation for progressively narrower analysis updates.
+
+### Changed
+- Replaced the live Story Map's direct rendering of shallow fingerprint events and global top-120 ranking with the Story Structure hierarchy. The existing SVG surface, themed era bands, source navigation, diagnostics, and correction flow remain in place.
+- ProseV3 evidence analysis now maintains per-chapter content hashes and reuses unchanged chapter evidence after character resolution when entity identities remain stable. Ordinary edits no longer force unchanged chapters through evidence extraction; schema identity advanced to `prose-v3-evidence-v3`.
+- Advanced the rebuildable `analysis.json` container to version 5; older archives remain compatible and acquire Story Structure during their next normal analysis.
+- Advanced Draftline to the `0.17` milestone for the first author-facing hierarchical representation of manuscript structure.
+
+### Internal
+- Added deterministic aggregation and projection tests covering lossless evidence joins, temporal scene separation, structural overview coverage, and differing fictional-time/manuscript-order results.
+- Kept EPUB normalization independent from semantic aggregation; uncertain import boundaries are not promoted into authoritative story structure.
+
+---
+
 ## [0.16.02498] - 2026-09-01
 
 ### Added

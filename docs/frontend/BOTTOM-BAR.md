@@ -31,24 +31,20 @@ contexts, canon — rebuilds the fingerprint only, result flows through
 
 ## Story Map
 
-The Story Map tab (`storysearch/StoryMapPanel.tsx`) renders the story
-fingerprint as a horizontally scrollable story-time timeline plus a 298px
-event-detail pane. All derivation is pure and unit-tested in
-`storysearch/storyMapModel.ts`: `buildStoryMapLayout(fingerprint, opts)`
-groups events into era bands (one per `StoryContext`, with the primary
-context split into contiguous day segments where events carry
-`day_offset`/`earliest_day`; unanchored flashback frames sort left, unplaced
-remainders right), assigns up to three lanes (primary on top, nested contexts
-below), places nodes inside their era ordered by story day then narrative
-order, and builds the manuscript-order cubic path. It also emits day ticks
-(weekday extracted from `story_time.label`), checkpoint flags from
-`author_model.checkpoints` (fulfilled/partial, with satisfied/total ratio),
-dashed dangle curves for up to two open threads, and a loop-back curve when
-an undecided `near_duplicate_chapter` diagnostic spans the first and last
-chapters. Nodes cap at the 120 highest-importance events. `describeEvent`
-joins evidence, states, and threads into the detail-pane model;
-`appendStoryDayCorrection` pins a weakly-placed event's day as a `story_day`
-correction (status `active`) submitted via `UpdateStoryAuthorModel`.
+The Story Map tab (`storysearch/StoryMapPanel.tsx`) renders the persisted
+`StoryFingerprint.Structure` hierarchy rather than promoting raw propositions
+directly into visible dots. `storyStructureMapModel.ts` provides semantic zoom:
+Overview selects structurally required arc/thread/context/convergence and
+obligation beats before salience; Sequence, Scene, and Details progressively
+reveal their contained structure. Story-time and manuscript-order projections
+are separate. Unknown or relative chronology remains in a floating band.
+
+The 298px evidence inspector joins an aggregate to every supporting evidence
+record, its confidence and salience, state changes, obligations, and source
+navigation. The existing story-day correction flow pins the aggregate's first
+supporting fingerprint event through `UpdateStoryAuthorModel`. The legacy
+`storyMapModel.ts` remains the home of shared SVG geometry, context styling,
+loop diagnostics, and correction helpers while compatibility callers migrate.
 
 ## Threads
 

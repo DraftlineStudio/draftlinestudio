@@ -344,6 +344,7 @@ export interface EvidenceRecord {
 
 export interface EvidenceData {
   content_hash: string
+  chapter_hashes?: Record<string, string>
   engine: string
   last_analyzed: string
   records: EvidenceRecord[]
