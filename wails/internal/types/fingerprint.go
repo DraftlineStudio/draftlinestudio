@@ -17,6 +17,7 @@ type StoryFingerprint struct {
 	Diagnostics         []FingerprintDiagnostic `json:"diagnostics"`
 	Profiles            []StoryProfile          `json:"profiles,omitempty"`
 	Voices              []CharacterVoiceProfile `json:"voices,omitempty"`
+	Structure           *StoryStructure         `json:"structure,omitempty"`
 	AuthorModel         StoryAuthorModel        `json:"author_model"`
 }
 

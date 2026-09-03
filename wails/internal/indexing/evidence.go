@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	evidenceEngine     = "prose-v3-evidence-v2"
+	evidenceEngine     = "prose-v3-evidence-v3"
 	maxEvidenceRecords = 50_000
 )
 
@@ -64,10 +64,11 @@ type evidenceSentence struct {
 func AnalyzeEvidence(book *types.BookData, progress func(types.StoryAnalysisProgress)) *types.EvidenceData {
 	chapters := evidenceChapters(book)
 	result := &types.EvidenceData{
-		Engine:       evidenceEngine,
-		LastAnalyzed: time.Now().Format(time.RFC3339),
-		Records:      []types.EvidenceRecord{},
-		Version:      2,
+		Engine:        evidenceEngine,
+		LastAnalyzed:  time.Now().Format(time.RFC3339),
+		Records:       []types.EvidenceRecord{},
+		ChapterHashes: map[string]string{},
+		Version:       3,
 	}
 
 	hasher := sha256.New()
@@ -77,8 +78,15 @@ func AnalyzeEvidence(book *types.BookData, progress func(types.StoryAnalysisProg
 	result.ContentHash = hex.EncodeToString(hasher.Sum(nil))
 
 	prior := priorEvidence(book.Analysis.Evidence)
+	reusable := reusableEvidenceChapters(book.Analysis.Evidence, chapters, result.ChapterHashes)
 	mentionToEntity, canonicalByID, mentionsByChapter := evidenceCharacterLookups(book)
-	analyzed := analyzeEvidenceChapters(chapters, mentionsByChapter, mentionToEntity, canonicalByID, progress)
+	toAnalyze := append([]evidenceChapter(nil), chapters...)
+	for index, item := range toAnalyze {
+		if reusable[item.chapter.ID] != nil {
+			toAnalyze[index].text = ""
+		}
+	}
+	analyzed := analyzeEvidenceChapters(toAnalyze, mentionsByChapter, mentionToEntity, canonicalByID, progress)
 	introduced := make(map[string]bool)
 	seenIDs := make(map[string]int)
 
@@ -86,6 +94,16 @@ func AnalyzeEvidence(book *types.BookData, progress func(types.StoryAnalysisProg
 		if len(result.Records) >= maxEvidenceRecords {
 			result.Truncated = true
 			break
+		}
+		if cached := reusable[item.chapter.ID]; cached != nil {
+			for _, record := range cached {
+				record.ChapterIndex, record.Section, record.SectionIndex = item.globalIndex, item.section, item.sectionIndex
+				result.Records = append(result.Records, record)
+				for _, id := range record.CharacterIDs {
+					introduced[id] = true
+				}
+			}
+			continue
 		}
 		for _, sentence := range analyzed[position] {
 			newCharacters := make([]string, 0, len(sentence.characterIDs))
@@ -136,6 +154,40 @@ func AnalyzeEvidence(book *types.BookData, progress func(types.StoryAnalysisProg
 		return a.ID < b.ID
 	})
 	return result
+}
+
+func reusableEvidenceChapters(old *types.EvidenceData, chapters []evidenceChapter, hashes map[string]string) map[string][]types.EvidenceRecord {
+	result := map[string][]types.EvidenceRecord{}
+	if old == nil || len(old.ChapterHashes) == 0 { // v2 caches safely fall back to one full rebuild.
+		for _, item := range chapters {
+			hashes[item.chapter.ID] = evidenceChapterHash(item.text)
+		}
+		return result
+	}
+	current := map[string]bool{}
+	for _, item := range chapters {
+		hash := evidenceChapterHash(item.text)
+		hashes[item.chapter.ID] = hash
+		current[item.chapter.ID] = true
+		if old.ChapterHashes[item.chapter.ID] != hash {
+			continue
+		}
+		result[item.chapter.ID] = []types.EvidenceRecord{}
+	}
+	for _, record := range old.Records {
+		if record.Source == "author" || !current[record.ChapterID] {
+			continue
+		}
+		if _, ok := result[record.ChapterID]; ok {
+			result[record.ChapterID] = append(result[record.ChapterID], record)
+		}
+	}
+	return result
+}
+
+func evidenceChapterHash(text string) string {
+	sum := sha256.Sum256([]byte(text))
+	return hex.EncodeToString(sum[:16])
 }
 
 func evidenceChapters(book *types.BookData) []evidenceChapter {
