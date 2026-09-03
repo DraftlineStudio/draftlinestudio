@@ -145,12 +145,12 @@ export default function ApplicationSection({
           onChange={event => setAnalysisCPUProfile(event.target.value as typeof analysisCPUProfile)}
         >
           <option value="adaptive">Adaptive (recommended)</option>
-          <option value="gentle">Gentle — 1–2 analysis cores</option>
-          <option value="balanced">Balanced — up to 4 analysis cores</option>
-          <option value="fast">Fast — use available CPU</option>
+          <option value="gentle">Gentle — 1–2 analysis workers</option>
+          <option value="balanced">Balanced — up to 4 analysis workers</option>
+          <option value="fast">Fast — one worker per logical CPU</option>
         </select>
         <div className="settings-hint">
-          Adaptive automatically switches large manuscripts to Gentle. These are concurrency budgets rather than exact CPU percentages; Draftline leaves capacity for the editor in Adaptive, Gentle, and Balanced modes.
+          These limits apply only to linguistic and evidence-analysis workers. They never constrain Draftline's scheduler, bindings, files, asset server, or Read Aloud. Adaptive uses Balanced workers and adds a bounded-memory queue for large manuscripts.
         </div>
       </div>
     </>

@@ -13,14 +13,14 @@ import (
 	"draftline/internal/types"
 )
 
-const structureEngine = "draftline-story-structure-v1"
+const structureEngine = "draftline-story-structure-v2"
 
 var structuralDecisionRe = regexp.MustCompile(`(?i)\b(?:decid(?:ed|es|ing)|chos(?:e|en)|resolved|refused|agreed|committed|determined|must|will)\b`)
 
 // buildStructure creates author-facing hierarchy without weakening or
 // replacing the atomic fingerprint. All joins point back to EvidenceRecord.
 func buildStructure(book *types.BookData, fp *types.StoryFingerprint, records []types.EvidenceRecord) *types.StoryStructure {
-	s := &types.StoryStructure{ContentHash: fp.ContentHash, Engine: structureEngine, Version: 1, LastAnalyzed: time.Now().UTC().Format(time.RFC3339)}
+	s := &types.StoryStructure{ContentHash: fp.ContentHash, Engine: structureEngine, Version: 2, LastAnalyzed: time.Now().UTC().Format(time.RFC3339)}
 	s.SignificantEvents = aggregateSignificantEvents(fp, records)
 	s.Scenes = aggregateScenes(book, s.SignificantEvents)
 	s.Sequences = aggregateSequences(s.Scenes, s.SignificantEvents)
@@ -64,13 +64,64 @@ func aggregateSignificantEvents(fp *types.StoryFingerprint, records []types.Evid
 	}
 
 	result := []types.SignificantStoryEvent{}
+	pendingSupport := []types.SignificantStoryEvent{}
 	for _, event := range fp.Events {
 		candidate := significantFromFingerprint(event, recordByID, stateByEvent[event.ID], obligationByEvent[event.ID], contradicted[event.ID])
-		if len(result) > 0 && significantAffinity(result[len(result)-1], candidate) >= .52 {
-			mergeSignificant(&result[len(result)-1], candidate)
+		core, creation := significantDisposition(candidate, recordByID, fp.AuthorModel.StructureDecisions)
+		candidate.CreationDecision = creation
+		applyStructureAuthorDecisions(&candidate, fp.AuthorModel.StructureDecisions)
+		applyFingerprintCorrectionLinks(&candidate, fp.AuthorModel.Corrections)
+		if creation.Outcome == "excluded" {
 			continue
 		}
-		result = append(result, candidate)
+		if !core {
+			if len(result) > 0 {
+				membership := significantMembershipDecision(result[len(result)-1], candidate, recordByID, true)
+				if membership.Outcome == "included" {
+					mergeSignificant(&result[len(result)-1], candidate)
+					result[len(result)-1].MembershipDecisions = append(result[len(result)-1].MembershipDecisions, membership)
+					continue
+				}
+			}
+			pendingSupport = append(pendingSupport, candidate)
+			continue
+		}
+
+		group := candidate
+		compatibleSupport := []types.SignificantStoryEvent{}
+		supportDecisions := []types.StructureDecision{}
+		for _, support := range pendingSupport {
+			membership := significantMembershipDecision(candidate, support, recordByID, true)
+			if membership.Outcome != "included" {
+				continue
+			}
+			compatibleSupport = append(compatibleSupport, support)
+			supportDecisions = append(supportDecisions, membership)
+		}
+		if len(compatibleSupport) > 0 {
+			creation, status, authorIDs := candidate.CreationDecision, candidate.InterpretationStatus, clone(candidate.AuthorDecisionIDs)
+			group = compatibleSupport[0]
+			for _, support := range compatibleSupport[1:] {
+				mergeSignificant(&group, support)
+			}
+			mergeSignificant(&group, candidate)
+			group.CreationDecision, group.InterpretationStatus = creation, mergeInterpretationStatus(status, group.InterpretationStatus)
+			group.AuthorDecisionIDs = appendUnique(group.AuthorDecisionIDs, authorIDs...)
+			group.MembershipDecisions = append(group.MembershipDecisions, supportDecisions...)
+		}
+		pendingSupport = pendingSupport[:0]
+
+		if len(result) > 0 {
+			membership := significantMembershipDecision(result[len(result)-1], group, recordByID, false)
+			if membership.Outcome == "included" {
+				mergeSignificant(&result[len(result)-1], group)
+				result[len(result)-1].MembershipDecisions = append(result[len(result)-1].MembershipDecisions, membership)
+				continue
+			}
+			result[len(result)-1].BoundaryDecisions = append(result[len(result)-1].BoundaryDecisions, membership)
+		}
+		group.MembershipDecisions = append([]types.StructureDecision{seedMembershipDecision(group)}, group.MembershipDecisions...)
+		result = append(result, group)
 	}
 	for i := range result {
 		e := &result[i]
@@ -83,6 +134,7 @@ func aggregateSignificantEvents(fp *types.StoryFingerprint, records []types.Evid
 			}
 		}
 		e.Salience = clamp01(sumSalience(e.SalienceReasons))
+		e.SalienceSignals = salienceSignals(*e)
 	}
 	return result
 }
@@ -131,43 +183,13 @@ func significantFromFingerprint(e types.FingerprintEvent, records map[string]typ
 	if e.Confidence < .6 {
 		reasons.LowConfidence = .12
 	}
-	return types.SignificantStoryEvent{Summary: e.Summary, AuthorSummary: e.AuthorSummary, EvidenceIDs: clone(e.EvidenceIDs), FingerprintEventIDs: []string{e.ID}, AssertionIDs: clone(e.AssertionIDs), CharacterIDs: clone(e.CharacterIDs), CharacterNames: clone(e.CharacterNames), Locations: cloneTerms(e.Locations), Objects: cloneTerms(e.Objects), Kinds: clone(e.Kinds), StateIDs: clone(states), ObligationThreadIDs: clone(obligations), ContextID: e.ContextID, StoryTime: e.StoryTime, ChapterID: e.ChapterID, ChapterIndex: e.ChapterIndex, ChapterTitle: e.ChapterTitle, Section: section, SectionIndex: sectionIndex, ParagraphStart: e.ParagraphIndex, ParagraphEnd: e.ParagraphIndex, StartOffset: e.StartOffset, EndOffset: end, SalienceReasons: reasons, Salience: clamp01(sumSalience(reasons)), Confidence: e.Confidence}
-}
-
-func significantAffinity(a, b types.SignificantStoryEvent) float64 {
-	if a.ChapterID != b.ChapterID || a.ContextID != b.ContextID || b.ParagraphStart-a.ParagraphEnd > 1 {
-		return 0
+	refs := []types.StructureEvidenceRef{}
+	for _, id := range e.EvidenceIDs {
+		if record, ok := records[id]; ok {
+			refs = append(refs, structureEvidenceRef(record))
+		}
 	}
-	if a.StoryTime.DayOffset != nil && b.StoryTime.DayOffset != nil && *a.StoryTime.DayOffset != *b.StoryTime.DayOffset {
-		return 0
-	}
-	score := 0.0
-	if a.ParagraphEnd == b.ParagraphStart {
-		score += .34
-	} else {
-		score += .12
-	}
-	if stringOverlap(a.CharacterIDs, b.CharacterIDs) {
-		score += .25
-	}
-	if termOverlap(a.Locations, b.Locations) {
-		score += .18
-	}
-	if termOverlap(a.Objects, b.Objects) {
-		score += .12
-	}
-	if complementaryKinds(a.Kinds, b.Kinds) {
-		score += .15
-	}
-	// A hard movement or thread transition starts its own significant beat
-	// unless the records otherwise describe the same participants/place.
-	if contains(b.Kinds, "transition") && !stringOverlap(a.CharacterIDs, b.CharacterIDs) {
-		score -= .25
-	}
-	if len(a.FingerprintEventIDs) >= 6 {
-		score -= .3
-	}
-	return score
+	return types.SignificantStoryEvent{Summary: e.Summary, AuthorSummary: e.AuthorSummary, EvidenceIDs: clone(e.EvidenceIDs), FingerprintEventIDs: []string{e.ID}, AssertionIDs: clone(e.AssertionIDs), CharacterIDs: clone(e.CharacterIDs), CharacterNames: clone(e.CharacterNames), Locations: cloneTerms(e.Locations), Objects: cloneTerms(e.Objects), Kinds: clone(e.Kinds), StateIDs: clone(states), ObligationThreadIDs: clone(obligations), ContextID: e.ContextID, StoryTime: e.StoryTime, ChapterID: e.ChapterID, ChapterIndex: e.ChapterIndex, ChapterTitle: e.ChapterTitle, Section: section, SectionIndex: sectionIndex, ParagraphStart: e.ParagraphIndex, ParagraphEnd: e.ParagraphIndex, StartOffset: e.StartOffset, EndOffset: end, SalienceReasons: reasons, Salience: clamp01(sumSalience(reasons)), EvidenceRefs: refs, TemporalDecision: temporalPlacementDecision(e), InterpretationStatus: interpretationStatus(e, contradiction), InterpretationSignals: interpretationSignals(e, contradiction), Confidence: e.Confidence}
 }
 
 func complementaryKinds(a, b []string) bool {
@@ -187,6 +209,12 @@ func mergeSignificant(a *types.SignificantStoryEvent, b types.SignificantStoryEv
 	a.ObligationThreadIDs = appendUnique(a.ObligationThreadIDs, b.ObligationThreadIDs...)
 	a.Locations = appendUniqueTerms(a.Locations, b.Locations)
 	a.Objects = appendUniqueTerms(a.Objects, b.Objects)
+	a.EvidenceRefs = appendEvidenceRefs(a.EvidenceRefs, b.EvidenceRefs)
+	a.AuthorDecisionIDs = appendUnique(a.AuthorDecisionIDs, b.AuthorDecisionIDs...)
+	a.CorrectionIDs = appendUnique(a.CorrectionIDs, b.CorrectionIDs...)
+	a.InterpretationSignals = append(a.InterpretationSignals, b.InterpretationSignals...)
+	a.MembershipDecisions = append(a.MembershipDecisions, b.MembershipDecisions...)
+	a.BoundaryDecisions = append(a.BoundaryDecisions, b.BoundaryDecisions...)
 	a.ParagraphEnd = b.ParagraphEnd
 	if b.EndOffset > a.EndOffset {
 		a.EndOffset = b.EndOffset
@@ -201,6 +229,7 @@ func mergeSignificant(a *types.SignificantStoryEvent, b types.SignificantStoryEv
 	if a.AuthorSummary == "" && contains(b.Kinds, "discovery") && b.Summary != "" {
 		a.Summary = b.Summary
 	}
+	a.InterpretationStatus = mergeInterpretationStatus(a.InterpretationStatus, b.InterpretationStatus)
 }
 
 func aggregateSummary(e types.SignificantStoryEvent) string {

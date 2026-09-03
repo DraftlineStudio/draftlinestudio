@@ -37,12 +37,14 @@ export class WebAudioPort implements AudioPort {
       if (!stopped) onEnded()
     }
 
-    const startAt = Math.max(ctx.currentTime, this.nextStartTime)
+    const previousEnd = this.nextStartTime
+    const startAt = Math.max(ctx.currentTime, previousEnd)
+    const handoffGapMs = previousEnd > 0 ? Math.max(0, startAt - previousEnd) * 1000 : 0
     this.nextStartTime = startAt + buffer.duration
     source.start(startAt)
     this.active.add(source)
     this.allocatedBytes += chunk.samples.byteLength
-    this.onDiagnostic?.(`audio alloc: ${Math.round(chunk.samples.byteLength / 1024)} KB buffer (${buffer.duration.toFixed(1)}s), ${Math.round(this.allocatedBytes / 1048576)} MB total enqueued this session, ${this.active.size} scheduled`)
+    this.onDiagnostic?.(`audio alloc: ${Math.round(chunk.samples.byteLength / 1024)} KB buffer (${buffer.duration.toFixed(1)}s), handoff gap ${handoffGapMs.toFixed(1)} ms, ${Math.round(this.allocatedBytes / 1048576)} MB total enqueued this session, ${this.active.size} scheduled`)
 
     return {
       stop: () => {

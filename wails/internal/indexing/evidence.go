@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math"
 	"regexp"
-	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -62,6 +61,12 @@ type evidenceSentence struct {
 // manuscript sentences. It uses the already bundled prose/v3 models and
 // deterministic cue rules; no generative model or network call is involved.
 func AnalyzeEvidence(book *types.BookData, progress func(types.StoryAnalysisProgress)) *types.EvidenceData {
+	return AnalyzeEvidenceWithOptions(book, progress, defaultAnalysisPoolOptions())
+}
+
+// AnalyzeEvidenceWithOptions bounds only the ProseV3 evidence workers. The
+// unbuffered job channel prevents queued chapters from multiplying memory.
+func AnalyzeEvidenceWithOptions(book *types.BookData, progress func(types.StoryAnalysisProgress), pool AnalysisPoolOptions) *types.EvidenceData {
 	chapters := evidenceChapters(book)
 	result := &types.EvidenceData{
 		Engine:        evidenceEngine,
@@ -86,7 +91,7 @@ func AnalyzeEvidence(book *types.BookData, progress func(types.StoryAnalysisProg
 			toAnalyze[index].text = ""
 		}
 	}
-	analyzed := analyzeEvidenceChapters(toAnalyze, mentionsByChapter, mentionToEntity, canonicalByID, progress)
+	analyzed := analyzeEvidenceChapters(toAnalyze, mentionsByChapter, mentionToEntity, canonicalByID, progress, pool)
 	introduced := make(map[string]bool)
 	seenIDs := make(map[string]int)
 
@@ -211,33 +216,28 @@ func evidenceChapters(book *types.BookData) []evidenceChapter {
 	return items
 }
 
-// analyzeEvidenceChapters runs the model-backed per-chapter work with a small
-// bounded worker pool. Four workers substantially reduce large-book latency
-// without letting background analysis consume every available core.
-func analyzeEvidenceChapters(chapters []evidenceChapter, mentionsByChapter map[int][]types.MentionRecord, mentionToEntity, canonicalByID map[string]string, progress func(types.StoryAnalysisProgress)) [][]evidenceSentence {
+// analyzeEvidenceChapters runs model-backed per-chapter work through the
+// stage-local worker and memory bounds supplied by the Wails analysis budget.
+func analyzeEvidenceChapters(chapters []evidenceChapter, mentionsByChapter map[int][]types.MentionRecord, mentionToEntity, canonicalByID map[string]string, progress func(types.StoryAnalysisProgress), pool AnalysisPoolOptions) [][]evidenceSentence {
 	result := make([][]evidenceSentence, len(chapters))
 	if len(chapters) == 0 {
 		return result
 	}
-	workerCount := runtime.GOMAXPROCS(0)
-	if workerCount > 4 {
-		workerCount = 4
-	}
-	if workerCount > len(chapters) {
-		workerCount = len(chapters)
-	}
-
+	pool = normalizeAnalysisPoolOptions(pool, len(chapters))
 	jobs := make(chan int)
+	memory := newAnalysisMemoryGate(pool.MaxInFlightBytes)
 	var workers sync.WaitGroup
 	var progressMu sync.Mutex
 	completed := 0
-	for range workerCount {
+	for range pool.Workers {
 		workers.Add(1)
 		go func() {
 			defer workers.Done()
 			for position := range jobs {
 				item := chapters[position]
+				weight := memory.acquire(len(item.text))
 				result[position] = analyzeEvidenceChapter(item, mentionsByChapter[item.globalIndex], mentionToEntity, canonicalByID)
+				memory.release(weight)
 				if progress != nil {
 					progressMu.Lock()
 					completed++
