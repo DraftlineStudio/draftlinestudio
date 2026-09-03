@@ -12,8 +12,11 @@ import { EventsOn } from '../../wailsjs/runtime/runtime'
 import { ReadAloudController, type ControllerStatus } from '../services/readaloud/controller'
 import { WorkerSynth, type ModelLoadProgress } from '../services/readaloud/tts'
 import { WebAudioPort } from '../services/readaloud/audio'
-import type { DocSentence } from '../services/readaloud/docSentences'
+import { collectSentences, type DocSentence } from '../services/readaloud/docSentences'
+import { updateReadAloud, clearReadAloud, setReadAloudHandlers } from '../extensions/ReadAloud'
 import { useAppStore } from './appStore'
+import { useEditorStore } from './editorStore'
+import type { Editor } from '@tiptap/react'
 
 export type ReadAloudModelState = 'unknown' | 'missing' | 'downloading' | 'ready' | 'error'
 
@@ -46,6 +49,11 @@ interface ReadAloudStore {
 
   // Starts reading the given sentences (already mapped to editor positions).
   play: (sentences: DocSentence[], startIndex: number) => void
+  // Editor-scoped entry points: cursor → chapter end, current selection
+  // (falls back to cursor when empty), or the whole chapter.
+  playFromCursor: () => void
+  playSelection: () => void
+  playChapter: () => void
   togglePause: () => void
   stop: () => void
   skip: (delta: 1 | -1) => void
@@ -70,6 +78,33 @@ let synth: WorkerSynth | null = null
 let audio: WebAudioPort | null = null
 let controller: ReadAloudController | null = null
 
+// The editorStore holds the full TipTap Editor behind a narrow interface;
+// the cast recovers view access for decorations (see editorStore comment).
+function liveEditor(): Editor | null {
+  return (useEditorStore.getState().editorRef as unknown as Editor | null) ?? null
+}
+
+function withEditorView(fn: (view: Editor['view']) => void): void {
+  const editor = liveEditor()
+  if (editor?.view) fn(editor.view)
+}
+
+function scrollHighlightIntoView(): void {
+  window.requestAnimationFrame(() => {
+    document.querySelector('.read-aloud-current')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  })
+}
+
+// Click-to-jump and edit-stops-playback callbacks for the ReadAloud
+// extension. Module-level, like the extension's own handler slot.
+setReadAloudHandlers({
+  onSentenceClick: index => useReadAloudStore.getState().jumpTo(index),
+  onDocEdited: () => {
+    const store = useReadAloudStore.getState()
+    if (store.status !== 'idle') store.stop()
+  },
+})
+
 export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
   const bindEvents = () => {
     if (eventsBound) return
@@ -89,6 +124,8 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
     })
   }
 
+  const clearHighlight = () => withEditorView(clearReadAloud)
+
   const ensureController = (): ReadAloudController => {
     if (controller) return controller
     synth = new WorkerSynth(
@@ -101,9 +138,28 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
         set({ status })
         if (status === 'playing') set({ modelLoading: null })
       },
-      onSentenceStart: index => set({ currentIndex: index }),
-      onError: message => set({ playbackError: message, currentIndex: -1 }),
-      onFinished: () => set({ currentIndex: -1 }),
+      onSentenceStart: index => {
+        set({ currentIndex: index })
+        withEditorView(view => updateReadAloud(view, { activeIndex: index }))
+        scrollHighlightIntoView()
+      },
+      onError: message => {
+        set({ playbackError: message, currentIndex: -1 })
+        clearHighlight()
+      },
+      onFinished: () => {
+        set({ currentIndex: -1 })
+        clearHighlight()
+      },
+    })
+    // A chapter switch remounts the editor; playback positions belong to the
+    // old document, so stop cleanly (highlights die with the old view).
+    let lastEditor = useEditorStore.getState().editorRef
+    useEditorStore.subscribe(state => {
+      if (state.editorRef === lastEditor) return
+      lastEditor = state.editorRef
+      const store = get()
+      if (store.status !== 'idle') store.stop()
     })
     return controller
   }
@@ -164,14 +220,54 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
 
     play: (sentences, startIndex) => {
       if (!sentences.length) return
-      const settings = useAppStore.getState().settings
-      set({ sentences, playbackError: null, playerVisible: true, currentIndex: -1 })
-      ensureController().start(
-        sentences.map(s => s.text),
-        Math.max(0, Math.min(startIndex, sentences.length - 1)),
-        settings.read_aloud_voice,
-        settings.read_aloud_speed,
-      )
+      const proceed = () => {
+        const settings = useAppStore.getState().settings
+        set({ sentences, playbackError: null, playerVisible: true, currentIndex: -1 })
+        withEditorView(view => updateReadAloud(view, {
+          active: true,
+          sentences: sentences.map(s => ({ from: s.from, to: s.to })),
+          activeIndex: -1,
+        }))
+        ensureController().start(
+          sentences.map(s => s.text),
+          Math.max(0, Math.min(startIndex, sentences.length - 1)),
+          settings.read_aloud_voice,
+          settings.read_aloud_speed,
+        )
+      }
+      if (get().modelState === 'ready') {
+        proceed()
+        return
+      }
+      // Model not (known to be) installed: surface the player, which offers
+      // the download; start only if the check comes back installed.
+      set({ playerVisible: true })
+      void get().refreshModelStatus().then(() => {
+        if (get().modelState === 'ready') proceed()
+      })
+    },
+
+    playFromCursor: () => {
+      const editor = liveEditor()
+      if (!editor) return
+      get().play(collectSentences(editor.state.doc, editor.state.selection.from), 0)
+    },
+
+    playSelection: () => {
+      const editor = liveEditor()
+      if (!editor) return
+      const { from, to, empty } = editor.state.selection
+      if (empty) {
+        get().playFromCursor()
+        return
+      }
+      get().play(collectSentences(editor.state.doc, from, to), 0)
+    },
+
+    playChapter: () => {
+      const editor = liveEditor()
+      if (!editor) return
+      get().play(collectSentences(editor.state.doc), 0)
     },
 
     togglePause: () => {
@@ -183,6 +279,7 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
     stop: () => {
       controller?.stop()
       set({ currentIndex: -1, sentences: [] })
+      clearHighlight()
     },
 
     skip: (delta) => controller?.skip(delta),
@@ -212,6 +309,7 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
       controller = null
       synth = null
       audio = null
+      clearHighlight()
       set({ status: 'idle', sentences: [], currentIndex: -1, playerVisible: false, modelLoading: null, playbackError: null })
     },
   }

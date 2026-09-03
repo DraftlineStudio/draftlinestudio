@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02504] - 2026-09-03
+
+### Added
+- Read Aloud now works in the editor with live sentence highlighting.
+
 ## [0.17.02503] - 2026-09-03
 
 ### Added
