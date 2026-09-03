@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02530] - 2026-09-03
+
+### Added
+- Full Voice Cast panel: one row per detected chapter speaker with line counts, a voice picker, and a preview button that speaks a short sample (available while paused or stopped; the sample routes through the same serialized local engine and the player's volume, never interrupting the gapless schedule). Uncast speakers get a one-click "Cast voice"; "Auto-cast from Characters" fills every uncast speaker deterministically; the unknown bucket shows how many lines fall back to the narrator. Rows dim while cast mode is off.
+
+---
+
 ## [0.17.02529] - 2026-09-03
 
 ### Added
