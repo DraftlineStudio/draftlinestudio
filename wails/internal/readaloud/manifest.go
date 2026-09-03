@@ -11,12 +11,23 @@ package readaloud
 // (a Hugging Face commit or an exact npm version on jsdelivr — never a mutable
 // branch, per docs/architecture/PLUGIN-SYSTEM.md). Every file is verified
 // against SHA256 and Bytes before it is moved into place.
+//
+// Group partitions the bundle: "core" is the mandatory CPU (WASM q8) set;
+// "gpu" is the optional fp32 model for the WebGPU fast path, downloaded only
+// when the user opts in (q8 on WebGPU produced corrupted audio; fp32 is the
+// configuration that renders cleanly there).
 type Artifact struct {
 	Name   string
 	URL    string
 	SHA256 string
 	Bytes  int64
+	Group  string
 }
+
+const (
+	GroupCore = "core"
+	GroupGPU  = "gpu"
+)
 
 // kokoroRevision is the pinned commit of onnx-community/Kokoro-82M-v1.0-ONNX.
 const kokoroRevision = "1939ad2a8e416c0acfeecc08a694d14ef25f2231"
@@ -34,11 +45,17 @@ const ortBase = "https://cdn.jsdelivr.net/npm/onnxruntime-web@" + ortVersion + "
 const hfDir = "hf/onnx-community/Kokoro-82M-v1.0-ONNX/"
 
 func hf(rel, sha string, bytes int64) Artifact {
-	return Artifact{Name: hfDir + rel, URL: hfBase + rel, SHA256: sha, Bytes: bytes}
+	return Artifact{Name: hfDir + rel, URL: hfBase + rel, SHA256: sha, Bytes: bytes, Group: GroupCore}
+}
+
+func gpuHF(rel, sha string, bytes int64) Artifact {
+	a := hf(rel, sha, bytes)
+	a.Group = GroupGPU
+	return a
 }
 
 func ort(file, sha string, bytes int64) Artifact {
-	return Artifact{Name: "ort/" + file, URL: ortBase + file, SHA256: sha, Bytes: bytes}
+	return Artifact{Name: "ort/" + file, URL: ortBase + file, SHA256: sha, Bytes: bytes, Group: GroupCore}
 }
 
 // Manifest returns the complete pinned artifact list. Checksums were computed
@@ -62,14 +79,32 @@ func Manifest() []Artifact {
 		ort("ort-wasm-simd-threaded.wasm", "f061472c6e77d6d50d079aacdc0ff9b63fee287ddd2cbf46cf62438d3891de2b", 11133407),
 		ort("ort-wasm-simd-threaded.jsep.mjs", "08fb86ec433c78bfb032c5d84a68b8e8e5a8d81268fa39e24314179a5767a5b9", 44484),
 		ort("ort-wasm-simd-threaded.jsep.wasm", "c46655e8a94afc45338d4cb2b840475f88e5012d524509916e505079c00bfa39", 21596019),
+		// Optional WebGPU fast path: full-precision model (~311 MB).
+		gpuHF("onnx/model.onnx", "8fbea51ea711f2af382e88c833d9e288c6dc82ce5e98421ea61c058ce21a34cb", 325532232),
 	}
 }
 
-// TotalBytes is the full bundle size across all manifest artifacts.
-func TotalBytes() int64 {
-	var total int64
+// GroupManifest returns the artifacts of one group.
+func GroupManifest(group string) []Artifact {
+	var result []Artifact
 	for _, a := range Manifest() {
+		if a.Group == group {
+			result = append(result, a)
+		}
+	}
+	return result
+}
+
+func groupBytes(group string) int64 {
+	var total int64
+	for _, a := range GroupManifest(group) {
 		total += a.Bytes
 	}
 	return total
+}
+
+// TotalBytes is the size of the mandatory core bundle (the number shown in
+// download prompts); the GPU group is priced separately.
+func TotalBytes() int64 {
+	return groupBytes(GroupCore)
 }

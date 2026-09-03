@@ -25,11 +25,17 @@ export default function ReadAloudSection({
   const download = useReadAloudStore(s => s.download)
   const modelError = useReadAloudStore(s => s.modelError)
   const diagnostics = useReadAloudStore(s => s.diagnostics)
+  const gpuInstalled = useReadAloudStore(s => s.gpuInstalled)
+  const gpuBytesTotal = useReadAloudStore(s => s.gpuBytesTotal)
+  const benchmarking = useReadAloudStore(s => s.benchmarking)
   const refreshModelStatus = useReadAloudStore(s => s.refreshModelStatus)
   const downloadModel = useReadAloudStore(s => s.downloadModel)
+  const downloadGPUModel = useReadAloudStore(s => s.downloadGPUModel)
   const cancelDownload = useReadAloudStore(s => s.cancelDownload)
   const removeModel = useReadAloudStore(s => s.removeModel)
+  const runBenchmark = useReadAloudStore(s => s.runBenchmark)
   const [showDiagnostics, setShowDiagnostics] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     void refreshModelStatus()
@@ -122,40 +128,73 @@ export default function ReadAloudSection({
         <label className="dialog-label">Synthesis Device</label>
         <div className="settings-theme-row">
           <button className={`settings-theme-btn${device === 'wasm' ? ' active' : ''}`} onClick={() => setDevice('wasm')}>
-            CPU — recommended
+            CPU — wasm q8
           </button>
           <button className={`settings-theme-btn${device === 'webgpu' ? ' active' : ''}`} onClick={() => setDevice('webgpu')}>
-            GPU — experimental
+            GPU — fp32
           </button>
         </div>
         <div className="settings-hint">
-          CPU (WASM) works reliably on every platform. GPU (WebGPU) can be faster but produces
-          distorted audio on some systems — switch back here if playback sounds wrong.
+          CPU works reliably everywhere. GPU uses the full-precision model (the quantized one
+          produces distorted audio on WebGPU) and is faster where it initializes cleanly; if it
+          fails on this machine playback falls back to CPU automatically.
         </div>
+        {device === 'webgpu' && !gpuInstalled && modelState !== 'downloading' && (
+          <button className="dialog-btn primary" style={{ marginTop: 8 }} onClick={downloadGPUModel}>
+            Download GPU voice model ({gpuBytesTotal > 0 ? formatMB(gpuBytesTotal) : '~311 MB'})
+          </button>
+        )}
+        {device === 'webgpu' && gpuInstalled && (
+          <div className="settings-hint" style={{ marginTop: 6 }}>GPU model installed.</div>
+        )}
       </div>
       <div className="dialog-field">
         <label className="dialog-label">Threads</label>
         <div className="settings-theme-row">
-          <button className={`settings-theme-btn${threads === 'single' ? ' active' : ''}`} onClick={() => setThreads('single')}>
-            Single — recommended
-          </button>
           <button className={`settings-theme-btn${threads === 'auto' ? ' active' : ''}`} onClick={() => setThreads('auto')}>
-            Auto
+            Auto — recommended
+          </button>
+          <button className={`settings-theme-btn${threads === 'single' ? ' active' : ''}`} onClick={() => setThreads('single')}>
+            Single
           </button>
         </div>
         <div className="settings-hint">
-          Changes to device or threads apply the next time playback starts. If Read Aloud
-          misbehaves, use CPU + Single — the cross-platform safe configuration.
+          Auto uses all but one CPU core (needs the cross-origin-isolated runtime — the
+          diagnostics show whether it is active). Changes apply the next time playback starts.
+          If Read Aloud misbehaves, CPU + Single is the safe fallback.
+        </div>
+      </div>
+      <div className="dialog-field">
+        <button className="dialog-btn" onClick={() => void runBenchmark()} disabled={benchmarking || modelState !== 'ready'}>
+          {benchmarking ? 'Running performance check…' : 'Run performance check'}
+        </button>
+        <div className="settings-hint">
+          Times a sentence on each installed backend and keeps the faster one. Results appear in
+          the diagnostics below.
         </div>
       </div>
 
       <div className="settings-section-label">Diagnostics</div>
       <div className="dialog-field">
-        <button className="dialog-btn" onClick={() => setShowDiagnostics(v => !v)}>
-          {showDiagnostics ? 'Hide diagnostics' : 'Show diagnostics'}
-        </button>
+        <div className="settings-path-row">
+          <button className="dialog-btn" onClick={() => setShowDiagnostics(v => !v)}>
+            {showDiagnostics ? 'Hide diagnostics' : 'Show diagnostics'}
+          </button>
+          <button
+            className="dialog-btn"
+            disabled={diagnostics.length === 0}
+            onClick={() => {
+              void navigator.clipboard.writeText(diagnostics.join('\n')).then(() => {
+                setCopied(true)
+                setTimeout(() => setCopied(false), 1500)
+              })
+            }}
+          >
+            {copied ? 'Copied ✓' : 'Copy'}
+          </button>
+        </div>
         {showDiagnostics && (
-          <div className="settings-cc-log" style={{ marginTop: 8 }}>
+          <div className="settings-cc-log read-aloud-diag-log" style={{ marginTop: 8 }}>
             {diagnostics.length === 0
               ? <div>No diagnostics yet — they are recorded when the voice model loads for playback.</div>
               : diagnostics.map((line, i) => <div key={i}>{line}</div>)}

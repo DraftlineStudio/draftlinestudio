@@ -36,7 +36,7 @@ interface KokoroModel {
 
 let tts: KokoroModel | null = null
 let initPromise: Promise<void> | null = null
-let firstSentenceTimed = false
+let timedSentences = 0
 const cancelled = new Set<number>()
 // Kokoro inference is not reentrant; requests run strictly in sequence.
 let queue: Promise<void> = Promise.resolve()
@@ -87,11 +87,11 @@ async function loadModel(base: string, device: InitMessage['device'], threads: I
   const wasm = env.backends.onnx.wasm
   if (wasm) {
     wasm.wasmPaths = `${base}/ort/`
-    if (threads === 'single' || !self.crossOriginIsolated) {
-      // Without cross-origin isolation there is no SharedArrayBuffer, and
-      // the threaded wasm build must run single-threaded anyway.
-      wasm.numThreads = 1
-    }
+    // Real threads need SharedArrayBuffer, which needs cross-origin
+    // isolation (the Wails asset server sets COOP/COEP for exactly this).
+    // Leave one core for the UI and audio pipeline.
+    const cores = Math.max(1, (navigator.hardwareConcurrency || 2) - 1)
+    wasm.numThreads = threads === 'auto' && self.crossOriginIsolated ? Math.min(cores, 8) : 1
   }
 
   // Fixed diagnostic sequence — keep the order stable; users report these.
@@ -102,7 +102,10 @@ async function loadModel(base: string, device: InitMessage['device'], threads: I
     diag('webgpu requested but navigator.gpu is absent — falling back to wasm')
     resolvedDevice = 'wasm'
   }
-  const dtype = 'q8' // the only artifact in the downloaded bundle
+  // Device⇒dtype is fixed policy: WASM runs the q8 model (fp32 in WASM is
+  // roughly double the work for no audible gain); WebGPU runs fp32 (the
+  // quantized variants are what produced corrupted audio there).
+  let dtype: 'q8' | 'fp32' = resolvedDevice === 'webgpu' ? 'fp32' : 'q8'
   diag(`device: ${resolvedDevice} (requested ${device}), dtype: ${dtype}`)
   diag(`crossOriginIsolated: ${self.crossOriginIsolated === true}`)
   const wasmAny = wasm as unknown as { numThreads?: number; simd?: boolean } | undefined
@@ -114,12 +117,36 @@ async function loadModel(base: string, device: InitMessage['device'], threads: I
     }
   }
 
+  if (resolvedDevice === 'webgpu') {
+    try {
+      const started = performance.now()
+      const candidate = (await KokoroTTS.from_pretrained(MODEL_ID, {
+        dtype, device: 'webgpu', progress_callback: progress,
+      })) as unknown as KokoroModel
+      // Some WebGPU stacks initialize but render garbage; verify one
+      // utterance before trusting it.
+      const smoke = await candidate.generate('Hi.', { voice: 'af_heart', speed: 1 })
+      const ok = smoke.audio.length > 0
+        && smoke.audio.every(v => Number.isFinite(v))
+        && smoke.audio.some(v => v !== 0)
+      if (!ok) throw new Error('webgpu produced invalid audio in the smoke test')
+      tts = candidate
+      diag(`model loaded in ${Math.round(performance.now() - started)} ms (webgpu fp32)`)
+      post({ type: 'ready', device: 'webgpu' })
+      return
+    } catch (e) {
+      diag(`webgpu fp32 failed (${e instanceof Error ? e.message : String(e)}) — falling back to wasm q8`)
+      resolvedDevice = 'wasm'
+      dtype = 'q8'
+    }
+  }
+
   const started = performance.now()
   tts = (await KokoroTTS.from_pretrained(MODEL_ID, {
-    dtype, device: resolvedDevice, progress_callback: progress,
+    dtype, device: 'wasm', progress_callback: progress,
   })) as unknown as KokoroModel
-  diag(`model loaded in ${Math.round(performance.now() - started)} ms`)
-  post({ type: 'ready', device: resolvedDevice })
+  diag(`model loaded in ${Math.round(performance.now() - started)} ms (wasm q8)`)
+  post({ type: 'ready', device: 'wasm' })
 }
 
 function handleSynthesize(msg: SynthesizeMessage) {
@@ -132,9 +159,16 @@ function handleSynthesize(msg: SynthesizeMessage) {
     try {
       const started = performance.now()
       const audio = await tts.generate(msg.text, { voice: msg.voice, speed: msg.speed })
-      if (!firstSentenceTimed) {
-        firstSentenceTimed = true
-        diag(`first sentence: ${Math.round(performance.now() - started)} ms for ${msg.text.length} chars (${audio.audio.length} samples @ ${audio.sampling_rate} Hz)`)
+      // Time the first few sentences. Exactly one "model loaded" line ever
+      // appearing before these proves the model is held across sentences,
+      // not reloaded per play. The audio-seconds ratio shows real-time
+      // headroom (>1× means synthesis outruns playback).
+      if (timedSentences < 3) {
+        timedSentences++
+        const ms = performance.now() - started
+        const audioSec = audio.audio.length / audio.sampling_rate
+        const ratio = ms > 0 ? (audioSec * 1000) / ms : 0
+        diag(`sentence ${timedSentences}: ${Math.round(ms)} ms for ${msg.text.length} chars → ${audioSec.toFixed(1)}s audio (${ratio.toFixed(1)}× real-time)`)
       }
       if (cancelled.delete(msg.id)) return
       const samples = audio.audio

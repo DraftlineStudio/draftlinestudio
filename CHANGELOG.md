@@ -4,6 +4,19 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02508] - 2026-09-03
+
+### Changed
+- Read Aloud synthesis is dramatically faster: the Wails asset server now sends `Cross-Origin-Opener-Policy`/`Cross-Origin-Embedder-Policy` on every response, making the webview cross-origin isolated so the ONNX runtime gets SharedArrayBuffer and real WASM threads. The new threading default is **Auto** (`hardwareConcurrency − 1`, capped at 8) with Single as the fallback option.
+- The GPU option is now the correct fast path: **WebGPU runs the full-precision fp32 model** (the quantized model is what produced corrupted audio there) as an optional ~311 MB pinned download in a new "gpu" artifact group, fetched on demand from Settings → Performance. A load-time smoke synthesis guards it; failure falls back to CPU with a diagnostic line. CPU stays WASM + q8 explicitly.
+- Diagnostics are now **selectable and copyable**: log blocks restore `user-select: text` (the app body disables selection for window dragging) and the settings readout gains a Copy button.
+
+### Added
+- **Run performance check** in Settings → Read Aloud: warms each installed backend, times a steady-state sentence on both, reports the numbers to diagnostics, and persists the faster device for this machine.
+- Per-sentence synthesis timings for the first three sentences (wall time, chars, audio seconds, real-time ratio). A single "model loaded" line before them confirms the model is held for the session — never reloaded per sentence (it is created once behind an init guard and reused).
+
+---
+
 ## [0.17.02507] - 2026-09-03
 
 ### Changed

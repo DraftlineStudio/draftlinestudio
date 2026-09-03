@@ -7,7 +7,7 @@
 // prepared sentence lists.
 
 import { create } from 'zustand'
-import { ReadAloudStatus, DownloadReadAloudModel, CancelReadAloudDownload, RemoveReadAloudModel } from '../../wailsjs/go/main/App'
+import { ReadAloudStatus, DownloadReadAloudModel, DownloadReadAloudGPUModel, CancelReadAloudDownload, RemoveReadAloudModel } from '../../wailsjs/go/main/App'
 import { EventsOn } from '../../wailsjs/runtime/runtime'
 import { ReadAloudController, type ControllerStatus } from '../services/readaloud/controller'
 import { WorkerSynth, type ModelLoadProgress } from '../services/readaloud/tts'
@@ -33,6 +33,9 @@ interface ReadAloudStore {
   bytesTotal: number
   download: ReadAloudDownloadProgress | null
   modelError: string | null
+  gpuInstalled: boolean
+  gpuBytesTotal: number
+  benchmarking: boolean
 
   status: ControllerStatus
   sentences: DocSentence[]
@@ -46,8 +49,12 @@ interface ReadAloudStore {
 
   refreshModelStatus: () => Promise<void>
   downloadModel: () => void
+  downloadGPUModel: () => void
   cancelDownload: () => void
   removeModel: () => Promise<void>
+  // Times a sentence on each installed backend and persists the faster
+  // device. Only runs while playback is idle.
+  runBenchmark: () => Promise<void>
 
   // Starts reading the given sentences (already mapped to editor positions).
   play: (sentences: DocSentence[], startIndex: number) => void
@@ -114,15 +121,11 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
     EventsOn('readaloud:progress', (p: ReadAloudDownloadProgress) => {
       set({ modelState: 'downloading', download: p })
     })
-    EventsOn('readaloud:done', (result: { ok: boolean; error?: string }) => {
-      set({ download: null })
-      if (result?.ok) {
-        set({ modelState: 'ready', modelError: null })
-      } else {
-        // Cancellation also lands here; refresh decides between missing/ready.
-        set({ modelError: result?.error ?? null })
-        void get().refreshModelStatus()
-      }
+    EventsOn('readaloud:done', (result: { ok: boolean; error?: string; group?: string }) => {
+      set({ download: null, modelError: result?.ok ? null : (result?.error ?? null) })
+      // Covers both groups (core and GPU) and cancellation alike: the
+      // status check decides what is actually on disk now.
+      void get().refreshModelStatus()
     })
   }
 
@@ -176,6 +179,9 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
     bytesTotal: 0,
     download: null,
     modelError: null,
+    gpuInstalled: false,
+    gpuBytesTotal: 0,
+    benchmarking: false,
 
     status: 'idle',
     sentences: [],
@@ -192,6 +198,8 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
         const status = await ReadAloudStatus()
         set(s => ({
           bytesTotal: status.bytes_total,
+          gpuInstalled: status.gpu_installed,
+          gpuBytesTotal: status.gpu_bytes_total,
           // An in-flight download keeps its state; events own that transition.
           modelState: s.modelState === 'downloading' ? s.modelState : (status.installed ? 'ready' : 'missing'),
         }))
@@ -210,10 +218,74 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
       }
     },
 
+    downloadGPUModel: () => {
+      bindEvents()
+      set({ modelState: 'downloading', modelError: null })
+      try {
+        void DownloadReadAloudGPUModel()
+      } catch (e) {
+        set({ modelState: 'error', modelError: String(e) })
+      }
+    },
+
     cancelDownload: () => {
       try {
         void CancelReadAloudDownload()
       } catch { /* ignore */ }
+    },
+
+    runBenchmark: async () => {
+      if (get().benchmarking || get().status !== 'idle') return
+      await get().refreshModelStatus()
+      if (get().modelState !== 'ready') return
+      set({ benchmarking: true })
+      const pushDiag = (line: string) => set(s => ({ diagnostics: [...s.diagnostics.slice(-19), line] }))
+      const settings = useAppStore.getState().settings
+      const benchText = 'The quick brown fox jumps over the lazy dog while the church bells ring out across the quiet harbor town.'
+
+      // Loads a fresh worker for the device, warms it with one sentence
+      // (absorbing model load), then times a steady-state sentence.
+      const timeDevice = async (device: 'wasm' | 'webgpu'): Promise<{ ms: number; resolved: string } | null> => {
+        let resolved = ''
+        const bench = new WorkerSynth(
+          () => ({ device, threads: settings.read_aloud_threads }),
+          undefined,
+          d => { resolved = d },
+          pushDiag,
+        )
+        try {
+          await bench.synthesize(1, benchText, settings.read_aloud_voice, 1.0)
+          const started = performance.now()
+          await bench.synthesize(2, benchText, settings.read_aloud_voice, 1.0)
+          return { ms: performance.now() - started, resolved }
+        } catch (e) {
+          pushDiag(`benchmark ${device} failed: ${e instanceof Error ? e.message : String(e)}`)
+          return null
+        } finally {
+          bench.shutdown()
+        }
+      }
+
+      try {
+        pushDiag('benchmark: timing CPU (wasm q8)…')
+        const wasmResult = await timeDevice('wasm')
+        let gpuResult: { ms: number; resolved: string } | null = null
+        if (get().gpuInstalled) {
+          pushDiag('benchmark: timing GPU (webgpu fp32)…')
+          gpuResult = await timeDevice('webgpu')
+          if (gpuResult && gpuResult.resolved !== 'webgpu') {
+            pushDiag('benchmark: webgpu fell back to wasm — GPU not usable on this machine')
+            gpuResult = null
+          }
+        } else {
+          pushDiag('benchmark: GPU model not installed — skipping webgpu')
+        }
+        const winner: 'wasm' | 'webgpu' = wasmResult && gpuResult && gpuResult.ms < wasmResult.ms ? 'webgpu' : 'wasm'
+        pushDiag(`benchmark: wasm ${wasmResult ? Math.round(wasmResult.ms) + ' ms' : 'failed'}, webgpu ${gpuResult ? Math.round(gpuResult.ms) + ' ms' : 'n/a'} — keeping ${winner === 'webgpu' ? 'GPU (fp32)' : 'CPU (wasm q8)'}`)
+        void useAppStore.getState().saveSettings({ read_aloud_device: winner })
+      } finally {
+        set({ benchmarking: false })
+      }
     },
 
     removeModel: async () => {

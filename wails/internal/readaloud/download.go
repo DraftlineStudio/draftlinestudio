@@ -29,13 +29,19 @@ const progressInterval = 250 * time.Millisecond
 
 var httpClient = &http.Client{Timeout: 30 * time.Minute}
 
-// Install downloads every missing manifest artifact into dir, verifying each
-// against its pinned size and SHA-256 before renaming it into place. Files
-// that already verify are skipped, so a cancelled install resumes at file
-// granularity. On cancellation or error the in-flight .partial file is
+// Install downloads every missing core-bundle artifact into dir, verifying
+// each against its pinned size and SHA-256 before renaming it into place.
+// Files that already verify are skipped, so a cancelled install resumes at
+// file granularity. On cancellation or error the in-flight .partial file is
 // removed; completed files are kept.
 func Install(ctx context.Context, dir string, onProgress func(Progress)) error {
-	return installManifest(ctx, dir, Manifest(), onProgress)
+	return installManifest(ctx, dir, GroupManifest(GroupCore), onProgress)
+}
+
+// InstallGroup downloads one artifact group (e.g. the optional GPU model)
+// with the same verification and resume semantics as Install.
+func InstallGroup(ctx context.Context, dir, group string, onProgress func(Progress)) error {
+	return installManifest(ctx, dir, GroupManifest(group), onProgress)
 }
 
 func installManifest(ctx context.Context, dir string, manifest []Artifact, onProgress func(Progress)) error {

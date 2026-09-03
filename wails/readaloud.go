@@ -37,10 +37,21 @@ func (a *App) ReadAloudStatus() readaloud.Status {
 	return readaloud.Check(readAloudModelDir())
 }
 
-// DownloadReadAloudModel starts (or resumes) the pinned bundle download in the
-// background. Progress arrives on "readaloud:progress" and completion on
-// "readaloud:done". A second call while a download runs is a no-op.
+// DownloadReadAloudModel starts (or resumes) the pinned core-bundle download
+// in the background. Progress arrives on "readaloud:progress" and completion
+// on "readaloud:done". A second call while a download runs is a no-op.
 func (a *App) DownloadReadAloudModel() {
+	a.downloadReadAloudGroup(readaloud.GroupCore)
+}
+
+// DownloadReadAloudGPUModel downloads the optional full-precision model for
+// the WebGPU fast path (~311 MB), with the same verification and resume
+// semantics as the core bundle.
+func (a *App) DownloadReadAloudGPUModel() {
+	a.downloadReadAloudGroup(readaloud.GroupGPU)
+}
+
+func (a *App) downloadReadAloudGroup(group string) {
 	readAloudDownload.mu.Lock()
 	if readAloudDownload.cancel != nil {
 		readAloudDownload.mu.Unlock()
@@ -51,7 +62,7 @@ func (a *App) DownloadReadAloudModel() {
 	readAloudDownload.mu.Unlock()
 
 	go func() {
-		err := readaloud.Install(ctx, readAloudModelDir(), func(p readaloud.Progress) {
+		err := readaloud.InstallGroup(ctx, readAloudModelDir(), group, func(p readaloud.Progress) {
 			runtime.EventsEmit(a.ctx, "readaloud:progress", p)
 		})
 
@@ -59,7 +70,7 @@ func (a *App) DownloadReadAloudModel() {
 		readAloudDownload.cancel = nil
 		readAloudDownload.mu.Unlock()
 
-		payload := map[string]any{"ok": err == nil}
+		payload := map[string]any{"ok": err == nil, "group": group}
 		if err != nil {
 			payload["error"] = err.Error()
 		}
