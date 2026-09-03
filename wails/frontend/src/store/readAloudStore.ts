@@ -9,7 +9,7 @@
 import { create } from 'zustand'
 import { ReadAloudStatus, DownloadReadAloudNative, CancelReadAloudDownload, RemoveReadAloudModel, VerifyReadAloudModel, ReadAloudServerURL, StartReadAloudMemLog, StopReadAloudMemLog, ShutdownReadAloudNative } from '../../wailsjs/go/main/App'
 import { EventsOn } from '../../wailsjs/runtime/runtime'
-import { ReadAloudController, type ControllerStatus, type SynthPort } from '../services/readaloud/controller'
+import { ReadAloudController, type AudioChunk, type ControllerStatus, type PlaybackHandle, type SynthPort } from '../services/readaloud/controller'
 import { NativeSynth } from '../services/readaloud/tts'
 import { WebAudioPort } from '../services/readaloud/audio'
 import { collectSentences, buildGenerationUnits, firstUnitOfSentence, type DocSentence, type GenerationUnit } from '../services/readaloud/docSentences'
@@ -70,6 +70,8 @@ interface ReadAloudStore {
   ticks: Array<{ fraction: number; color: string }>
   currentSpeaker: { name: string; color: string } | null
   dialogueLineCount: number
+  // Voice being previewed in the cast panel (drives the row EQ animation).
+  previewingVoice: string | null
 
   refreshModelStatus: () => Promise<void>
   // Full sha256 audit against the pinned manifest; run on plugin enable and
@@ -111,6 +113,10 @@ interface ReadAloudStore {
   setCastMode: (on: boolean) => void
   setSpeakerVoice: (key: SpeakerKey, voiceId: string) => void
   autoCastVoices: () => void
+  // Speaks a short sample in the given voice, outside the playback schedule.
+  // Available only while nothing is audibly playing (the synthesis queue is
+  // serialized); clicking the active preview again cancels it.
+  previewVoice: (voiceId: string) => void
   setPlayerVisible: (visible: boolean) => void
   // Full teardown: stops playback and unloads the model/worker (plugin
   // disable). The next play starts a fresh worker.
@@ -151,6 +157,24 @@ function resetProgressTracking(unitCount: number): void {
   playingUnit = -1
   playingUnitDuration = 0
   playingUnitStartClock = 0
+}
+
+// Voice preview: a fixed sample phrase synthesized through the SAME
+// serialized NativeSynth (eSpeak phonemization has process-global state —
+// never a second session) and played as a one-shot outside the gapless
+// schedule. Request ids live in their own range so they can never collide
+// with the controller's counter.
+const PREVIEW_TEXT = 'The evening settled softly over the harbor, and the city lights came on.'
+const previewChunks = new Map<string, AudioChunk>() // `${voice}@${speed}` → chunk
+let previewRequestId = 1 << 30
+let previewHandle: PlaybackHandle | null = null
+
+function stopPreview(): void {
+  previewHandle?.stop()
+  previewHandle = null
+  if (useReadAloudStore.getState().previewingVoice !== null) {
+    useReadAloudStore.setState({ previewingVoice: null })
+  }
 }
 
 // ── Voice cast machinery ─────────────────────────────────────────────────────
@@ -391,6 +415,7 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
         if (status === 'playing') set({ modelLoading: null })
         // RSS sampling runs exactly while something is audible/pending.
         if (status === 'playing' || status === 'starting') {
+          stopPreview() // a sample must never talk over real playback
           void StartReadAloudMemLog()
           startProgressTicker()
         } else {
@@ -478,6 +503,7 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
     ticks: [],
     currentSpeaker: null,
     dialogueLineCount: 0,
+    previewingVoice: null,
 
     refreshModelStatus: async () => {
       bindEvents()
@@ -771,6 +797,53 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
       controller?.setVoiceOverrides(buildVoiceOverrides(currentUnits, currentSentences))
     },
 
+    previewVoice: (voiceId) => {
+      // Toggle off an in-flight preview of the same voice.
+      if (get().previewingVoice === voiceId) {
+        stopPreview()
+        return
+      }
+      // Idle or paused only: the serialized synthesis queue must not fight
+      // audible playback for the engine.
+      const status = get().status
+      if (status === 'playing' || status === 'starting') return
+      if (get().modelState !== 'ready' || !get().verified) return
+      stopPreview()
+      ensureController() // creates synth + audio without starting playback
+      if (!synth || !audio) return
+      const speed = useAppStore.getState().settings.read_aloud_speed
+      const cacheKey = `${voiceId}@${speed}`
+      set({ previewingVoice: voiceId })
+      const playChunk = (chunk: AudioChunk) => {
+        if (get().previewingVoice !== voiceId || !audio) return
+        previewHandle = audio.playOneShot(chunk, () => {
+          previewHandle = null
+          if (get().previewingVoice === voiceId) set({ previewingVoice: null })
+        })
+      }
+      const cached = previewChunks.get(cacheKey)
+      if (cached) {
+        playChunk(cached)
+        return
+      }
+      synth.synthesize(previewRequestId++, PREVIEW_TEXT, voiceId, speed).then(
+        chunk => {
+          previewChunks.set(cacheKey, chunk)
+          // The cache never outgrows the voice catalog by much; drop the
+          // oldest entry past a dozen.
+          if (previewChunks.size > 12) {
+            const oldest = previewChunks.keys().next().value
+            if (oldest) previewChunks.delete(oldest)
+          }
+          playChunk(chunk)
+        },
+        err => {
+          if (get().previewingVoice === voiceId) set({ previewingVoice: null })
+          set(s => ({ diagnostics: [...s.diagnostics.slice(-59), `preview failed: ${err instanceof Error ? err.message : String(err)}`] }))
+        },
+      )
+    },
+
     autoCastVoices: () => {
       const book = useBookStore.getState().book
       if (!book || !attribution) return
@@ -792,6 +865,8 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
     },
 
     shutdown: () => {
+      stopPreview()
+      previewChunks.clear()
       controller?.stop()
       synth?.shutdown()
       try { void ShutdownReadAloudNative() } catch { /* browser/test environment */ }

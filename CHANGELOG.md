@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02530] - 2026-09-03
+
+### Added
+- Added the Voice Cast panel with a voice picker, preview, and line counts for each speaker.
+
 ## [0.17.02529] - 2026-09-03
 
 ### Added
