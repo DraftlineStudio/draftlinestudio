@@ -1,3 +1,28 @@
+export namespace readaloud {
+	
+	export class Status {
+	    installed: boolean;
+	    dir: string;
+	    bytes_total: number;
+	    bytes_on_disk: number;
+	    missing: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Status(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.installed = source["installed"];
+	        this.dir = source["dir"];
+	        this.bytes_total = source["bytes_total"];
+	        this.bytes_on_disk = source["bytes_on_disk"];
+	        this.missing = source["missing"];
+	    }
+	}
+
+}
+
 export namespace types {
 	
 	export class AIRewriteResult {

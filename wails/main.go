@@ -4,6 +4,8 @@ import (
 	"embed"
 	"os"
 
+	"draftline/internal/readaloud"
+
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -33,6 +35,9 @@ func main() {
 		Frameless: true,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
+			// Fallback for paths missing from the embedded frontend: serves the
+			// downloaded Read Aloud voice model read-only from the user cache.
+			Handler: readaloud.NewHandler(readAloudModelDir()),
 		},
 		BackgroundColour: &options.RGBA{R: 43, G: 45, B: 48, A: 255},
 		OnStartup:        app.startup,

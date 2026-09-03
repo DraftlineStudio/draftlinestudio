@@ -4,6 +4,18 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02500] - 2026-09-03
+
+### Added
+- Backend foundation for the forthcoming opt-in **Read Aloud** plugin: a new `internal/readaloud` package downloads the Kokoro-82M voice bundle (model, English voices, and the onnxruntime-web runtime, ~130 MB total) from pinned immutable revisions, verifying every file against a hard-coded SHA-256 and byte count before it is installed under the user cache directory. Downloads stream with byte-level progress events, support cancellation, and resume at file granularity.
+- A read-only asset-server fallback handler now serves the installed voice bundle to the webview at `/readaloud-models/`, with traversal rejection and an explicit content-type whitelist. This is the first use of the Wails AssetServer `Handler` slot; embedded frontend assets are never shadowed.
+- New settings fields `read_aloud_enabled` (default off), `read_aloud_voice`, and `read_aloud_speed`. The plugin's UI arrives in the next builds; nothing loads while it is disabled.
+
+### Internal
+- Bound methods live in a new `wails/readaloud.go` and the package ships with download, checksum-rejection, cancellation, resume, status, and handler-security tests. `app.go` gains only three default lines.
+
+---
+
 ## [0.17.02499] - 2026-09-02
 
 ### Added
