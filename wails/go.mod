@@ -3,6 +3,7 @@ module draftline
 go 1.25.0
 
 require (
+	github.com/ebitengine/purego v0.11.0
 	github.com/jdkato/prose/v3 v3.0.0
 	github.com/wailsapp/wails/v2 v2.15.0
 	github.com/zalando/go-keyring v0.2.8

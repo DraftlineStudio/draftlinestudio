@@ -2,6 +2,20 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02519] - 2026-09-03
+
+### Added
+- Added a native Read Aloud voice engine for Windows, macOS, and Linux.
+
+### Changed
+- Native Read Aloud starts playback as soon as the first sentence is ready.
+
+## [0.17.02516] - 2026-09-03
+
+### Fixed
+- Read Aloud now buffers enough audio before playback to avoid stalls.
+- Closing Read Aloud during buffering now cancels pending work.
+
 ## [0.17.02515] - 2026-09-03
 
 ### Fixed

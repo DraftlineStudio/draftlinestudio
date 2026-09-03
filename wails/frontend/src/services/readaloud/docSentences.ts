@@ -68,23 +68,18 @@ export function splitLeadClause(sentence: DocSentence): DocSentence[] {
   ]
 }
 
-// A generation unit: what the synthesizer is fed. Long sentences are split
-// into clause-sized units so audio starts early and generation overlaps
-// playback at fine grain; sentenceIndex maps every unit back to its
-// sentence, whose FULL range the highlight covers while any of its units
-// plays.
+// A generation unit: what the synthesizer is fed. Ordinary sentences remain
+// whole so Kokoro retains their cadence and clause-level prosody. Only an
+// exceptionally long sentence is split as a tokenizer/latency safeguard;
+// sentenceIndex maps each resulting unit back to the full highlighted range.
 export interface GenerationUnit {
   text: string
   sentenceIndex: number
 }
 
-// Sentences longer than this many words are split at clause boundaries for
-// generation. ~25 words ≈ 8s of speech — small enough that synthesis of one
-// unit always fits inside the playback of its predecessors.
-const MAX_UNIT_WORDS = 25
-// The very first unit of a play is kept shorter still, so first audio lands
-// fast.
-const FIRST_UNIT_WORDS = 10
+// This is intentionally high. Splitting normal prose at commas makes each
+// clause sound like a fresh utterance and damages the author's intended pace.
+const MAX_UNIT_WORDS = 80
 
 function wordCount(text: string): number {
   return text.split(/\s+/).filter(Boolean).length
@@ -117,23 +112,13 @@ function splitClauses(text: string, maxWords: number): string[] {
   return parts.length ? parts : [text]
 }
 
-// buildGenerationUnits flattens sentences into synthesis units. startIndex
-// marks the first sentence that will actually be spoken — its first unit is
-// cut extra short for sub-second first audio.
-export function buildGenerationUnits(sentences: DocSentence[], startIndex: number): GenerationUnit[] {
+// buildGenerationUnits flattens sentences into synthesis units. startIndex is
+// retained in the API because callers construct queues relative to it; it no
+// longer changes sentence phrasing.
+export function buildGenerationUnits(sentences: DocSentence[], _startIndex: number): GenerationUnit[] {
   const units: GenerationUnit[] = []
   sentences.forEach((sentence, sentenceIndex) => {
-    let pieces: string[]
-    if (sentenceIndex === startIndex) {
-      const lead = splitLeadClause(sentence)
-      if (lead.length === 2 && wordCount(lead[0].text) <= FIRST_UNIT_WORDS + 4) {
-        pieces = [lead[0].text, ...splitClauses(lead[1].text, MAX_UNIT_WORDS)]
-      } else {
-        pieces = splitClauses(sentence.text, MAX_UNIT_WORDS)
-      }
-    } else {
-      pieces = splitClauses(sentence.text, MAX_UNIT_WORDS)
-    }
+    const pieces = splitClauses(sentence.text, MAX_UNIT_WORDS)
     for (const text of pieces) {
       units.push({ text, sentenceIndex })
     }

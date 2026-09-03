@@ -5,10 +5,10 @@
 // AudioContext (vitest runs in a plain node environment).
 //
 // Pipeline invariants:
-// - Lookahead is LOOKAHEAD sentences: while N plays, N+1 and N+2 synthesize
-//   (the worker serializes them), and N+1 is scheduled back-to-back for
-//   gapless handoff. Generation stays strictly per-sentence — never the
-//   whole selection up front.
+// - Lookahead is LOOKAHEAD generation units: the worker serializes them and
+//   the next ready unit is scheduled back-to-back for gapless handoff.
+//   Playback starts with a duration reserve instead of trusting a raw unit
+//   count, because sentence lengths and synthesis times vary sharply.
 // - Hard resets (start/stop/skip/jump) bump a generation counter; every async
 //   completion checks it, so a stale chunk can never play.
 // - Voice/speed changes keep the sentence that is already audible, discard
@@ -46,6 +46,13 @@ export type ControllerStatus = 'idle' | 'starting' | 'playing' | 'paused'
 // waitingToPlay path).
 const LOOKAHEAD = 5
 
+// Do not begin (or resume after an underrun) on the first available sliver of
+// audio. A short unit can finish before the following long unit is ready even
+// on a faster-than-real-time backend. Holding a contiguous runway makes
+// that uneven sentence pair sound like prose instead of speak-wait-speak.
+const START_BUFFER_SECONDS = 8
+const START_BUFFER_UNITS = 2
+
 // How many already-played chunks stay cached (instant short skip-backs).
 // Without a bound, a chapter-length play accumulates every sentence's
 // Float32Array for the whole session.
@@ -56,6 +63,11 @@ export interface ControllerEvents {
   onSentenceStart(index: number): void
   onError(message: string): void
   onFinished(): void
+}
+
+export interface ControllerOptions {
+  startBufferSeconds?: number
+  startBufferUnits?: number
 }
 
 export class ReadAloudController {
@@ -76,12 +88,18 @@ export class ReadAloudController {
   // post-skip target, or a gap where synthesis lagged behind playback).
   private waitingToPlay: number | null = null
   private cache = new Map<number, AudioChunk>()
+  private readonly startBufferSeconds: number
+  private readonly startBufferUnits: number
 
   constructor(
     private synth: SynthPort,
     private audio: AudioPort,
     private events: ControllerEvents,
-  ) {}
+    options: ControllerOptions = {},
+  ) {
+    this.startBufferSeconds = Math.max(0, options.startBufferSeconds ?? START_BUFFER_SECONDS)
+    this.startBufferUnits = Math.max(1, options.startBufferUnits ?? START_BUFFER_UNITS)
+  }
 
   // autoplay=false prepares: the producer pre-fills the buffer from
   // startIndex but nothing becomes audible until beginPlayback(). Used to
@@ -134,7 +152,10 @@ export class ReadAloudController {
   }
 
   stop(): void {
-    if (this.status === 'idle') return
+    // An autoplay=false queue prepares while its public status remains idle.
+    // It still owns synthesis requests and cached audio that must be released
+    // when the player closes or its document changes.
+    if (this.status === 'idle' && this.preparedStart === null) return
     this.reset()
     this.setStatus('idle')
   }
@@ -217,15 +238,13 @@ export class ReadAloudController {
   }
 
   private playFrom(index: number): void {
+    this.preparedStart = null
     this.waitingToPlay = index
-    const cached = this.cache.get(index)
-    if (cached) {
-      this.deliver(index, cached)
-    } else {
-      this.request(index)
-    }
-    // Fire the whole lookahead window immediately; the worker serializes.
+    // Fire the whole lookahead window immediately; the worker serializes it.
+    // Playback begins only after tryStartWaiting sees a useful contiguous
+    // reserve, preventing short-then-long sentence pairs from draining it.
     this.topUp()
+    this.tryStartWaiting()
   }
 
   private request(index: number): void {
@@ -247,6 +266,7 @@ export class ReadAloudController {
         }
         this.cache.set(index, chunk)
         this.deliver(index, chunk)
+        this.tryStartWaiting()
         // Producer pump: every completed unit immediately requests the next
         // uncovered one, independent of playback progress.
         this.topUp()
@@ -272,15 +292,40 @@ export class ReadAloudController {
   }
 
   private deliver(index: number, chunk: AudioChunk): void {
-    if (this.waitingToPlay === index) {
-      this.waitingToPlay = null
-      this.enqueueChunk(index, chunk)
-      // Nothing was audible, so this chunk starts as soon as the clock runs.
-      this.onChunkStarted(index)
-    } else if (this.playingIndex !== null && index === this.playingIndex + 1 && !this.scheduledNext) {
+    if (this.playingIndex !== null && index === this.playingIndex + 1 && !this.scheduledNext) {
       this.enqueueChunk(index, chunk)
     }
     // Otherwise it stays cached for its turn.
+  }
+
+  /**
+   * Starts a waiting queue only when enough consecutive synthesized audio is
+   * available to absorb normal variation in inference time. Reaching the end
+   * of the queue is also sufficient, so a one-sentence selection never waits
+   * for audio that cannot exist.
+   */
+  private tryStartWaiting(): void {
+    const start = this.waitingToPlay
+    if (start === null || this.playingIndex !== null) return
+    const first = this.cache.get(start)
+    if (!first) return
+
+    let seconds = 0
+    let units = 0
+    let index = start
+    for (; index < this.sentences.length; index++) {
+      const chunk = this.cache.get(index)
+      if (!chunk) break
+      seconds += chunk.sampleRate > 0 ? chunk.samples.length / chunk.sampleRate : 0
+      units++
+      if (units >= this.startBufferUnits && seconds >= this.startBufferSeconds) break
+    }
+    const reachedEnd = start + units >= this.sentences.length
+    if (!reachedEnd && (units < this.startBufferUnits || seconds < this.startBufferSeconds)) return
+
+    this.waitingToPlay = null
+    this.enqueueChunk(start, first)
+    this.onChunkStarted(start)
   }
 
   private enqueueChunk(index: number, chunk: AudioChunk): void {
@@ -332,10 +377,11 @@ export class ReadAloudController {
     this.waitingToPlay = next
     const cached = this.cache.get(next)
     if (cached) {
-      this.deliver(next, cached)
+      this.tryStartWaiting()
     } else {
       this.request(next)
     }
+    this.topUp()
   }
 
   // After a voice/speed change: keep what is audible, rebuild the lookahead.

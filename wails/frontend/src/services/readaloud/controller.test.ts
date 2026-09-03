@@ -111,7 +111,13 @@ beforeEach(() => {
     onError: m => errors.push(m),
     onFinished: () => finishes++,
   }
-  controller = new ReadAloudController(synth, audio, events)
+  // Most state-machine tests disable production prebuffering so they can
+  // exercise one transition at a time. A dedicated test below covers the
+  // real duration-based reserve.
+  controller = new ReadAloudController(synth, audio, events, {
+    startBufferSeconds: 0,
+    startBufferUnits: 1,
+  })
 })
 
 async function startPlaying(startIndex = 0, voice = 'af_heart', speed = 1.2) {
@@ -135,6 +141,45 @@ describe('ReadAloudController', () => {
     expect(synth.requests.map(r => r.text)).toEqual(['Two.', 'Three.'])
   })
 
+  it('buffers a short sentence and its long successor before speaking', async () => {
+    controller = new ReadAloudController(synth, audio, {
+      onStatus: s => statuses.push(s),
+      onSentenceStart: i => started.push(i),
+      onError: m => errors.push(m),
+      onFinished: () => finishes++,
+    }, {
+      startBufferSeconds: 8,
+      startBufferUnits: 2,
+    })
+    controller.start(['Short.', 'This following sentence takes longer to synthesize.', 'Afterward.'], 0, 'af_heart', 1.2)
+
+    const first = synth.requests.shift()!
+    first.resolve({ samples: new Float32Array(24_000), sampleRate: 24_000 })
+    await flush()
+    expect(audio.queue).toHaveLength(0)
+    expect(started).toEqual([])
+
+    const second = synth.requests.shift()!
+    second.resolve({ samples: new Float32Array(180_000), sampleRate: 24_000 })
+    await flush()
+    expect(started).toEqual([0])
+    expect(audio.queue).toHaveLength(2)
+  })
+
+  it('starts a single remaining sentence without waiting for an impossible reserve', async () => {
+    controller = new ReadAloudController(synth, audio, {
+      onStatus: s => statuses.push(s),
+      onSentenceStart: i => started.push(i),
+      onError: m => errors.push(m),
+      onFinished: () => finishes++,
+    })
+    controller.start(['The last sentence.'], 0, 'af_heart', 1.2)
+
+    await synth.resolveNext()
+    expect(started).toEqual([0])
+    expect(audio.queue).toHaveLength(1)
+  })
+
   it('prepares silently and arms instantly on beginPlayback', async () => {
     controller.start(SENTENCES, 0, 'af_heart', 1.2, false)
     // Prepared: producer fills, nothing audible, status untouched.
@@ -149,6 +194,16 @@ describe('ReadAloudController', () => {
     expect(controller.beginPlayback()).toBe(true)
     expect(started).toEqual([0])
     expect(statuses[statuses.length - 1]).toBe('playing')
+  })
+
+  it('cancels silent prefill when stopped while its public status is idle', () => {
+    controller.start(SENTENCES, 0, 'af_heart', 1.2, false)
+    const pending = synth.requests.map(request => request.id)
+
+    controller.stop()
+
+    expect(synth.cancelledIds).toEqual(pending)
+    expect(controller.isPreparedFor(SENTENCES.length)).toBe(false)
   })
 
   it('schedules the next chunk before the current ends for gapless handoff', async () => {
