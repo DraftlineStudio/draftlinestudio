@@ -6,8 +6,6 @@ export namespace readaloud {
 	    bytes_total: number;
 	    bytes_on_disk: number;
 	    missing: string[];
-	    gpu_installed: boolean;
-	    gpu_bytes_total: number;
 	    native_supported: boolean;
 	    native_installed: boolean;
 	    native_bytes_total: number;
@@ -23,8 +21,6 @@ export namespace readaloud {
 	        this.bytes_total = source["bytes_total"];
 	        this.bytes_on_disk = source["bytes_on_disk"];
 	        this.missing = source["missing"];
-	        this.gpu_installed = source["gpu_installed"];
-	        this.gpu_bytes_total = source["gpu_bytes_total"];
 	        this.native_supported = source["native_supported"];
 	        this.native_installed = source["native_installed"];
 	        this.native_bytes_total = source["native_bytes_total"];
@@ -33,7 +29,6 @@ export namespace readaloud {
 	export class VerifyResult {
 	    installed: boolean;
 	    verified: boolean;
-	    gpu_verified: boolean;
 	    native_verified: boolean;
 	    version: string;
 	    installed_at: string;
@@ -50,7 +45,6 @@ export namespace readaloud {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.installed = source["installed"];
 	        this.verified = source["verified"];
-	        this.gpu_verified = source["gpu_verified"];
 	        this.native_verified = source["native_verified"];
 	        this.version = source["version"];
 	        this.installed_at = source["installed_at"];

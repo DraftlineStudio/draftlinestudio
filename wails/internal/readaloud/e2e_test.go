@@ -2,15 +2,18 @@ package readaloud
 
 import (
 	"context"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 )
 
-// TestInstallRealBundle downloads the actual pinned bundle (~130 MB) and so
+// TestInstallRealBundle downloads the actual pinned native bundle and so
 // verifies every manifest checksum against the live sources. It is skipped
 // unless READALOUD_E2E=1; set READALOUD_E2E_DIR to install into a specific
 // directory (e.g. the real model cache) instead of a throwaway temp dir.
@@ -36,17 +39,60 @@ func TestInstallRealBundle(t *testing.T) {
 	t.Logf("bundle verified in %s (%d bytes)", dir, status.BytesOnDisk)
 }
 
-// TestNativeSynthesisRealBundle installs the pinned platform runtime into an
-// existing verified bundle, loads it without CGO, and measures two consecutive
-// syntheses. It is opt-in because it downloads roughly 40-70 MB in addition
-// to the shared fp32 model when those files are absent.
+// TestNativeLoopbackRealBundle exercises the exact cross-origin HTTP contract
+// used by the Wails WebView, including the exposed sample-rate header.
+func TestNativeLoopbackRealBundle(t *testing.T) {
+	if os.Getenv("READALOUD_NATIVE_E2E") == "" {
+		t.Skip("set READALOUD_NATIVE_E2E=1 and READALOUD_E2E_DIR to test native synthesis")
+	}
+	dir := os.Getenv("READALOUD_E2E_DIR")
+	if dir == "" {
+		t.Fatal("READALOUD_E2E_DIR is required for the native test")
+	}
+	if err := InstallNative(context.Background(), dir, nil); err != nil {
+		t.Fatalf("install native bundle: %v", err)
+	}
+	base, err := StartServer(dir)
+	if err != nil {
+		t.Fatalf("start loopback: %v", err)
+	}
+	t.Cleanup(ShutdownNative)
+	body := strings.NewReader(`{"text":"The native interface reports its sample rate.","voice":"af_heart","speed":1.2,"threads":0}`)
+	req, err := http.NewRequest(http.MethodPost, base+NativeSynthesisPath, body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Origin", "wails://wails.localhost")
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("native request: %v", err)
+	}
+	defer resp.Body.Close()
+	pcm, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read PCM: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK || len(pcm) == 0 {
+		t.Fatalf("native response status=%d bytes=%d", resp.StatusCode, len(pcm))
+	}
+	if got := resp.Header.Get("X-Draftline-Sample-Rate"); got != "24000" {
+		t.Fatalf("sample rate = %q, want 24000", got)
+	}
+	if exposed := resp.Header.Get("Access-Control-Expose-Headers"); !strings.Contains(exposed, "X-Draftline-Sample-Rate") {
+		t.Fatalf("sample-rate header is not exposed to the WebView: %q", exposed)
+	}
+}
+
+// TestNativeSynthesisRealBundle installs the pinned platform runtime and model,
+// loads them without CGO, and measures consecutive syntheses.
 func TestNativeSynthesisRealBundle(t *testing.T) {
 	if os.Getenv("READALOUD_NATIVE_E2E") == "" {
 		t.Skip("set READALOUD_NATIVE_E2E=1 and READALOUD_E2E_DIR to test native synthesis")
 	}
 	dir := os.Getenv("READALOUD_E2E_DIR")
 	if dir == "" {
-		t.Fatal("READALOUD_E2E_DIR is required so the native test can reuse the installed fp32 model")
+		t.Fatal("READALOUD_E2E_DIR is required for the native test")
 	}
 	if err := InstallNative(context.Background(), dir, nil); err != nil {
 		t.Fatalf("install native bundle: %v", err)
@@ -148,7 +194,7 @@ func TestFreshInstallLifecycle(t *testing.T) {
 	t.Logf("installed: v%s, %d bytes, all hashes match ✓", v.Version, v.Bytes)
 
 	// 3. Corrupt one file (right size, wrong bytes) and confirm detection.
-	victim := GroupManifest(GroupCore)[0]
+	victim := Manifest()[0]
 	victimPath := filepath.Join(base, filepath.FromSlash(victim.Name))
 	if err := os.WriteFile(victimPath, make([]byte, victim.Bytes), 0644); err != nil {
 		t.Fatal(err)

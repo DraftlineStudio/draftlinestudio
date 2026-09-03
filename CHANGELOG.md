@@ -2,6 +2,15 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02520] - 2026-09-03
+
+### Changed
+- Read Aloud now uses only the native voice engine.
+- The voice bundle is now a single download for each platform.
+
+### Fixed
+- Fixed native Read Aloud failing with a missing sample rate error.
+
 ## [0.17.02519] - 2026-09-03
 
 ### Added

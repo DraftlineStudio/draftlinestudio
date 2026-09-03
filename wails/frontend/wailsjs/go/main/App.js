@@ -58,14 +58,6 @@ export function DeleteCharacterEvent(arg1, arg2) {
   return window['go']['main']['App']['DeleteCharacterEvent'](arg1, arg2);
 }
 
-export function DownloadReadAloudGPUModel() {
-  return window['go']['main']['App']['DownloadReadAloudGPUModel']();
-}
-
-export function DownloadReadAloudModel() {
-  return window['go']['main']['App']['DownloadReadAloudModel']();
-}
-
 export function DownloadReadAloudNative() {
   return window['go']['main']['App']['DownloadReadAloudNative']();
 }
