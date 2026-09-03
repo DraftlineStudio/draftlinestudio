@@ -1,10 +1,8 @@
 package main
 
 // Read Aloud plugin backend: thin bound methods over internal/readaloud.
-// Heavy lifting (pinned manifest, verified download, asset handler) lives in
-// the package; this file only wires it to the frontend and the Wails event
-// bus. Browser fallback synthesis runs in the webview; the optional native
-// backend runs local sherpa-onnx inference behind the loopback service.
+// Heavy lifting (pinned manifest, verified download, and native synthesis)
+// lives in the package; this file wires it to the frontend and Wails events.
 
 import (
 	"context"
@@ -39,10 +37,9 @@ var readAloudServer struct {
 	url string
 }
 
-// ReadAloudServerURL starts (once) and returns the loopback model server —
-// a real 127.0.0.1 HTTP origin, because WebView2's asset-scheme handler does
-// not reliably intercept requests made from nested pthread workers. Returns
-// "" on failure; the frontend then falls back to the asset-handler path.
+// ReadAloudServerURL starts (once) and returns the authenticated loopback
+// synthesis service. An empty result is fatal to playback; there is no
+// browser or remote fallback.
 func (a *App) ReadAloudServerURL() string {
 	readAloudServer.mu.Lock()
 	defer readAloudServer.mu.Unlock()
@@ -121,20 +118,6 @@ func (a *App) ReadAloudStatus() readaloud.Status {
 	return readaloud.Check(readAloudModelDir())
 }
 
-// DownloadReadAloudModel starts (or resumes) the pinned core-bundle download
-// in the background. Progress arrives on "readaloud:progress" and completion
-// on "readaloud:done". A second call while a download runs is a no-op.
-func (a *App) DownloadReadAloudModel() {
-	a.downloadReadAloudGroup(readaloud.GroupCore)
-}
-
-// DownloadReadAloudGPUModel downloads the optional full-precision model for
-// the WebGPU fast path (~311 MB), with the same verification and resume
-// semantics as the core bundle.
-func (a *App) DownloadReadAloudGPUModel() {
-	a.downloadReadAloudGroup(readaloud.GroupGPU)
-}
-
 // DownloadReadAloudNative installs the platform runtime and the CPU-optimized
 // native model/support files.
 func (a *App) DownloadReadAloudNative() {
@@ -155,33 +138,6 @@ func (a *App) DownloadReadAloudNative() {
 		readAloudDownload.cancel = nil
 		readAloudDownload.mu.Unlock()
 		payload := map[string]any{"ok": err == nil, "group": readaloud.GroupNative}
-		if err != nil {
-			payload["error"] = err.Error()
-		}
-		runtime.EventsEmit(a.ctx, "readaloud:done", payload)
-	}()
-}
-
-func (a *App) downloadReadAloudGroup(group string) {
-	readAloudDownload.mu.Lock()
-	if readAloudDownload.cancel != nil {
-		readAloudDownload.mu.Unlock()
-		return
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	readAloudDownload.cancel = cancel
-	readAloudDownload.mu.Unlock()
-
-	go func() {
-		err := readaloud.InstallGroup(ctx, readAloudModelDir(), group, func(p readaloud.Progress) {
-			runtime.EventsEmit(a.ctx, "readaloud:progress", p)
-		})
-
-		readAloudDownload.mu.Lock()
-		readAloudDownload.cancel = nil
-		readAloudDownload.mu.Unlock()
-
-		payload := map[string]any{"ok": err == nil, "group": group}
 		if err != nil {
 			payload["error"] = err.Error()
 		}

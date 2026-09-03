@@ -25,7 +25,8 @@ type AppSettings struct {
 	ReadAloudEnabled bool    `json:"read_aloud_enabled"`
 	ReadAloudVoice   string  `json:"read_aloud_voice"`
 	ReadAloudSpeed   float64 `json:"read_aloud_speed"`
-	// ReadAloudDevice: "wasm" (default, works everywhere) | "webgpu"
+	// ReadAloudDevice is retained for settings-file compatibility. Native is
+	// the only supported Read Aloud protocol.
 	// (opt-in fp32 fast path). ReadAloudThreads: "auto" (default; uses all
 	// but one core when cross-origin isolation is active) | "single".
 	ReadAloudDevice  string `json:"read_aloud_device"`

@@ -4,6 +4,18 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02520] - 2026-09-03
+
+### Fixed
+- Fixed native Read Aloud failing with “native interface returned no sample rate.” The loopback response now exposes `X-Draftline-Sample-Rate` through CORS, and regression coverage verifies both the POST preflight and exposed header contract.
+
+### Changed
+- Removed browser-based Read Aloud completely. Native sherpa-onnx is now the only synthesis protocol: there is no WASM/WebGPU inference worker, browser model, device selector, performance race, model-serving asset route, or silent fallback.
+- Replaced the multi-bundle installer with one checksum-pinned native bundle selected for Windows x64, Linux x64/ARM64, or macOS Intel/Apple Silicon. Install, verification, repair, removal, status, and diagnostics now describe that single backend honestly.
+- Removed `kokoro-js`, Transformers.js, and the browser phonemizer from the frontend dependency and production bundles.
+
+---
+
 ## [0.17.02519] - 2026-09-03
 
 ### Added

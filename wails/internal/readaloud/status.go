@@ -6,17 +6,13 @@ import (
 	"path/filepath"
 )
 
-// Status describes the on-disk state of the Read Aloud bundle. Installed,
-// BytesTotal, and Missing describe the mandatory core (CPU) bundle; the
-// optional GPU model is reported separately.
+// Status describes the sole native Read Aloud bundle.
 type Status struct {
 	Installed        bool     `json:"installed"`
 	Dir              string   `json:"dir"`
 	BytesTotal       int64    `json:"bytes_total"`
 	BytesOnDisk      int64    `json:"bytes_on_disk"`
 	Missing          []string `json:"missing"`
-	GPUInstalled     bool     `json:"gpu_installed"`
-	GPUBytesTotal    int64    `json:"gpu_bytes_total"`
 	NativeSupported  bool     `json:"native_supported"`
 	NativeInstalled  bool     `json:"native_installed"`
 	NativeBytesTotal int64    `json:"native_bytes_total"`
@@ -28,41 +24,25 @@ type Status struct {
 func Check(dir string) Status {
 	status := Status{
 		Dir: dir, BytesTotal: TotalBytes(), Missing: []string{},
-		GPUInstalled: true, GPUBytesTotal: groupBytes(GroupGPU),
 		NativeSupported: NativeSupported(), NativeInstalled: NativeSupported(),
 		NativeBytesTotal: NativeBytes(),
 	}
 	for _, art := range Manifest() {
 		info, err := os.Stat(filepath.Join(dir, filepath.FromSlash(art.Name)))
 		present := err == nil && info.Size() == art.Bytes
-		if art.Group == GroupGPU {
-			if !present {
-				status.GPUInstalled = false
-			} else {
-				status.BytesOnDisk += info.Size()
-			}
-			continue
-		}
-		if art.Group == GroupNative {
-			if !present {
-				status.NativeInstalled = false
-			} else {
-				status.BytesOnDisk += info.Size()
-			}
-			continue
-		}
 		if !present {
 			status.Missing = append(status.Missing, art.Name)
+			status.NativeInstalled = false
 			continue
 		}
 		status.BytesOnDisk += info.Size()
 	}
-	status.Installed = len(status.Missing) == 0
 	if status.NativeInstalled {
 		if info, err := os.Stat(filepath.Join(dir, "native", "model", "espeak-ng-data", "phontab")); err != nil || info.IsDir() {
 			status.NativeInstalled = false
 		}
 	}
+	status.Installed = status.NativeInstalled
 	return status
 }
 

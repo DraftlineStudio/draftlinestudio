@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"net/http/httputil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -179,23 +178,16 @@ func TestInstallResumeSkipsVerifiedFiles(t *testing.T) {
 
 func TestCheckAndRemove(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "kokoro")
-	core := GroupManifest(GroupCore)
+	bundle := Manifest()
 	status := Check(dir)
-	if status.Installed || len(status.Missing) != len(core) {
-		t.Fatalf("empty dir must report every core file missing, got %+v", status)
-	}
-	if status.GPUInstalled {
-		t.Error("empty dir must report the GPU model missing")
+	if status.Installed || len(status.Missing) != len(bundle) {
+		t.Fatalf("empty dir must report every native file missing, got %+v", status)
 	}
 	if status.BytesTotal != TotalBytes() {
 		t.Errorf("BytesTotal = %d, want %d", status.BytesTotal, TotalBytes())
 	}
-	if status.GPUBytesTotal <= 0 {
-		t.Error("GPUBytesTotal must be positive")
-	}
-
 	// Fabricate a correctly sized file for the first artifact: Check judges by size.
-	first := core[0]
+	first := bundle[0]
 	path := filepath.Join(dir, filepath.FromSlash(first.Name))
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		t.Fatal(err)
@@ -204,7 +196,7 @@ func TestCheckAndRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 	status = Check(dir)
-	if len(status.Missing) != len(core)-1 || status.BytesOnDisk != first.Bytes {
+	if len(status.Missing) != len(bundle)-1 || status.BytesOnDisk != first.Bytes {
 		t.Errorf("after one file: %+v", status)
 	}
 
@@ -219,61 +211,17 @@ func TestCheckAndRemove(t *testing.T) {
 	}
 }
 
-func TestHandlerServesAndRefuses(t *testing.T) {
-	dir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(dir, "hf"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	wasm := []byte("\x00asm")
-	if err := os.WriteFile(filepath.Join(dir, "hf", "model.wasm"), wasm, 0644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "secret.txt"), []byte("no"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	h := NewHandler(dir)
-
-	get := func(method, path string) *http.Response {
-		rec := httptest.NewRecorder()
-		h.ServeHTTP(rec, httptest.NewRequest(method, path, nil))
-		return rec.Result()
-	}
-
-	if resp := get("GET", HandlerPrefix+"hf/model.wasm"); resp.StatusCode != http.StatusOK {
-		dump, _ := httputil.DumpResponse(resp, true)
-		t.Fatalf("expected 200 for served wasm, got:\n%s", dump)
-	} else if ct := resp.Header.Get("Content-Type"); ct != "application/wasm" {
-		t.Errorf("wasm content type = %q", ct)
-	}
-	for name, path := range map[string]string{
-		"traversal":          HandlerPrefix + "../secret.txt",
-		"unknown extension":  HandlerPrefix + "secret.txt",
-		"outside prefix":     "/settings.json",
-		"missing file":       HandlerPrefix + "hf/nope.wasm",
-		"bare prefix":        HandlerPrefix,
-		"encoded traversal":  HandlerPrefix + "..%2fsecret.txt",
-		"windows abs volume": HandlerPrefix + "C:/Windows/win.ini",
-	} {
-		if resp := get("GET", path); resp.StatusCode != http.StatusNotFound {
-			t.Errorf("%s (%s): got %d, want 404", name, path, resp.StatusCode)
-		}
-	}
-	if resp := get("POST", HandlerPrefix+"hf/model.wasm"); resp.StatusCode != http.StatusMethodNotAllowed {
-		t.Errorf("POST: got %d, want 405", resp.StatusCode)
-	}
-}
-
 func TestVerifyStates(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "kokoro")
 
 	// Empty dir: not installed, everything missing.
 	result := Verify(dir)
-	if result.Installed || result.Verified || len(result.Missing) != len(GroupManifest(GroupCore)) {
+	if result.Installed || result.Verified || len(result.Missing) != len(Manifest()) {
 		t.Fatalf("empty dir: %+v", result)
 	}
 
-	// A core file with the pinned size but wrong content: corrupt, not verified.
-	first := GroupManifest(GroupCore)[0]
+	// A native file with the pinned size but wrong content: corrupt, not verified.
+	first := Manifest()[0]
 	path := filepath.Join(dir, filepath.FromSlash(first.Name))
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		t.Fatal(err)
@@ -333,12 +281,6 @@ func TestInstallWritesManifest(t *testing.T) {
 
 func TestLoopbackServer(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(dir, "ort"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "ort", "runtime.wasm"), []byte("\x00asm"), 0644); err != nil {
-		t.Fatal(err)
-	}
 	base, err := StartServer(dir)
 	if err != nil {
 		t.Fatalf("start server: %v", err)
@@ -353,7 +295,7 @@ func TestLoopbackServer(t *testing.T) {
 	if len(strings.TrimPrefix(parsedBase.Path, "/")) != 32 {
 		t.Fatalf("server URL must carry a 128-bit capability path, got %q", parsedBase.Path)
 	}
-	unscoped := parsedBase.Scheme + "://" + parsedBase.Host + HandlerPrefix + "ort/runtime.wasm"
+	unscoped := parsedBase.Scheme + "://" + parsedBase.Host + NativeSynthesisPath
 	if resp, err := http.Get(unscoped); err != nil {
 		t.Fatalf("unscoped get: %v", err)
 	} else {
@@ -363,32 +305,15 @@ func TestLoopbackServer(t *testing.T) {
 		}
 	}
 
-	resp, err := http.Get(base + HandlerPrefix + "ort/runtime.wasm")
+	resp, err := http.Get(base + "/readaloud-models/ort/runtime.wasm")
 	if err != nil {
 		t.Fatalf("get: %v", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("status %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("obsolete browser model route: got %d, want 404", resp.StatusCode)
 	}
-	for header, want := range map[string]string{
-		"Access-Control-Allow-Origin":  "*",
-		"Cross-Origin-Resource-Policy": "cross-origin",
-		"Cross-Origin-Embedder-Policy": "require-corp",
-		"Content-Type":                 "application/wasm",
-	} {
-		if got := resp.Header.Get(header); got != want {
-			t.Errorf("%s = %q, want %q", header, got, want)
-		}
-	}
-
-	if resp, err := http.Get(base + HandlerPrefix + "../secret.txt"); err == nil {
-		resp.Body.Close()
-		if resp.StatusCode != http.StatusNotFound {
-			t.Errorf("traversal: got %d, want 404", resp.StatusCode)
-		}
-	}
-	preflight, err := http.NewRequest(http.MethodOptions, base+HandlerPrefix+"ort/runtime.wasm", nil)
+	preflight, err := http.NewRequest(http.MethodOptions, base+NativeSynthesisPath, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -399,6 +324,9 @@ func TestLoopbackServer(t *testing.T) {
 		}
 		if methods := resp.Header.Get("Access-Control-Allow-Methods"); !strings.Contains(methods, "POST") {
 			t.Errorf("preflight methods %q do not permit native synthesis POST", methods)
+		}
+		if exposed := resp.Header.Get("Access-Control-Expose-Headers"); !strings.Contains(exposed, "X-Draftline-Sample-Rate") {
+			t.Errorf("preflight does not expose native sample rate: %q", exposed)
 		}
 	}
 }
@@ -416,32 +344,28 @@ func TestManifestPinsAreWellFormed(t *testing.T) {
 		if a.Bytes <= 0 {
 			t.Errorf("%s: non-positive size", a.Name)
 		}
-		if !strings.Contains(a.URL, kokoroRevision) && !strings.Contains(a.URL, ortVersion) &&
-			!strings.Contains(a.URL, nativeRevision) && !strings.Contains(a.URL, nativeInt8Revision) &&
+		if !strings.Contains(a.URL, nativeRevision) && !strings.Contains(a.URL, nativeInt8Revision) &&
 			!strings.Contains(a.URL, sherpaVersion) && a.URL != espeakBundleURL {
 			t.Errorf("%s: URL %s is not pinned to a revision", a.Name, a.URL)
 		}
 		if strings.Contains(a.URL, "/resolve/main/") {
 			t.Errorf("%s: mutable branch URL forbidden", a.Name)
 		}
-		if a.Group != GroupCore && a.Group != GroupGPU && a.Group != GroupNative {
+		if a.Group != GroupNative {
 			t.Errorf("%s: unknown group %q", a.Name, a.Group)
 		}
 	}
 	if fmt.Sprintf("%d", TotalBytes()) == "0" {
 		t.Error("TotalBytes must be positive")
 	}
-	if len(GroupManifest(GroupGPU)) == 0 || len(GroupManifest(GroupCore)) == 0 {
-		t.Error("both artifact groups must be non-empty")
-	}
 	if NativeSupported() && len(GroupManifest(GroupNative)) < 5 {
 		t.Error("native bundle must include support files and both platform libraries")
 	}
-	var coreSum int64
-	for _, a := range GroupManifest(GroupCore) {
-		coreSum += a.Bytes
+	var nativeSum int64
+	for _, a := range GroupManifest(GroupNative) {
+		nativeSum += a.Bytes
 	}
-	if TotalBytes() != coreSum {
-		t.Errorf("TotalBytes must price the core bundle only: got %d, want %d", TotalBytes(), coreSum)
+	if TotalBytes() != nativeSum {
+		t.Errorf("TotalBytes must price the native bundle: got %d, want %d", TotalBytes(), nativeSum)
 	}
 }

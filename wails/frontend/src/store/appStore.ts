@@ -29,7 +29,7 @@ export interface AppSettings {
   read_aloud_enabled: boolean
   read_aloud_voice: string
   read_aloud_speed: number
-  read_aloud_device: 'wasm' | 'webgpu'
+  read_aloud_device: 'native'
   read_aloud_threads: 'single' | 'auto'
   // AI
   ai_enabled: boolean
@@ -132,7 +132,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   read_aloud_enabled: false,
   read_aloud_voice: 'af_heart',
   read_aloud_speed: 1.2,
-  read_aloud_device: 'wasm',
+  read_aloud_device: 'native',
   read_aloud_threads: 'auto',
   ai_enabled: false,
   ai_mode: 'claudecode',
@@ -204,7 +204,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         custom_dictionary: (raw as unknown as Partial<AppSettings>).custom_dictionary ?? [],
         read_aloud_voice: raw.read_aloud_voice || 'af_heart',
         read_aloud_speed: Math.min(1.6, Math.max(0.8, Number(raw.read_aloud_speed) || 1.2)),
-        read_aloud_device: raw.read_aloud_device === 'webgpu' ? 'webgpu' : 'wasm',
+        read_aloud_device: 'native',
         read_aloud_threads: raw.read_aloud_threads === 'single' ? 'single' : 'auto',
       }
       set({ settings, loaded: true })

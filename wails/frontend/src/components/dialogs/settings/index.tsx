@@ -51,7 +51,6 @@ export default function AppSettingsDialog() {
   const [readAloudEnabled, setReadAloudEnabled] = useState(settings.read_aloud_enabled)
   const [readAloudVoice, setReadAloudVoice] = useState(settings.read_aloud_voice)
   const [readAloudSpeed, setReadAloudSpeed] = useState(settings.read_aloud_speed)
-  const [readAloudDevice, setReadAloudDevice] = useState(settings.read_aloud_device)
   const [readAloudThreads, setReadAloudThreads] = useState(settings.read_aloud_threads)
 
   // AI state
@@ -253,7 +252,7 @@ export default function AppSettingsDialog() {
       read_aloud_enabled: readAloudEnabled,
       read_aloud_voice: readAloudVoice,
       read_aloud_speed: readAloudSpeed,
-      read_aloud_device: readAloudDevice,
+      read_aloud_device: 'native',
       read_aloud_threads: readAloudThreads,
       ai_enabled: aiEnabled,
       ai_mode: aiMode,
@@ -392,7 +391,6 @@ export default function AppSettingsDialog() {
               <ReadAloudSection
                 voice={readAloudVoice} setVoice={setReadAloudVoice}
                 speed={readAloudSpeed} setSpeed={setReadAloudSpeed}
-                device={readAloudDevice} setDevice={setReadAloudDevice}
                 threads={readAloudThreads} setThreads={setReadAloudThreads}
               />
             )}

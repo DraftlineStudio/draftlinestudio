@@ -210,7 +210,7 @@ export default function App() {
   // down on change makes the next playback session pick it up.
   useEffect(() => {
     useReadAloudStore.getState().shutdown()
-  }, [settings.read_aloud_device, settings.read_aloud_threads])
+  }, [settings.read_aloud_threads])
 
   useEffect(() => {
     if (!hasBook && bottomToolOpen) closeBottomTool()

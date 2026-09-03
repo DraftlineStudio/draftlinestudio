@@ -17,7 +17,6 @@ function formatMB(bytes: number): string {
 export default function ReadAloudSection({
   voice, setVoice,
   speed, setSpeed,
-  device, setDevice,
   threads, setThreads,
 }: ReadAloudSectionProps) {
   const modelState = useReadAloudStore(s => s.modelState)
@@ -25,23 +24,16 @@ export default function ReadAloudSection({
   const download = useReadAloudStore(s => s.download)
   const modelError = useReadAloudStore(s => s.modelError)
   const diagnostics = useReadAloudStore(s => s.diagnostics)
-  const gpuInstalled = useReadAloudStore(s => s.gpuInstalled)
-  const gpuBytesTotal = useReadAloudStore(s => s.gpuBytesTotal)
   const nativeSupported = useReadAloudStore(s => s.nativeSupported)
-  const nativeInstalled = useReadAloudStore(s => s.nativeInstalled)
   const nativeBytesTotal = useReadAloudStore(s => s.nativeBytesTotal)
-  const benchmarking = useReadAloudStore(s => s.benchmarking)
   const verified = useReadAloudStore(s => s.verified)
   const verifying = useReadAloudStore(s => s.verifying)
   const installInfo = useReadAloudStore(s => s.installInfo)
   const corruptFiles = useReadAloudStore(s => s.corruptFiles)
   const verifyModel = useReadAloudStore(s => s.verifyModel)
   const downloadModel = useReadAloudStore(s => s.downloadModel)
-  const downloadGPUModel = useReadAloudStore(s => s.downloadGPUModel)
-  const downloadNative = useReadAloudStore(s => s.downloadNative)
   const cancelDownload = useReadAloudStore(s => s.cancelDownload)
   const removeModel = useReadAloudStore(s => s.removeModel)
-  const runBenchmark = useReadAloudStore(s => s.runBenchmark)
   const [showDiagnostics, setShowDiagnostics] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -54,7 +46,7 @@ export default function ReadAloudSection({
   const pct = download && download.overall_total > 0
     ? Math.min(100, Math.round((download.overall_received / download.overall_total) * 100))
     : 0
-  const sizeLabel = bytesTotal > 0 ? formatMB(bytesTotal) : '~130 MB'
+  const sizeLabel = (nativeBytesTotal || bytesTotal) > 0 ? formatMB(nativeBytesTotal || bytesTotal) : '~168 MB'
 
   return (
     <>
@@ -151,50 +143,17 @@ export default function ReadAloudSection({
       </div>
 
       <div className="settings-section-label">Performance</div>
-      {nativeSupported && (
-        <div className="settings-cc-card" style={{ marginBottom: 12 }}>
-          <div className="settings-cc-header">
-            <span className="settings-cc-title">Native continuous playback</span>
-            <span className={`settings-cc-badge ${nativeInstalled ? 'ok' : 'checking'}`}>
-              {nativeInstalled ? '✓ Active' : 'Optional'}
-            </span>
-          </div>
-          <p className="settings-cc-desc">
-            Uses the pinned sherpa-onnx runtime built for Windows, macOS, or Linux. It keeps
-            Kokoro native and hot between sentences, avoiding browser/WASM generation stalls.
-            The existing browser engine remains available as the fallback.
-          </p>
-          {!nativeInstalled && modelState !== 'downloading' && (
-            <button className="dialog-btn primary" onClick={downloadNative}>
-              Install native playback ({formatMB(nativeBytesTotal)})
-            </button>
-          )}
+      {!nativeSupported && (
+        <div className="settings-hint read-aloud-error">
+          Native Read Aloud is not available for this operating-system architecture.
         </div>
       )}
-      <div className="dialog-field">
-        <label className="dialog-label">Synthesis Device</label>
-        <div className="settings-theme-row">
-          <button className={`settings-theme-btn${device === 'wasm' ? ' active' : ''}`} onClick={() => setDevice('wasm')}>
-            CPU — wasm q8
-          </button>
-          <button className={`settings-theme-btn${device === 'webgpu' ? ' active' : ''}`} onClick={() => setDevice('webgpu')}>
-            GPU — fp32
-          </button>
-        </div>
+      {nativeSupported && (
         <div className="settings-hint">
-          CPU works reliably everywhere. GPU uses the full-precision model (the quantized one
-          produces distorted audio on WebGPU) and is faster where it initializes cleanly; if it
-          fails on this machine playback falls back to CPU automatically.
+          Draftline uses the native sherpa-onnx runtime exclusively. Playback never falls back
+          to browser WASM, WebGPU, or a remote service.
         </div>
-        {device === 'webgpu' && !gpuInstalled && modelState !== 'downloading' && (
-          <button className="dialog-btn primary" style={{ marginTop: 8 }} onClick={downloadGPUModel}>
-            Download GPU voice model ({gpuBytesTotal > 0 ? formatMB(gpuBytesTotal) : '~311 MB'})
-          </button>
-        )}
-        {device === 'webgpu' && gpuInstalled && (
-          <div className="settings-hint" style={{ marginTop: 6 }}>GPU model installed.</div>
-        )}
-      </div>
+      )}
       <div className="dialog-field">
         <label className="dialog-label">Threads</label>
         <div className="settings-theme-row">
@@ -206,18 +165,8 @@ export default function ReadAloudSection({
           </button>
         </div>
         <div className="settings-hint">
-          Auto uses all but one CPU core (needs the cross-origin-isolated runtime — the
-          diagnostics show whether it is active). Changes apply the next time playback starts.
-          If Read Aloud misbehaves, CPU + Single is the safe fallback.
-        </div>
-      </div>
-      <div className="dialog-field">
-        <button className="dialog-btn" onClick={() => void runBenchmark()} disabled={benchmarking || modelState !== 'ready'}>
-          {benchmarking ? 'Running performance check…' : 'Run performance check'}
-        </button>
-        <div className="settings-hint">
-          Times a sentence on each installed backend and keeps the faster one. Results appear in
-          the diagnostics below.
+          Auto runs a bounded pool of native sessions for continuous sentence lookahead. Single
+          uses one native session as a low-memory compatibility mode. Changes apply next playback.
         </div>
       </div>
 
