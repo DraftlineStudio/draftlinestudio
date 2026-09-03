@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02502] - 2026-09-03
+
+### Added
+- Added sentence detection for Read Aloud that handles dialogue, abbreviations, and initials.
+
 ## [0.17.02501] - 2026-09-03
 
 ### Added
