@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02522] - 2026-09-03
+
+### Fixed
+- Restored natural pauses between sentences in Read Aloud.
+
 ## [0.17.02521] - 2026-09-03
 
 ### Fixed
