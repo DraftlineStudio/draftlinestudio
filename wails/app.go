@@ -43,7 +43,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.17.02511"
+const AppVersion = "0.17.02512"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -153,12 +153,12 @@ func (a *App) CancelRewrite() {
 // become one entity). The result includes the updated book with characters
 // and entity data populated.
 func (a *App) IndexBook(book types.BookData) types.IndexResult {
-	done, ok := a.beginAnalysis(book)
+	budget, done, ok := a.beginAnalysis(book)
 	if !ok {
 		return types.IndexResult{Success: false, Error: analysisBusyMessage}
 	}
 	defer done()
-	return indexing.IndexBook(&book)
+	return indexing.IndexBookWithOptions(&book, indexing.AnalysisPoolOptions{Workers: budget.Workers, MaxInFlightBytes: budget.MaxInFlightBytes, MaxBatchBytes: budget.MaxBatchBytes})
 }
 
 // SplitEntity separates mentions from an entity into a new entity.
@@ -203,7 +203,7 @@ func (a *App) MergeEntities(book types.BookData, entityIDs []string, canonical s
 // AnalyzeRelationships detects character interactions and builds relationship data.
 // This should be called after entity resolution has been run.
 func (a *App) AnalyzeRelationships(book types.BookData) types.RelationshipAnalysisResult {
-	done, ok := a.beginAnalysis(book)
+	_, done, ok := a.beginAnalysis(book)
 	if !ok {
 		return types.RelationshipAnalysisResult{Success: false, Error: analysisBusyMessage}
 	}

@@ -7,7 +7,7 @@
 // prepared sentence lists.
 
 import { create } from 'zustand'
-import { ReadAloudStatus, DownloadReadAloudModel, DownloadReadAloudGPUModel, CancelReadAloudDownload, RemoveReadAloudModel, VerifyReadAloudModel, ReadAloudServerURL } from '../../wailsjs/go/main/App'
+import { ReadAloudStatus, DownloadReadAloudModel, DownloadReadAloudGPUModel, CancelReadAloudDownload, RemoveReadAloudModel, VerifyReadAloudModel, ReadAloudServerURL, StartReadAloudMemLog, StopReadAloudMemLog } from '../../wailsjs/go/main/App'
 import { EventsOn } from '../../wailsjs/runtime/runtime'
 import { ReadAloudController, type ControllerStatus } from '../services/readaloud/controller'
 import { WorkerSynth, type ModelLoadProgress } from '../services/readaloud/tts'
@@ -88,6 +88,7 @@ interface ReadAloudStore {
 // merely importing this module never touches the Wails runtime (vitest runs
 // with the bindings mocked).
 let eventsBound = false
+let editorWatcherBound = false
 
 // Playback machinery, created on first play and torn down by shutdown().
 // Module-scoped (not store state) because these are stateful class instances,
@@ -130,6 +131,11 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
     EventsOn('readaloud:progress', (p: ReadAloudDownloadProgress) => {
       set({ modelState: 'downloading', download: p })
     })
+    // Go-side memory sampling (process RSS every 2s while playing) joins the
+    // same diagnostics stream as the worker's heap/wasm snapshots.
+    EventsOn('readaloud:diag', (line: string) => {
+      set(s => ({ diagnostics: [...s.diagnostics.slice(-59), line] }))
+    })
     EventsOn('readaloud:done', (result: { ok: boolean; error?: string; group?: string }) => {
       set({ download: null, modelError: result?.ok ? null : (result?.error ?? null), verified: false })
       if (result?.ok) {
@@ -159,11 +165,16 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
       line => set(s => ({ diagnostics: [...s.diagnostics.slice(-59), line] })),
       () => ReadAloudServerURL().then(url => (url ? `${url}/readaloud-models` : '')),
     )
-    audio = new WebAudioPort()
+    audio = new WebAudioPort(
+      line => set(s => ({ diagnostics: [...s.diagnostics.slice(-59), line] })),
+    )
     controller = new ReadAloudController(synth, audio, {
       onStatus: status => {
         set({ status })
         if (status === 'playing') set({ modelLoading: null })
+        // RSS sampling runs exactly while something is audible/pending.
+        if (status === 'playing' || status === 'starting') void StartReadAloudMemLog()
+        else void StopReadAloudMemLog()
       },
       onSentenceStart: index => {
         set({ currentIndex: index })
@@ -181,13 +192,18 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
     })
     // A chapter switch remounts the editor; playback positions belong to the
     // old document, so stop cleanly (highlights die with the old view).
-    let lastEditor = useEditorStore.getState().editorRef
-    useEditorStore.subscribe(state => {
-      if (state.editorRef === lastEditor) return
-      lastEditor = state.editorRef
-      const store = get()
-      if (store.status !== 'idle') store.stop()
-    })
+    // Subscribed once per app lifetime — re-subscribing on every controller
+    // rebuild (enable/disable cycles) would accumulate listeners.
+    if (!editorWatcherBound) {
+      editorWatcherBound = true
+      let lastEditor = useEditorStore.getState().editorRef
+      useEditorStore.subscribe(state => {
+        if (state.editorRef === lastEditor) return
+        lastEditor = state.editorRef
+        const store = get()
+        if (store.status !== 'idle') store.stop()
+      })
+    }
     return controller
   }
 
@@ -468,6 +484,7 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
       controller?.stop()
       synth?.shutdown()
       audio?.close()
+      try { void StopReadAloudMemLog() } catch { /* ignore */ }
       controller = null
       synth = null
       audio = null

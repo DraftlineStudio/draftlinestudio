@@ -23,6 +23,7 @@ interface InitMessage {
   base: string
   device: 'wasm' | 'webgpu'
   threads: 'single' | 'auto'
+  workerIndex: number
 }
 interface SynthesizeMessage { type: 'synthesize'; id: number; text: string; voice: string; speed: number }
 interface CancelMessage { type: 'cancel'; id: number }
@@ -38,6 +39,7 @@ let tts: KokoroModel | null = null
 let initPromise: Promise<void> | null = null
 let sentenceCount = 0
 let phonemizeTimed = false
+let workerIndex = 0
 const cancelled = new Set<number>()
 // Kokoro inference is not reentrant; requests run strictly in sequence.
 let queue: Promise<void> = Promise.resolve()
@@ -47,10 +49,59 @@ function post(message: unknown, transfer?: Transferable[]) {
 }
 
 // Diagnostics go to the WebView console AND to the main thread so the
-// settings panel can show them without devtools.
+// settings panel can show them without devtools. Each line carries a
+// timestamp and the worker-start counter so memory numbers are attributable.
 function diag(line: string) {
-  console.log('[readaloud]', line)
-  post({ type: 'diag', line })
+  const stamped = `[w${workerIndex} t+${Math.round(performance.now())}ms] ${line}`
+  console.log('[readaloud]', stamped)
+  post({ type: 'diag', line: stamped })
+}
+
+// ── Memory instrumentation + the 4 GB clamp ─────────────────────────────────
+// The threaded ONNX runtime creates its WebAssembly.Memory as
+// {initial:256, maximum:65536(=4 GB), shared:true}. Growable SHARED memories
+// cannot relocate their buffer, so the engine reserves — and on Windows
+// commits — the full maximum eagerly, and every extra instantiation stacks
+// another 4 GB that never shrinks. Kokoro q8 needs a few hundred MB, so the
+// constructor is wrapped to cap every large wasm memory at 1 GB. Growth past
+// the cap raises a RangeError inside generate(), which surfaces through the
+// normal error path instead of eating the machine.
+const MEMORY_CAP_PAGES = 16384 // × 64 KiB = 1 GiB
+// WeakRefs: instrumentation must never be the thing keeping an abandoned
+// instance's memory alive. (Local declaration — the project TS lib predates
+// ES2021, but every supported WebView ships WeakRef.)
+declare const WeakRef: new <T extends object>(target: T) => { deref(): T | undefined }
+const trackedMemories: { deref(): WebAssembly.Memory | undefined }[] = []
+{
+  const NativeMemory = WebAssembly.Memory
+  const Patched = function (this: unknown, descriptor: WebAssembly.MemoryDescriptor) {
+    const requested = descriptor?.maximum
+    if (descriptor && typeof requested === 'number' && requested > MEMORY_CAP_PAGES) {
+      descriptor = { ...descriptor, maximum: MEMORY_CAP_PAGES }
+      diag(`wasm memory clamped: requested max ${Math.round(requested / 16384)} GiB → 1 GiB (initial ${descriptor.initial} pages, shared ${descriptor.shared === true})`)
+    }
+    const memory = new NativeMemory(descriptor)
+    if (descriptor && ((descriptor.maximum ?? 0) >= 4096 || descriptor.shared)) {
+      trackedMemories.push(new WeakRef(memory))
+    }
+    return memory
+  }
+  Patched.prototype = NativeMemory.prototype
+  ;(self as unknown as { WebAssembly: { Memory: unknown } }).WebAssembly.Memory =
+    Patched as unknown as typeof WebAssembly.Memory
+}
+
+function memorySnapshot(label: string) {
+  const heap = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory
+  let wasmBytes = 0
+  let live = 0
+  for (const ref of trackedMemories) {
+    const memory = ref.deref()
+    if (!memory) continue
+    live++
+    try { wasmBytes += memory.buffer.byteLength } catch { /* detached */ }
+  }
+  diag(`mem[${label}]: jsHeap ${heap ? Math.round(heap.usedJSHeapSize / 1048576) + ' MB' : 'n/a'}, wasm ${Math.round(wasmBytes / 1048576)} MB across ${live} live memories`)
 }
 
 // Surface uncaught failures — including errors bubbling up from the nested
@@ -153,9 +204,15 @@ async function loadModel(base: string, device: InitMessage['device'], threads: I
       const ok = smoke.audio.length > 0
         && smoke.audio.every(v => Number.isFinite(v))
         && smoke.audio.some(v => v !== 0)
-      if (!ok) throw new Error('webgpu produced invalid audio in the smoke test')
+      if (!ok) {
+        // Release the bad candidate's session before falling back — an
+        // undisposed instance pins its whole wasm memory forever.
+        await disposeModel(candidate)
+        throw new Error('webgpu produced invalid audio in the smoke test')
+      }
       tts = candidate
       diag(`model loaded in ${Math.round(performance.now() - started)} ms (webgpu fp32)`)
+      memorySnapshot('after webgpu construct')
       post({ type: 'ready', device: 'webgpu' })
       return
     } catch (e) {
@@ -171,6 +228,7 @@ async function loadModel(base: string, device: InitMessage['device'], threads: I
       dtype, device: 'wasm', progress_callback: progress,
     })) as unknown as KokoroModel
     diag(`pipeline constructed in ${Math.round(performance.now() - started)} ms (wasm q8, threads ${wasm?.numThreads ?? '?'}) — this line must appear once per session`)
+    memorySnapshot('after wasm construct')
   }
   try {
     await loadWasm()
@@ -222,6 +280,7 @@ function handleSynthesize(msg: SynthesizeMessage) {
         const audioSec = audio.audio.length / audio.sampling_rate
         const rtf = audioSec > 0 ? ms / 1000 / audioSec : 0
         diag(`sentence ${sentenceCount}: generate ${Math.round(ms)} ms, ${msg.text.length} chars → ${audioSec.toFixed(1)}s audio, RTF ${rtf.toFixed(2)}`)
+        if (sentenceCount <= 3 || sentenceCount % 10 === 0) memorySnapshot(`after sentence ${sentenceCount}`)
       }
       if (cancelled.delete(msg.id)) return
       const samples = audio.audio
@@ -233,10 +292,24 @@ function handleSynthesize(msg: SynthesizeMessage) {
   })
 }
 
+// Releases the transformers model's ORT session explicitly — worker
+// termination frees the heap eventually, but an explicit release makes the
+// RSS drop observable immediately.
+async function disposeModel(model: KokoroModel | null) {
+  if (!model) return
+  try {
+    await (model as unknown as { model?: { dispose?: () => Promise<void> } }).model?.dispose?.()
+    diag('pipeline disposed (session released)')
+  } catch (e) {
+    diag(`dispose warning: ${e instanceof Error ? e.message : String(e)}`)
+  }
+}
+
 self.onmessage = (event: MessageEvent<InMessage>) => {
   const msg = event.data
   switch (msg.type) {
     case 'init':
+      workerIndex = msg.workerIndex
       if (!initPromise) {
         initPromise = loadModel(msg.base, msg.device, msg.threads).catch(e => {
           initPromise = null
@@ -250,9 +323,14 @@ self.onmessage = (event: MessageEvent<InMessage>) => {
     case 'cancel':
       cancelled.add(msg.id)
       break
-    case 'dispose':
+    case 'dispose': {
+      const model = tts
       tts = null
-      self.close()
+      void disposeModel(model).then(() => {
+        memorySnapshot('after dispose')
+        self.close()
+      })
       break
+    }
   }
 }

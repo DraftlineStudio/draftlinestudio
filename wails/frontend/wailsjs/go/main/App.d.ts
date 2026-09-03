@@ -123,6 +123,10 @@ export function ShowInfoDialog(arg1:string,arg2:string):Promise<void>;
 
 export function SplitEntity(arg1:types.BookData,arg2:string,arg3:Array<string>,arg4:string):Promise<types.SplitEntityResult>;
 
+export function StartReadAloudMemLog():Promise<void>;
+
+export function StopReadAloudMemLog():Promise<void>;
+
 export function TakePendingOpenPath():Promise<string>;
 
 export function TestLocalAI(arg1:string):Promise<types.AIRewriteResult>;
