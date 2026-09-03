@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clampChapter, contiguousRuns, crossingFraction } from './CharacterInterweave'
-import { positionOfParagraph } from '../storysearch/storyGraph'
+import { clampChapter, contiguousRuns, crossingFraction, positionOfParagraph } from './CharacterInterweave'
 
 describe('contiguousRuns', () => {
   it('keeps a single unbroken appearance as one run', () => {
@@ -56,10 +55,8 @@ describe('clampChapter', () => {
   })
 })
 
-describe('shared placement with the Story Graph', () => {
-  it('places a beat at the same fraction the bottom bar uses', () => {
-    // Both views must agree, or the same beat appears at two different points
-    // in a chapter depending on which view you are looking at.
+describe('beat placement within a chapter', () => {
+  it('keeps beats inside the chapter and ordered by paragraph', () => {
     for (const paragraph of [0, 1, 12, 300, 4000]) {
       const fraction = positionOfParagraph(paragraph)
       expect(fraction).toBeGreaterThanOrEqual(0.12)

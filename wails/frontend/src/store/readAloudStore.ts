@@ -7,10 +7,10 @@
 // prepared sentence lists.
 
 import { create } from 'zustand'
-import { ReadAloudStatus, DownloadReadAloudModel, DownloadReadAloudGPUModel, CancelReadAloudDownload, RemoveReadAloudModel, VerifyReadAloudModel, ReadAloudServerURL, StartReadAloudMemLog, StopReadAloudMemLog } from '../../wailsjs/go/main/App'
+import { ReadAloudStatus, DownloadReadAloudModel, DownloadReadAloudGPUModel, DownloadReadAloudNative, CancelReadAloudDownload, RemoveReadAloudModel, VerifyReadAloudModel, ReadAloudServerURL, StartReadAloudMemLog, StopReadAloudMemLog, ShutdownReadAloudNative } from '../../wailsjs/go/main/App'
 import { EventsOn } from '../../wailsjs/runtime/runtime'
-import { ReadAloudController, type ControllerStatus } from '../services/readaloud/controller'
-import { WorkerSynth, type ModelLoadProgress } from '../services/readaloud/tts'
+import { ReadAloudController, type ControllerStatus, type SynthPort } from '../services/readaloud/controller'
+import { NativeSynth, WorkerSynth, type ModelLoadProgress } from '../services/readaloud/tts'
 import { WebAudioPort } from '../services/readaloud/audio'
 import { collectSentences, buildGenerationUnits, firstUnitOfSentence, type DocSentence, type GenerationUnit } from '../services/readaloud/docSentences'
 import { updateReadAloud, clearReadAloud, setReadAloudHandlers } from '../extensions/ReadAloud'
@@ -35,6 +35,9 @@ interface ReadAloudStore {
   modelError: string | null
   gpuInstalled: boolean
   gpuBytesTotal: number
+  nativeSupported: boolean
+  nativeInstalled: boolean
+  nativeBytesTotal: number
   benchmarking: boolean
   // Full-hash verification state for this session. Playback refuses to load
   // the model until one verify pass has succeeded.
@@ -49,7 +52,7 @@ interface ReadAloudStore {
   playerVisible: boolean
   playbackError: string | null
   modelLoading: ModelLoadProgress | null
-  device: 'wasm' | 'webgpu' | null
+  device: 'native' | 'wasm' | 'webgpu' | null
   // Worker load diagnostics (also mirrored to the WebView console).
   diagnostics: string[]
 
@@ -59,6 +62,7 @@ interface ReadAloudStore {
   verifyModel: () => Promise<boolean>
   downloadModel: () => void
   downloadGPUModel: () => void
+  downloadNative: () => void
   cancelDownload: () => void
   removeModel: () => Promise<void>
   // Times a sentence on each installed backend and persists the faster
@@ -96,7 +100,7 @@ let editorWatcherBound = false
 // Playback machinery, created on first play and torn down by shutdown().
 // Module-scoped (not store state) because these are stateful class instances,
 // matching the saveChain idiom in appStore.
-let synth: WorkerSynth | null = null
+let synth: (SynthPort & { shutdown(): void }) | null = null
 let audio: WebAudioPort | null = null
 let controller: ReadAloudController | null = null
 
@@ -164,16 +168,24 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
 
   const ensureController = (): ReadAloudController => {
     if (controller) return controller
-    synth = new WorkerSynth(
-      () => {
-        const settings = useAppStore.getState().settings
-        return { device: settings.read_aloud_device, threads: settings.read_aloud_threads }
-      },
-      progress => set({ modelLoading: progress }),
-      device => set({ device, modelLoading: null }),
-      line => set(s => ({ diagnostics: [...s.diagnostics.slice(-59), line] })),
-      () => ReadAloudServerURL().then(url => (url ? `${url}/readaloud-models` : '')),
-    )
+    const config = () => {
+      const settings = useAppStore.getState().settings
+      return { device: settings.read_aloud_device, threads: settings.read_aloud_threads }
+    }
+    const diagnostic = (line: string) => set(s => ({ diagnostics: [...s.diagnostics.slice(-59), line] }))
+    if (get().nativeInstalled) {
+      synth = new NativeSynth(config, () => ReadAloudServerURL(), diagnostic)
+      set({ device: 'native', modelLoading: null })
+      diagnostic('backend: native sherpa-onnx (Windows/macOS/Linux)')
+    } else {
+      synth = new WorkerSynth(
+        config,
+        progress => set({ modelLoading: progress }),
+        device => set({ device, modelLoading: null }),
+        diagnostic,
+        () => ReadAloudServerURL().then(url => (url ? `${url}/readaloud-models` : '')),
+      )
+    }
     audio = new WebAudioPort(
       line => set(s => ({ diagnostics: [...s.diagnostics.slice(-59), line] })),
     )
@@ -205,7 +217,7 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
         set({ currentIndex: -1 })
         clearHighlight()
       },
-    })
+    }, get().nativeInstalled ? { startBufferSeconds: 0, startBufferUnits: 1 } : undefined)
     // A chapter switch remounts the editor; playback positions belong to the
     // old document, so stop cleanly (highlights die with the old view).
     // Subscribed once per app lifetime — re-subscribing on every controller
@@ -230,6 +242,9 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
     modelError: null,
     gpuInstalled: false,
     gpuBytesTotal: 0,
+    nativeSupported: false,
+    nativeInstalled: false,
+    nativeBytesTotal: 0,
     benchmarking: false,
     verified: false,
     verifying: false,
@@ -253,12 +268,15 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
           bytesTotal: status.bytes_total,
           gpuInstalled: status.gpu_installed,
           gpuBytesTotal: status.gpu_bytes_total,
+          nativeSupported: status.native_supported,
+          nativeInstalled: status.native_installed,
+          nativeBytesTotal: status.native_bytes_total,
           // An in-flight download keeps its state; events own that
           // transition. A corrupt verdict outranks the cheap size check —
           // only a successful re-verify (or removal) clears it.
-          modelState: s.modelState === 'downloading' || (s.modelState === 'corrupt' && status.installed)
+          modelState: s.modelState === 'downloading' || (s.modelState === 'corrupt' && (status.installed || status.native_installed))
             ? s.modelState
-            : (status.installed ? 'ready' : 'missing'),
+            : (status.installed || status.native_installed ? 'ready' : 'missing'),
         }))
       } catch (e) {
         set({ modelState: 'error', modelError: String(e) })
@@ -271,16 +289,17 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
       const pushDiag = (line: string) => set(s => ({ diagnostics: [...s.diagnostics.slice(-59), line] }))
       try {
         const result = await VerifyReadAloudModel()
-        if (result.verified) {
+        if (result.verified || result.native_verified) {
           set({
             modelState: 'ready', verified: true, corruptFiles: [], modelError: null,
             gpuInstalled: result.gpu_verified,
+            nativeInstalled: result.native_verified,
             installInfo: { version: result.version, installedAt: result.installed_at, bytes: result.bytes },
           })
           pushDiag(`verify: ${result.installed_at ? 'v' + result.version + ', ' : ''}${Math.round(result.bytes / (1024 * 1024))} MB, all hashes match`)
           return true
         }
-        if (!result.installed) {
+        if (!result.installed && !result.native_verified) {
           set({ modelState: 'missing', verified: false, installInfo: null, corruptFiles: [] })
           pushDiag('verify: model not installed')
           return false
@@ -311,6 +330,16 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
       set({ modelState: 'downloading', modelError: null })
       try {
         void DownloadReadAloudGPUModel()
+      } catch (e) {
+        set({ modelState: 'error', modelError: String(e) })
+      }
+    },
+
+    downloadNative: () => {
+      bindEvents()
+      set({ modelState: 'downloading', modelError: null })
+      try {
+        void DownloadReadAloudNative()
       } catch (e) {
         set({ modelState: 'error', modelError: String(e) })
       }
@@ -395,7 +424,7 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
         // seeds a 'kokoro-voices' cache on its fetch path).
         try { await caches.delete('kokoro-voices') } catch { /* unsupported/empty */ }
         await RemoveReadAloudModel() // errors if anything is left on disk
-        set({ modelState: 'missing', download: null, modelError: null, verified: false, installInfo: null, corruptFiles: [], gpuInstalled: false })
+        set({ modelState: 'missing', download: null, modelError: null, verified: false, installInfo: null, corruptFiles: [], gpuInstalled: false, nativeInstalled: false })
         pushDiag('remove: model directory deleted and confirmed empty; voice cache cleared; pipeline unloaded')
       } catch (e) {
         set({ modelError: String(e) })
@@ -545,6 +574,7 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
     shutdown: () => {
       controller?.stop()
       synth?.shutdown()
+      try { void ShutdownReadAloudNative() } catch { /* browser/test environment */ }
       audio?.close()
       try { void StopReadAloudMemLog() } catch { /* ignore */ }
       controller = null

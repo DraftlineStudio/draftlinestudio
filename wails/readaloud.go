@@ -3,7 +3,8 @@ package main
 // Read Aloud plugin backend: thin bound methods over internal/readaloud.
 // Heavy lifting (pinned manifest, verified download, asset handler) lives in
 // the package; this file only wires it to the frontend and the Wails event
-// bus. Synthesis itself runs in the webview — no audio work happens in Go.
+// bus. Browser fallback synthesis runs in the webview; the optional native
+// backend runs local sherpa-onnx inference behind the loopback service.
 
 import (
 	"context"
@@ -109,6 +110,12 @@ func (a *App) StopReadAloudMemLog() {
 	}
 }
 
+// ShutdownReadAloudNative releases every hot ONNX session without removing
+// its installed files. The next play recreates the bounded pool lazily.
+func (a *App) ShutdownReadAloudNative() {
+	readaloud.ShutdownNative()
+}
+
 // ReadAloudStatus reports whether the voice model bundle is fully installed.
 func (a *App) ReadAloudStatus() readaloud.Status {
 	return readaloud.Check(readAloudModelDir())
@@ -126,6 +133,33 @@ func (a *App) DownloadReadAloudModel() {
 // semantics as the core bundle.
 func (a *App) DownloadReadAloudGPUModel() {
 	a.downloadReadAloudGroup(readaloud.GroupGPU)
+}
+
+// DownloadReadAloudNative installs the platform runtime and the CPU-optimized
+// native model/support files.
+func (a *App) DownloadReadAloudNative() {
+	readAloudDownload.mu.Lock()
+	if readAloudDownload.cancel != nil {
+		readAloudDownload.mu.Unlock()
+		return
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	readAloudDownload.cancel = cancel
+	readAloudDownload.mu.Unlock()
+
+	go func() {
+		err := readaloud.InstallNative(ctx, readAloudModelDir(), func(p readaloud.Progress) {
+			runtime.EventsEmit(a.ctx, "readaloud:progress", p)
+		})
+		readAloudDownload.mu.Lock()
+		readAloudDownload.cancel = nil
+		readAloudDownload.mu.Unlock()
+		payload := map[string]any{"ok": err == nil, "group": readaloud.GroupNative}
+		if err != nil {
+			payload["error"] = err.Error()
+		}
+		runtime.EventsEmit(a.ctx, "readaloud:done", payload)
+	}()
 }
 
 func (a *App) downloadReadAloudGroup(group string) {

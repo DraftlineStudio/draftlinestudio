@@ -4,6 +4,60 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02519] - 2026-09-03
+
+### Added
+- Added an optional native Kokoro playback backend built on the official sherpa-onnx v1.13.7 C API. One CGO-free PureGo bridge loads pinned native libraries for Windows x64, macOS x64/arm64, and Linux x64/arm64; unsupported platforms retain the existing browser backend without downloading unusable files.
+- Added a checksum-pinned native bundle (~168 MB, platform dependent): the sherpa-compatible Kokoro int8 model, voice table, English lexicon, safely extracted eSpeak data, and only the current platform's ONNX/sherpa libraries. Native files remain optional downloads and all manuscript text and PCM stay on loopback/offline paths.
+- Added a gated real-model native test that verifies installation, dynamic loading, callback PCM, consecutive-sentence latency, and aggregate throughput. CGO-disabled cross-compiles validate every supported macOS and Linux target in addition to the Windows runtime test.
+
+### Fixed
+- Replaced the single slower-than-realtime CPU synthesis lane with an adaptive bounded pool of independent hot native sessions. On the 12-thread reference machine, three two-thread sessions generated 16.81 seconds of speech in 13.46 seconds (aggregate RTF 0.801), allowing the existing five-sentence lookahead to stay ahead instead of producing multi-second sentence gaps. Smaller machines receive proportionally fewer sessions.
+- Native playback starts as soon as its first sentence is ready instead of applying the browser backend's eight-second reserve; subsequent sentences synthesize concurrently while preserving sentence-level highlighting and navigation.
+- Native cancellation propagates from Fetch through the request context into sherpa's audio callback. A single process-lifetime callback trampoline avoids leaking callback registrations across long chapters, and model/DLL handles are released before uninstall so Windows can remove them cleanly.
+- Native synthesis preflight now explicitly permits POST requests, preventing embedded browsers from rejecting native playback and silently returning to slower WASM generation. The loopback model and synthesis server also uses a fresh 128-bit capability path each launch so unrelated local web content cannot invoke it.
+
+### Changed
+- Native CPU playback is preferred automatically once its optional bundle is installed. Browser WebGPU and WASM remain intact as fallbacks, and the settings screen reports which backend is active.
+
+---
+
+## [0.17.02518] - 2026-09-03
+
+### Fixed
+- Removed the 02517 twenty-second/two-paragraph playback gate. On a backend slower than real time, requiring twenty seconds of completed audio translated into roughly a minute of silence before playback; buffering amplified the latency instead of solving synthesis throughput.
+
+### Changed
+- Restored the bounded five-unit producer window and eight-second/two-unit startup reserve while the Read Aloud engine moves toward a genuinely streaming native runtime. The current kokoro-js `stream()` method is not waveform streaming: it awaits one complete generated sentence before yielding it, so replacing `generate()` with that API would preserve the same blocking boundary.
+- Documented the architectural limit honestly: paragraph-sized browser generation cannot retain accurate sentence highlighting or sentence navigation because kokoro-js exposes neither sentence timestamps nor partial PCM. Native sherpa-onnx Kokoro supports generated-audio callbacks and is the viable path to incremental playback rather than additional queue inflation.
+
+---
+
+## [0.17.02517] - 2026-09-03
+
+### Fixed
+- Read Aloud's duration reserve can no longer stall behind its own fixed lookahead. While starting, silently prefilling, or recovering, the producer may queue up to 32 upcoming sentences until it has a genuine 20-second audio runway; normal playback then maintains a rolling 12-unit lookahead. Runs of tiny sentences therefore continue filling instead of stopping below the admission threshold.
+- Playback buffering now understands ProseMirror text-block boundaries. It finishes the current paragraph and the following paragraph before beginning whenever both exist, preventing a short final sentence in one paragraph from exposing a long first sentence in the next while preserving sentence-level highlighting, skipping, and click-to-jump. A 32-unit defensive ceiling prevents malformed or imported mega-paragraphs from creating an unbounded queue.
+- Starting an already prepared queue now clears its preparation marker. Previously that marker could keep the controller in its deep-prefill policy for the entire playback session.
+
+### Changed
+- Paragraph buffering deliberately remains a sequence of separately generated sentence chunks. Kokoro does not return sentence timestamps for a paragraph-sized generation call; treating one opaque paragraph buffer as several sentences would make highlighting dishonest and sentence navigation restart or cut the wrong speech. The controller instead pre-generates whole paragraph runways and schedules their sentence buffers continuously.
+
+---
+
+## [0.17.02516] - 2026-09-03
+
+### Fixed
+- Read Aloud now buffers a contiguous reserve of at least two generation units and eight seconds of finished audio before starting or recovering from an underrun. This specifically prevents a short sentence from finishing while a substantially longer successor is still synthesizing; the final remaining sentence is allowed to start without waiting for an impossible reserve.
+- Ordinary sentences remain whole synthesis utterances again so Kokoro preserves their sentence-level rhythm, inflection, and clause transitions. Only pathological sentences over 80 words are split at natural clause boundaries as a latency and tokenizer safeguard; highlighting and navigation remain sentence-based.
+- Closing Read Aloud during silent prefill now cancels its pending synthesis and releases the prepared queue even though the player intentionally reports an idle public state before Play is pressed.
+
+### Changed
+- The five-unit producer lookahead remains in place, but playback admission is now based on measured generated-audio duration rather than unit count alone. This recognizes that one short sentence and one long sentence are not equivalent buffering capacity.
+- Updated the Read Aloud architecture documentation with the duration-aware pipeline and measured local backend behavior: the tested WebGPU path sustains real-time generation after warm-up, while CPU/WASM does not reliably do so on the same machine.
+
+---
+
 ## [0.17.02515] - 2026-09-03
 
 ### Fixed

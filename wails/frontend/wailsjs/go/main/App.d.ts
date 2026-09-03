@@ -35,6 +35,8 @@ export function DownloadReadAloudGPUModel():Promise<void>;
 
 export function DownloadReadAloudModel():Promise<void>;
 
+export function DownloadReadAloudNative():Promise<void>;
+
 export function ExportDOCX(arg1:types.BookData,arg2:types.ExportOptions):Promise<types.ExportResult>;
 
 export function ExportEPUB(arg1:types.BookData,arg2:types.ExportOptions):Promise<types.ExportResult>;
@@ -120,6 +122,8 @@ export function SetupClaudeCode():Promise<types.ClaudeCodeStatus>;
 export function SetupCodexCLI():Promise<types.ClaudeCodeStatus>;
 
 export function ShowInfoDialog(arg1:string,arg2:string):Promise<void>;
+
+export function ShutdownReadAloudNative():Promise<void>;
 
 export function SplitEntity(arg1:types.BookData,arg2:string,arg3:Array<string>,arg4:string):Promise<types.SplitEntityResult>;
 

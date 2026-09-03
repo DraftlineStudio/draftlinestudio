@@ -10,13 +10,16 @@ import (
 // BytesTotal, and Missing describe the mandatory core (CPU) bundle; the
 // optional GPU model is reported separately.
 type Status struct {
-	Installed     bool     `json:"installed"`
-	Dir           string   `json:"dir"`
-	BytesTotal    int64    `json:"bytes_total"`
-	BytesOnDisk   int64    `json:"bytes_on_disk"`
-	Missing       []string `json:"missing"`
-	GPUInstalled  bool     `json:"gpu_installed"`
-	GPUBytesTotal int64    `json:"gpu_bytes_total"`
+	Installed        bool     `json:"installed"`
+	Dir              string   `json:"dir"`
+	BytesTotal       int64    `json:"bytes_total"`
+	BytesOnDisk      int64    `json:"bytes_on_disk"`
+	Missing          []string `json:"missing"`
+	GPUInstalled     bool     `json:"gpu_installed"`
+	GPUBytesTotal    int64    `json:"gpu_bytes_total"`
+	NativeSupported  bool     `json:"native_supported"`
+	NativeInstalled  bool     `json:"native_installed"`
+	NativeBytesTotal int64    `json:"native_bytes_total"`
 }
 
 // Check inspects dir against the manifest. Presence is judged by size only —
@@ -26,6 +29,8 @@ func Check(dir string) Status {
 	status := Status{
 		Dir: dir, BytesTotal: TotalBytes(), Missing: []string{},
 		GPUInstalled: true, GPUBytesTotal: groupBytes(GroupGPU),
+		NativeSupported: NativeSupported(), NativeInstalled: NativeSupported(),
+		NativeBytesTotal: NativeBytes(),
 	}
 	for _, art := range Manifest() {
 		info, err := os.Stat(filepath.Join(dir, filepath.FromSlash(art.Name)))
@@ -38,6 +43,14 @@ func Check(dir string) Status {
 			}
 			continue
 		}
+		if art.Group == GroupNative {
+			if !present {
+				status.NativeInstalled = false
+			} else {
+				status.BytesOnDisk += info.Size()
+			}
+			continue
+		}
 		if !present {
 			status.Missing = append(status.Missing, art.Name)
 			continue
@@ -45,6 +58,11 @@ func Check(dir string) Status {
 		status.BytesOnDisk += info.Size()
 	}
 	status.Installed = len(status.Missing) == 0
+	if status.NativeInstalled {
+		if info, err := os.Stat(filepath.Join(dir, "native", "model", "espeak-ng-data", "phontab")); err != nil || info.IsDir() {
+			status.NativeInstalled = false
+		}
+	}
 	return status
 }
 
@@ -56,6 +74,7 @@ func Remove(dir string) error {
 	if filepath.Base(dir) != "kokoro" {
 		return fmt.Errorf("refusing to remove unexpected directory %q", dir)
 	}
+	ShutdownNative()
 	if err := os.RemoveAll(dir); err != nil {
 		return err
 	}
