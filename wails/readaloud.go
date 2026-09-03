@@ -32,6 +32,36 @@ var readAloudDownload struct {
 	cancel context.CancelFunc
 }
 
+var readAloudServer struct {
+	mu  sync.Mutex
+	url string
+}
+
+// ReadAloudServerURL starts (once) and returns the loopback model server —
+// a real 127.0.0.1 HTTP origin, because WebView2's asset-scheme handler does
+// not reliably intercept requests made from nested pthread workers. Returns
+// "" on failure; the frontend then falls back to the asset-handler path.
+func (a *App) ReadAloudServerURL() string {
+	readAloudServer.mu.Lock()
+	defer readAloudServer.mu.Unlock()
+	if readAloudServer.url != "" {
+		return readAloudServer.url
+	}
+	url, err := readaloud.StartServer(readAloudModelDir())
+	if err != nil {
+		return ""
+	}
+	readAloudServer.url = url
+	return url
+}
+
+// VerifyReadAloudModel re-hashes every installed file against the pinned
+// manifest. Used on plugin enable and before first playback; a corrupt
+// result must block model loading and offer repair instead.
+func (a *App) VerifyReadAloudModel() readaloud.VerifyResult {
+	return readaloud.Verify(readAloudModelDir())
+}
+
 // ReadAloudStatus reports whether the voice model bundle is fully installed.
 func (a *App) ReadAloudStatus() readaloud.Status {
 	return readaloud.Check(readAloudModelDir())

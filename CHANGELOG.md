@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02511] - 2026-09-03
+
+### Added
+- Voice model installs can now be verified and repaired.
+
+### Fixed
+- Read Aloud files are now served locally so the voice engine loads reliably.
+
 ## [0.17.02510] - 2026-09-03
 
 ### Fixed
