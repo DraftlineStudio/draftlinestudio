@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02528] - 2026-09-03
+
+### Added
+- Cast mode is live in Read Aloud playback: with cast mode on, each sentence synthesizes in its attributed character's assigned voice (narrator, unknown, and uncast speakers fall back to the narrator voice). The seek bar shows speaker-colored dialogue ticks, and the bar's equalizer and speaker label follow the character being read in their app-wide character color. Reassigning a voice or toggling cast mode mid-play lets the audible sentence finish and re-synthesizes everything after it; a warmed-but-idle buffer silently refills. With cast mode off, playback and display are exactly the single-narrator behavior.
+
+---
+
 ## [0.17.02527] - 2026-09-03
 
 ### Changed
