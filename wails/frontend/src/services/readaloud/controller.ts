@@ -42,6 +42,11 @@ export type ControllerStatus = 'idle' | 'starting' | 'playing' | 'paused'
 // How many sentences ahead of the audible one may be synthesizing/cached.
 const LOOKAHEAD = 2
 
+// How many already-played chunks stay cached (instant short skip-backs).
+// Without a bound, a chapter-length play accumulates every sentence's
+// Float32Array for the whole session.
+const CACHE_BEHIND = 4
+
 export interface ControllerEvents {
   onStatus(status: ControllerStatus): void
   onSentenceStart(index: number): void
@@ -245,6 +250,11 @@ export class ReadAloudController {
     this.playingIndex = index
     if (this.status !== 'paused') this.setStatus('playing')
     this.events.onSentenceStart(index)
+    // Evict chunks that have fallen behind the replay window so long plays
+    // hold a bounded number of audio buffers.
+    for (const cachedIndex of this.cache.keys()) {
+      if (cachedIndex < index - CACHE_BEHIND) this.cache.delete(cachedIndex)
+    }
     this.primeNext(index)
   }
 

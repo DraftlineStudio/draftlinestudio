@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02512] - 2026-09-03
+
+### Fixed
+- Fixed Read Aloud using excessive memory during long sessions.
+
 ## [0.17.02511] - 2026-09-03
 
 ### Added
