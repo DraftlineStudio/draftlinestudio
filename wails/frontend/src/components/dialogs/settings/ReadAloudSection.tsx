@@ -7,11 +7,24 @@ import { useEffect, useState } from 'react'
 import type { ReadAloudSectionProps } from './types'
 import { READ_ALOUD_VOICES } from '../../../services/readaloud/voices'
 import { useReadAloudStore } from '../../../store/readAloudStore'
+import { useAppStore } from '../../../store/appStore'
 
-const SPEED_STEPS = [0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6]
+const SPEED_STEPS = [0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.8, 2.0]
 
 function formatMB(bytes: number): string {
   return `${Math.round(bytes / (1024 * 1024))} MB`
+}
+
+function GlowToggle() {
+  const glow = useAppStore(s => s.settings.read_aloud_glow)
+  const saveSettings = useAppStore(s => s.saveSettings)
+  return (
+    <label className="settings-toggle" title="Toggle the player's glow accents">
+      <input type="checkbox" checked={glow} onChange={e => void saveSettings({ read_aloud_glow: e.target.checked })} />
+      <span className="settings-toggle-track"><span className="settings-toggle-thumb" /></span>
+      <span className="settings-toggle-label">Glow accents {glow ? 'on' : 'off'}</span>
+    </label>
+  )
 }
 
 export default function ReadAloudSection({
@@ -140,6 +153,15 @@ export default function ReadAloudSection({
         <select className="dialog-select" value={String(Math.round(speed * 10) / 10)} onChange={e => setSpeed(Number(e.target.value))}>
           {SPEED_STEPS.map(s => <option key={s} value={String(s)}>{s.toFixed(1)}× {s === 1.1 ? '(default)' : s === 1.0 ? '(natural)' : ''}</option>)}
         </select>
+      </div>
+
+      <div className="settings-section-label">Player</div>
+      <div className="dialog-field">
+        <GlowToggle />
+        <div className="settings-hint">
+          Glow accents are the soft dot on the player's progress line and the halo on the play
+          button while reading.
+        </div>
       </div>
 
       <div className="settings-section-label">Performance</div>

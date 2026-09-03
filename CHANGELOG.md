@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02531] - 2026-09-03
+
+### Changed
+- Moved the Read Aloud glow toggle to Settings and extended the speed range to 2.0x.
+
 ## [0.17.02530] - 2026-09-03
 
 ### Added
