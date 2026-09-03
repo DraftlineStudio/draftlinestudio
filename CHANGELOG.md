@@ -4,6 +4,29 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02515] - 2026-09-03
+
+### Fixed
+- Read Aloud's per-sentence gaps. Playback is now a true producer/consumer pipeline: the producer keeps a **five-unit lookahead buffer** filled and never waits on playback (every completed unit immediately requests the next uncovered one; the whole window fires at start), while the consumer only ever waits on generation when the buffer is empty. Previously the effective buffer was too shallow to absorb generation running near real-time, so each sentence waited on its own synthesis.
+- Long sentences no longer synthesize as one block: sentences over ~25 words are split at clause boundaries (comma, semicolon, colon, dash) into **generation units** — audio starts on the first clause and later clauses generate while earlier ones play. The highlight still covers the full sentence, the sentence counter counts sentences, and skip/click-to-jump operate on sentences (mapped to their first unit). Audio chunks stay scheduled gaplessly on the single AudioContext timeline via precomputed start times; 'ended' events only drive bookkeeping.
+- The pipeline now **pre-fills while the player bar sits open**: the queue from the cursor is built and synthesized before play is pressed, and pressing play arms the prepared buffer instantly when the cursor hasn't moved.
+- Version-file sync: docs/VERSION.md and the roadmap current-version line had fallen behind at 02512 while builds 02513–02514 shipped; realigned at 02515.
+
+### Added
+- Timeline diagnostics for the gap investigation: `gen[id] start/end` per unit with RTF, `play-start unit k (sentence n)` with main-thread timestamps, the audio port's per-chunk handoff-gap measurement, and an explicit **SharedArrayBuffer → effective ORT thread count** line (without SAB the runtime is single-threaded regardless of the numThreads setting).
+
+### Internal
+- kokoro-js's `stream()` was evaluated for intra-sentence chunking and deliberately not adopted: its TextSplitterStream splits at sentence granularity, which is coarser than the clause units now fed to `generate()`, so a multi-chunk protocol would not produce earlier audio.
+
+---
+
+## [0.17.02514] - 2026-09-03
+
+### Fixed
+- Repaired the Character Center after the Story Map merge removed the legacy `storyGraph` module while `CharacterInterweave` and its tests still imported three of its display helpers. Beat importance, color, and within-chapter placement now belong to the character weave itself, preserving the upgraded character timeline without restoring obsolete Story Graph code.
+
+---
+
 ## [0.17.02513] - 2026-09-03
 
 ### Fixed

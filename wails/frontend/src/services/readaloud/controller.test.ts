@@ -120,18 +120,35 @@ async function startPlaying(startIndex = 0, voice = 'af_heart', speed = 1.2) {
 }
 
 describe('ReadAloudController', () => {
-  it('starts, plays the first sentence, and keeps lookahead at exactly two', async () => {
+  it('starts by firing the whole lookahead window without awaiting playback', async () => {
     controller.start(SENTENCES, 0, 'af_heart', 1.2)
     expect(statuses).toEqual(['starting'])
-    expect(synth.requests.map(r => r.text)).toEqual(['One.'])
+    // Producer: every unit in the window is requested up front; the worker
+    // serializes actual synthesis.
+    expect(synth.requests.map(r => r.text)).toEqual(['One.', 'Two.', 'Three.'])
 
     await synth.resolveNext()
     expect(statuses).toEqual(['starting', 'playing'])
     expect(started).toEqual([0])
     expect(audio.queue).toHaveLength(1)
-    // Lookahead: the next two sentences synthesize while one plays; only
-    // the immediate next will be scheduled, the second waits in cache.
+    // Remaining requests still in flight — production never waited on play.
     expect(synth.requests.map(r => r.text)).toEqual(['Two.', 'Three.'])
+  })
+
+  it('prepares silently and arms instantly on beginPlayback', async () => {
+    controller.start(SENTENCES, 0, 'af_heart', 1.2, false)
+    // Prepared: producer fills, nothing audible, status untouched.
+    expect(statuses).toEqual([])
+    expect(controller.isPreparedFor(SENTENCES.length)).toBe(true)
+    expect(synth.requests.map(r => r.text)).toEqual(['One.', 'Two.', 'Three.'])
+    await synth.resolveNext()
+    expect(audio.queue).toHaveLength(0)
+    expect(started).toEqual([])
+
+    // Arming plays the pre-filled first chunk with zero synthesis wait.
+    expect(controller.beginPlayback()).toBe(true)
+    expect(started).toEqual([0])
+    expect(statuses[statuses.length - 1]).toBe('playing')
   })
 
   it('schedules the next chunk before the current ends for gapless handoff', async () => {

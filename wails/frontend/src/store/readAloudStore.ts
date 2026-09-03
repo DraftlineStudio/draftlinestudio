@@ -12,7 +12,7 @@ import { EventsOn } from '../../wailsjs/runtime/runtime'
 import { ReadAloudController, type ControllerStatus } from '../services/readaloud/controller'
 import { WorkerSynth, type ModelLoadProgress } from '../services/readaloud/tts'
 import { WebAudioPort } from '../services/readaloud/audio'
-import { collectSentences, splitLeadClause, type DocSentence } from '../services/readaloud/docSentences'
+import { collectSentences, buildGenerationUnits, firstUnitOfSentence, type DocSentence, type GenerationUnit } from '../services/readaloud/docSentences'
 import { updateReadAloud, clearReadAloud, setReadAloudHandlers } from '../extensions/ReadAloud'
 import { useAppStore } from './appStore'
 import { useEditorStore } from './editorStore'
@@ -67,6 +67,9 @@ interface ReadAloudStore {
 
   // Starts reading the given sentences (already mapped to editor positions).
   play: (sentences: DocSentence[], startIndex: number) => void
+  // Pre-fills the synthesis buffer from the cursor without playing, so the
+  // first press of play is instant. Safe to call repeatedly.
+  prepareFromCursor: () => void
   // Editor-scoped entry points: cursor → chapter end, current selection
   // (falls back to cursor when empty), or the whole chapter.
   playFromCursor: () => void
@@ -96,6 +99,12 @@ let editorWatcherBound = false
 let synth: WorkerSynth | null = null
 let audio: WebAudioPort | null = null
 let controller: ReadAloudController | null = null
+
+// Playback runs on generation UNITS (clause-sized pieces of long sentences)
+// while the UI and highlight run on SENTENCES. currentUnits maps between the
+// two for the active/prepared queue.
+let currentUnits: GenerationUnit[] = []
+let currentSentences: DocSentence[] = []
 
 // The editorStore holds the full TipTap Editor behind a narrow interface;
 // the cast recovers view access for decorations (see editorStore comment).
@@ -176,10 +185,17 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
         if (status === 'playing' || status === 'starting') void StartReadAloudMemLog()
         else void StopReadAloudMemLog()
       },
-      onSentenceStart: index => {
-        set({ currentIndex: index })
-        withEditorView(view => updateReadAloud(view, { activeIndex: index }))
-        scrollHighlightIntoView()
+      onSentenceStart: unitIndex => {
+        const sentenceIndex = currentUnits[unitIndex]?.sentenceIndex ?? unitIndex
+        // Highlight covers the FULL sentence even while a mid-sentence
+        // clause unit is the one actually playing; only move it when the
+        // sentence actually changes.
+        if (get().currentIndex !== sentenceIndex) {
+          set({ currentIndex: sentenceIndex })
+          withEditorView(view => updateReadAloud(view, { activeIndex: sentenceIndex }))
+          scrollHighlightIntoView()
+        }
+        set(s => ({ diagnostics: [...s.diagnostics.slice(-59), `[main t+${Math.round(performance.now())}ms] play-start unit ${unitIndex} (sentence ${sentenceIndex + 1})`] }))
       },
       onError: message => {
         set({ playbackError: message, currentIndex: -1 })
@@ -390,26 +406,30 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
     play: (sentences, startIndex) => {
       if (!sentences.length) return
       const start = Math.max(0, Math.min(startIndex, sentences.length - 1))
-      // Fast start: the first spoken sentence begins at its first clause.
-      const queue = [
-        ...sentences.slice(0, start),
-        ...splitLeadClause(sentences[start]),
-        ...sentences.slice(start + 1),
-      ]
+      const units = buildGenerationUnits(sentences, start)
+      const startUnit = Math.max(0, firstUnitOfSentence(units, start))
       const proceed = () => {
         const settings = useAppStore.getState().settings
-        set({ sentences: queue, playbackError: null, playerVisible: true, currentIndex: -1 })
+        set({ sentences, playbackError: null, playerVisible: true, currentIndex: -1 })
         withEditorView(view => updateReadAloud(view, {
           active: true,
-          sentences: queue.map(s => ({ from: s.from, to: s.to })),
+          sentences: sentences.map(s => ({ from: s.from, to: s.to })),
           activeIndex: -1,
         }))
-        ensureController().start(
-          queue.map(s => s.text),
-          start,
-          settings.read_aloud_voice,
-          settings.read_aloud_speed,
-        )
+        const ctrl = ensureController()
+        // If the buffer was pre-filled for exactly this queue while the
+        // player sat open, arm it — first audio is already synthesized.
+        if (
+          ctrl.isPreparedFor(units.length)
+          && currentUnits.length === units.length
+          && currentUnits.every((u, i) => u.text === units[i].text)
+          && ctrl.beginPlayback()
+        ) {
+          return
+        }
+        currentUnits = units
+        currentSentences = sentences
+        ctrl.start(units.map(u => u.text), startUnit, settings.read_aloud_voice, settings.read_aloud_speed)
       }
       if (get().modelState === 'ready' && get().verified) {
         proceed()
@@ -423,6 +443,28 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
       void get().verifyModel().then(ok => {
         if (ok) proceed()
       })
+    },
+
+    prepareFromCursor: () => {
+      // Warm the pipeline while the player sits open: build the queue from
+      // the cursor and pre-fill the lookahead buffer without playing.
+      // Producer-only; play() arms it instantly if the cursor hasn't moved.
+      if (get().status !== 'idle' || get().modelState !== 'ready' || !get().verified) return
+      const editor = liveEditor()
+      if (!editor) return
+      const sentences = collectSentences(editor.state.doc, editor.state.selection.from)
+      if (!sentences.length) return
+      const units = buildGenerationUnits(sentences, 0)
+      if (
+        currentUnits.length === units.length
+        && currentUnits.every((u, i) => u.text === units[i].text)
+      ) return // already prepared for this exact queue
+      const settings = useAppStore.getState().settings
+      currentUnits = units
+      currentSentences = sentences
+      set(s => ({ diagnostics: [...s.diagnostics.slice(-59), `[main t+${Math.round(performance.now())}ms] prefill: ${units.length} units queued from cursor`] }))
+      ensureController().start(units.map(u => u.text), 0, settings.read_aloud_voice, settings.read_aloud_speed, false)
+      set({ sentences })
     },
 
     playFromCursor: () => {
@@ -456,13 +498,33 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
 
     stop: () => {
       controller?.stop()
+      currentUnits = []
+      currentSentences = []
       set({ currentIndex: -1, sentences: [] })
       clearHighlight()
     },
 
-    skip: (delta) => controller?.skip(delta),
+    // Skip/jump operate on SENTENCES for the user; playback runs on units.
+    skip: (delta) => {
+      if (!controller) return
+      const target = get().currentIndex + delta
+      if (target < 0) {
+        controller.jumpTo(0)
+        return
+      }
+      const unit = firstUnitOfSentence(currentUnits, target)
+      if (unit === -1) {
+        get().stop() // skipped past the end
+        return
+      }
+      controller.jumpTo(unit)
+    },
 
-    jumpTo: (index) => controller?.jumpTo(index),
+    jumpTo: (sentenceIndex) => {
+      if (!controller) return
+      const unit = firstUnitOfSentence(currentUnits, sentenceIndex)
+      if (unit !== -1) controller.jumpTo(unit)
+    },
 
     setVoice: (voice) => {
       void useAppStore.getState().saveSettings({ read_aloud_voice: voice })
@@ -488,6 +550,8 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
       controller = null
       synth = null
       audio = null
+      currentUnits = []
+      currentSentences = []
       clearHighlight()
       set({ status: 'idle', sentences: [], currentIndex: -1, playerVisible: false, modelLoading: null, playbackError: null })
     },

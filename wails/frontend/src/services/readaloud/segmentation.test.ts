@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { Schema } from '@tiptap/pm/model'
 import { segmentText } from './segmentation'
-import { collectSentences, sentenceIndexAt, splitLeadClause } from './docSentences'
+import { collectSentences, sentenceIndexAt, splitLeadClause, buildGenerationUnits, firstUnitOfSentence } from './docSentences'
 
 function sentencesOf(text: string): string[] {
   return segmentText(text).map(s => text.slice(s.start, s.end).trim())
@@ -222,6 +222,42 @@ describe('collectSentences', () => {
   it('leaves short or unbreakable sentences whole', () => {
     expect(splitLeadClause({ from: 0, to: 9, text: 'Run, now!' })).toHaveLength(1)
     expect(splitLeadClause({ from: 0, to: 26, text: 'No clause breaks in here..' })).toHaveLength(1)
+  })
+
+  it('splits long sentences into clause units that map back to their sentence', () => {
+    const long = 'When the rain finally stopped falling over the ruined harbor town, the people came out slowly from their basements and doorways, blinking at the grey morning light, and nobody said a single word about the night before.'
+    const short = 'Nobody slept.'
+    const sentences = [
+      { from: 0, to: long.length, text: long },
+      { from: long.length + 1, to: long.length + 1 + short.length, text: short },
+    ]
+    const units = buildGenerationUnits(sentences, 0)
+    // The 38-word sentence splits; the short one stays whole.
+    const firstSentenceUnits = units.filter(u => u.sentenceIndex === 0)
+    expect(firstSentenceUnits.length).toBeGreaterThan(1)
+    for (const unit of firstSentenceUnits) {
+      expect(unit.text.split(/\s+/).filter(Boolean).length).toBeLessThanOrEqual(25 + 4)
+    }
+    // Reassembled text loses only the cut whitespace.
+    expect(firstSentenceUnits.map(u => u.text).join(' ').replace(/\s+/g, ' ')).toBe(long.replace(/\s+/g, ' '))
+    expect(units.filter(u => u.sentenceIndex === 1)).toHaveLength(1)
+    // Unit lookup for sentence-level skip/jump.
+    expect(firstUnitOfSentence(units, 0)).toBe(0)
+    expect(firstUnitOfSentence(units, 1)).toBe(firstSentenceUnits.length)
+    expect(firstUnitOfSentence(units, 2)).toBe(-1)
+  })
+
+  it('keeps the lead unit of the start sentence short for fast first audio', () => {
+    const text = 'When the rain stopped, the whole town came out to see what was left of the harbor and the boats.'
+    const units = buildGenerationUnits([{ from: 0, to: text.length, text }], 0)
+    expect(units[0].text).toBe('When the rain stopped,')
+    expect(units.length).toBeGreaterThan(1)
+  })
+
+  it('leaves an unbreakable long sentence whole rather than cutting mid-clause', () => {
+    const text = 'word '.repeat(40).trim() + '.'
+    const units = buildGenerationUnits([{ from: 0, to: text.length, text }], 5)
+    expect(units).toHaveLength(1)
   })
 
   it('finds the sentence containing a position', () => {
