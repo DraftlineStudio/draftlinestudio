@@ -20,6 +20,11 @@ type AppSettings struct {
 	StoryBibleEnabled       bool     `json:"story_bible_enabled"`
 	PlotWalkerEnabled       bool     `json:"plot_walker_enabled"`
 	AnalysisEnabled         bool     `json:"analysis_enabled"`
+	// Read Aloud is opt-in: enabling it offers a one-time local voice-model
+	// download; synthesis then runs entirely offline in the webview.
+	ReadAloudEnabled bool    `json:"read_aloud_enabled"`
+	ReadAloudVoice   string  `json:"read_aloud_voice"`
+	ReadAloudSpeed   float64 `json:"read_aloud_speed"`
 	// AnalysisCPUProfile controls the approximate background core budget:
 	// "adaptive" | "gentle" | "balanced" | "fast".
 	AnalysisCPUProfile string `json:"analysis_cpu_profile"`

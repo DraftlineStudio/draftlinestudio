@@ -30,6 +30,10 @@ export function BuildStoryTimeline(arg1) {
   return window['go']['main']['App']['BuildStoryTimeline'](arg1);
 }
 
+export function CancelReadAloudDownload() {
+  return window['go']['main']['App']['CancelReadAloudDownload']();
+}
+
 export function CancelRewrite() {
   return window['go']['main']['App']['CancelRewrite']();
 }
@@ -52,6 +56,10 @@ export function ClearRecentProjects() {
 
 export function DeleteCharacterEvent(arg1, arg2) {
   return window['go']['main']['App']['DeleteCharacterEvent'](arg1, arg2);
+}
+
+export function DownloadReadAloudModel() {
+  return window['go']['main']['App']['DownloadReadAloudModel']();
 }
 
 export function ExportDOCX(arg1, arg2) {
@@ -160,6 +168,14 @@ export function OpenRecentProject(arg1) {
 
 export function QueryStoryFingerprint(arg1, arg2) {
   return window['go']['main']['App']['QueryStoryFingerprint'](arg1, arg2);
+}
+
+export function ReadAloudStatus() {
+  return window['go']['main']['App']['ReadAloudStatus']();
+}
+
+export function RemoveReadAloudModel() {
+  return window['go']['main']['App']['RemoveReadAloudModel']();
 }
 
 export function RemoveRecentProject(arg1) {
