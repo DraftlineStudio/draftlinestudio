@@ -2138,6 +2138,8 @@ export namespace types {
 	    read_aloud_speed: number;
 	    read_aloud_device: string;
 	    read_aloud_threads: string;
+	    read_aloud_volume: number;
+	    read_aloud_glow: boolean;
 	    analysis_cpu_profile: string;
 	    characters_lane_view: string;
 	    ai_enabled: boolean;
@@ -2187,6 +2189,8 @@ export namespace types {
 	        this.read_aloud_speed = source["read_aloud_speed"];
 	        this.read_aloud_device = source["read_aloud_device"];
 	        this.read_aloud_threads = source["read_aloud_threads"];
+	        this.read_aloud_volume = source["read_aloud_volume"];
+	        this.read_aloud_glow = source["read_aloud_glow"];
 	        this.analysis_cpu_profile = source["analysis_cpu_profile"];
 	        this.characters_lane_view = source["characters_lane_view"];
 	        this.ai_enabled = source["ai_enabled"];
@@ -2276,6 +2280,20 @@ export namespace types {
 		    }
 		    return a;
 		}
+	}
+	export class ReadAloudCast {
+	    cast_mode: boolean;
+	    voices?: Record<string, string>;
+	
+	    static createFrom(source: any = {}) {
+	        return new ReadAloudCast(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.cast_mode = source["cast_mode"];
+	        this.voices = source["voices"];
+	    }
 	}
 	export class KnowledgeEntry {
 	    secret_id: string;
@@ -2579,6 +2597,7 @@ export namespace types {
 	    beat_sheet?: BeatSheet;
 	    foreshadowing?: ForeshadowingLedger;
 	    knowledge_matrix?: KnowledgeMatrix;
+	    read_aloud_cast?: ReadAloudCast;
 	    analysis?: AnalysisData;
 	
 	    static createFrom(source: any = {}) {
@@ -2602,6 +2621,7 @@ export namespace types {
 	        this.beat_sheet = this.convertValues(source["beat_sheet"], BeatSheet);
 	        this.foreshadowing = this.convertValues(source["foreshadowing"], ForeshadowingLedger);
 	        this.knowledge_matrix = this.convertValues(source["knowledge_matrix"], KnowledgeMatrix);
+	        this.read_aloud_cast = this.convertValues(source["read_aloud_cast"], ReadAloudCast);
 	        this.analysis = this.convertValues(source["analysis"], AnalysisData);
 	    }
 	
@@ -3259,6 +3279,7 @@ export namespace types {
 	        this.mirroredMargins = source["mirroredMargins"];
 	    }
 	}
+	
 	export class RecentProjectStats {
 	    books?: number;
 	    chapters: number;

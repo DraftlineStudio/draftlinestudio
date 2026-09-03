@@ -43,6 +43,13 @@ export interface StoryBible {
   timeline: string
 }
 
+// Read Aloud cast: whether cast mode is on for this book and which TTS voice
+// each character speaks in (keyed by lowercased canonical character name).
+export interface ReadAloudCast {
+  cast_mode: boolean
+  voices?: Record<string, string>
+}
+
 // Beat Sheet - Save the Cat! style story beats
 export type BeatType =
   | 'opening_image' | 'theme_stated' | 'setup' | 'catalyst'
@@ -586,6 +593,9 @@ export interface BookData {
   is_indexed?: boolean
   last_indexed?: string
   beat_sheet?: BeatSheet
+  // Per-book Read Aloud voice casting; keys of voices are lowercased
+  // canonical character names. Optional archive member read_aloud_cast.json.
+  read_aloud_cast?: ReadAloudCast
   foreshadowing?: ForeshadowingLedger
   knowledge_matrix?: KnowledgeMatrix
   // Entity resolution and other analysis results

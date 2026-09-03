@@ -4,6 +4,16 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02526] - 2026-09-03
+
+### Added
+- Per-book Read Aloud voice-cast persistence: a new optional `read_aloud_cast.json` archive member stores cast mode and each character's assigned voice inside the .draftline file (written only when casting is configured; absent files and older readers are unaffected). Round-trip covered by Go tests.
+- Voice-cast model: chapter speaker rosters built from the book's confirmed characters, saved-assignment resolution, and deterministic gender-aware auto-casting over the eight Kokoro voices (never overwrites manual choices; reuses the app-wide character colors).
+- Read Aloud playback time accounting: exact durations for synthesized audio plus a self-calibrating seconds-per-character estimate for the rest, feeding a change-gated elapsed/remaining/playhead progress snapshot.
+- New settings `read_aloud_volume` (master gain) and `read_aloud_glow` (player glow accents); playback speed range widened to 2.0× with a shared speed-cycle helper. Store actions for seek-by-fraction, speed cycling, volume, session mute, and the expanded-panel flag.
+
+---
+
 ## [0.17.02525] - 2026-09-03
 
 ### Added

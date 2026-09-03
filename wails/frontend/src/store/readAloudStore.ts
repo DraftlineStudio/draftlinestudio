@@ -13,6 +13,8 @@ import { ReadAloudController, type ControllerStatus, type SynthPort } from '../s
 import { NativeSynth } from '../services/readaloud/tts'
 import { WebAudioPort } from '../services/readaloud/audio'
 import { collectSentences, buildGenerationUnits, firstUnitOfSentence, type DocSentence, type GenerationUnit } from '../services/readaloud/docSentences'
+import { DurationEstimator } from '../services/readaloud/estimates'
+import { clampReadAloudSpeed, nextReadAloudSpeed } from '../services/readaloud/speeds'
 import { updateReadAloud, clearReadAloud, setReadAloudHandlers } from '../extensions/ReadAloud'
 import { useAppStore } from './appStore'
 import { useEditorStore } from './editorStore'
@@ -52,6 +54,11 @@ interface ReadAloudStore {
   device: 'native' | null
   // Worker load diagnostics (also mirrored to the WebView console).
   diagnostics: string[]
+  // Player UI session state: the expanded panel, session-only mute, and the
+  // 4 Hz progress snapshot (null while idle).
+  expanded: boolean
+  muted: boolean
+  progress: { fraction: number; elapsedSec: number; remainingSec: number } | null
 
   refreshModelStatus: () => Promise<void>
   // Full sha256 audit against the pinned manifest; run on plugin enable and
@@ -77,8 +84,17 @@ interface ReadAloudStore {
   stop: () => void
   skip: (delta: 1 | -1) => void
   jumpTo: (index: number) => void
+  // Seek anywhere in the collected queue by progress-bar fraction; restarts
+  // idle playback at the target sentence.
+  seekToFraction: (fraction: number) => void
   setVoice: (voice: string) => void
   setSpeed: (speed: number) => void
+  cycleSpeed: () => void
+  // applyVolume is the live drag path (audio only); setVolume persists.
+  applyVolume: (volume: number) => void
+  setVolume: (volume: number) => void
+  toggleMute: () => void
+  setExpanded: (expanded: boolean) => void
   setPlayerVisible: (visible: boolean) => void
   // Full teardown: stops playback and unloads the model/worker (plugin
   // disable). The next play starts a fresh worker.
@@ -104,6 +120,23 @@ let controller: ReadAloudController | null = null
 let currentUnits: GenerationUnit[] = []
 let currentSentences: DocSentence[] = []
 
+// Progress accounting for the active queue. Measured durations arrive via
+// onUnitAudio; unmeasured units are estimated from the calibrating
+// seconds-per-character rate. All module-scope, like the pipeline singletons.
+const estimator = new DurationEstimator()
+let unitDurations: (number | null)[] = []
+let playingUnit = -1
+let playingUnitDuration = 0
+let playingUnitStartClock = 0
+let progressTimer: ReturnType<typeof setInterval> | null = null
+
+function resetProgressTracking(unitCount: number): void {
+  unitDurations = new Array(unitCount).fill(null)
+  playingUnit = -1
+  playingUnitDuration = 0
+  playingUnitStartClock = 0
+}
+
 // The editorStore holds the full TipTap Editor behind a narrow interface;
 // the cast recovers view access for decorations (see editorStore comment).
 function liveEditor(): Editor | null {
@@ -119,6 +152,55 @@ function scrollHighlightIntoView(): void {
   window.requestAnimationFrame(() => {
     document.querySelector('.read-aloud-current')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
   })
+}
+
+// Elapsed/remaining/playhead snapshot for the active queue. Exact for played
+// and measured units (the AudioContext clock freezes across pause), estimated
+// for units not yet synthesized.
+function computeProgress(sentenceCount: number, speed: number): { fraction: number; elapsedSec: number; remainingSec: number } | null {
+  if (!audio || playingUnit < 0 || !currentUnits.length) return null
+  let elapsed = 0
+  let total = 0
+  for (let i = 0; i < currentUnits.length; i++) {
+    const duration = unitDurations[i] ?? estimator.secondsFor(currentUnits[i].text.length, speed)
+    total += duration
+    if (i < playingUnit) elapsed += duration
+  }
+  const intra = playingUnitDuration > 0
+    ? Math.min(playingUnitDuration, Math.max(0, audio.now() - playingUnitStartClock))
+    : 0
+  elapsed += intra
+  const sentenceIndex = currentUnits[playingUnit]?.sentenceIndex ?? 0
+  const unitFraction = playingUnitDuration > 0 ? intra / playingUnitDuration : 0
+  const fraction = sentenceCount > 0 ? Math.min(1, (sentenceIndex + unitFraction) / sentenceCount) : 0
+  return { fraction, elapsedSec: elapsed, remainingSec: Math.max(0, total - elapsed) }
+}
+
+function pushProgress(): void {
+  const state = useReadAloudStore.getState()
+  if (state.status === 'idle') return
+  const next = computeProgress(state.sentences.length, useAppStore.getState().settings.read_aloud_speed)
+  if (!next) return
+  const prev = state.progress
+  // Change-gated: the display rounds to seconds, so identical rounded values
+  // (and sub-pixel fractions) never cause a re-render.
+  if (prev
+    && Math.round(prev.elapsedSec) === Math.round(next.elapsedSec)
+    && Math.round(prev.remainingSec) === Math.round(next.remainingSec)
+    && Math.abs(prev.fraction - next.fraction) < 0.002) return
+  useReadAloudStore.setState({ progress: next })
+}
+
+function startProgressTicker(): void {
+  if (progressTimer) return
+  progressTimer = setInterval(pushProgress, 250)
+}
+
+function stopProgressTicker(): void {
+  if (progressTimer) {
+    clearInterval(progressTimer)
+    progressTimer = null
+  }
 }
 
 // Click-to-jump and edit-stops-playback callbacks for the ReadAloud
@@ -171,15 +253,34 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
     audio = new WebAudioPort(
       line => set(s => ({ diagnostics: [...s.diagnostics.slice(-59), line] })),
     )
+    audio.setVolume(useAppStore.getState().settings.read_aloud_volume)
+    audio.setMuted(get().muted)
     controller = new ReadAloudController(synth, audio, {
       onStatus: status => {
         set({ status })
         if (status === 'playing') set({ modelLoading: null })
         // RSS sampling runs exactly while something is audible/pending.
-        if (status === 'playing' || status === 'starting') void StartReadAloudMemLog()
-        else void StopReadAloudMemLog()
+        if (status === 'playing' || status === 'starting') {
+          void StartReadAloudMemLog()
+          startProgressTicker()
+        } else {
+          void StopReadAloudMemLog()
+          if (status === 'idle') {
+            stopProgressTicker()
+            set({ progress: null })
+          }
+        }
       },
-      onSentenceStart: unitIndex => {
+      onUnitAudio: (unitIndex, seconds) => {
+        if (unitIndex < unitDurations.length) unitDurations[unitIndex] = seconds
+        const text = currentUnits[unitIndex]?.text ?? ''
+        estimator.record(text.length, seconds, useAppStore.getState().settings.read_aloud_speed)
+      },
+      onSentenceStart: (unitIndex, durationSec) => {
+        playingUnit = unitIndex
+        playingUnitDuration = durationSec
+        playingUnitStartClock = audio?.now() ?? 0
+        pushProgress()
         const sentenceIndex = currentUnits[unitIndex]?.sentenceIndex ?? unitIndex
         // Highlight covers the FULL sentence even while a mid-sentence
         // clause unit is the one actually playing; only move it when the
@@ -238,6 +339,9 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
     modelLoading: null,
     device: null,
     diagnostics: [],
+    expanded: false,
+    muted: false,
+    progress: null,
 
     refreshModelStatus: async () => {
       bindEvents()
@@ -350,6 +454,7 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
         }
         currentUnits = units
         currentSentences = sentences
+        resetProgressTracking(units.length)
         ctrl.start(units.map(u => u.text), startUnit, settings.read_aloud_voice, settings.read_aloud_speed)
       }
       if (get().modelState === 'ready' && get().verified) {
@@ -383,6 +488,7 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
       const settings = useAppStore.getState().settings
       currentUnits = units
       currentSentences = sentences
+      resetProgressTracking(units.length)
       set(s => ({ diagnostics: [...s.diagnostics.slice(-59), `[main t+${Math.round(performance.now())}ms] prefill: ${units.length} units queued from cursor`] }))
       ensureController().start(units.map(u => u.text), 0, settings.read_aloud_voice, settings.read_aloud_speed, false)
       set({ sentences })
@@ -421,7 +527,9 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
       controller?.stop()
       currentUnits = []
       currentSentences = []
-      set({ currentIndex: -1, sentences: [] })
+      resetProgressTracking(0)
+      stopProgressTicker()
+      set({ currentIndex: -1, sentences: [], progress: null })
       clearHighlight()
     },
 
@@ -447,20 +555,55 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
       if (unit !== -1) controller.jumpTo(unit)
     },
 
+    seekToFraction: (fraction) => {
+      const sentences = get().sentences
+      if (!sentences.length) return
+      const clamped = Math.max(0, Math.min(1, fraction))
+      const index = Math.round(clamped * (sentences.length - 1))
+      if (get().status !== 'idle') {
+        get().jumpTo(index)
+        return
+      }
+      // Idle with a collected queue (stopped or prepared): start there.
+      get().play(sentences, index)
+    },
+
     setVoice: (voice) => {
       void useAppStore.getState().saveSettings({ read_aloud_voice: voice })
       controller?.setVoice(voice)
     },
 
     setSpeed: (speed) => {
-      const clamped = Math.min(1.6, Math.max(0.8, speed))
+      const clamped = clampReadAloudSpeed(speed)
       void useAppStore.getState().saveSettings({ read_aloud_speed: clamped })
       controller?.setSpeed(clamped)
     },
 
+    cycleSpeed: () => {
+      get().setSpeed(nextReadAloudSpeed(useAppStore.getState().settings.read_aloud_speed))
+    },
+
+    applyVolume: (volume) => {
+      audio?.setVolume(Math.max(0, Math.min(1, volume)))
+    },
+
+    setVolume: (volume) => {
+      const clamped = Math.max(0, Math.min(1, volume))
+      audio?.setVolume(clamped)
+      void useAppStore.getState().saveSettings({ read_aloud_volume: clamped })
+    },
+
+    toggleMute: () => {
+      const muted = !get().muted
+      audio?.setMuted(muted)
+      set({ muted })
+    },
+
+    setExpanded: (expanded) => set({ expanded }),
+
     setPlayerVisible: (visible) => {
       if (!visible) get().stop()
-      set({ playerVisible: visible })
+      set({ playerVisible: visible, expanded: visible && get().expanded })
     },
 
     shutdown: () => {
@@ -474,8 +617,11 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
       audio = null
       currentUnits = []
       currentSentences = []
+      resetProgressTracking(0)
+      stopProgressTicker()
+      estimator.reset()
       clearHighlight()
-      set({ status: 'idle', sentences: [], currentIndex: -1, playerVisible: false, modelLoading: null, playbackError: null })
+      set({ status: 'idle', sentences: [], currentIndex: -1, playerVisible: false, modelLoading: null, playbackError: null, expanded: false, progress: null })
     },
   }
 })

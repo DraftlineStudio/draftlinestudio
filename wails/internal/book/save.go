@@ -159,6 +159,14 @@ func WriteWithSnapshots(path string, book types.BookData, appVersion string, sna
 		}
 	}
 
+	// Save read_aloud_cast.json if cast mode was ever configured
+	if book.ReadAloudCast.CastMode || len(book.ReadAloudCast.Voices) > 0 {
+		castJSON, _ := json.MarshalIndent(book.ReadAloudCast, "", "  ")
+		if err := addEntry("read_aloud_cast.json", string(castJSON)); err != nil {
+			return types.SaveResult{Success: false, Error: err.Error()}
+		}
+	}
+
 	for i, item := range book.FrontMatter {
 		file := fmt.Sprintf("front_matter/%03d.html", i)
 		if err := addEntry(file, item.Content); err != nil {
