@@ -2,6 +2,15 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02508] - 2026-09-03
+
+### Changed
+- Read Aloud synthesis is much faster.
+- The GPU option now uses the full precision voice model.
+
+### Added
+- Added a Read Aloud performance check to Settings.
+
 ## [0.17.02506] - 2026-09-03
 
 ### Fixed

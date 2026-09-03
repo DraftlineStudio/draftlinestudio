@@ -31,6 +31,8 @@ export function ClearRecentProjects():Promise<void>;
 
 export function DeleteCharacterEvent(arg1:types.BookData,arg2:string):Promise<types.BookData>;
 
+export function DownloadReadAloudGPUModel():Promise<void>;
+
 export function DownloadReadAloudModel():Promise<void>;
 
 export function ExportDOCX(arg1:types.BookData,arg2:types.ExportOptions):Promise<types.ExportResult>;

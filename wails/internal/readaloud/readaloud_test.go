@@ -178,16 +178,23 @@ func TestInstallResumeSkipsVerifiedFiles(t *testing.T) {
 
 func TestCheckAndRemove(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "kokoro")
+	core := GroupManifest(GroupCore)
 	status := Check(dir)
-	if status.Installed || len(status.Missing) != len(Manifest()) {
-		t.Fatalf("empty dir must report everything missing, got %+v", status)
+	if status.Installed || len(status.Missing) != len(core) {
+		t.Fatalf("empty dir must report every core file missing, got %+v", status)
+	}
+	if status.GPUInstalled {
+		t.Error("empty dir must report the GPU model missing")
 	}
 	if status.BytesTotal != TotalBytes() {
 		t.Errorf("BytesTotal = %d, want %d", status.BytesTotal, TotalBytes())
 	}
+	if status.GPUBytesTotal <= 0 {
+		t.Error("GPUBytesTotal must be positive")
+	}
 
 	// Fabricate a correctly sized file for the first artifact: Check judges by size.
-	first := Manifest()[0]
+	first := core[0]
 	path := filepath.Join(dir, filepath.FromSlash(first.Name))
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		t.Fatal(err)
@@ -196,7 +203,7 @@ func TestCheckAndRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 	status = Check(dir)
-	if len(status.Missing) != len(Manifest())-1 || status.BytesOnDisk != first.Bytes {
+	if len(status.Missing) != len(core)-1 || status.BytesOnDisk != first.Bytes {
 		t.Errorf("after one file: %+v", status)
 	}
 
@@ -274,8 +281,21 @@ func TestManifestPinsAreWellFormed(t *testing.T) {
 		if strings.Contains(a.URL, "/resolve/main/") {
 			t.Errorf("%s: mutable branch URL forbidden", a.Name)
 		}
+		if a.Group != GroupCore && a.Group != GroupGPU {
+			t.Errorf("%s: unknown group %q", a.Name, a.Group)
+		}
 	}
 	if fmt.Sprintf("%d", TotalBytes()) == "0" {
 		t.Error("TotalBytes must be positive")
+	}
+	if len(GroupManifest(GroupGPU)) == 0 || len(GroupManifest(GroupCore)) == 0 {
+		t.Error("both artifact groups must be non-empty")
+	}
+	var coreSum int64
+	for _, a := range GroupManifest(GroupCore) {
+		coreSum += a.Bytes
+	}
+	if TotalBytes() != coreSum {
+		t.Errorf("TotalBytes must price the core bundle only: got %d, want %d", TotalBytes(), coreSum)
 	}
 }
