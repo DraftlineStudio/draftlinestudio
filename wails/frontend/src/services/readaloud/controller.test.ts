@@ -120,7 +120,7 @@ async function startPlaying(startIndex = 0, voice = 'af_heart', speed = 1.2) {
 }
 
 describe('ReadAloudController', () => {
-  it('starts, plays the first sentence, and keeps lookahead at exactly one', async () => {
+  it('starts, plays the first sentence, and keeps lookahead at exactly two', async () => {
     controller.start(SENTENCES, 0, 'af_heart', 1.2)
     expect(statuses).toEqual(['starting'])
     expect(synth.requests.map(r => r.text)).toEqual(['One.'])
@@ -129,8 +129,9 @@ describe('ReadAloudController', () => {
     expect(statuses).toEqual(['starting', 'playing'])
     expect(started).toEqual([0])
     expect(audio.queue).toHaveLength(1)
-    // Lookahead: sentence two synthesizing, sentence three NOT yet requested.
-    expect(synth.requests.map(r => r.text)).toEqual(['Two.'])
+    // Lookahead: the next two sentences synthesize while one plays; only
+    // the immediate next will be scheduled, the second waits in cache.
+    expect(synth.requests.map(r => r.text)).toEqual(['Two.', 'Three.'])
   })
 
   it('schedules the next chunk before the current ends for gapless handoff', async () => {
@@ -213,13 +214,13 @@ describe('ReadAloudController', () => {
     audio.endCurrent() // playing 1
     controller.jumpTo(0)
     // Both 0 and its lookahead 1 are cached: audible and scheduled
-    // immediately, with no synthesis outstanding at all.
+    // immediately; the depth-2 lookahead synthesizes 2 in the background.
     expect(started).toEqual([0, 1, 0])
-    expect(synth.requests).toHaveLength(0)
+    expect(synth.requests.map(r => r.text)).toEqual(['Three.'])
     expect(audio.queue).toHaveLength(2)
 
     audio.endCurrent()
-    // Cached 1 takes over gaplessly; only then does 2 need synthesizing.
+    // Cached 1 takes over gaplessly; 2 is still the only synthesis.
     expect(started).toEqual([0, 1, 0, 1])
     expect(synth.requests.map(r => r.text)).toEqual(['Three.'])
   })

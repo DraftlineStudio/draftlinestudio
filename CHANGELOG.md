@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02510] - 2026-09-03
+
+### Fixed
+- Fixed a Read Aloud engine crash and repeated pipeline rebuilds.
+
+### Changed
+- Read Aloud starts playback faster.
+
 ## [0.17.02508] - 2026-09-03
 
 ### Changed
