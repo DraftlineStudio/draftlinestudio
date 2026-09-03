@@ -4,6 +4,16 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02527] - 2026-09-03
+
+### Changed
+- Rebuilt the Read Aloud player bar to the new player design: equalizer with current-speaker readout, prev/play–pause/next/stop transport with an accent play button, a click-to-seek progress bar with a diamond playhead plus a 2px progress line along the bar's top edge (glow accent included), chapter/sentence/time-remaining readout, one-click speed cycling (0.8×–2×), mute and a draggable volume slider, an expand chevron for the upcoming panel, and a compact layout for narrow windows. Voice model setup, "Read chapter", the prefill warm-up, and the existing Ctrl+Shift shortcuts all carry over.
+
+### Added
+- A floating Read Aloud reopen button appears at the bottom-right of the editor when the plugin is enabled but the player is closed.
+
+---
+
 ## [0.17.02526] - 2026-09-03
 
 ### Added
