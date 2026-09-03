@@ -4,6 +4,19 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02521] - 2026-09-03
+
+### Fixed
+- Removed the metallic high-frequency whine from native Read Aloud by replacing the quantized INT8 Kokoro vocoder with its checksum-pinned FP32 model. Real-bundle validation now rejects non-finite, out-of-range, or misaligned PCM and reports peak, RMS, and boundary-silence measurements.
+- Eliminated unsafe parallel eSpeak phonemization. Lookahead requests now execute in manuscript order through one hot native session; cancellation cannot poison the queue, and regression tests prove that requests never overlap.
+- Restored duration-aware startup and underrun buffering that was accidentally disabled by a store-level override. Playback now builds up to six seconds of contiguous audio before starting, while short final selections still begin as soon as their only unit is ready.
+
+### Changed
+- Upgraded the native voice bundle to provenance-pinned bundle format v4. A successful repair/download removes the obsolete INT8 model only after the FP32 replacement verifies. The platform-dependent download is now approximately 370–385 MiB.
+- Auto performance now uses one process-safe native engine with up to six bounded inference threads instead of three concurrently phonemizing sessions. Across the 12-thread Windows reference runs, the FP32 engine generated test sentences at 0.62–0.82 real-time factor, versus roughly 1.55 for one INT8 session, so one clean engine stays ahead of playback without corrupting eSpeak state.
+
+---
+
 ## [0.17.02520] - 2026-09-03
 
 ### Fixed

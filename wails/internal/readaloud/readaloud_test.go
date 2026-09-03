@@ -344,7 +344,7 @@ func TestManifestPinsAreWellFormed(t *testing.T) {
 		if a.Bytes <= 0 {
 			t.Errorf("%s: non-positive size", a.Name)
 		}
-		if !strings.Contains(a.URL, nativeRevision) && !strings.Contains(a.URL, nativeInt8Revision) &&
+		if !strings.Contains(a.URL, nativeRevision) &&
 			!strings.Contains(a.URL, sherpaVersion) && a.URL != espeakBundleURL {
 			t.Errorf("%s: URL %s is not pinned to a revision", a.Name, a.URL)
 		}

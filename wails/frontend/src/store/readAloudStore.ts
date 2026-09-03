@@ -199,7 +199,7 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
         set({ currentIndex: -1 })
         clearHighlight()
       },
-    }, { startBufferSeconds: 0, startBufferUnits: 1 })
+    })
     // A chapter switch remounts the editor; playback positions belong to the
     // old document, so stop cleanly (highlights die with the old view).
     // Subscribed once per app lifetime — re-subscribing on every controller

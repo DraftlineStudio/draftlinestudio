@@ -2,16 +2,57 @@ package readaloud
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/binary"
+	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 )
+
+func pcmDiagnostics(t *testing.T, label string, pcm []byte) {
+	t.Helper()
+	if len(pcm)%4 != 0 {
+		t.Fatalf("%s: PCM byte count %d is not float32 aligned", label, len(pcm))
+	}
+	peak, sumSquares, clipped, invalid := float64(0), float64(0), 0, 0
+	firstSignal, lastSignal := -1, -1
+	for offset := 0; offset < len(pcm); offset += 4 {
+		sample := float64(math.Float32frombits(binary.LittleEndian.Uint32(pcm[offset : offset+4])))
+		if math.IsNaN(sample) || math.IsInf(sample, 0) {
+			invalid++
+			continue
+		}
+		absolute := math.Abs(sample)
+		if absolute > peak {
+			peak = absolute
+		}
+		if absolute >= 1 {
+			clipped++
+		}
+		sumSquares += sample * sample
+		if absolute >= 0.002 {
+			index := offset / 4
+			if firstSignal == -1 {
+				firstSignal = index
+			}
+			lastSignal = index
+		}
+	}
+	samples := max(1, len(pcm)/4-invalid)
+	rms := math.Sqrt(sumSquares / float64(samples))
+	leadingMS, trailingMS := float64(firstSignal)/24, float64(samples-1-lastSignal)/24
+	t.Logf("%s: samples=%d peak=%.5f rms=%.5f clipped=%d invalid=%d leading=%.1fms trailing=%.1fms sha256=%x", label, len(pcm)/4, peak, rms, clipped, invalid, leadingMS, trailingMS, sha256.Sum256(pcm))
+	if invalid != 0 || peak > 1.001 {
+		t.Fatalf("%s: malformed PCM (peak %.5f, invalid %d)", label, peak, invalid)
+	}
+}
 
 // TestInstallRealBundle downloads the actual pinned native bundle and so
 // verifies every manifest checksum against the live sources. It is skipped
@@ -82,6 +123,7 @@ func TestNativeLoopbackRealBundle(t *testing.T) {
 	if exposed := resp.Header.Get("Access-Control-Expose-Headers"); !strings.Contains(exposed, "X-Draftline-Sample-Rate") {
 		t.Fatalf("sample-rate header is not exposed to the WebView: %q", exposed)
 	}
+	pcmDiagnostics(t, "loopback", pcm)
 }
 
 // TestNativeSynthesisRealBundle installs the pinned platform runtime and model,
@@ -121,40 +163,19 @@ func TestNativeSynthesisRealBundle(t *testing.T) {
 		t.Logf("native synthesis %d: wall=%s audio=%.2fs RTF=%.3f", i+1, wall, audioSeconds, wall.Seconds()/audioSeconds)
 	}
 
-	// The controller requests several lookahead sentences concurrently. Two
-	// independent native sessions test aggregate throughput without relying on
-	// unsafe re-entry into one ONNX session.
-	second, err := NewNativeEngine(dir, 2)
-	if err != nil {
-		t.Fatalf("load second native engine: %v", err)
+	// Repeat requests through the same serialized engine and validate each
+	// waveform. Kokoro itself may vary slightly between generations; waveform
+	// identity is not a supported contract.
+	pcm := make([][]byte, 2)
+	for i := range pcm {
+		if err := engine.Synthesize(context.Background(), texts[0], "af_heart", 1.2, func(block []byte) error {
+			pcm[i] = append(pcm[i], block...)
+			return nil
+		}); err != nil {
+			t.Fatalf("serialized determinism synthesis %d: %v", i+1, err)
+		}
+		pcmDiagnostics(t, fmt.Sprintf("serialized synthesis %d", i+1), pcm[i])
 	}
-	defer second.Close()
-	third, err := NewNativeEngine(dir, 2)
-	if err != nil {
-		t.Fatalf("load third native engine: %v", err)
-	}
-	defer third.Close()
-	parallelStarted := time.Now()
-	var wg sync.WaitGroup
-	var totalBytes int
-	var resultMu sync.Mutex
-	for i, engine := range []*NativeEngine{engine, second, third} {
-		wg.Add(1)
-		go func(i int, engine *NativeEngine) {
-			defer wg.Done()
-			localBytes := 0
-			if err := engine.Synthesize(context.Background(), texts[i], "af_heart", 1.2, func(block []byte) error { localBytes += len(block); return nil }); err != nil {
-				t.Errorf("parallel synthesis %d: %v", i+1, err)
-			}
-			resultMu.Lock()
-			totalBytes += localBytes
-			resultMu.Unlock()
-		}(i, engine)
-	}
-	wg.Wait()
-	combinedAudio := float64(totalBytes/4) / float64(engine.SampleRate())
-	wall := time.Since(parallelStarted)
-	t.Logf("three-session native pipeline: wall=%s combined-audio=%.2fs aggregate-RTF=%.3f", wall, combinedAudio, wall.Seconds()/combinedAudio)
 }
 
 // TestFreshInstallLifecycle walks the full install lifecycle against real

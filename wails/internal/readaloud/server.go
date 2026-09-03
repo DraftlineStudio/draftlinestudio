@@ -33,11 +33,12 @@ func (s *nativeServer) ensurePool(singleThread bool) (*nativeEnginePool, error) 
 	if s.pool != nil {
 		return s.pool, nil
 	}
-	count := min(3, max(1, runtime.NumCPU()/4))
-	// Kokoro scales better across independent lookahead requests than through
-	// a large intra-op thread count. Two threads per session matched the
-	// three-thread throughput on the 12-thread reference machine with less CPU.
-	threads := min(2, max(1, runtime.NumCPU()-1))
+	// Kokoro's eSpeak phonemizer owns process-global state. Concurrent TTS
+	// sessions can therefore corrupt one another even when their ONNX sessions
+	// are distinct. Keep one hot engine and spend the bounded CPU budget within
+	// that session; the frontend prepares an ordered audio runway ahead of play.
+	count := 1
+	threads := min(6, max(1, runtime.NumCPU()/2))
 	if singleThread {
 		count, threads = 1, 1
 	}
