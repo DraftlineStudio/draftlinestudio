@@ -183,7 +183,12 @@ async function loadModel(base: string, device: InitMessage['device'], threads: I
   let dtype: 'q8' | 'fp32' = resolvedDevice === 'webgpu' ? 'fp32' : 'q8'
   diag(`device: ${resolvedDevice} (requested ${device}), dtype: ${dtype}`)
   diag(`crossOriginIsolated: ${self.crossOriginIsolated === true}`)
+  // SharedArrayBuffer is the hard prerequisite for real ORT threads — if it
+  // is absent the runtime silently runs single-threaded no matter what
+  // numThreads says. This line IS the actual-thread-count report.
+  const sabAvailable = typeof SharedArrayBuffer !== 'undefined'
   const wasmAny = wasm as unknown as { numThreads?: number; simd?: boolean } | undefined
+  diag(`SharedArrayBuffer: ${sabAvailable} → effective ORT threads: ${sabAvailable ? (wasmAny?.numThreads ?? 'default') : 1}${sabAvailable ? '' : ' (numThreads setting ignored without SAB)'}`)
   diag(`ort wasm numThreads: ${wasmAny?.numThreads ?? 'default'}, simd: ${wasmAny?.simd ?? 'default'}`)
 
   const progress = (p: { status?: string; file?: string; loaded?: number; total?: number }) => {
@@ -268,6 +273,7 @@ function handleSynthesize(msg: SynthesizeMessage) {
           diag(`phonemization timing unavailable: ${e instanceof Error ? e.message : String(e)}`)
         }
       }
+      diag(`gen[${msg.id}] start: ${msg.text.length} chars`)
       const started = performance.now()
       const audio = await tts.generate(msg.text, { voice: msg.voice, speed: msg.speed })
       // Per-sentence timing. Exactly one "pipeline constructed" line ever
@@ -279,7 +285,7 @@ function handleSynthesize(msg: SynthesizeMessage) {
         const ms = performance.now() - started
         const audioSec = audio.audio.length / audio.sampling_rate
         const rtf = audioSec > 0 ? ms / 1000 / audioSec : 0
-        diag(`sentence ${sentenceCount}: generate ${Math.round(ms)} ms, ${msg.text.length} chars → ${audioSec.toFixed(1)}s audio, RTF ${rtf.toFixed(2)}`)
+        diag(`gen[${msg.id}] end: unit ${sentenceCount}, generate ${Math.round(ms)} ms, ${msg.text.length} chars → ${audioSec.toFixed(1)}s audio, RTF ${rtf.toFixed(2)}`)
         if (sentenceCount <= 3 || sentenceCount % 10 === 0) memorySnapshot(`after sentence ${sentenceCount}`)
       }
       if (cancelled.delete(msg.id)) return

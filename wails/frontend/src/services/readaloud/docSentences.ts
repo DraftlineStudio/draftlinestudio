@@ -68,6 +68,88 @@ export function splitLeadClause(sentence: DocSentence): DocSentence[] {
   ]
 }
 
+// A generation unit: what the synthesizer is fed. Long sentences are split
+// into clause-sized units so audio starts early and generation overlaps
+// playback at fine grain; sentenceIndex maps every unit back to its
+// sentence, whose FULL range the highlight covers while any of its units
+// plays.
+export interface GenerationUnit {
+  text: string
+  sentenceIndex: number
+}
+
+// Sentences longer than this many words are split at clause boundaries for
+// generation. ~25 words ≈ 8s of speech — small enough that synthesis of one
+// unit always fits inside the playback of its predecessors.
+const MAX_UNIT_WORDS = 25
+// The very first unit of a play is kept shorter still, so first audio lands
+// fast.
+const FIRST_UNIT_WORDS = 10
+
+function wordCount(text: string): number {
+  return text.split(/\s+/).filter(Boolean).length
+}
+
+// Splits one sentence's text into clause units of at most maxWords, cutting
+// only at clause boundaries (comma, semicolon, colon, dash). A stretch with
+// no boundary stays whole — a wrong-place cut sounds worse than latency.
+function splitClauses(text: string, maxWords: number): string[] {
+  if (wordCount(text) <= maxWords) return [text]
+  const boundary = /[,;:—–]\s+/g
+  const parts: string[] = []
+  let start = 0
+  let lastCut = 0
+  let match: RegExpExecArray | null
+  while ((match = boundary.exec(text)) !== null) {
+    const candidateEnd = match.index + 1 // keep the punctuation
+    if (wordCount(text.slice(start, candidateEnd)) >= maxWords) {
+      parts.push(text.slice(start, lastCut > start ? lastCut : candidateEnd).trim() || text.slice(start, candidateEnd).trim())
+      start = (lastCut > start ? lastCut : candidateEnd)
+      while (start < text.length && /\s/.test(text[start])) start++
+      lastCut = start
+      boundary.lastIndex = start
+    } else {
+      lastCut = candidateEnd
+    }
+  }
+  const tail = text.slice(start).trim()
+  if (tail) parts.push(tail)
+  return parts.length ? parts : [text]
+}
+
+// buildGenerationUnits flattens sentences into synthesis units. startIndex
+// marks the first sentence that will actually be spoken — its first unit is
+// cut extra short for sub-second first audio.
+export function buildGenerationUnits(sentences: DocSentence[], startIndex: number): GenerationUnit[] {
+  const units: GenerationUnit[] = []
+  sentences.forEach((sentence, sentenceIndex) => {
+    let pieces: string[]
+    if (sentenceIndex === startIndex) {
+      const lead = splitLeadClause(sentence)
+      if (lead.length === 2 && wordCount(lead[0].text) <= FIRST_UNIT_WORDS + 4) {
+        pieces = [lead[0].text, ...splitClauses(lead[1].text, MAX_UNIT_WORDS)]
+      } else {
+        pieces = splitClauses(sentence.text, MAX_UNIT_WORDS)
+      }
+    } else {
+      pieces = splitClauses(sentence.text, MAX_UNIT_WORDS)
+    }
+    for (const text of pieces) {
+      units.push({ text, sentenceIndex })
+    }
+  })
+  return units
+}
+
+// firstUnitOfSentence returns the unit index where a sentence begins (for
+// skip/jump, which operate on sentences while playback runs on units).
+export function firstUnitOfSentence(units: GenerationUnit[], sentenceIndex: number): number {
+  for (let i = 0; i < units.length; i++) {
+    if (units[i].sentenceIndex >= sentenceIndex) return i
+  }
+  return -1
+}
+
 // sentenceIndexAt returns the index of the sentence containing pos, or the
 // nearest following sentence; -1 when pos is after the last sentence.
 export function sentenceIndexAt(sentences: DocSentence[], pos: number): number {

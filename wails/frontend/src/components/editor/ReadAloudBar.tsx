@@ -34,6 +34,15 @@ export default function ReadAloudBar() {
     void refreshModelStatus()
   }, [refreshModelStatus])
 
+  const verified = useReadAloudStore(s => s.verified)
+  const prepareFromCursor = useReadAloudStore(s => s.prepareFromCursor)
+  // Pre-fill the synthesis buffer while the bar sits open and idle, so the
+  // first press of play starts speaking immediately. The store dedupes
+  // repeated calls for an unchanged cursor/queue.
+  useEffect(() => {
+    if (status === 'idle' && modelState === 'ready' && verified) prepareFromCursor()
+  }, [status, modelState, verified, prepareFromCursor])
+
   const active = status !== 'idle'
   const needsSetup = modelState === 'missing' || modelState === 'error' || modelState === 'downloading' || modelState === 'corrupt'
 
