@@ -274,6 +274,7 @@ export default function CharactersView() {
               relationships={relationships}
               selectedId={selectedId}
               onSelect={pickRow}
+              onOpenChapter={(section, index) => { setCurrentChapter(section, index); setViewMode('editor') }}
             />
           ) : (
             <div className="chars-lanes">
