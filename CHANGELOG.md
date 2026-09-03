@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02524] - 2026-09-03
+
+### Fixed
+- Changing voice or speed while the player is idle now takes effect on the next play.
+- Starting Read Aloud from a specific sentence now begins at that sentence.
+
 ## [0.17.02523] - 2026-09-03
 
 ### Changed
