@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useAppStore, type AppSettings } from '../store/appStore'
+import { useReadAloudStore } from '../store/readAloudStore'
 
 // Extracted types, constants, and components
 import type { GlyphSection } from './tools/types'
@@ -25,6 +26,47 @@ function isSectionEnabled(section: Exclude<GlyphSection, null>, settings: AppSet
     return settings.analysis_enabled
   }
   return true
+}
+
+// Read Aloud lives at the very bottom of the rail, above the bottom-bar
+// space — it is a player, not a sidebar pane, so it sits apart from the
+// section glyphs. Not configured yet → deep-links to its settings section
+// (the same pattern as the AI Studio CLI setup); configured → toggles the
+// docked player bar.
+function ReadAloudGlyph() {
+  const openSettings = useAppStore(s => s.openSettings)
+  const modelState = useReadAloudStore(s => s.modelState)
+  const playerVisible = useReadAloudStore(s => s.playerVisible)
+  const setPlayerVisible = useReadAloudStore(s => s.setPlayerVisible)
+  const refreshModelStatus = useReadAloudStore(s => s.refreshModelStatus)
+
+  useEffect(() => {
+    void refreshModelStatus()
+  }, [refreshModelStatus])
+
+  const ready = modelState === 'ready'
+  const handleClick = () => {
+    if (!ready) {
+      openSettings('readaloud')
+      return
+    }
+    setPlayerVisible(!playerVisible)
+  }
+
+  return (
+    <button
+      className={`glyph-btn glyph-btn--readaloud${playerVisible && ready ? ' active' : ''}`}
+      onClick={handleClick}
+      title={ready ? 'Read aloud (Ctrl+Shift+L)' : 'Read aloud — needs configuration'}
+    >
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4">
+        <path d="M2.5 6.2v3.6h2.4L8.5 13V3L4.9 6.2H2.5z" fill="currentColor" stroke="none"/>
+        <path d="M10.8 5.8a3 3 0 0 1 0 4.4"/>
+        <path d="M12.6 4a5.6 5.6 0 0 1 0 8"/>
+      </svg>
+      {!ready && <span className="glyph-badge glyph-badge--setup">!</span>}
+    </button>
+  )
 }
 
 // ── Main panel ──────────────────────────────────────────────────────────────
@@ -177,6 +219,12 @@ export default function ToolsPanel() {
             )}
           </button>
         ))}
+        {settings.read_aloud_enabled && (
+          <>
+            <div className="glyph-bar-spacer" />
+            <ReadAloudGlyph />
+          </>
+        )}
       </div>
     </div>
   )

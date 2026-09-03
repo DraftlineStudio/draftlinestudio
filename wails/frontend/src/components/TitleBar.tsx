@@ -196,7 +196,7 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
       <div className="titlebar-actions">
         <button
           className="titlebar-author-btn"
-          onClick={openSettings}
+          onClick={() => openSettings()}
           title="App Settings"
           style={{ '--wails-draggable': 'no-drag' } as React.CSSProperties}
         >

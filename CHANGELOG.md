@@ -2,6 +2,16 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02506] - 2026-09-03
+
+### Fixed
+- Fixed distorted Read Aloud audio.
+
+### Changed
+- Replaced the floating Read Aloud widget with a docked player.
+- The current sentence highlight is easier to see.
+- Rebuilt Read Aloud settings with guided model download.
+
 ## [0.17.02504] - 2026-09-03
 
 ### Added

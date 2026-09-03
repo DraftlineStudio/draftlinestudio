@@ -17,7 +17,6 @@ import CharactersView from './components/characters/CharactersView'
 import ToolsPanel from './components/ToolsPanel'
 import StatusBar from './components/StatusBar'
 import AnalysisCoordinator from './components/AnalysisCoordinator'
-import ReadAloudPlayer from './components/editor/ReadAloudPlayer'
 import StorySearchToolWindow from './components/StorySearchToolWindow'
 import MetadataDialog from './components/dialogs/MetadataDialog'
 import NewChapterDialog from './components/dialogs/NewChapterDialog'
@@ -28,13 +27,6 @@ import AppSettingsDialog from './components/dialogs/AppSettingsDialog'
 import ExportWizard from './components/dialogs/ExportWizard'
 
 const ChapterHistoryDialog = lazy(() => import('./components/dialogs/ChapterHistoryDialog'))
-
-// Mounts the floating Read Aloud player only while the store wants it shown,
-// without subscribing the whole App tree to playback state.
-function ReadAloudPlayerGate() {
-  const playerVisible = useReadAloudStore(s => s.playerVisible)
-  return playerVisible ? <ReadAloudPlayer /> : null
-}
 
 export default function App() {
   const { hasBook, bookTitle, bookFilePath, newBook, openBook, openRecentBook, saveBook, saveBookAs, dialogs, initBook, viewMode, setViewMode } = useBookStore(useShallow(s => ({
@@ -211,6 +203,12 @@ export default function App() {
     if (!settings.read_aloud_enabled) useReadAloudStore.getState().shutdown()
   }, [settings.read_aloud_enabled])
 
+  // Device/thread configuration is read at worker start; tearing the worker
+  // down on change makes the next playback session pick it up.
+  useEffect(() => {
+    useReadAloudStore.getState().shutdown()
+  }, [settings.read_aloud_device, settings.read_aloud_threads])
+
   useEffect(() => {
     if (!hasBook && bottomToolOpen) closeBottomTool()
   }, [bottomToolOpen, closeBottomTool, hasBook])
@@ -250,7 +248,6 @@ export default function App() {
         {viewMode !== 'cast' && <ToolsPanel />}
       </div>
       {bottomToolOpen && viewMode !== 'cast' && <StorySearchToolWindow />}
-      {settings.read_aloud_enabled && viewMode !== 'cast' && <ReadAloudPlayerGate />}
       <StatusBar />
       <AnalysisCoordinator />
       {showMetadata && <MetadataDialog />}

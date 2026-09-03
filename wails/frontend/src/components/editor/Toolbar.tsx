@@ -1,16 +1,11 @@
 import type { Editor } from '@tiptap/react'
 import { EDITOR_FONTS, EDITOR_FONT_SIZES } from '../../types/draftline'
-import { useAppStore } from '../../store/appStore'
-import { useReadAloudStore } from '../../store/readAloudStore'
 
 interface Props {
   editor: Editor | null
 }
 
 export default function Toolbar({ editor }: Props) {
-  const readAloudEnabled = useAppStore(s => s.settings.read_aloud_enabled)
-  const readAloudStatus = useReadAloudStore(s => s.status)
-
   if (!editor) return <div className="editor-toolbar" />
 
   const ed = editor
@@ -160,24 +155,6 @@ export default function Toolbar({ editor }: Props) {
           <circle cx="11.5" cy="2.5" r="1.3"/>
         </svg>
       </button>
-
-      {readAloudEnabled && (
-        <>
-          <div className="toolbar-sep" />
-          {/* Read Aloud: reads the selection, or from the cursor when empty */}
-          <button
-            className={`toolbar-btn ${readAloudStatus !== 'idle' ? 'active' : ''}`}
-            onClick={() => useReadAloudStore.getState().playSelection()}
-            title="Read aloud (Ctrl+Shift+L)"
-          >
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
-              <path d="M2 5.5v3h2.2L7.5 11V3L4.2 5.5H2z" fill="currentColor" stroke="none"/>
-              <path d="M9.5 5a2.6 2.6 0 0 1 0 4"/>
-              <path d="M11 3.4a5 5 0 0 1 0 7.2"/>
-            </svg>
-          </button>
-        </>
-      )}
     </div>
   )
 }

@@ -5,14 +5,25 @@
 // Hugging Face voice URLs are rewritten to local ones. After the one-time
 // download nothing here can touch the network.
 //
+// Device policy: WASM + q8 is the explicit default on every platform — no
+// autodetection. WebGPU is opt-in via settings (it produced corrupted audio
+// on real hardware when chosen automatically). Every load logs a fixed
+// diagnostic sequence so cross-platform issues are debuggable from the
+// WebView console and the settings panel.
+//
 // Protocol (main → worker): init, synthesize, cancel, dispose.
-// Protocol (worker → main): init-progress, ready, audio (transferred
+// Protocol (worker → main): diag, init-progress, ready, audio (transferred
 // Float32Array), error.
 
 const MODEL_ID = 'onnx-community/Kokoro-82M-v1.0-ONNX'
 const HF_VOICES_PREFIX = `https://huggingface.co/${MODEL_ID}/resolve/main/voices/`
 
-interface InitMessage { type: 'init'; base: string; preferredDevice: 'auto' | 'wasm' | 'webgpu' }
+interface InitMessage {
+  type: 'init'
+  base: string
+  device: 'wasm' | 'webgpu'
+  threads: 'single' | 'auto'
+}
 interface SynthesizeMessage { type: 'synthesize'; id: number; text: string; voice: string; speed: number }
 interface CancelMessage { type: 'cancel'; id: number }
 interface DisposeMessage { type: 'dispose' }
@@ -25,12 +36,20 @@ interface KokoroModel {
 
 let tts: KokoroModel | null = null
 let initPromise: Promise<void> | null = null
+let firstSentenceTimed = false
 const cancelled = new Set<number>()
 // Kokoro inference is not reentrant; requests run strictly in sequence.
 let queue: Promise<void> = Promise.resolve()
 
 function post(message: unknown, transfer?: Transferable[]) {
   ;(self as unknown as Worker).postMessage(message, transfer ?? [])
+}
+
+// Diagnostics go to the WebView console AND to the main thread so the
+// settings panel can show them without devtools.
+function diag(line: string) {
+  console.log('[readaloud]', line)
+  post({ type: 'diag', line })
 }
 
 function redirectVoiceFetches(base: string) {
@@ -40,11 +59,14 @@ function redirectVoiceFetches(base: string) {
     if (url.startsWith(HF_VOICES_PREFIX)) {
       return nativeFetch(`${base}/hf/${MODEL_ID}/voices/${url.slice(HF_VOICES_PREFIX.length)}`, init)
     }
+    if (url.includes('.wasm') || url.includes('/ort/')) {
+      diag(`runtime fetch: ${url}`)
+    }
     return nativeFetch(input as RequestInfo, init)
   }) as typeof fetch
 }
 
-async function loadModel(base: string, preferredDevice: InitMessage['preferredDevice']): Promise<void> {
+async function loadModel(base: string, device: InitMessage['device'], threads: InitMessage['threads']): Promise<void> {
   redirectVoiceFetches(base)
   // kokoro-js's own `env` re-export is a narrow facade (wasmPaths only), but
   // it consumes @huggingface/transformers as an external import, so
@@ -65,12 +87,26 @@ async function loadModel(base: string, preferredDevice: InitMessage['preferredDe
   const wasm = env.backends.onnx.wasm
   if (wasm) {
     wasm.wasmPaths = `${base}/ort/`
-    if (!self.crossOriginIsolated) {
+    if (threads === 'single' || !self.crossOriginIsolated) {
       // Without cross-origin isolation there is no SharedArrayBuffer, and
-      // the threaded wasm build must run single-threaded.
+      // the threaded wasm build must run single-threaded anyway.
       wasm.numThreads = 1
     }
   }
+
+  // Fixed diagnostic sequence — keep the order stable; users report these.
+  const gpuPresent = typeof (navigator as { gpu?: unknown }).gpu !== 'undefined'
+  diag(`navigator.gpu present: ${gpuPresent}`)
+  let resolvedDevice: 'wasm' | 'webgpu' = device
+  if (device === 'webgpu' && !gpuPresent) {
+    diag('webgpu requested but navigator.gpu is absent — falling back to wasm')
+    resolvedDevice = 'wasm'
+  }
+  const dtype = 'q8' // the only artifact in the downloaded bundle
+  diag(`device: ${resolvedDevice} (requested ${device}), dtype: ${dtype}`)
+  diag(`crossOriginIsolated: ${self.crossOriginIsolated === true}`)
+  const wasmAny = wasm as unknown as { numThreads?: number; simd?: boolean } | undefined
+  diag(`ort wasm numThreads: ${wasmAny?.numThreads ?? 'default'}, simd: ${wasmAny?.simd ?? 'default'}`)
 
   const progress = (p: { status?: string; file?: string; loaded?: number; total?: number }) => {
     if (p.status === 'progress' || p.status === 'ready') {
@@ -78,32 +114,12 @@ async function loadModel(base: string, preferredDevice: InitMessage['preferredDe
     }
   }
 
-  const wantGpu = preferredDevice !== 'wasm'
-    && typeof (navigator as { gpu?: unknown }).gpu !== 'undefined'
-  if (wantGpu) {
-    try {
-      const candidate = (await KokoroTTS.from_pretrained(MODEL_ID, {
-        dtype: 'q8', device: 'webgpu', progress_callback: progress,
-      })) as unknown as KokoroModel
-      // Smoke-test: some WebGPU stacks load q8 but produce NaN or silence.
-      const smoke = await candidate.generate('Hi.', { voice: 'af_heart', speed: 1 })
-      const ok = smoke.audio.length > 0
-        && Number.isFinite(smoke.audio[0])
-        && smoke.audio.some(v => v !== 0)
-      if (ok) {
-        tts = candidate
-        post({ type: 'ready', device: 'webgpu' })
-        return
-      }
-    } catch {
-      // Fall through to wasm.
-    }
-  }
-
+  const started = performance.now()
   tts = (await KokoroTTS.from_pretrained(MODEL_ID, {
-    dtype: 'q8', device: 'wasm', progress_callback: progress,
+    dtype, device: resolvedDevice, progress_callback: progress,
   })) as unknown as KokoroModel
-  post({ type: 'ready', device: 'wasm' })
+  diag(`model loaded in ${Math.round(performance.now() - started)} ms`)
+  post({ type: 'ready', device: resolvedDevice })
 }
 
 function handleSynthesize(msg: SynthesizeMessage) {
@@ -114,7 +130,12 @@ function handleSynthesize(msg: SynthesizeMessage) {
       return
     }
     try {
+      const started = performance.now()
       const audio = await tts.generate(msg.text, { voice: msg.voice, speed: msg.speed })
+      if (!firstSentenceTimed) {
+        firstSentenceTimed = true
+        diag(`first sentence: ${Math.round(performance.now() - started)} ms for ${msg.text.length} chars (${audio.audio.length} samples @ ${audio.sampling_rate} Hz)`)
+      }
       if (cancelled.delete(msg.id)) return
       const samples = audio.audio
       post({ type: 'audio', id: msg.id, samples, sampleRate: audio.sampling_rate }, [samples.buffer])
@@ -130,7 +151,7 @@ self.onmessage = (event: MessageEvent<InMessage>) => {
   switch (msg.type) {
     case 'init':
       if (!initPromise) {
-        initPromise = loadModel(msg.base, msg.preferredDevice).catch(e => {
+        initPromise = loadModel(msg.base, msg.device, msg.threads).catch(e => {
           initPromise = null
           post({ type: 'error', message: e instanceof Error ? e.message : String(e) })
         })
