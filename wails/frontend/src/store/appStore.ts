@@ -29,6 +29,8 @@ export interface AppSettings {
   read_aloud_enabled: boolean
   read_aloud_voice: string
   read_aloud_speed: number
+  read_aloud_device: 'wasm' | 'webgpu'
+  read_aloud_threads: 'single' | 'auto'
   // AI
   ai_enabled: boolean
   ai_mode: 'claudecode' | 'codex' | 'api' | 'local'
@@ -88,8 +90,11 @@ interface AppStore {
 
   loadSettings: () => Promise<void>
   saveSettings: (patch: Partial<AppSettings>) => Promise<void>
-  openSettings: () => void
+  // Optional target lets callers deep-link a specific settings section
+  // (e.g. the Read Aloud rail icon when the voice model needs setup).
+  openSettings: (section?: string) => void
   closeSettings: () => void
+  settingsInitialSection: string | null
   browseForDirectory: () => Promise<string>
   loadRecentProjects: () => Promise<void>
   addRecentProject: (project: RecentProject) => Promise<void>
@@ -127,6 +132,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   read_aloud_enabled: false,
   read_aloud_voice: 'af_heart',
   read_aloud_speed: 1.2,
+  read_aloud_device: 'wasm',
+  read_aloud_threads: 'single',
   ai_enabled: false,
   ai_mode: 'claudecode',
   ai_provider: '',
@@ -197,6 +204,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
         custom_dictionary: (raw as unknown as Partial<AppSettings>).custom_dictionary ?? [],
         read_aloud_voice: raw.read_aloud_voice || 'af_heart',
         read_aloud_speed: Math.min(1.6, Math.max(0.8, Number(raw.read_aloud_speed) || 1.2)),
+        read_aloud_device: raw.read_aloud_device === 'webgpu' ? 'webgpu' : 'wasm',
+        read_aloud_threads: raw.read_aloud_threads === 'auto' ? 'auto' : 'single',
       }
       set({ settings, loaded: true })
     } catch {
@@ -222,8 +231,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
     return run
   },
 
-  openSettings: () => set({ showSettings: true }),
-  closeSettings: () => set({ showSettings: false }),
+  settingsInitialSection: null,
+  openSettings: (section) => set({ showSettings: true, settingsInitialSection: section ?? null }),
+  closeSettings: () => set({ showSettings: false, settingsInitialSection: null }),
 
   browseForDirectory: async () => {
     try {

@@ -1,27 +1,35 @@
-// Read Aloud Settings Section - voice, speed, and voice model management
+// Read Aloud Settings Section - voice model setup, voice, performance.
+// Only rendered while the plugin is enabled (the nav entry is gated).
+// Mirrors the AI Studio setup-card pattern: a prerequisite card with status
+// badge and guided download, then the configuration fields.
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import type { ReadAloudSectionProps } from './types'
 import { READ_ALOUD_VOICES } from '../../../services/readaloud/voices'
 import { useReadAloudStore } from '../../../store/readAloudStore'
+
+const SPEED_STEPS = [0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6]
 
 function formatMB(bytes: number): string {
   return `${Math.round(bytes / (1024 * 1024))} MB`
 }
 
 export default function ReadAloudSection({
-  readAloudEnabled,
   voice, setVoice,
   speed, setSpeed,
+  device, setDevice,
+  threads, setThreads,
 }: ReadAloudSectionProps) {
   const modelState = useReadAloudStore(s => s.modelState)
   const bytesTotal = useReadAloudStore(s => s.bytesTotal)
   const download = useReadAloudStore(s => s.download)
   const modelError = useReadAloudStore(s => s.modelError)
+  const diagnostics = useReadAloudStore(s => s.diagnostics)
   const refreshModelStatus = useReadAloudStore(s => s.refreshModelStatus)
   const downloadModel = useReadAloudStore(s => s.downloadModel)
   const cancelDownload = useReadAloudStore(s => s.cancelDownload)
   const removeModel = useReadAloudStore(s => s.removeModel)
+  const [showDiagnostics, setShowDiagnostics] = useState(false)
 
   useEffect(() => {
     void refreshModelStatus()
@@ -30,73 +38,129 @@ export default function ReadAloudSection({
   const pct = download && download.overall_total > 0
     ? Math.min(100, Math.round((download.overall_received / download.overall_total) * 100))
     : 0
+  const sizeLabel = bytesTotal > 0 ? formatMB(bytesTotal) : '~130 MB'
 
   return (
     <>
-      <div className="settings-section-label" style={{ marginTop: 0 }}>Read Aloud</div>
-      <div className="settings-hint" style={{ marginBottom: 12 }}>
-        Reads your manuscript aloud with the Kokoro voice model (Apache 2.0), entirely on this
-        machine. The only network use is the one-time model download below; at playback nothing
-        leaves your computer.
-      </div>
-      {!readAloudEnabled && (
-        <div className="settings-hint" style={{ marginBottom: 12 }}>
-          The Read Aloud plugin is disabled. Enable it under Plugins to use these settings.
-        </div>
-      )}
+      <div className="settings-section-label" style={{ marginTop: 0 }}>Voice Model</div>
 
+      <div className="settings-cc-card">
+        <div className="settings-cc-header">
+          <span className="settings-cc-title">Kokoro voices</span>
+          {modelState === 'unknown' && <span className="settings-cc-badge checking">Checking…</span>}
+          {modelState === 'ready' && <span className="settings-cc-badge ok">✓ Installed — {sizeLabel}</span>}
+          {modelState === 'missing' && <span className="settings-cc-badge error">Not installed</span>}
+          {modelState === 'error' && <span className="settings-cc-badge error">Error</span>}
+          {modelState === 'downloading' && <span className="settings-cc-badge checking">Downloading… {pct}%</span>}
+          <button
+            className="settings-cc-recheck"
+            onClick={() => void refreshModelStatus()}
+            title="Re-check"
+            disabled={modelState === 'downloading'}
+          >
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <path d="M10.5 2A5 5 0 1 0 11 6.5"/><polyline points="10.5 1 10.5 3.5 8 3.5"/>
+            </svg>
+          </button>
+        </div>
+        <p className="settings-cc-desc">
+          Reads your manuscript aloud with the Kokoro-82M voice model (Apache 2.0), entirely on
+          this machine. The only network use is this one-time {sizeLabel} download from pinned,
+          checksum-verified sources; at playback nothing leaves your computer.
+        </p>
+
+        {(modelState === 'missing' || modelState === 'error') && (
+          <div className="settings-cc-setup">
+            <button className="dialog-btn primary" style={{ marginTop: 4 }} onClick={downloadModel}>
+              Download voice model ({sizeLabel})
+            </button>
+            <p className="settings-hint" style={{ marginTop: 8, marginBottom: 0 }}>
+              The download can be cancelled and resumes where it left off.
+            </p>
+          </div>
+        )}
+
+        {modelState === 'downloading' && (
+          <div className="settings-cc-setup">
+            <div className="read-aloud-progress" style={{ marginTop: 4 }}>
+              <div className="read-aloud-progress-fill" style={{ width: `${pct}%` }} />
+            </div>
+            <p className="settings-hint" style={{ marginTop: 6, marginBottom: 8 }}>
+              {download
+                ? `${formatMB(download.overall_received)} of ${formatMB(download.overall_total)} — ${download.file}`
+                : 'Starting download…'}
+            </p>
+            <button className="dialog-btn" onClick={cancelDownload}>Cancel download</button>
+          </div>
+        )}
+
+        {modelState === 'ready' && (
+          <button className="dialog-btn" style={{ marginTop: 4 }} onClick={() => void removeModel()}>
+            Remove downloaded model
+          </button>
+        )}
+
+        {modelError && <p className="settings-hint read-aloud-error" style={{ marginTop: 8 }}>{modelError}</p>}
+      </div>
+
+      <div className="settings-section-label">Voice</div>
       <div className="dialog-field">
         <label className="dialog-label">Voice</label>
-        <select className="dialog-input" value={voice} onChange={e => setVoice(e.target.value)} disabled={!readAloudEnabled}>
-          {READ_ALOUD_VOICES.map(v => (
-            <option key={v.id} value={v.id}>{v.label}</option>
-          ))}
+        <select className="dialog-select" value={voice} onChange={e => setVoice(e.target.value)}>
+          {READ_ALOUD_VOICES.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
+        </select>
+      </div>
+      <div className="dialog-field">
+        <label className="dialog-label">Speed</label>
+        <select className="dialog-select" value={String(Math.round(speed * 10) / 10)} onChange={e => setSpeed(Number(e.target.value))}>
+          {SPEED_STEPS.map(s => <option key={s} value={String(s)}>{s.toFixed(1)}× {s === 1.2 ? '(default)' : s === 1.0 ? '(natural)' : ''}</option>)}
         </select>
       </div>
 
+      <div className="settings-section-label">Performance</div>
       <div className="dialog-field">
-        <label className="dialog-label">Speed: {speed.toFixed(1)}×</label>
-        <input
-          type="range" className="read-aloud-speed-slider"
-          min={0.8} max={1.6} step={0.1} value={speed}
-          onChange={e => setSpeed(Number(e.target.value))}
-          disabled={!readAloudEnabled}
-        />
-        <div className="settings-hint">0.8× – 1.6×. The default of 1.2× suits most prose.</div>
+        <label className="dialog-label">Synthesis Device</label>
+        <div className="settings-theme-row">
+          <button className={`settings-theme-btn${device === 'wasm' ? ' active' : ''}`} onClick={() => setDevice('wasm')}>
+            CPU — recommended
+          </button>
+          <button className={`settings-theme-btn${device === 'webgpu' ? ' active' : ''}`} onClick={() => setDevice('webgpu')}>
+            GPU — experimental
+          </button>
+        </div>
+        <div className="settings-hint">
+          CPU (WASM) works reliably on every platform. GPU (WebGPU) can be faster but produces
+          distorted audio on some systems — switch back here if playback sounds wrong.
+        </div>
+      </div>
+      <div className="dialog-field">
+        <label className="dialog-label">Threads</label>
+        <div className="settings-theme-row">
+          <button className={`settings-theme-btn${threads === 'single' ? ' active' : ''}`} onClick={() => setThreads('single')}>
+            Single — recommended
+          </button>
+          <button className={`settings-theme-btn${threads === 'auto' ? ' active' : ''}`} onClick={() => setThreads('auto')}>
+            Auto
+          </button>
+        </div>
+        <div className="settings-hint">
+          Changes to device or threads apply the next time playback starts. If Read Aloud
+          misbehaves, use CPU + Single — the cross-platform safe configuration.
+        </div>
       </div>
 
-      <div className="settings-section-label">Voice Model</div>
+      <div className="settings-section-label">Diagnostics</div>
       <div className="dialog-field">
-        {modelState === 'ready' && (
-          <>
-            <div className="settings-hint" style={{ marginBottom: 8 }}>
-              Voice model installed ({formatMB(bytesTotal)}).
-            </div>
-            <button className="dialog-btn" onClick={() => void removeModel()}>Remove downloaded model</button>
-          </>
+        <button className="dialog-btn" onClick={() => setShowDiagnostics(v => !v)}>
+          {showDiagnostics ? 'Hide diagnostics' : 'Show diagnostics'}
+        </button>
+        {showDiagnostics && (
+          <div className="settings-cc-log" style={{ marginTop: 8 }}>
+            {diagnostics.length === 0
+              ? <div>No diagnostics yet — they are recorded when the voice model loads for playback.</div>
+              : diagnostics.map((line, i) => <div key={i}>{line}</div>)}
+          </div>
         )}
-        {(modelState === 'missing' || modelState === 'error') && (
-          <>
-            <div className="settings-hint" style={{ marginBottom: 8 }}>
-              Not downloaded. One-time download of about {bytesTotal > 0 ? formatMB(bytesTotal) : '130 MB'} from
-              pinned, checksum-verified sources; it can be cancelled and resumed.
-            </div>
-            <button className="dialog-btn primary" onClick={downloadModel} disabled={!readAloudEnabled}>
-              Download voice model
-            </button>
-          </>
-        )}
-        {modelState === 'downloading' && (
-          <>
-            <div className="settings-hint" style={{ marginBottom: 8 }}>
-              Downloading… {download ? `${formatMB(download.overall_received)} of ${formatMB(download.overall_total)} (${pct}%)` : 'starting'}
-            </div>
-            <div className="read-aloud-progress"><div className="read-aloud-progress-fill" style={{ width: `${pct}%` }} /></div>
-            <button className="dialog-btn" style={{ marginTop: 8 }} onClick={cancelDownload}>Cancel</button>
-          </>
-        )}
-        {modelState === 'unknown' && <div className="settings-hint">Checking model status…</div>}
-        {modelError && <div className="settings-hint read-aloud-error">{modelError}</div>}
       </div>
     </>
   )

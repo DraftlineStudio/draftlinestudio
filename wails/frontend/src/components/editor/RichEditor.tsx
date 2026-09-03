@@ -17,6 +17,8 @@ import { ReadAloud } from '../../extensions/ReadAloud'
 import { useEffect, useCallback, useState, useRef, useMemo } from 'react'
 import Toolbar from './Toolbar'
 import ChapterFindReplaceBar from './ChapterFindReplaceBar'
+import ReadAloudBar from './ReadAloudBar'
+import { useReadAloudStore } from '../../store/readAloudStore'
 import ContextMenu, { ContextMenuItem } from '../ContextMenu'
 import InlinePrompt from './InlinePrompt'
 import { checkWord, getDictionaryRoot, getImmediateSuggestions, getSuggestions, isLoaded as isSpellCheckLoaded, normalizeCustomDictionary, setCustomWords, setIgnoredWords, setSpellCheckEnabled } from '../../services/spellCheck'
@@ -25,6 +27,14 @@ import { useBookStore } from '../../store/bookStore'
 import { useEditorStore } from '../../store/editorStore'
 import { useAppStore } from '../../store/appStore'
 import { isConfirmedCharacter } from '../../utils/characterStatus'
+
+// Mounts the docked player bar only while the plugin is enabled and the
+// player is open, without subscribing the whole editor to playback state.
+function ReadAloudBarGate() {
+  const enabled = useAppStore(s => s.settings.read_aloud_enabled)
+  const playerVisible = useReadAloudStore(s => s.playerVisible)
+  return enabled && playerVisible ? <ReadAloudBar /> : null
+}
 
 interface ContextMenuState {
   x: number
@@ -552,6 +562,7 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
           />
         )}
       </div>
+      <ReadAloudBarGate />
       {contextMenu && (
         <ContextMenu
           x={contextMenu.x}

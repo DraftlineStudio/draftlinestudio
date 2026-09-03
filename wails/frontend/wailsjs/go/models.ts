@@ -1868,6 +1868,8 @@ export namespace types {
 	    read_aloud_enabled: boolean;
 	    read_aloud_voice: string;
 	    read_aloud_speed: number;
+	    read_aloud_device: string;
+	    read_aloud_threads: string;
 	    analysis_cpu_profile: string;
 	    characters_lane_view: string;
 	    ai_enabled: boolean;
@@ -1915,6 +1917,8 @@ export namespace types {
 	        this.read_aloud_enabled = source["read_aloud_enabled"];
 	        this.read_aloud_voice = source["read_aloud_voice"];
 	        this.read_aloud_speed = source["read_aloud_speed"];
+	        this.read_aloud_device = source["read_aloud_device"];
+	        this.read_aloud_threads = source["read_aloud_threads"];
 	        this.analysis_cpu_profile = source["analysis_cpu_profile"];
 	        this.characters_lane_view = source["characters_lane_view"];
 	        this.ai_enabled = source["ai_enabled"];

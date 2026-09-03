@@ -14,9 +14,16 @@ import ReadAloudSection from './ReadAloudSection'
 import type { FeatureSettingKey } from '../../../features/registry'
 
 export default function AppSettingsDialog() {
-  const { settings, saveSettings, closeSettings, browseForDirectory, loadSettings } = useAppStore()
+  const { settings, saveSettings, closeSettings, browseForDirectory, loadSettings, settingsInitialSection } = useAppStore()
 
-  const [section, setSection] = useState<SettingsSection>('application')
+  // Callers can deep-link a section (e.g. the Read Aloud rail icon when the
+  // voice model needs setup).
+  const validSections: SettingsSection[] = ['application', 'plugins', 'ai', 'readaloud', 'book']
+  const [section, setSection] = useState<SettingsSection>(
+    validSections.includes(settingsInitialSection as SettingsSection)
+      ? settingsInitialSection as SettingsSection
+      : 'application',
+  )
   const [appVersion, setAppVersion] = useState('')
 
   useEffect(() => {
@@ -44,6 +51,8 @@ export default function AppSettingsDialog() {
   const [readAloudEnabled, setReadAloudEnabled] = useState(settings.read_aloud_enabled)
   const [readAloudVoice, setReadAloudVoice] = useState(settings.read_aloud_voice)
   const [readAloudSpeed, setReadAloudSpeed] = useState(settings.read_aloud_speed)
+  const [readAloudDevice, setReadAloudDevice] = useState(settings.read_aloud_device)
+  const [readAloudThreads, setReadAloudThreads] = useState(settings.read_aloud_threads)
 
   // AI state
   const [aiEnabled, setAiEnabled]         = useState(settings.ai_enabled)
@@ -244,6 +253,8 @@ export default function AppSettingsDialog() {
       read_aloud_enabled: readAloudEnabled,
       read_aloud_voice: readAloudVoice,
       read_aloud_speed: readAloudSpeed,
+      read_aloud_device: readAloudDevice,
+      read_aloud_threads: readAloudThreads,
       ai_enabled: aiEnabled,
       ai_mode: aiMode,
       ai_provider: provider,
@@ -317,12 +328,14 @@ export default function AppSettingsDialog() {
               </svg>
               AI Studio
             </button>
-            <button className={`settings-nav-item${section === 'readaloud' ? ' active' : ''}`} onClick={() => setSection('readaloud')}>
-              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
-                <path d="M2 5.5v3h2.2L7.5 11V3L4.2 5.5H2z"/><path d="M9.5 5a2.6 2.6 0 0 1 0 4"/><path d="M11 3.4a5 5 0 0 1 0 7.2"/>
-              </svg>
-              Read Aloud
-            </button>
+            {readAloudEnabled && (
+              <button className={`settings-nav-item${section === 'readaloud' ? ' active' : ''}`} onClick={() => setSection('readaloud')}>
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
+                  <path d="M2 5.5v3h2.2L7.5 11V3L4.2 5.5H2z"/><path d="M9.5 5a2.6 2.6 0 0 1 0 4"/><path d="M11 3.4a5 5 0 0 1 0 7.2"/>
+                </svg>
+                Read Aloud
+              </button>
+            )}
             <button className={`settings-nav-item${section === 'book' ? ' active' : ''}`} onClick={() => setSection('book')}>
               <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
                 <rect x="2" y="1" width="10" height="12" rx="1"/><line x1="4.5" y1="4.5" x2="9.5" y2="4.5"/><line x1="4.5" y1="7" x2="9.5" y2="7"/><line x1="4.5" y1="9.5" x2="7.5" y2="9.5"/>
@@ -375,11 +388,12 @@ export default function AppSettingsDialog() {
               />
             )}
 
-            {section === 'readaloud' && (
+            {section === 'readaloud' && readAloudEnabled && (
               <ReadAloudSection
-                readAloudEnabled={readAloudEnabled}
                 voice={readAloudVoice} setVoice={setReadAloudVoice}
                 speed={readAloudSpeed} setSpeed={setReadAloudSpeed}
+                device={readAloudDevice} setDevice={setReadAloudDevice}
+                threads={readAloudThreads} setThreads={setReadAloudThreads}
               />
             )}
 

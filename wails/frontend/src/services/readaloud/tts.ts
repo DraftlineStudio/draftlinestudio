@@ -1,17 +1,23 @@
 // SynthPort implementation over the readAloud worker. The worker (and with
 // it kokoro-js and the ONNX runtime) is created lazily on the first
 // synthesis request and stays alive across plays so the model loads once per
-// session; shutdown() terminates it and frees the model memory.
+// session; shutdown() terminates it and frees the model memory. Device and
+// threading come from user settings — WASM single-threaded q8 is the
+// explicit cross-platform default, never autodetected.
 
 import type { AudioChunk, SynthPort } from './controller'
 
-const DEVICE_STORAGE_KEY = 'draftline.readaloud.device'
 const MODEL_BASE = '/readaloud-models'
 
 export interface ModelLoadProgress {
   file: string
   loaded: number
   total: number
+}
+
+export interface SynthConfig {
+  device: 'wasm' | 'webgpu'
+  threads: 'single' | 'auto'
 }
 
 interface PendingRequest {
@@ -25,8 +31,10 @@ export class WorkerSynth implements SynthPort {
   private pending = new Map<number, PendingRequest>()
 
   constructor(
+    private getConfig: () => SynthConfig,
     private onLoadProgress?: (p: ModelLoadProgress) => void,
     private onDevice?: (device: 'wasm' | 'webgpu') => void,
+    private onDiagnostic?: (line: string) => void,
   ) {}
 
   private ensureReady(): Promise<void> {
@@ -37,18 +45,16 @@ export class WorkerSynth implements SynthPort {
       worker.onmessage = (event: MessageEvent) => {
         const msg = event.data
         switch (msg.type) {
+          case 'diag':
+            this.onDiagnostic?.(msg.line)
+            break
           case 'init-progress':
             this.onLoadProgress?.({ file: msg.file, loaded: msg.loaded, total: msg.total })
             break
-          case 'ready': {
-            // Remember the probe outcome so later sessions skip the WebGPU
-            // trial when it already fell back (workers cannot touch
-            // localStorage; the main thread persists it).
-            try { localStorage.setItem(DEVICE_STORAGE_KEY, msg.device) } catch { /* ignore */ }
+          case 'ready':
             this.onDevice?.(msg.device)
             resolve()
             break
-          }
           case 'audio': {
             const request = this.pending.get(msg.id)
             if (request) {
@@ -79,11 +85,8 @@ export class WorkerSynth implements SynthPort {
       }
     })
 
-    let preferredDevice: 'auto' | 'wasm' = 'auto'
-    try {
-      if (localStorage.getItem(DEVICE_STORAGE_KEY) === 'wasm') preferredDevice = 'wasm'
-    } catch { /* ignore */ }
-    worker.postMessage({ type: 'init', base: MODEL_BASE, preferredDevice })
+    const config = this.getConfig()
+    worker.postMessage({ type: 'init', base: MODEL_BASE, device: config.device, threads: config.threads })
     return this.ready
   }
 
@@ -106,7 +109,8 @@ export class WorkerSynth implements SynthPort {
   }
 
   // Terminates the worker and unloads the model. The next synthesize() call
-  // starts a fresh worker and reloads from the local bundle.
+  // starts a fresh worker and reloads from the local bundle (picking up any
+  // changed device/threads configuration).
   shutdown(): void {
     if (this.worker) {
       this.worker.postMessage({ type: 'dispose' })

@@ -4,6 +4,22 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02506] - 2026-09-03
+
+### Fixed
+- Read Aloud no longer produces distorted audio: synthesis now runs on **CPU (WASM) with the q8 model explicitly** on every platform instead of auto-detecting WebGPU, whose output corrupted on real hardware despite passing the load-time smoke test. WebGPU remains available as an explicit "GPU — experimental" opt-in.
+
+### Changed
+- The floating Read Aloud widget is gone. Playback lives in a **player bar docked at the bottom of the editor** — the bottom counterpart of the chapter find bar — with transport, sentence counter, voice and speed pickers, and a setup prompt when the voice model is missing.
+- The toolbar speaker glyph was removed. Read Aloud is now opened from a **rail icon pinned at the very bottom of the tools sidebar**, above the bottom-bar space. When the plugin needs configuration the icon carries a badge and deep-links straight to its settings section, the same pattern as the AI Studio CLI setup.
+- The current-sentence highlight is now clearly visible: a strong accent wash plus an accent underline, in both themes.
+- The Read Aloud settings section only exists while the plugin is enabled, and was rebuilt on the AI Studio setup-card pattern: a voice-model card with status badge, guided checksum-verified download with progress/cancel/resume and removal; proper voice and speed pickers; and new **Performance** options — synthesis device (CPU recommended / GPU experimental) and threading (Single recommended / Auto) — for cross-platform troubleshooting. Device and thread changes apply to the next playback session automatically.
+
+### Added
+- Every voice-model load now logs a fixed diagnostic sequence to the WebView console and to a Diagnostics readout in settings: `navigator.gpu` presence, the resolved device and dtype, `crossOriginIsolated`, ONNX-runtime wasm `numThreads`/`simd`, every runtime `.wasm` file actually fetched, model load time, and the wall time of the first synthesized sentence.
+
+---
+
 ## [0.17.02505] - 2026-09-03
 
 ### Added

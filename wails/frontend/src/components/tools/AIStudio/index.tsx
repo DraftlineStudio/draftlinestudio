@@ -288,7 +288,7 @@ export default function AiStudioTab() {
             Try Again
           </button>
           {(isAuthError || isNotInstalled) && (
-            <button className="ai-link-btn" onClick={openSettings}>
+            <button className="ai-link-btn" onClick={() => openSettings()}>
               Open Settings
             </button>
           )}

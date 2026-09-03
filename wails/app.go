@@ -43,7 +43,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.17.02505"
+const AppVersion = "0.17.02506"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -565,6 +565,8 @@ func (a *App) loadSettingsFromDisk() types.AppSettings {
 		AnalysisEnabled:         true,
 		ReadAloudVoice:          "af_heart",
 		ReadAloudSpeed:          1.2,
+		ReadAloudDevice:         "wasm",
+		ReadAloudThreads:        "single",
 		AnalysisCPUProfile:      "adaptive",
 		CharactersLaneView:      "grid",
 		SidebarPanelWidth:       350,
