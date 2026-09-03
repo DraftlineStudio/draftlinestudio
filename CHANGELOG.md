@@ -4,6 +4,16 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02505] - 2026-09-03
+
+### Added
+- Documented Read Aloud in `docs/frontend/READ-ALOUD.md`: the privacy stance (fully local; network only for the one-time pinned download, nothing at playback), the Kokoro-82M model and its Apache 2.0 license, the download contents and cache location, the Go-to-worker architecture, controls and shortcuts, segmentation rules, WebGPU/WASM device selection, and limitations. Cross-referenced from `PLUGIN-SYSTEM.md` (Read Aloud is the first shipped `optional-model` plugin exercising the planned download pipeline) and `FRONTEND.md`.
+
+### Internal
+- Added `TestInstallRealBundle`, an env-gated end-to-end test (`READALOUD_E2E=1`) that downloads the real bundle and verifies every manifest pin against the live sources; it passed against Hugging Face and jsdelivr, confirming all sixteen pinned checksums.
+
+---
+
 ## [0.17.02504] - 2026-09-03
 
 ### Added
