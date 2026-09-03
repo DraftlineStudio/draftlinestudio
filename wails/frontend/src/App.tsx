@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useCallback, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useBookStore } from './store/bookStore'
 import { useAppStore } from './store/appStore'
+import { useReadAloudStore } from './store/readAloudStore'
 import { TakePendingOpenPath } from '../wailsjs/go/main/App'
 import { EventsOn } from '../wailsjs/runtime/runtime'
 import { applyAccent, clearAccent } from './utils/accentColor'
@@ -16,6 +17,7 @@ import CharactersView from './components/characters/CharactersView'
 import ToolsPanel from './components/ToolsPanel'
 import StatusBar from './components/StatusBar'
 import AnalysisCoordinator from './components/AnalysisCoordinator'
+import ReadAloudPlayer from './components/editor/ReadAloudPlayer'
 import StorySearchToolWindow from './components/StorySearchToolWindow'
 import MetadataDialog from './components/dialogs/MetadataDialog'
 import NewChapterDialog from './components/dialogs/NewChapterDialog'
@@ -26,6 +28,13 @@ import AppSettingsDialog from './components/dialogs/AppSettingsDialog'
 import ExportWizard from './components/dialogs/ExportWizard'
 
 const ChapterHistoryDialog = lazy(() => import('./components/dialogs/ChapterHistoryDialog'))
+
+// Mounts the floating Read Aloud player only while the store wants it shown,
+// without subscribing the whole App tree to playback state.
+function ReadAloudPlayerGate() {
+  const playerVisible = useReadAloudStore(s => s.playerVisible)
+  return playerVisible ? <ReadAloudPlayer /> : null
+}
 
 export default function App() {
   const { hasBook, bookTitle, bookFilePath, newBook, openBook, openRecentBook, saveBook, saveBookAs, dialogs, initBook, viewMode, setViewMode } = useBookStore(useShallow(s => ({
@@ -158,6 +167,25 @@ export default function App() {
           if (e.shiftKey) void saveBookAs()
           else void saveBook()
           break
+        case 'l':
+          // Read Aloud: start from selection/cursor, or toggle pause while active.
+          if (e.shiftKey && hasBook && useAppStore.getState().settings.read_aloud_enabled) {
+            e.preventDefault()
+            const readAloud = useReadAloudStore.getState()
+            if (readAloud.status === 'idle') readAloud.playSelection()
+            else readAloud.togglePause()
+          }
+          break
+        // Shift+period / Shift+comma report as '>' and '<' on most layouts.
+        case '.':
+        case '>':
+        case ',':
+        case '<':
+          if (e.shiftKey && useReadAloudStore.getState().status !== 'idle') {
+            e.preventDefault()
+            useReadAloudStore.getState().skip(e.key === '.' || e.key === '>' ? 1 : -1)
+          }
+          break
       }
     }
     window.addEventListener('keydown', handler)
@@ -176,6 +204,12 @@ export default function App() {
   useEffect(() => {
     if (!settings.cast_enabled && viewMode === 'cast') setViewMode('editor')
   }, [settings.cast_enabled, viewMode, setViewMode])
+
+  // Disabling the Read Aloud plugin unloads everything: playback stops, the
+  // synthesis worker (and the model in its memory) is terminated.
+  useEffect(() => {
+    if (!settings.read_aloud_enabled) useReadAloudStore.getState().shutdown()
+  }, [settings.read_aloud_enabled])
 
   useEffect(() => {
     if (!hasBook && bottomToolOpen) closeBottomTool()
@@ -216,6 +250,7 @@ export default function App() {
         {viewMode !== 'cast' && <ToolsPanel />}
       </div>
       {bottomToolOpen && viewMode !== 'cast' && <StorySearchToolWindow />}
+      {settings.read_aloud_enabled && viewMode !== 'cast' && <ReadAloudPlayerGate />}
       <StatusBar />
       <AnalysisCoordinator />
       {showMetadata && <MetadataDialog />}

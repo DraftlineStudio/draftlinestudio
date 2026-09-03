@@ -4,6 +4,18 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02504] - 2026-09-03
+
+### Added
+- Read Aloud is now usable end-to-end in the editor. A toolbar speaker button and **Ctrl+Shift+L** read the selection (or from the cursor when nothing is selected); the floating player adds Read chapter, play/pause, stop, sentence skipping (**Ctrl+Shift+.** / **Ctrl+Shift+,**), a sentence counter, and voice/speed pickers that persist.
+- The sentence being spoken carries an accent-tinted highlight that follows playback and stays scrolled into view. Clicking any sentence while playing jumps there. The highlight is a pure ProseMirror decoration — it never modifies the document or the undo history.
+- Editing the manuscript, switching chapters, or closing the player stops playback cleanly and clears the highlight. Disabling the plugin also terminates the synthesis worker, unloading the model from memory.
+
+### Internal
+- New `extensions/ReadAloud.ts` follows the ChapterSearch meta-driven decoration pattern with injected click/edit handlers, keeping the extension free of store imports. Player styles live in `global.css` under the `read-aloud-` prefix.
+
+---
+
 ## [0.17.02503] - 2026-09-03
 
 ### Added
