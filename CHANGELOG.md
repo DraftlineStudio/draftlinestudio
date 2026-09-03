@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02513] - 2026-09-03
+
+### Changed
+- Analysis performance settings now control worker count.
+
 ## [0.17.02512] - 2026-09-03
 
 ### Fixed

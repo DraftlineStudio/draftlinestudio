@@ -233,13 +233,42 @@ type FingerprintCorrection struct {
 	Status          string   `json:"status"` // active | orphaned | conflict
 }
 
+// StructureDecisionDependency snapshots the source block on which an author
+// decision depends. It lets reanalysis distinguish a deleted dependency from a
+// rewritten one instead of silently applying stale intent to new prose.
+type StructureDecisionDependency struct {
+	EvidenceID     string `json:"evidence_id"`
+	ChapterID      string `json:"chapter_id"`
+	ParagraphIndex int    `json:"paragraph_index"`
+	ContentHash    string `json:"content_hash"`
+}
+
+// StructureAuthorDecision is durable author intent about a rebuildable
+// structural inference. Action is confirm | correct | irrelevant | unresolved |
+// intentional_ambiguity. Status is active | orphaned | conflict.
+type StructureAuthorDecision struct {
+	ID                   string                        `json:"id"`
+	TargetType           string                        `json:"target_type"`
+	TargetID             string                        `json:"target_id,omitempty"`
+	TargetSignature      string                        `json:"target_signature,omitempty"`
+	Action               string                        `json:"action"`
+	Field                string                        `json:"field,omitempty"`
+	Value                string                        `json:"value,omitempty"`
+	Note                 string                        `json:"note,omitempty"`
+	EvidenceIDs          []string                      `json:"evidence_ids,omitempty"`
+	Dependencies         []StructureDecisionDependency `json:"dependencies,omitempty"`
+	ChangedDependencyIDs []string                      `json:"changed_dependency_ids,omitempty"`
+	Status               string                        `json:"status"`
+}
+
 type StoryAuthorModel struct {
-	Contexts    []StoryContext          `json:"contexts,omitempty"`
-	Checkpoints []StoryCheckpoint       `json:"checkpoints,omitempty"`
-	Canon       []CanonRule             `json:"canon,omitempty"`
-	Corrections []FingerprintCorrection `json:"corrections,omitempty"`
-	Profiles    []string                `json:"profiles,omitempty"`
-	VoiceNotes  []CharacterVoiceNotes   `json:"voice_notes,omitempty"`
+	Contexts           []StoryContext            `json:"contexts,omitempty"`
+	Checkpoints        []StoryCheckpoint         `json:"checkpoints,omitempty"`
+	Canon              []CanonRule               `json:"canon,omitempty"`
+	Corrections        []FingerprintCorrection   `json:"corrections,omitempty"`
+	StructureDecisions []StructureAuthorDecision `json:"structure_decisions,omitempty"`
+	Profiles           []string                  `json:"profiles,omitempty"`
+	VoiceNotes         []CharacterVoiceNotes     `json:"voice_notes,omitempty"`
 }
 
 type FingerprintDiagnostic struct {

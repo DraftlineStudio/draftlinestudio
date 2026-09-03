@@ -8,47 +8,59 @@ import (
 )
 
 const (
-	analysisBusyMessage = "story analysis is already running"
-	largeManuscriptSize = 750_000
+	analysisBusyMessage       = "story analysis is already running"
+	largeManuscriptSize       = 750_000
+	largeAnalysisMemoryBudget = 4 * 1024 * 1024
+	largeAnalysisBatchBytes   = 512 * 1024
 )
 
-// beginAnalysis serializes manuscript-scale analysis and temporarily limits
-// the Go scheduler. prose/v3 is in-process Go code, so GOMAXPROCS is the one
-// cross-platform ceiling that applies to every current analysis stage rather
-// than only one worker pool. It is a concurrency budget, not an exact OS CPU
-// percentage; leaving runnable cores free keeps the editor and machine usable.
-func (a *App) beginAnalysis(book types.BookData) (done func(), ok bool) {
+type analysisRunBudget struct {
+	Workers          int
+	MaxInFlightBytes int
+	MaxBatchBytes    int
+}
+
+// beginAnalysis serializes manuscript-scale analysis and returns a budget for
+// the analysis pools only. It deliberately leaves the process-wide Go
+// scheduler untouched so bindings, file I/O, the asset server, and unrelated
+// work retain the machine's normal scheduling capacity.
+func (a *App) beginAnalysis(book types.BookData) (budget analysisRunBudget, done func(), ok bool) {
 	if !a.analysisMu.TryLock() {
-		return nil, false
+		return analysisRunBudget{}, nil, false
 	}
 	profile := a.getSettings().AnalysisCPUProfile
-	cores := analysisCoreBudget(profile, runtime.NumCPU(), manuscriptSize(book))
-	previous := runtime.GOMAXPROCS(cores)
-	return func() {
-		runtime.GOMAXPROCS(previous)
+	budget = analysisPoolBudget(profile, runtime.NumCPU(), manuscriptSize(book))
+	return budget, func() {
 		a.analysisMu.Unlock()
 	}, true
 }
 
-func analysisCoreBudget(profile string, available, manuscriptBytes int) int {
+func analysisPoolBudget(profile string, available, manuscriptBytes int) analysisRunBudget {
 	if available < 1 {
 		available = 1
 	}
 	gentle := max(1, min(2, (available+3)/4))
 	balanced := max(1, min(4, (available+1)/2))
+	workers := balanced
 	switch strings.ToLower(strings.TrimSpace(profile)) {
 	case "gentle":
-		return gentle
+		workers = gentle
 	case "balanced":
-		return balanced
+		workers = balanced
 	case "fast":
-		return available
+		workers = available
 	default: // adaptive, empty, and unknown values are backwards-safe.
-		if manuscriptBytes >= largeManuscriptSize {
-			return gentle
-		}
-		return balanced
+		workers = balanced
 	}
+	budget := analysisRunBudget{Workers: workers}
+	if manuscriptBytes >= largeManuscriptSize {
+		// The large-manuscript tier protects against several prose documents
+		// being resident together. It limits queued/in-flight source bytes and
+		// batch size rather than reducing scheduler or worker parallelism.
+		budget.MaxInFlightBytes = largeAnalysisMemoryBudget
+		budget.MaxBatchBytes = largeAnalysisBatchBytes
+	}
+	return budget
 }
 
 func manuscriptSize(book types.BookData) int {

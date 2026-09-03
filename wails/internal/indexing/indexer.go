@@ -25,6 +25,12 @@ func AllChapters(book *types.BookData) []types.ChapterItem {
 // into entities. The StoryBible characters and Analysis.EntityResolution are
 // rebuilt; manually created characters are preserved.
 func IndexBook(book *types.BookData) types.IndexResult {
+	return IndexBookWithOptions(book, defaultAnalysisPoolOptions())
+}
+
+// IndexBookWithOptions applies a concurrency and memory budget to the
+// model-backed indexing stages without constraining unrelated application work.
+func IndexBookWithOptions(book *types.BookData, pool AnalysisPoolOptions) types.IndexResult {
 	if book.StoryBible.Characters == nil {
 		book.StoryBible.Characters = []types.Character{}
 	}
@@ -46,7 +52,7 @@ func IndexBook(book *types.BookData) types.IndexResult {
 		fullText.WriteString(text)
 		chapterTexts = append(chapterTexts, text)
 	}
-	allMentions := ExtractBookMentions(chapterTexts)
+	allMentions := ExtractBookMentionsWithOptions(chapterTexts, pool)
 
 	// Phase 2: entity resolution, honoring manual splits from prior runs.
 	resolver := entityresolution.NewResolver()

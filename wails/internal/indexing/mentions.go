@@ -69,9 +69,15 @@ func ExtractMentions(text string, chapter int) []entityresolution.Mention {
 // corroboration: a name attested anywhere validates its sentence-initial
 // uses everywhere.
 func ExtractBookMentions(chapterTexts []string) []entityresolution.Mention {
+	return ExtractBookMentionsWithOptions(chapterTexts, defaultAnalysisPoolOptions())
+}
+
+// ExtractBookMentionsWithOptions bounds only the ProseV3 work used to classify
+// chapter candidates. Candidate resolution remains deterministic and ordered.
+func ExtractBookMentionsWithOptions(chapterTexts []string, pool AnalysisPoolOptions) []entityresolution.Mention {
 	allCandidates := make([][]mentionCandidate, len(chapterTexts))
 	attested := map[string]bool{}
-	linguisticByChapter := analyzeBookLinguisticEvidence(chapterTexts)
+	linguisticByChapter := analyzeBookLinguisticEvidenceWithOptions(chapterTexts, pool)
 
 	for ch, text := range chapterTexts {
 		candidates, chapterAttested := scanChapterWithEvidence(text, ch, linguisticByChapter[ch])

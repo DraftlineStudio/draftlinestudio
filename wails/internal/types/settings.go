@@ -30,8 +30,9 @@ type AppSettings struct {
 	// but one core when cross-origin isolation is active) | "single".
 	ReadAloudDevice  string `json:"read_aloud_device"`
 	ReadAloudThreads string `json:"read_aloud_threads"`
-	// AnalysisCPUProfile controls the approximate background core budget:
-	// "adaptive" | "gentle" | "balanced" | "fast".
+	// AnalysisCPUProfile controls each analysis stage's local worker-pool size:
+	// "adaptive" | "gentle" | "balanced" | "fast". It never changes the
+	// process-wide Go scheduler.
 	AnalysisCPUProfile string `json:"analysis_cpu_profile"`
 	// CharactersLaneView remembers the codex lane style: "grid" | "heat" | "weave".
 	CharactersLaneView string `json:"characters_lane_view"`

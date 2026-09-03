@@ -14,7 +14,7 @@ import (
 // Keeping orchestration here prevents app.go from regaining the analysis
 // responsibility removed by its package refactor.
 func (a *App) AnalyzeBook(bookData types.BookData) types.FullAnalysisResult {
-	done, ok := a.beginAnalysis(bookData)
+	budget, done, ok := a.beginAnalysis(bookData)
 	if !ok {
 		return types.FullAnalysisResult{Success: false, Error: analysisBusyMessage}
 	}
@@ -31,7 +31,8 @@ func (a *App) AnalyzeBook(bookData types.BookData) types.FullAnalysisResult {
 	// reused after entity resolution instead of passing through ProseV3 again.
 	priorEvidence := bookData.Analysis.Evidence
 	priorEntities := bookData.Analysis.EntityResolution
-	indexResult := indexing.IndexBook(&bookData)
+	pool := indexing.AnalysisPoolOptions{Workers: budget.Workers, MaxInFlightBytes: budget.MaxInFlightBytes, MaxBatchBytes: budget.MaxBatchBytes}
+	indexResult := indexing.IndexBookWithOptions(&bookData, pool)
 	if !indexResult.Success {
 		return types.FullAnalysisResult{Success: false, Error: indexResult.Error}
 	}
@@ -50,7 +51,7 @@ func (a *App) AnalyzeBook(bookData types.BookData) types.FullAnalysisResult {
 		return types.FullAnalysisResult{Success: false, Error: err.Error()}
 	}
 	bookData.Analysis.Relationships = relationships
-	bookData.Analysis.Evidence = indexing.AnalyzeEvidence(&bookData, a.emitAnalysisProgress)
+	bookData.Analysis.Evidence = indexing.AnalyzeEvidenceWithOptions(&bookData, a.emitAnalysisProgress, pool)
 	bookData.Analysis.Fingerprint = fingerprint.Build(&bookData, a.emitAnalysisProgress)
 	bookData.Analysis.Story = indexing.AnalyzeStory(&bookData, a.emitAnalysisProgress)
 	if bookData.Analysis.Version < 5 {
