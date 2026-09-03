@@ -242,6 +242,14 @@ export function SplitEntity(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['SplitEntity'](arg1, arg2, arg3, arg4);
 }
 
+export function StartReadAloudMemLog() {
+  return window['go']['main']['App']['StartReadAloudMemLog']();
+}
+
+export function StopReadAloudMemLog() {
+  return window['go']['main']['App']['StopReadAloudMemLog']();
+}
+
 export function TakePendingOpenPath() {
   return window['go']['main']['App']['TakePendingOpenPath']();
 }

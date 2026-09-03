@@ -66,7 +66,8 @@ export class WorkerSynth implements SynthPort {
     const worker = new Worker(new URL('../../workers/readAloud.worker.ts', import.meta.url), { type: 'module' })
     this.worker = worker
     this.becameReady = false
-    this.onDiagnostic?.(`worker start #${++workerStarts} (a growing count here means the pipeline is being rebuilt — it should stay at 1 per session)`)
+    const workerIndex = ++workerStarts
+    this.onDiagnostic?.(`worker start #${workerIndex} (a growing count here means the pipeline is being rebuilt — it should stay at 1 per session)`)
     const readyPromise = new Promise<void>((resolve, reject) => {
       worker.onmessage = (event: MessageEvent) => {
         const msg = event.data
@@ -123,7 +124,7 @@ export class WorkerSynth implements SynthPort {
     })
 
     const config = this.getConfig()
-    worker.postMessage({ type: 'init', base, device: config.device, threads: config.threads })
+    worker.postMessage({ type: 'init', base, device: config.device, threads: config.threads, workerIndex })
     return readyPromise
   }
 
@@ -150,8 +151,12 @@ export class WorkerSynth implements SynthPort {
   // changed device/threads configuration).
   shutdown(): void {
     if (this.worker) {
+      this.onDiagnostic?.('shutdown: disposing pipeline and terminating worker')
       this.worker.postMessage({ type: 'dispose' })
-      this.worker.terminate()
+      // Give the dispose message a moment to release the ORT session before
+      // hard-terminating; termination remains the backstop either way.
+      const worker = this.worker
+      setTimeout(() => worker.terminate(), 500)
       this.worker = null
     }
     this.ready = null

@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"draftline/internal/readaloud"
 
@@ -60,6 +61,52 @@ func (a *App) ReadAloudServerURL() string {
 // result must block model loading and offer repair instead.
 func (a *App) VerifyReadAloudModel() readaloud.VerifyResult {
 	return readaloud.Verify(readAloudModelDir())
+}
+
+var readAloudMemLog struct {
+	mu   sync.Mutex
+	stop chan struct{}
+}
+
+// StartReadAloudMemLog samples WebView2/app process RSS every 2 s while
+// playback runs, emitting lines onto the shared diagnostics channel. Safety
+// cap of 5 minutes in case the stop call never arrives.
+func (a *App) StartReadAloudMemLog() {
+	readAloudMemLog.mu.Lock()
+	defer readAloudMemLog.mu.Unlock()
+	if readAloudMemLog.stop != nil {
+		return
+	}
+	stop := make(chan struct{})
+	readAloudMemLog.stop = stop
+	go func() {
+		ticker := time.NewTicker(2 * time.Second)
+		defer ticker.Stop()
+		deadline := time.After(5 * time.Minute)
+		for {
+			select {
+			case <-stop:
+				return
+			case <-deadline:
+				a.StopReadAloudMemLog()
+				return
+			case <-ticker.C:
+				for _, line := range readaloud.MemorySnapshot() {
+					runtime.EventsEmit(a.ctx, "readaloud:diag", line)
+				}
+			}
+		}
+	}()
+}
+
+// StopReadAloudMemLog ends RSS sampling.
+func (a *App) StopReadAloudMemLog() {
+	readAloudMemLog.mu.Lock()
+	defer readAloudMemLog.mu.Unlock()
+	if readAloudMemLog.stop != nil {
+		close(readAloudMemLog.stop)
+		readAloudMemLog.stop = nil
+	}
 }
 
 // ReadAloudStatus reports whether the voice model bundle is fully installed.

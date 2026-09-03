@@ -9,6 +9,9 @@ export class WebAudioPort implements AudioPort {
   private ctx: AudioContext | null = null
   private nextStartTime = 0
   private active = new Set<AudioBufferSourceNode>()
+  private allocatedBytes = 0
+
+  constructor(private onDiagnostic?: (line: string) => void) {}
 
   private ensureContext(): AudioContext {
     if (!this.ctx) {
@@ -38,6 +41,8 @@ export class WebAudioPort implements AudioPort {
     this.nextStartTime = startAt + buffer.duration
     source.start(startAt)
     this.active.add(source)
+    this.allocatedBytes += chunk.samples.byteLength
+    this.onDiagnostic?.(`audio alloc: ${Math.round(chunk.samples.byteLength / 1024)} KB buffer (${buffer.duration.toFixed(1)}s), ${Math.round(this.allocatedBytes / 1048576)} MB total enqueued this session, ${this.active.size} scheduled`)
 
     return {
       stop: () => {

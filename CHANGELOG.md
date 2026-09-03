@@ -4,6 +4,18 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02512] - 2026-09-03
+
+### Fixed
+- Read Aloud no longer balloons system memory to the machine limit. Root cause: the threaded ONNX runtime creates its WebAssembly memory as `{initial:256, maximum:65536, shared:true}` — a **4 GB maximum** — and growable shared memories cannot relocate, so the engine reserves/commits the full maximum eagerly and every extra instantiation (failed threaded attempt, benchmark backend, jsep/non-jsep) stacked another 4 GB that never shrank. onnxruntime-web exposes no memory knob, so the synthesis worker now wraps the `WebAssembly.Memory` constructor and caps every large/shared wasm memory at **1 GiB** (Kokoro q8 needs a few hundred MB; growth past the cap surfaces as a normal generate error, not a dead machine).
+- A WebGPU candidate that fails its audio smoke test now has its ORT session explicitly released before the CPU fallback (previously its whole wasm memory stayed pinned), the dispose path releases the session before the worker terminates, and the editor-watch subscription is bound once per app lifetime instead of accumulating across plugin enable/disable cycles.
+- Long plays hold a bounded set of audio buffers: the controller's chunk cache now evicts sentences more than 4 behind the playhead (short skip-backs stay instant) instead of retaining every synthesized Float32Array for the session.
+
+### Added
+- Memory instrumentation across the stack, all on the shared diagnostics stream: every worker line now carries a timestamp and worker-start counter; heap + live-wasm-memory snapshots log at pipeline construction, dispose, the first three sentences and every tenth after; each audio enqueue logs buffer size, session total, and scheduled count; and Go samples WebView2/app process RSS every 2 s while playback runs (auto-stops after 5 min).
+
+---
+
 ## [0.17.02511] - 2026-09-03
 
 ### Fixed
