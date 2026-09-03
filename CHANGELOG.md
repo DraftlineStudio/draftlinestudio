@@ -4,6 +4,36 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02510] - 2026-09-03
+
+### Fixed
+- Read Aloud's threaded runtime failure ("Uncaught [object Event]") and the pipeline being rebuilt 2–3 times per play. Root cause: the ONNX runtime spawns nested pthread workers from `ort-wasm-simd-threaded.jsep.mjs`, and in a cross-origin-isolated page a worker script is blocked unless its own response carries COEP — the model asset handler didn't send those headers, so every pthread spawn died as a bare error Event, and the old error handler tore the whole worker down, forcing a fresh model load per play. The handler now sends COOP/COEP/Cross-Origin-Resource-Policy (the middleware adds CORP too), worker error events are logged with message/filename/line instead of tearing anything down after ready, and a single construction guard means concurrent callers await one pipeline — a "worker start #N" diagnostic makes any rebuild immediately visible.
+- Threaded WASM init that still fails now retries once single-threaded inside the worker before reporting an error, and the benchmark retries CPU single-threaded before declaring the backend broken; benchmark failures now carry real error text.
+
+### Changed
+- Playback starts faster: the first spoken sentence is split at its first clause break (comma/dash/semicolon, exact highlight positions preserved) so audio begins on a short chunk, and synthesis lookahead deepened from one to two sentences — still strictly per-sentence, never the whole selection up front.
+
+### Added
+- Finer timing diagnostics: pipeline construction time, one-off phonemization time, and per-sentence generate time with RTF (generate seconds ÷ audio seconds; target < 0.5 with threads active).
+
+---
+
+## [0.17.02509] - 2026-09-03
+
+### Changed
+- Began the fixture-gated Story Structure v2 semantic correction without changing the Story Map frontend. Significant-event aggregation now promotes actions, discoveries, decisions, transitions, interactions, obligations, contradictions, and persistent state changes while retaining incidental descriptions and standalone time references exclusively in the lossless atomic fingerprint unless they support a narrative occurrence.
+- Replaced the previous adjacent-event score and six-child anti-growth penalty with explainable occurrence membership. Independent actions remain separate; related observations can support one occurrence; no desired event count or manuscript-specific threshold is used.
+
+### Added
+- Inspectable structure decisions record aggregate creation, child membership, rejected boundaries, temporal placement, salience components, confidence, and the evidence behind every signal. Significant events retain source quotations, exact positions, per-source confidence and review state, fingerprint corrections, and durable author-decision relationships.
+- Durable author structure decisions support confirmation, correction, irrelevant-noise rejection, unresolved interpretations, and intentional ambiguity outside the prose. Dependency snapshots now mark decisions as conflicted or orphaned when later edits rewrite or remove their source instead of silently applying stale intent.
+- Human-reviewed semantic fixtures cover the benchmark manuscript's interrupted temporal frame plus linear, alternating-viewpoint, quiet character-driven, parallel-at-a-distance, converging/separating, documentary/epistolary, simulation, ambiguous, and incomplete narrative forms. Stage 1 tests validate specific grouping and separation outcomes rather than aggregate totals.
+
+### Internal
+- Advanced the Story Fingerprint schema to v3 and Story Structure schema to v2. the benchmark manuscript probe now derives 384 significant occurrence candidates from its stored 843 fingerprint events while preserving all atomic data; the count is an observed result, not an acceptance target.
+
+---
+
 ## [0.17.02508] - 2026-09-03
 
 ### Changed

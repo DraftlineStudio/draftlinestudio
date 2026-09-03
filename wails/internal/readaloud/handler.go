@@ -57,6 +57,15 @@ func NewHandler(dir string) http.Handler {
 			return
 		}
 		w.Header().Set("Content-Type", ct)
+		// The webview runs cross-origin isolated (COOP/COEP set by the main
+		// asset middleware). The ONNX runtime spawns nested pthread workers
+		// from the .mjs served here, and a worker script loaded into an
+		// isolated agent cluster is BLOCKED unless its own response carries
+		// COEP — so these headers must be present on this handler too, not
+		// only on the embedded-asset chain.
+		w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
+		w.Header().Set("Cross-Origin-Embedder-Policy", "require-corp")
+		w.Header().Set("Cross-Origin-Resource-Policy", "same-origin")
 		http.ServeContent(w, r, "", info.ModTime(), f)
 	})
 }
