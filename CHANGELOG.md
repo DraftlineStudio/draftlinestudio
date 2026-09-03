@@ -2,6 +2,123 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02513] - 2026-09-03
+
+### Changed
+- Analysis performance settings now control worker count.
+
+## [0.17.02512] - 2026-09-03
+
+### Fixed
+- Fixed Read Aloud using excessive memory during long sessions.
+
+## [0.17.02511] - 2026-09-03
+
+### Added
+- Voice model installs can now be verified and repaired.
+
+### Fixed
+- Read Aloud files are now served locally so the voice engine loads reliably.
+
+## [0.17.02510] - 2026-09-03
+
+### Fixed
+- Fixed a Read Aloud engine crash and repeated pipeline rebuilds.
+
+### Changed
+- Read Aloud starts playback faster.
+
+## [0.17.02508] - 2026-09-03
+
+### Changed
+- Read Aloud synthesis is much faster.
+- The GPU option now uses the full precision voice model.
+
+### Added
+- Added a Read Aloud performance check to Settings.
+
+## [0.17.02506] - 2026-09-03
+
+### Fixed
+- Fixed distorted Read Aloud audio.
+
+### Changed
+- Replaced the floating Read Aloud widget with a docked player.
+- The current sentence highlight is easier to see.
+- Rebuilt Read Aloud settings with guided model download.
+
+## [0.17.02504] - 2026-09-03
+
+### Added
+- Read Aloud now works in the editor with live sentence highlighting.
+
+## [0.17.02503] - 2026-09-03
+
+### Added
+- Added offline voice synthesis for Read Aloud.
+
+## [0.17.02502] - 2026-09-03
+
+### Added
+- Added sentence detection for Read Aloud that handles dialogue, abbreviations, and initials.
+
+## [0.17.02501] - 2026-09-03
+
+### Added
+- Added the Read Aloud plugin with eight voices and speed control, off by default.
+
+## [0.17.02500] - 2026-09-03
+
+### Added
+- Added the local voice model download for Read Aloud.
+
+## [0.17.02499] - 2026-09-02
+
+### Added
+- Added a hierarchical Story Map with overview, sequence, scene, and detail zoom levels.
+- Added Story Time and Manuscript Order views to the Story Map.
+
+### Changed
+- Moved to version 0.17.
+- Unchanged chapters are no longer reanalyzed.
+
+## [0.16.02498] - 2026-09-01
+
+### Added
+- Redesigned the bottom bar with Story Map, Threads, Review, Continuity, and Ask Draftline tabs.
+
+### Removed
+- Removed the Story Graph tab, replaced by the Story Map.
+
+## [0.16.02497] - 2026-09-01
+
+### Added
+- Added character voice profiles built from attributed dialogue.
+- Added per-character voice notes.
+
+## [0.16.02496] - 2026-09-01
+
+### Added
+- Added continuity checks for conflicting character details, locations, and dormant plot threads.
+- Added story questions about chronology, character locations, and what characters know.
+
+## [0.16.02495] - 2026-09-01
+
+### Added
+- Added plot threads based on questions, promises, goals, and threats in the story.
+- Added author checkpoints for tracking plot requirements.
+
+## [0.16.02494] - 2026-09-01
+
+### Changed
+- Improved event detection by combining nearby sentences that describe the same event.
+
+## [0.16.02493] - 2026-09-01
+
+### Added
+- Added story chronology that separates story time from manuscript order.
+- Author corrections now survive reanalysis.
+
 ## [0.16.02492] - 2026-09-01
 
 ### Added
