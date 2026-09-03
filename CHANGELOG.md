@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02531] - 2026-09-03
+
+### Changed
+- Read Aloud polish: the glow-accent toggle lives in Settings → Read Aloud → Player, the settings speed list now reaches 2.0×, and docs/frontend/READ-ALOUD.md documents the new player, voice cast, its accuracy expectations, and the v1 exclusions. readAloudStore joined the size-guardrail ratchet with its reason recorded in TECHNICAL-DEBT.md.
+
+---
+
 ## [0.17.02530] - 2026-09-03
 
 ### Added

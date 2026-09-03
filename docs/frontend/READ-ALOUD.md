@@ -56,21 +56,68 @@ transport gaps. Draftline appends a deliberate 220 ms rest after ordinary
 sentences and 280 ms after questions or exclamations. Internal clause chunks
 receive no sentence-level pause.
 
+## Player
+
+The docked player bar (bottom of the editor column) carries a speaker
+equalizer and current-speaker readout, prev/play–pause/next/stop transport, a
+click-to-seek progress bar with a diamond playhead (plus a 2px progress line
+along the bar's top edge), the chapter/sentence/time-remaining readout, the
+current voice chip, a cast-mode toggle, one-click speed cycling, and mute
+with a draggable volume slider. Closing the bar leaves a floating reopen
+button at the bottom-right of the editor. Narrow windows switch to a compact
+readout automatically.
+
+The expand chevron (or the voice chip) opens the expanded panel: a "Now
+reading" strip with the current sentence in the speaker's color, the Voice
+Cast section, and a Chapter Progress column with the larger seek bar, a
+speaker legend, and time-left / elapsed / dialogue-line stats.
+
 ## Controls
 
 | Action | Control |
 |---|---|
-| Open or close player | Bottom tools-rail Read Aloud icon |
+| Open or close player | Bottom tools-rail Read Aloud icon, or the floating reopen button |
 | Read from cursor | Play or Ctrl+Shift+L |
 | Read chapter | Read chapter |
 | Pause or resume | Player or Ctrl+Shift+L |
-| Previous/next sentence | Ctrl+Shift+, / Ctrl+Shift+. |
+| Previous/next sentence | Transport buttons or Ctrl+Shift+, / Ctrl+Shift+. |
+| Seek | Click the progress bar (bar or panel) |
 | Jump to sentence | Click prose while playback is active |
+| Speed | Speed button cycles 0.8×–2×; full list in Settings |
+| Volume / mute | Slider and mute button (volume persists; mute is per-session) |
 | Stop | Stop button, edit, chapter switch, or close player |
 
-Voice and speed persist in settings; new installations default to 1.1× speed.
-Diagnostics report native synthesis wall
-time, audio duration, real-time factor, playback handoff gaps, and process RSS.
+Voice, speed, volume, and the glow-accent toggle persist in settings; new
+installations default to 1.1× speed. Time-left/elapsed figures are exact for
+already-synthesized audio and self-calibrating estimates for the rest.
+Diagnostics report native synthesis wall time, audio duration, real-time
+factor, playback handoff gaps, and process RSS.
+
+## Voice cast
+
+Cast mode reads dialogue in per-character voices. Attribution is fully local
+and deterministic — a quote-span tracker plus dialogue-tag parsing ("…,"
+Marcus said / said Marcus / she said with pronoun resolution), action beats,
+nearby-mention lookup, two-speaker alternation, and single-speaker monologue
+continuation — over the roster of confirmed characters from the book's
+Characters data. The Voice Cast section shows each detected speaker with
+line counts; assign voices manually, per row via Cast voice, or all at once
+with Auto-cast from Characters (deterministic, gender-aware from pronoun
+evidence, never overwrites manual choices). Voice previews speak a short
+sample while playback is paused or stopped.
+
+Assignments and the cast-mode flag persist inside the .draftline file as an
+optional `read_aloud_cast.json` member keyed by lowercased character name;
+books that never cast are byte-identical to before. Changing a voice mid-play
+lets the audible sentence finish and re-synthesizes everything after it.
+
+Accuracy expectations: name-tagged dialogue attributes reliably; pronoun tags
+and untagged two-speaker exchanges usually resolve once the scene establishes
+its speakers; untagged three-plus-party dialogue lands in an explicit
+"Unknown speaker" bucket that reads in the narrator's voice. Out of scope for
+now (read as narration): em-dash dialogue and single-quote-delimited
+dialogue. A sentence containing both quote and tag is spoken whole in the
+character's voice.
 
 ## Verification
 
@@ -89,6 +136,12 @@ callback PCM, waveform integrity, and serialized sequential latency on Windows.
 - Wails bindings: wails/readaloud.go
 - Frontend transport: wails/frontend/src/services/readaloud/tts.ts
 - Queue: wails/frontend/src/services/readaloud/controller.ts
-- Audio: wails/frontend/src/services/readaloud/audio.ts
+- Audio (master gain, one-shot previews): wails/frontend/src/services/readaloud/audio.ts
+- Speaker attribution: wails/frontend/src/services/readaloud/attribution.ts
+- Cast model / auto-cast: wails/frontend/src/services/readaloud/cast.ts
+- Time estimates: wails/frontend/src/services/readaloud/estimates.ts
+- Speed constants: wails/frontend/src/services/readaloud/speeds.ts
 - State: wails/frontend/src/store/readAloudStore.ts
+- Player UI: wails/frontend/src/components/editor/readaloud/
+- Cast persistence: wails/internal/types/book.go (ReadAloudCast), wails/internal/book/{save,open}.go
 - Highlighting: wails/frontend/src/extensions/ReadAloud.ts
