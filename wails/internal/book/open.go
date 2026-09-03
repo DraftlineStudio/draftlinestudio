@@ -252,5 +252,13 @@ func Open(path string) (types.BookData, error) {
 		}
 	}
 
+	// read_aloud_cast.json (optional)
+	if castData, err := ReadZipEntry(r, "read_aloud_cast.json"); err == nil {
+		var cast types.ReadAloudCast
+		if json.Unmarshal(castData, &cast) == nil {
+			book.ReadAloudCast = cast
+		}
+	}
+
 	return book, nil
 }

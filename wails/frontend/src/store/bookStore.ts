@@ -2,7 +2,7 @@
 // Delegates to specialized stores: editorStore, storyBibleStore
 
 import { create } from 'zustand'
-import type { BookData, ChapterItem, Character, EvidenceRecord, Metadata, Section, WritingStyleOptions } from '../types/draftline'
+import type { BookData, ChapterItem, Character, EvidenceRecord, Metadata, ReadAloudCast, Section, WritingStyleOptions } from '../types/draftline'
 import { DEFAULT_STYLE_OPTIONS } from '../types/draftline'
 import type { ParagraphDiff, DiffChange } from '../utils/diff'
 import { countBookWords } from '../utils/textUtils'
@@ -244,6 +244,8 @@ interface BookStore {
   moveChapter: (section: Section, from: number, to: number) => void
   updateMetadata: (metadata: Partial<Metadata>) => void
   updateCopyright: (html: string) => void
+  // Read Aloud voice casting persists with the book (read_aloud_cast.json).
+  updateReadAloudCast: (cast: ReadAloudCast) => void
 
   // Story Bible (delegates to storyBibleStore)
   addCharacter: (char: Character) => void
@@ -704,6 +706,13 @@ export const useBookStore = create<BookStore>((set, get) => ({
     const { book } = get()
     if (!book) return
     set(state => ({ book: { ...book, copyright: html }, isDirty: true, analysisRevision: state.analysisRevision + 1 }))
+    scheduleAutoSave()
+  },
+
+  updateReadAloudCast: (cast) => {
+    const { book } = get()
+    if (!book) return
+    set({ book: { ...book, read_aloud_cast: cast }, isDirty: true })
     scheduleAutoSave()
   },
 

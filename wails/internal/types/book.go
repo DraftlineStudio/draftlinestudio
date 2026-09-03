@@ -71,6 +71,16 @@ type WritingStyleOptions struct {
 	Pacing          int `json:"pacing"`
 }
 
+// ReadAloudCast persists per-book Read Aloud voice casting: whether cast
+// mode is on and which TTS voice each character speaks in. Keys of Voices
+// are lowercased canonical character names (entity IDs churn across
+// re-indexing; names survive it). Stored as an optional read_aloud_cast.json
+// archive member — absent for books that never used cast mode.
+type ReadAloudCast struct {
+	CastMode bool              `json:"cast_mode"`
+	Voices   map[string]string `json:"voices,omitempty"`
+}
+
 // BookData is the main container for all book content.
 type BookData struct {
 	Version             string              `json:"version"`
@@ -88,6 +98,7 @@ type BookData struct {
 	BeatSheet           BeatSheet           `json:"beat_sheet,omitempty"`
 	ForeshadowingLedger ForeshadowingLedger `json:"foreshadowing,omitempty"`
 	KnowledgeMatrix     KnowledgeMatrix     `json:"knowledge_matrix,omitempty"`
+	ReadAloudCast       ReadAloudCast       `json:"read_aloud_cast,omitempty"`
 	// Analysis contains entity resolution and other analysis results.
 	// This is a future-proof container that can be extended without schema changes.
 	Analysis AnalysisData `json:"analysis,omitempty"`
