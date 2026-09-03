@@ -15,10 +15,9 @@ type Artifact struct {
 const GroupNative = "native"
 
 const (
-	sherpaVersion      = "v1.13.7"
-	nativeRevision     = "7e9b67b79bfdcbd2b4bc144370345fcceac3cb0c"
-	nativeInt8Revision = "5d6cbe65546edb3ebae8bde976c8ad3438b3f34b"
-	espeakBundleURL    = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/espeak-ng-data.tar.bz2"
+	sherpaVersion   = "v1.13.7"
+	nativeRevision  = "7e9b67b79bfdcbd2b4bc144370345fcceac3cb0c"
+	espeakBundleURL = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/espeak-ng-data.tar.bz2"
 )
 
 func nativeModel(file, sha string, bytes int64) Artifact {
@@ -29,12 +28,12 @@ func nativeModel(file, sha string, bytes int64) Artifact {
 	}
 }
 
-func nativeInt8Model() Artifact {
+func nativeVoiceModel() Artifact {
 	return Artifact{
-		Name:   "native/model/model.int8.onnx",
-		URL:    "https://huggingface.co/csukuangfj/kokoro-int8-multi-lang-v1_0/resolve/" + nativeInt8Revision + "/model.int8.onnx",
-		SHA256: "77ef4f0513401d508ed7831f8504c7042df58bc75e004ec9666894590f999b1d",
-		Bytes:  114298054, Group: GroupNative,
+		Name:   "native/model/model.onnx",
+		URL:    "https://huggingface.co/csukuangfj/kokoro-multi-lang-v1_0/resolve/" + nativeRevision + "/model.onnx",
+		SHA256: "c436dc6a842b62aba06af67e40bafcfb9c60ac3af895358f1974ad9a7f7c026b",
+		Bytes:  325630829, Group: GroupNative,
 	}
 }
 
@@ -86,7 +85,7 @@ func Manifest() []Artifact {
 		nativeModel("tokens.txt", "6ebb6bb288f20f3ae8d004d3c2ca27697da27c037d75e81a60e2a6a663f95425", 687),
 		nativeModel("lexicon-us-en.txt", "7daaab53a181be9885b853a8582bf1838186317e5dadacbcef9c426d6fa0da14", 5956885),
 		{Name: "native/model/espeak-ng-data.tar.bz2", URL: espeakBundleURL, SHA256: "4135ccf82e1f40613491c0874d4945ae9e9c7840933d8e25a6f9e003d9ebf533", Bytes: 7252012, Group: GroupNative},
-		nativeInt8Model(),
+		nativeVoiceModel(),
 	}
 	return append(manifest, nativeRuntimeManifest()...)
 }

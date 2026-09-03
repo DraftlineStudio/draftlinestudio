@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02521] - 2026-09-03
+
+### Fixed
+- Removed a metallic whine from Read Aloud audio.
+- Fixed gaps between sentences in Read Aloud.
+
 ## [0.17.02520] - 2026-09-03
 
 ### Changed
