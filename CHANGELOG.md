@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02501] - 2026-09-03
+
+### Added
+- Added the Read Aloud plugin with eight voices and speed control, off by default.
+
 ## [0.17.02500] - 2026-09-03
 
 ### Added
