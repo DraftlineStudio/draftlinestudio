@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02500] - 2026-09-03
+
+### Added
+- Added the local voice model download for Read Aloud.
+
 ## [0.17.02499] - 2026-09-02
 
 ### Added
