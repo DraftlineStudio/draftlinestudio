@@ -25,9 +25,14 @@ interface PendingRequest {
   reject: (err: Error) => void
 }
 
+// Counts worker constructions across the session. The diagnostics surface it
+// so "the pipeline is being rebuilt per play" is immediately visible.
+let workerStarts = 0
+
 export class WorkerSynth implements SynthPort {
   private worker: Worker | null = null
   private ready: Promise<void> | null = null
+  private becameReady = false
   private pending = new Map<number, PendingRequest>()
 
   constructor(
@@ -38,9 +43,14 @@ export class WorkerSynth implements SynthPort {
   ) {}
 
   private ensureReady(): Promise<void> {
+    // Single construction guard: concurrent callers (and every later
+    // sentence) await this same promise — the pipeline is built exactly once
+    // per WorkerSynth lifetime, torn down only by shutdown().
     if (this.ready) return this.ready
     const worker = new Worker(new URL('../../workers/readAloud.worker.ts', import.meta.url), { type: 'module' })
     this.worker = worker
+    this.becameReady = false
+    this.onDiagnostic?.(`worker start #${++workerStarts} (a growing count here means the pipeline is being rebuilt — it should stay at 1 per session)`)
     this.ready = new Promise<void>((resolve, reject) => {
       worker.onmessage = (event: MessageEvent) => {
         const msg = event.data
@@ -52,6 +62,7 @@ export class WorkerSynth implements SynthPort {
             this.onLoadProgress?.({ file: msg.file, loaded: msg.loaded, total: msg.total })
             break
           case 'ready':
+            this.becameReady = true
             this.onDevice?.(msg.device)
             resolve()
             break
@@ -70,18 +81,28 @@ export class WorkerSynth implements SynthPort {
                 this.pending.delete(msg.id)
                 request.reject(new Error(msg.message))
               }
-            } else {
+            } else if (!this.becameReady) {
               // Init-level failure: the model never loaded.
               reject(new Error(msg.message))
               this.shutdown()
+            } else {
+              // Post-ready failure: record it, keep the pipeline. Tearing
+              // down here caused the rebuild-per-play loop.
+              this.onDiagnostic?.(`worker reported: ${msg.message}`)
             }
             break
           }
         }
       }
-      worker.onerror = (event) => {
-        reject(new Error(event.message || 'Read Aloud worker failed'))
-        this.shutdown()
+      worker.onerror = (event: ErrorEvent) => {
+        const detail = `${event.message || 'unknown error'} (${event.filename || '?'}:${event.lineno ?? '?'}:${event.colno ?? '?'})`
+        this.onDiagnostic?.(`worker error event: ${detail}`)
+        if (!this.becameReady) {
+          reject(new Error(`Read Aloud worker failed: ${detail}`))
+          this.shutdown()
+        }
+        // After ready: nested pthread-worker hiccups surface here; the
+        // pipeline itself is intact, so never tear it down for these.
       }
     })
 

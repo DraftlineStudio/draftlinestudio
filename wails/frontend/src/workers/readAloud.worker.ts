@@ -36,7 +36,8 @@ interface KokoroModel {
 
 let tts: KokoroModel | null = null
 let initPromise: Promise<void> | null = null
-let timedSentences = 0
+let sentenceCount = 0
+let phonemizeTimed = false
 const cancelled = new Set<number>()
 // Kokoro inference is not reentrant; requests run strictly in sequence.
 let queue: Promise<void> = Promise.resolve()
@@ -51,6 +52,17 @@ function diag(line: string) {
   console.log('[readaloud]', line)
   post({ type: 'diag', line })
 }
+
+// Surface uncaught failures — including errors bubbling up from the nested
+// pthread workers the ONNX runtime spawns — with real detail instead of the
+// useless "[object Event]" a bare toString produces.
+self.addEventListener('error', (event: ErrorEvent) => {
+  diag(`worker error: ${event.message || String(event.error)} (${event.filename || '?'}:${event.lineno ?? '?'}:${event.colno ?? '?'})`)
+})
+self.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
+  const r = event.reason
+  diag(`worker unhandled rejection: ${r instanceof Error ? `${r.message}\n${r.stack ?? ''}` : String(r)}`)
+})
 
 function redirectVoiceFetches(base: string) {
   const nativeFetch = self.fetch.bind(self)
@@ -141,11 +153,27 @@ async function loadModel(base: string, device: InitMessage['device'], threads: I
     }
   }
 
-  const started = performance.now()
-  tts = (await KokoroTTS.from_pretrained(MODEL_ID, {
-    dtype, device: 'wasm', progress_callback: progress,
-  })) as unknown as KokoroModel
-  diag(`model loaded in ${Math.round(performance.now() - started)} ms (wasm q8)`)
+  const loadWasm = async () => {
+    const started = performance.now()
+    tts = (await KokoroTTS.from_pretrained(MODEL_ID, {
+      dtype, device: 'wasm', progress_callback: progress,
+    })) as unknown as KokoroModel
+    diag(`pipeline constructed in ${Math.round(performance.now() - started)} ms (wasm q8, threads ${wasm?.numThreads ?? '?'}) — this line must appear once per session`)
+  }
+  try {
+    await loadWasm()
+  } catch (e) {
+    // The threaded runtime can fail where single-threaded works (nested
+    // pthread workers are pickier about headers/environment). Retry once
+    // before giving up so a threading problem degrades, not breaks.
+    if (wasm && wasm.numThreads !== 1) {
+      diag(`threaded wasm init failed (${e instanceof Error ? e.message : String(e)}) — retrying with numThreads 1`)
+      wasm.numThreads = 1
+      await loadWasm()
+    } else {
+      throw e
+    }
+  }
   post({ type: 'ready', device: 'wasm' })
 }
 
@@ -157,18 +185,31 @@ function handleSynthesize(msg: SynthesizeMessage) {
       return
     }
     try {
+      // One-off phonemization timing (kokoro re-phonemizes inside
+      // generate(); a single extra call isolates that cost honestly).
+      if (!phonemizeTimed) {
+        phonemizeTimed = true
+        try {
+          const { phonemize } = await import('phonemizer')
+          const t0 = performance.now()
+          await phonemize(msg.text, 'en-us')
+          diag(`phonemization: ${Math.round(performance.now() - t0)} ms for ${msg.text.length} chars`)
+        } catch (e) {
+          diag(`phonemization timing unavailable: ${e instanceof Error ? e.message : String(e)}`)
+        }
+      }
       const started = performance.now()
       const audio = await tts.generate(msg.text, { voice: msg.voice, speed: msg.speed })
-      // Time the first few sentences. Exactly one "model loaded" line ever
+      // Per-sentence timing. Exactly one "pipeline constructed" line ever
       // appearing before these proves the model is held across sentences,
-      // not reloaded per play. The audio-seconds ratio shows real-time
-      // headroom (>1× means synthesis outruns playback).
-      if (timedSentences < 3) {
-        timedSentences++
+      // not rebuilt per play. RTF = generate seconds / audio seconds;
+      // < 0.5 means synthesis runs at least twice as fast as playback.
+      {
+        sentenceCount++
         const ms = performance.now() - started
         const audioSec = audio.audio.length / audio.sampling_rate
-        const ratio = ms > 0 ? (audioSec * 1000) / ms : 0
-        diag(`sentence ${timedSentences}: ${Math.round(ms)} ms for ${msg.text.length} chars → ${audioSec.toFixed(1)}s audio (${ratio.toFixed(1)}× real-time)`)
+        const rtf = audioSec > 0 ? ms / 1000 / audioSec : 0
+        diag(`sentence ${sentenceCount}: generate ${Math.round(ms)} ms, ${msg.text.length} chars → ${audioSec.toFixed(1)}s audio, RTF ${rtf.toFixed(2)}`)
       }
       if (cancelled.delete(msg.id)) return
       const samples = audio.audio

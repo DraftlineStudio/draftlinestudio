@@ -50,6 +50,24 @@ export function collectSentences(doc: ProseMirrorNode, rangeFrom?: number, range
   return sentences
 }
 
+// splitLeadClause splits a sentence at its first clause break (comma, dash,
+// semicolon, colon) so playback can start on a short chunk instead of
+// waiting for a long sentence to synthesize whole. Character offsets in the
+// text map 1:1 onto document positions, so both halves keep exact highlight
+// ranges. Returns the sentence unsplit when there is no break or either half
+// would be too short to be worth speaking separately.
+export function splitLeadClause(sentence: DocSentence): DocSentence[] {
+  const match = /[,;:—–]\s+/.exec(sentence.text)
+  if (!match) return [sentence]
+  const cut = match.index + 1 // include the punctuation in the first chunk
+  const restStart = match.index + match[0].length
+  if (cut < 12 || sentence.text.length - restStart < 12) return [sentence]
+  return [
+    { from: sentence.from, to: sentence.from + cut, text: sentence.text.slice(0, cut) },
+    { from: sentence.from + restStart, to: sentence.to, text: sentence.text.slice(restStart) },
+  ]
+}
+
 // sentenceIndexAt returns the index of the sentence containing pos, or the
 // nearest following sentence; -1 when pos is after the last sentence.
 export function sentenceIndexAt(sentences: DocSentence[], pos: number): number {

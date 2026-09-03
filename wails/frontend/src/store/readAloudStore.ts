@@ -12,7 +12,7 @@ import { EventsOn } from '../../wailsjs/runtime/runtime'
 import { ReadAloudController, type ControllerStatus } from '../services/readaloud/controller'
 import { WorkerSynth, type ModelLoadProgress } from '../services/readaloud/tts'
 import { WebAudioPort } from '../services/readaloud/audio'
-import { collectSentences, type DocSentence } from '../services/readaloud/docSentences'
+import { collectSentences, splitLeadClause, type DocSentence } from '../services/readaloud/docSentences'
 import { updateReadAloud, clearReadAloud, setReadAloudHandlers } from '../extensions/ReadAloud'
 import { useAppStore } from './appStore'
 import { useEditorStore } from './editorStore'
@@ -140,7 +140,7 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
       },
       progress => set({ modelLoading: progress }),
       device => set({ device, modelLoading: null }),
-      line => set(s => ({ diagnostics: [...s.diagnostics.slice(-19), line] })),
+      line => set(s => ({ diagnostics: [...s.diagnostics.slice(-59), line] })),
     )
     audio = new WebAudioPort()
     controller = new ReadAloudController(synth, audio, {
@@ -239,16 +239,19 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
       await get().refreshModelStatus()
       if (get().modelState !== 'ready') return
       set({ benchmarking: true })
-      const pushDiag = (line: string) => set(s => ({ diagnostics: [...s.diagnostics.slice(-19), line] }))
+      const pushDiag = (line: string) => set(s => ({ diagnostics: [...s.diagnostics.slice(-59), line] }))
       const settings = useAppStore.getState().settings
       const benchText = 'The quick brown fox jumps over the lazy dog while the church bells ring out across the quiet harbor town.'
 
       // Loads a fresh worker for the device, warms it with one sentence
       // (absorbing model load), then times a steady-state sentence.
-      const timeDevice = async (device: 'wasm' | 'webgpu'): Promise<{ ms: number; resolved: string } | null> => {
+      const timeDevice = async (
+        device: 'wasm' | 'webgpu',
+        threads: 'single' | 'auto',
+      ): Promise<{ ms: number; resolved: string } | null> => {
         let resolved = ''
         const bench = new WorkerSynth(
-          () => ({ device, threads: settings.read_aloud_threads }),
+          () => ({ device, threads }),
           undefined,
           d => { resolved = d },
           pushDiag,
@@ -259,7 +262,7 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
           await bench.synthesize(2, benchText, settings.read_aloud_voice, 1.0)
           return { ms: performance.now() - started, resolved }
         } catch (e) {
-          pushDiag(`benchmark ${device} failed: ${e instanceof Error ? e.message : String(e)}`)
+          pushDiag(`benchmark ${device} (threads ${threads}) failed: ${e instanceof Error ? e.message : String(e)}`)
           return null
         } finally {
           bench.shutdown()
@@ -267,12 +270,18 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
       }
 
       try {
-        pushDiag('benchmark: timing CPU (wasm q8)…')
-        const wasmResult = await timeDevice('wasm')
+        pushDiag(`benchmark: timing CPU (wasm q8, threads ${settings.read_aloud_threads})…`)
+        let wasmResult = await timeDevice('wasm', settings.read_aloud_threads)
+        // A threading failure must not condemn the whole wasm backend:
+        // retry single-threaded before declaring it broken.
+        if (!wasmResult && settings.read_aloud_threads !== 'single') {
+          pushDiag('benchmark: retrying CPU single-threaded…')
+          wasmResult = await timeDevice('wasm', 'single')
+        }
         let gpuResult: { ms: number; resolved: string } | null = null
         if (get().gpuInstalled) {
           pushDiag('benchmark: timing GPU (webgpu fp32)…')
-          gpuResult = await timeDevice('webgpu')
+          gpuResult = await timeDevice('webgpu', settings.read_aloud_threads)
           if (gpuResult && gpuResult.resolved !== 'webgpu') {
             pushDiag('benchmark: webgpu fell back to wasm — GPU not usable on this machine')
             gpuResult = null
@@ -300,17 +309,24 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
 
     play: (sentences, startIndex) => {
       if (!sentences.length) return
+      const start = Math.max(0, Math.min(startIndex, sentences.length - 1))
+      // Fast start: the first spoken sentence begins at its first clause.
+      const queue = [
+        ...sentences.slice(0, start),
+        ...splitLeadClause(sentences[start]),
+        ...sentences.slice(start + 1),
+      ]
       const proceed = () => {
         const settings = useAppStore.getState().settings
-        set({ sentences, playbackError: null, playerVisible: true, currentIndex: -1 })
+        set({ sentences: queue, playbackError: null, playerVisible: true, currentIndex: -1 })
         withEditorView(view => updateReadAloud(view, {
           active: true,
-          sentences: sentences.map(s => ({ from: s.from, to: s.to })),
+          sentences: queue.map(s => ({ from: s.from, to: s.to })),
           activeIndex: -1,
         }))
         ensureController().start(
-          sentences.map(s => s.text),
-          Math.max(0, Math.min(startIndex, sentences.length - 1)),
+          queue.map(s => s.text),
+          start,
           settings.read_aloud_voice,
           settings.read_aloud_speed,
         )

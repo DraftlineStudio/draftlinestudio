@@ -5,8 +5,10 @@
 // AudioContext (vitest runs in a plain node environment).
 //
 // Pipeline invariants:
-// - Lookahead is exactly one sentence: while N plays, N+1 synthesizes and is
-//   scheduled back-to-back for gapless handoff.
+// - Lookahead is LOOKAHEAD sentences: while N plays, N+1 and N+2 synthesize
+//   (the worker serializes them), and N+1 is scheduled back-to-back for
+//   gapless handoff. Generation stays strictly per-sentence — never the
+//   whole selection up front.
 // - Hard resets (start/stop/skip/jump) bump a generation counter; every async
 //   completion checks it, so a stale chunk can never play.
 // - Voice/speed changes keep the sentence that is already audible, discard
@@ -37,6 +39,9 @@ export interface AudioPort {
 
 export type ControllerStatus = 'idle' | 'starting' | 'playing' | 'paused'
 
+// How many sentences ahead of the audible one may be synthesizing/cached.
+const LOOKAHEAD = 2
+
 export interface ControllerEvents {
   onStatus(status: ControllerStatus): void
   onSentenceStart(index: number): void
@@ -54,7 +59,9 @@ export class ReadAloudController {
 
   private playingIndex: number | null = null
   private scheduledNext: { index: number; handle: PlaybackHandle } | null = null
-  private pendingSynth: { index: number; id: number } | null = null
+  // Outstanding synthesis requests, index → request id (≤ LOOKAHEAD + the
+  // immediately-needed sentence).
+  private pendingSynth = new Map<number, number>()
   // The index to make audible as soon as its chunk exists (initial start,
   // post-skip target, or a gap where synthesis lagged behind playback).
   private waitingToPlay: number | null = null
@@ -156,10 +163,10 @@ export class ReadAloudController {
   }
 
   private cancelPending(): void {
-    if (this.pendingSynth) {
-      this.synth.cancel(this.pendingSynth.id)
-      this.pendingSynth = null
+    for (const [, id] of this.pendingSynth) {
+      this.synth.cancel(id)
     }
+    this.pendingSynth.clear()
   }
 
   private finish(): void {
@@ -186,17 +193,16 @@ export class ReadAloudController {
 
   private request(index: number): void {
     if (index >= this.sentences.length || this.cache.has(index)) return
-    if (this.pendingSynth?.index === index) return
-    this.cancelPending()
+    if (this.pendingSynth.has(index)) return
     const generation = this.generation
     const voice = this.voice
     const speed = this.speed
     const id = this.nextRequestId++
-    this.pendingSynth = { index, id }
+    this.pendingSynth.set(index, id)
     this.synth.synthesize(id, this.sentences[index], voice, speed).then(
       chunk => {
-        if (generation !== this.generation || this.pendingSynth?.id !== id) return
-        this.pendingSynth = null
+        if (generation !== this.generation || this.pendingSynth.get(index) !== id) return
+        this.pendingSynth.delete(index)
         // A voice/speed change while synthesizing makes this chunk stale.
         if (voice !== this.voice || speed !== this.speed) {
           this.request(index)
@@ -206,8 +212,8 @@ export class ReadAloudController {
         this.deliver(index, chunk)
       },
       err => {
-        if (generation !== this.generation || this.pendingSynth?.id !== id) return
-        this.pendingSynth = null
+        if (generation !== this.generation || this.pendingSynth.get(index) !== id) return
+        this.pendingSynth.delete(index)
         this.fail(err instanceof Error ? err.message : String(err))
       },
     )
@@ -242,15 +248,19 @@ export class ReadAloudController {
     this.primeNext(index)
   }
 
-  // Gapless lookahead: schedule the next chunk if cached, else synthesize it.
+  // Gapless lookahead: schedule/synthesize the next LOOKAHEAD sentences.
+  // The immediate next is delivered (scheduled back-to-back when possible);
+  // the ones after only synthesize into the cache for their turn.
   private primeNext(index: number): void {
-    const next = index + 1
-    if (next >= this.sentences.length) return
-    const cached = this.cache.get(next)
-    if (cached) {
-      this.deliver(next, cached)
-    } else {
-      this.request(next)
+    for (let ahead = 1; ahead <= LOOKAHEAD; ahead++) {
+      const next = index + ahead
+      if (next >= this.sentences.length) return
+      const cached = this.cache.get(next)
+      if (cached) {
+        this.deliver(next, cached)
+      } else {
+        this.request(next)
+      }
     }
   }
 

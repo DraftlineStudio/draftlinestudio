@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { Schema } from '@tiptap/pm/model'
 import { segmentText } from './segmentation'
-import { collectSentences, sentenceIndexAt } from './docSentences'
+import { collectSentences, sentenceIndexAt, splitLeadClause } from './docSentences'
 
 function sentencesOf(text: string): string[] {
   return segmentText(text).map(s => text.slice(s.start, s.end).trim())
@@ -203,6 +203,25 @@ describe('collectSentences', () => {
     // Range covering only the first sentence.
     const firstOnly = collectSentences(doc, undefined, all[0].to)
     expect(firstOnly.map(s => s.text)).toEqual(['First sentence here.'])
+  })
+
+  it('splits a long lead sentence at its first clause with exact positions', () => {
+    const text = 'When the rain finally stopped, the whole town came out to see the damage.'
+    const sentence = { from: 100, to: 100 + text.length, text }
+    const parts = splitLeadClause(sentence)
+    expect(parts).toHaveLength(2)
+    expect(parts[0].text).toBe('When the rain finally stopped,')
+    expect(parts[1].text).toBe('the whole town came out to see the damage.')
+    expect(parts[0].from).toBe(100)
+    expect(parts[0].to).toBe(100 + 'When the rain finally stopped,'.length)
+    expect(parts[1].to).toBe(sentence.to)
+    // Positions still index the same characters.
+    expect(text.slice(parts[1].from - 100, parts[1].to - 100)).toBe(parts[1].text)
+  })
+
+  it('leaves short or unbreakable sentences whole', () => {
+    expect(splitLeadClause({ from: 0, to: 9, text: 'Run, now!' })).toHaveLength(1)
+    expect(splitLeadClause({ from: 0, to: 26, text: 'No clause breaks in here..' })).toHaveLength(1)
   })
 
   it('finds the sentence containing a position', () => {
