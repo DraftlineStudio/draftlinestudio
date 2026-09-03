@@ -262,6 +262,127 @@ func TestHandlerServesAndRefuses(t *testing.T) {
 	}
 }
 
+func TestVerifyStates(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "kokoro")
+
+	// Empty dir: not installed, everything missing.
+	result := Verify(dir)
+	if result.Installed || result.Verified || len(result.Missing) != len(GroupManifest(GroupCore)) {
+		t.Fatalf("empty dir: %+v", result)
+	}
+
+	// A core file with the pinned size but wrong content: corrupt, not verified.
+	first := GroupManifest(GroupCore)[0]
+	path := filepath.Join(dir, filepath.FromSlash(first.Name))
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, make([]byte, first.Bytes), 0644); err != nil {
+		t.Fatal(err)
+	}
+	result = Verify(dir)
+	if !result.Installed || result.Verified {
+		t.Errorf("corrupt install must be installed-but-unverified: %+v", result)
+	}
+	if len(result.Corrupt) != 1 || result.Corrupt[0] != first.Name {
+		t.Errorf("expected exactly %s corrupt, got %v", first.Name, result.Corrupt)
+	}
+	// Size mismatch also reads as corrupt.
+	if err := os.WriteFile(path, make([]byte, first.Bytes+5), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if result = Verify(dir); len(result.Corrupt) != 1 {
+		t.Errorf("size mismatch must be corrupt: %+v", result)
+	}
+}
+
+func TestInstalledManifestRoundTrip(t *testing.T) {
+	// Install a fake bundle, then confirm the real manifest writer records
+	// only files that hash-match the compiled pins (none here) while the
+	// file itself is valid JSON with provenance fields.
+	dir := t.TempDir()
+	if err := WriteInstalledManifest(dir); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+	manifest := readInstalledManifest(dir)
+	if manifest == nil {
+		t.Fatal("manifest unreadable after write")
+	}
+	if manifest.Version != bundleVersion || manifest.ModelID == "" || manifest.InstalledAt == "" {
+		t.Errorf("manifest metadata incomplete: %+v", manifest)
+	}
+	if len(manifest.Files) != 0 {
+		t.Errorf("no pinned files exist in a temp dir; recorded %d", len(manifest.Files))
+	}
+}
+
+func TestInstallWritesManifest(t *testing.T) {
+	files := map[string][]byte{"hf/config.json": []byte(`{"ok":true}`)}
+	srv := serveFiles(t, files)
+	dir := t.TempDir()
+	if err := installManifest(context.Background(), dir, []Artifact{
+		fakeArtifact("hf/config.json", files["hf/config.json"], srv.URL),
+	}, nil); err != nil {
+		t.Fatalf("install: %v", err)
+	}
+	if readInstalledManifest(dir) == nil {
+		t.Error("successful install must leave a manifest.json")
+	}
+}
+
+func TestLoopbackServer(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "ort"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "ort", "runtime.wasm"), []byte("\x00asm"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	base, err := StartServer(dir)
+	if err != nil {
+		t.Fatalf("start server: %v", err)
+	}
+	if !strings.HasPrefix(base, "http://127.0.0.1:") {
+		t.Fatalf("server must bind loopback, got %s", base)
+	}
+
+	resp, err := http.Get(base + HandlerPrefix + "ort/runtime.wasm")
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d", resp.StatusCode)
+	}
+	for header, want := range map[string]string{
+		"Access-Control-Allow-Origin":  "*",
+		"Cross-Origin-Resource-Policy": "cross-origin",
+		"Cross-Origin-Embedder-Policy": "require-corp",
+		"Content-Type":                 "application/wasm",
+	} {
+		if got := resp.Header.Get(header); got != want {
+			t.Errorf("%s = %q, want %q", header, got, want)
+		}
+	}
+
+	if resp, err := http.Get(base + HandlerPrefix + "../secret.txt"); err == nil {
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusNotFound {
+			t.Errorf("traversal: got %d, want 404", resp.StatusCode)
+		}
+	}
+	preflight, err := http.NewRequest(http.MethodOptions, base+HandlerPrefix+"ort/runtime.wasm", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp, err := http.DefaultClient.Do(preflight); err == nil {
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusNoContent {
+			t.Errorf("preflight: got %d, want 204", resp.StatusCode)
+		}
+	}
+}
+
 func TestManifestPinsAreWellFormed(t *testing.T) {
 	seen := map[string]bool{}
 	for _, a := range Manifest() {

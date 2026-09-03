@@ -28,7 +28,11 @@ export default function ReadAloudSection({
   const gpuInstalled = useReadAloudStore(s => s.gpuInstalled)
   const gpuBytesTotal = useReadAloudStore(s => s.gpuBytesTotal)
   const benchmarking = useReadAloudStore(s => s.benchmarking)
-  const refreshModelStatus = useReadAloudStore(s => s.refreshModelStatus)
+  const verified = useReadAloudStore(s => s.verified)
+  const verifying = useReadAloudStore(s => s.verifying)
+  const installInfo = useReadAloudStore(s => s.installInfo)
+  const corruptFiles = useReadAloudStore(s => s.corruptFiles)
+  const verifyModel = useReadAloudStore(s => s.verifyModel)
   const downloadModel = useReadAloudStore(s => s.downloadModel)
   const downloadGPUModel = useReadAloudStore(s => s.downloadGPUModel)
   const cancelDownload = useReadAloudStore(s => s.cancelDownload)
@@ -38,8 +42,10 @@ export default function ReadAloudSection({
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    void refreshModelStatus()
-  }, [refreshModelStatus])
+    // Full-hash audit whenever the section opens; drives the three states
+    // (Not installed / Installed verified / Corrupt).
+    void verifyModel()
+  }, [verifyModel])
 
   const pct = download && download.overall_total > 0
     ? Math.min(100, Math.round((download.overall_received / download.overall_total) * 100))
@@ -53,16 +59,21 @@ export default function ReadAloudSection({
       <div className="settings-cc-card">
         <div className="settings-cc-header">
           <span className="settings-cc-title">Kokoro voices</span>
-          {modelState === 'unknown' && <span className="settings-cc-badge checking">Checking…</span>}
-          {modelState === 'ready' && <span className="settings-cc-badge ok">✓ Installed — {sizeLabel}</span>}
-          {modelState === 'missing' && <span className="settings-cc-badge error">Not installed</span>}
-          {modelState === 'error' && <span className="settings-cc-badge error">Error</span>}
+          {(modelState === 'unknown' || verifying) && <span className="settings-cc-badge checking">{verifying ? 'Verifying…' : 'Checking…'}</span>}
+          {modelState === 'ready' && !verifying && (
+            <span className="settings-cc-badge ok">
+              ✓ Installed{installInfo ? ` v${installInfo.version}` : ''} — {installInfo ? formatMB(installInfo.bytes) : sizeLabel}{verified ? ', verified' : ''}
+            </span>
+          )}
+          {modelState === 'corrupt' && !verifying && <span className="settings-cc-badge error">Corrupt — {corruptFiles.length} file{corruptFiles.length === 1 ? '' : 's'}</span>}
+          {modelState === 'missing' && !verifying && <span className="settings-cc-badge error">Not installed</span>}
+          {modelState === 'error' && !verifying && <span className="settings-cc-badge error">Error</span>}
           {modelState === 'downloading' && <span className="settings-cc-badge checking">Downloading… {pct}%</span>}
           <button
             className="settings-cc-recheck"
-            onClick={() => void refreshModelStatus()}
-            title="Re-check"
-            disabled={modelState === 'downloading'}
+            onClick={() => void verifyModel()}
+            title="Verify all files (sha256)"
+            disabled={modelState === 'downloading' || verifying}
           >
             <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               <path d="M10.5 2A5 5 0 1 0 11 6.5"/><polyline points="10.5 1 10.5 3.5 8 3.5"/>
@@ -83,6 +94,18 @@ export default function ReadAloudSection({
             <p className="settings-hint" style={{ marginTop: 8, marginBottom: 0 }}>
               The download can be cancelled and resumes where it left off.
             </p>
+          </div>
+        )}
+
+        {modelState === 'corrupt' && (
+          <div className="settings-cc-setup">
+            <p className="settings-hint read-aloud-error" style={{ marginTop: 4, marginBottom: 8 }}>
+              Verification failed: {corruptFiles.slice(0, 3).join(', ')}{corruptFiles.length > 3 ? ` +${corruptFiles.length - 3} more` : ''}.
+              Playback is disabled until the install verifies.
+            </p>
+            <button className="dialog-btn primary" onClick={downloadModel}>
+              Repair — re-download failed files
+            </button>
           </div>
         )}
 

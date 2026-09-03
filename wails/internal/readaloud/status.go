@@ -48,11 +48,19 @@ func Check(dir string) Status {
 	return status
 }
 
-// Remove deletes the downloaded bundle. As a guard against a misconstructed
-// path ever reaching RemoveAll, it insists on the expected directory name.
+// Remove deletes the downloaded bundle — every manifest file, the manifest
+// itself, and the directory — and confirms nothing is left behind. As a
+// guard against a misconstructed path ever reaching RemoveAll, it insists on
+// the expected directory name.
 func Remove(dir string) error {
 	if filepath.Base(dir) != "kokoro" {
 		return fmt.Errorf("refusing to remove unexpected directory %q", dir)
 	}
-	return os.RemoveAll(dir)
+	if err := os.RemoveAll(dir); err != nil {
+		return err
+	}
+	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+		return fmt.Errorf("model directory still present after removal: %s", dir)
+	}
+	return nil
 }

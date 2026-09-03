@@ -7,7 +7,7 @@
 // prepared sentence lists.
 
 import { create } from 'zustand'
-import { ReadAloudStatus, DownloadReadAloudModel, DownloadReadAloudGPUModel, CancelReadAloudDownload, RemoveReadAloudModel } from '../../wailsjs/go/main/App'
+import { ReadAloudStatus, DownloadReadAloudModel, DownloadReadAloudGPUModel, CancelReadAloudDownload, RemoveReadAloudModel, VerifyReadAloudModel, ReadAloudServerURL } from '../../wailsjs/go/main/App'
 import { EventsOn } from '../../wailsjs/runtime/runtime'
 import { ReadAloudController, type ControllerStatus } from '../services/readaloud/controller'
 import { WorkerSynth, type ModelLoadProgress } from '../services/readaloud/tts'
@@ -18,7 +18,7 @@ import { useAppStore } from './appStore'
 import { useEditorStore } from './editorStore'
 import type { Editor } from '@tiptap/react'
 
-export type ReadAloudModelState = 'unknown' | 'missing' | 'downloading' | 'ready' | 'error'
+export type ReadAloudModelState = 'unknown' | 'missing' | 'downloading' | 'ready' | 'corrupt' | 'error'
 
 export interface ReadAloudDownloadProgress {
   file: string
@@ -36,6 +36,12 @@ interface ReadAloudStore {
   gpuInstalled: boolean
   gpuBytesTotal: number
   benchmarking: boolean
+  // Full-hash verification state for this session. Playback refuses to load
+  // the model until one verify pass has succeeded.
+  verified: boolean
+  verifying: boolean
+  installInfo: { version: string; installedAt: string; bytes: number } | null
+  corruptFiles: string[]
 
   status: ControllerStatus
   sentences: DocSentence[]
@@ -48,6 +54,9 @@ interface ReadAloudStore {
   diagnostics: string[]
 
   refreshModelStatus: () => Promise<void>
+  // Full sha256 audit against the pinned manifest; run on plugin enable and
+  // before first playback. Returns whether the core bundle verified.
+  verifyModel: () => Promise<boolean>
   downloadModel: () => void
   downloadGPUModel: () => void
   cancelDownload: () => void
@@ -122,10 +131,17 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
       set({ modelState: 'downloading', download: p })
     })
     EventsOn('readaloud:done', (result: { ok: boolean; error?: string; group?: string }) => {
-      set({ download: null, modelError: result?.ok ? null : (result?.error ?? null) })
-      // Covers both groups (core and GPU) and cancellation alike: the
-      // status check decides what is actually on disk now.
-      void get().refreshModelStatus()
+      set({ download: null, modelError: result?.ok ? null : (result?.error ?? null), verified: false })
+      if (result?.ok) {
+        // The installer stream-verified every byte it wrote; the audit pass
+        // confirms the whole on-disk set and unlocks playback.
+        set(s => ({ modelState: s.modelState === 'downloading' ? 'unknown' : s.modelState }))
+        void get().verifyModel()
+      } else {
+        // Cancellation/failure: the status check decides what's on disk.
+        set(s => ({ modelState: s.modelState === 'downloading' ? 'unknown' : s.modelState }))
+        void get().refreshModelStatus()
+      }
     })
   }
 
@@ -141,6 +157,7 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
       progress => set({ modelLoading: progress }),
       device => set({ device, modelLoading: null }),
       line => set(s => ({ diagnostics: [...s.diagnostics.slice(-59), line] })),
+      () => ReadAloudServerURL().then(url => (url ? `${url}/readaloud-models` : '')),
     )
     audio = new WebAudioPort()
     controller = new ReadAloudController(synth, audio, {
@@ -182,6 +199,10 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
     gpuInstalled: false,
     gpuBytesTotal: 0,
     benchmarking: false,
+    verified: false,
+    verifying: false,
+    installInfo: null,
+    corruptFiles: [],
 
     status: 'idle',
     sentences: [],
@@ -200,11 +221,46 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
           bytesTotal: status.bytes_total,
           gpuInstalled: status.gpu_installed,
           gpuBytesTotal: status.gpu_bytes_total,
-          // An in-flight download keeps its state; events own that transition.
-          modelState: s.modelState === 'downloading' ? s.modelState : (status.installed ? 'ready' : 'missing'),
+          // An in-flight download keeps its state; events own that
+          // transition. A corrupt verdict outranks the cheap size check —
+          // only a successful re-verify (or removal) clears it.
+          modelState: s.modelState === 'downloading' || (s.modelState === 'corrupt' && status.installed)
+            ? s.modelState
+            : (status.installed ? 'ready' : 'missing'),
         }))
       } catch (e) {
         set({ modelState: 'error', modelError: String(e) })
+      }
+    },
+
+    verifyModel: async () => {
+      if (get().verifying) return get().verified
+      set({ verifying: true })
+      const pushDiag = (line: string) => set(s => ({ diagnostics: [...s.diagnostics.slice(-59), line] }))
+      try {
+        const result = await VerifyReadAloudModel()
+        if (result.verified) {
+          set({
+            modelState: 'ready', verified: true, corruptFiles: [], modelError: null,
+            gpuInstalled: result.gpu_verified,
+            installInfo: { version: result.version, installedAt: result.installed_at, bytes: result.bytes },
+          })
+          pushDiag(`verify: ${result.installed_at ? 'v' + result.version + ', ' : ''}${Math.round(result.bytes / (1024 * 1024))} MB, all hashes match`)
+          return true
+        }
+        if (!result.installed) {
+          set({ modelState: 'missing', verified: false, installInfo: null, corruptFiles: [] })
+          pushDiag('verify: model not installed')
+          return false
+        }
+        set({ modelState: 'corrupt', verified: false, corruptFiles: [...(result.corrupt ?? []), ...(result.missing ?? [])] })
+        pushDiag(`verify: FAILED — ${(result.corrupt ?? []).length} corrupt, ${(result.missing ?? []).length} missing file(s); repair will re-download only those`)
+        return false
+      } catch (e) {
+        set({ modelState: 'error', modelError: String(e), verified: false })
+        return false
+      } finally {
+        set({ verifying: false })
       }
     },
 
@@ -236,7 +292,8 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
 
     runBenchmark: async () => {
       if (get().benchmarking || get().status !== 'idle') return
-      await get().refreshModelStatus()
+      // Benchmarks only run against a fully verified install.
+      if (!get().verified && !(await get().verifyModel())) return
       if (get().modelState !== 'ready') return
       set({ benchmarking: true })
       const pushDiag = (line: string) => set(s => ({ diagnostics: [...s.diagnostics.slice(-59), line] }))
@@ -298,12 +355,19 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
     },
 
     removeModel: async () => {
-      get().shutdown()
+      const pushDiag = (line: string) => set(s => ({ diagnostics: [...s.diagnostics.slice(-59), line] }))
+      get().shutdown() // stops playback, unloads the pipeline/worker
       try {
-        await RemoveReadAloudModel()
-        set({ modelState: 'missing', download: null, modelError: null })
+        // Drop any Cache API entries kokoro-js may have written for the
+        // voice URLs (defensive: useBrowserCache is off, but the library
+        // seeds a 'kokoro-voices' cache on its fetch path).
+        try { await caches.delete('kokoro-voices') } catch { /* unsupported/empty */ }
+        await RemoveReadAloudModel() // errors if anything is left on disk
+        set({ modelState: 'missing', download: null, modelError: null, verified: false, installInfo: null, corruptFiles: [], gpuInstalled: false })
+        pushDiag('remove: model directory deleted and confirmed empty; voice cache cleared; pipeline unloaded')
       } catch (e) {
         set({ modelError: String(e) })
+        pushDiag(`remove FAILED: ${e instanceof Error ? e.message : String(e)}`)
       }
     },
 
@@ -331,15 +395,17 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
           settings.read_aloud_speed,
         )
       }
-      if (get().modelState === 'ready') {
+      if (get().modelState === 'ready' && get().verified) {
         proceed()
         return
       }
-      // Model not (known to be) installed: surface the player, which offers
-      // the download; start only if the check comes back installed.
+      // First playback of the session (or unknown/missing/corrupt state):
+      // surface the player and run the full-hash verify; the model only
+      // loads after it passes. A corrupt result leaves the repair state
+      // showing instead of silently falling back.
       set({ playerVisible: true })
-      void get().refreshModelStatus().then(() => {
-        if (get().modelState === 'ready') proceed()
+      void get().verifyModel().then(ok => {
+        if (ok) proceed()
       })
     },
 

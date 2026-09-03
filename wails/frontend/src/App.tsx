@@ -197,10 +197,13 @@ export default function App() {
     if (!settings.cast_enabled && viewMode === 'cast') setViewMode('editor')
   }, [settings.cast_enabled, viewMode, setViewMode])
 
-  // Disabling the Read Aloud plugin unloads everything: playback stops, the
-  // synthesis worker (and the model in its memory) is terminated.
+  // Enabling the Read Aloud plugin runs the full-hash model verification
+  // (playback stays locked until it passes); disabling unloads everything —
+  // playback stops, the synthesis worker (and the model in its memory) is
+  // terminated.
   useEffect(() => {
-    if (!settings.read_aloud_enabled) useReadAloudStore.getState().shutdown()
+    if (settings.read_aloud_enabled) void useReadAloudStore.getState().verifyModel()
+    else useReadAloudStore.getState().shutdown()
   }, [settings.read_aloud_enabled])
 
   // Device/thread configuration is read at worker start; tearing the worker

@@ -174,6 +174,10 @@ export function QueryStoryFingerprint(arg1, arg2) {
   return window['go']['main']['App']['QueryStoryFingerprint'](arg1, arg2);
 }
 
+export function ReadAloudServerURL() {
+  return window['go']['main']['App']['ReadAloudServerURL']();
+}
+
 export function ReadAloudStatus() {
   return window['go']['main']['App']['ReadAloudStatus']();
 }
@@ -248,4 +252,8 @@ export function TestLocalAI(arg1) {
 
 export function UpdateStoryAuthorModel(arg1, arg2) {
   return window['go']['main']['App']['UpdateStoryAuthorModel'](arg1, arg2);
+}
+
+export function VerifyReadAloudModel() {
+  return window['go']['main']['App']['VerifyReadAloudModel']();
 }

@@ -89,6 +89,8 @@ export function OpenRecentProject(arg1:string):Promise<types.BookData>;
 
 export function QueryStoryFingerprint(arg1:types.BookData,arg2:types.FingerprintQueryRequest):Promise<types.FingerprintQueryAnswer>;
 
+export function ReadAloudServerURL():Promise<string>;
+
 export function ReadAloudStatus():Promise<readaloud.Status>;
 
 export function RemoveReadAloudModel():Promise<void>;
@@ -126,3 +128,5 @@ export function TakePendingOpenPath():Promise<string>;
 export function TestLocalAI(arg1:string):Promise<types.AIRewriteResult>;
 
 export function UpdateStoryAuthorModel(arg1:types.BookData,arg2:types.StoryAuthorModel):Promise<types.FullAnalysisResult>;
+
+export function VerifyReadAloudModel():Promise<readaloud.VerifyResult>;

@@ -98,7 +98,19 @@ async function loadModel(base: string, device: InitMessage['device'], threads: I
   env.useBrowserCache = false
   const wasm = env.backends.onnx.wasm
   if (wasm) {
-    wasm.wasmPaths = `${base}/ort/`
+    if (device === 'wasm') {
+      // Pure-CPU inference needs no JSEP (that build exists for WebGPU);
+      // pinning the exact non-jsep pair avoids the jsep loader's extra
+      // machinery in its nested pthread workers.
+      wasm.wasmPaths = {
+        mjs: `${base}/ort/ort-wasm-simd-threaded.mjs`,
+        wasm: `${base}/ort/ort-wasm-simd-threaded.wasm`,
+      } as unknown as string
+      diag('ort runtime: non-jsep pair (ort-wasm-simd-threaded.mjs/.wasm)')
+    } else {
+      wasm.wasmPaths = `${base}/ort/`
+      diag('ort runtime: jsep directory (webgpu)')
+    }
     // Real threads need SharedArrayBuffer, which needs cross-origin
     // isolation (the Wails asset server sets COOP/COEP for exactly this).
     // Leave one core for the UI and audio pipeline.

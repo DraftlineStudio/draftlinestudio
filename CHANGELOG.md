@@ -4,6 +4,20 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02511] - 2026-09-03
+
+### Fixed
+- Read Aloud's runtime and model files are now served from a real loopback HTTP origin — a Go server on 127.0.0.1 (ephemeral port, `ReadAloudServerURL()` binding) with CORS, `Cross-Origin-Resource-Policy: cross-origin`, COEP, and explicit MIME types — because WebView2's asset-scheme handler does not reliably intercept requests initiated inside the ONNX runtime's nested pthread workers. The same-origin asset-handler path remains as fallback. The CPU path additionally pins the exact non-JSEP runtime pair (`ort-wasm-simd-threaded.mjs/.wasm`); JSEP exists for WebGPU and is unnecessary for pure-CPU inference.
+
+### Added
+- A complete install/verify/repair lifecycle for the voice model. Installs now write a `manifest.json` beside the files (model id + pinned revision, bundle version, installed-at, per-file sizes and SHA-256). New `VerifyReadAloudModel()` re-hashes everything against the compiled pins on plugin enable, on opening the settings section, and before first playback — playback refuses to load an unverified model. Settings show Not installed / Installed vX (N MB, verified) / Corrupt (N files) with a Repair button that re-downloads only failing files; removal unloads the pipeline, clears the kokoro-voices browser cache, deletes everything including the manifest, and confirms the directory is gone.
+- `TestFreshInstallLifecycle` (gated, real downloads) proves the whole cycle: fresh → install+manifest → verified (129,337,456 bytes) → deliberate corruption detected → repair re-downloads only the damaged file → verified → removed and confirmed empty.
+
+### Internal
+- Embed audit: the executable contains no model bytes — no `.onnx`, `.bin`, or `.wasm` in `frontend/dist` (6.6 MB total; the only Kokoro artifact is the kokoro-js JavaScript library as a lazy chunk). The model on this machine had been installed by the 02505 pin-verification test, which is why no download prompt ever appeared; the cache was reset so the fresh-install flow now shows.
+
+---
+
 ## [0.17.02510] - 2026-09-03
 
 ### Fixed

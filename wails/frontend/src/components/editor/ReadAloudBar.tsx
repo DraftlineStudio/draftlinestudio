@@ -35,7 +35,7 @@ export default function ReadAloudBar() {
   }, [refreshModelStatus])
 
   const active = status !== 'idle'
-  const needsSetup = modelState === 'missing' || modelState === 'error' || modelState === 'downloading'
+  const needsSetup = modelState === 'missing' || modelState === 'error' || modelState === 'downloading' || modelState === 'corrupt'
 
   return (
     <div className="read-aloud-bar" role="region" aria-label="Read aloud player">
@@ -46,10 +46,12 @@ export default function ReadAloudBar() {
           <span className="read-aloud-bar-status">
             {modelState === 'downloading'
               ? 'Voice model downloading…'
-              : 'Voice model not installed.'}
+              : modelState === 'corrupt'
+                ? 'Voice model failed verification.'
+                : 'Voice model not installed.'}
           </span>
           <button className="read-aloud-bar-setup" onClick={() => openSettings('readaloud')}>
-            {modelState === 'downloading' ? 'View progress' : 'Set up'}
+            {modelState === 'downloading' ? 'View progress' : modelState === 'corrupt' ? 'Repair' : 'Set up'}
           </button>
         </>
       ) : (

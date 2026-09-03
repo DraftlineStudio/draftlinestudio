@@ -24,6 +24,34 @@ export namespace readaloud {
 	        this.gpu_bytes_total = source["gpu_bytes_total"];
 	    }
 	}
+	export class VerifyResult {
+	    installed: boolean;
+	    verified: boolean;
+	    gpu_verified: boolean;
+	    version: string;
+	    installed_at: string;
+	    bytes: number;
+	    corrupt?: string[];
+	    missing?: string[];
+	    error?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new VerifyResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.installed = source["installed"];
+	        this.verified = source["verified"];
+	        this.gpu_verified = source["gpu_verified"];
+	        this.version = source["version"];
+	        this.installed_at = source["installed_at"];
+	        this.bytes = source["bytes"];
+	        this.corrupt = source["corrupt"];
+	        this.missing = source["missing"];
+	        this.error = source["error"];
+	    }
+	}
 
 }
 
@@ -71,6 +99,76 @@ export namespace types {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.decisions = this.convertValues(source["decisions"], ContinuityDecision);
 	        this.version = source["version"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class StructureDecisionDependency {
+	    evidence_id: string;
+	    chapter_id: string;
+	    paragraph_index: number;
+	    content_hash: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new StructureDecisionDependency(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.evidence_id = source["evidence_id"];
+	        this.chapter_id = source["chapter_id"];
+	        this.paragraph_index = source["paragraph_index"];
+	        this.content_hash = source["content_hash"];
+	    }
+	}
+	export class StructureAuthorDecision {
+	    id: string;
+	    target_type: string;
+	    target_id?: string;
+	    target_signature?: string;
+	    action: string;
+	    field?: string;
+	    value?: string;
+	    note?: string;
+	    evidence_ids?: string[];
+	    dependencies?: StructureDecisionDependency[];
+	    changed_dependency_ids?: string[];
+	    status: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new StructureAuthorDecision(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.target_type = source["target_type"];
+	        this.target_id = source["target_id"];
+	        this.target_signature = source["target_signature"];
+	        this.action = source["action"];
+	        this.field = source["field"];
+	        this.value = source["value"];
+	        this.note = source["note"];
+	        this.evidence_ids = source["evidence_ids"];
+	        this.dependencies = this.convertValues(source["dependencies"], StructureDecisionDependency);
+	        this.changed_dependency_ids = source["changed_dependency_ids"];
+	        this.status = source["status"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -218,6 +316,7 @@ export namespace types {
 	    checkpoints?: StoryCheckpoint[];
 	    canon?: CanonRule[];
 	    corrections?: FingerprintCorrection[];
+	    structure_decisions?: StructureAuthorDecision[];
 	    profiles?: string[];
 	    voice_notes?: CharacterVoiceNotes[];
 	
@@ -231,6 +330,7 @@ export namespace types {
 	        this.checkpoints = this.convertValues(source["checkpoints"], StoryCheckpoint);
 	        this.canon = this.convertValues(source["canon"], CanonRule);
 	        this.corrections = this.convertValues(source["corrections"], FingerprintCorrection);
+	        this.structure_decisions = this.convertValues(source["structure_decisions"], StructureAuthorDecision);
 	        this.profiles = source["profiles"];
 	        this.voice_notes = this.convertValues(source["voice_notes"], CharacterVoiceNotes);
 	    }
@@ -365,6 +465,10 @@ export namespace types {
 	    narrative_end: number;
 	    salience: number;
 	    confidence: number;
+	    creation_decision: StructureDecision;
+	    continuation_decisions?: StructureDecision[];
+	    convergence_decisions?: StructureDecision[];
+	    separation_decisions?: StructureDecision[];
 	
 	    static createFrom(source: any = {}) {
 	        return new NarrativeThread(source);
@@ -393,7 +497,29 @@ export namespace types {
 	        this.narrative_end = source["narrative_end"];
 	        this.salience = source["salience"];
 	        this.confidence = source["confidence"];
+	        this.creation_decision = this.convertValues(source["creation_decision"], StructureDecision);
+	        this.continuation_decisions = this.convertValues(source["continuation_decisions"], StructureDecision);
+	        this.convergence_decisions = this.convertValues(source["convergence_decisions"], StructureDecision);
+	        this.separation_decisions = this.convertValues(source["separation_decisions"], StructureDecision);
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class StorySequence {
 	    id: string;
@@ -410,6 +536,9 @@ export namespace types {
 	    narrative_end: number;
 	    salience: number;
 	    confidence: number;
+	    creation_decision: StructureDecision;
+	    membership_decisions?: StructureDecision[];
+	    boundary_decision: StructureDecision;
 	
 	    static createFrom(source: any = {}) {
 	        return new StorySequence(source);
@@ -431,6 +560,9 @@ export namespace types {
 	        this.narrative_end = source["narrative_end"];
 	        this.salience = source["salience"];
 	        this.confidence = source["confidence"];
+	        this.creation_decision = this.convertValues(source["creation_decision"], StructureDecision);
+	        this.membership_decisions = this.convertValues(source["membership_decisions"], StructureDecision);
+	        this.boundary_decision = this.convertValues(source["boundary_decision"], StructureDecision);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -474,6 +606,10 @@ export namespace types {
 	    confidence: number;
 	    boundary_confidence: number;
 	    boundary_source: string;
+	    creation_decision: StructureDecision;
+	    membership_decisions?: StructureDecision[];
+	    boundary_decision: StructureDecision;
+	    temporal_decision: StructureDecision;
 	
 	    static createFrom(source: any = {}) {
 	        return new SemanticScene(source);
@@ -503,6 +639,10 @@ export namespace types {
 	        this.confidence = source["confidence"];
 	        this.boundary_confidence = source["boundary_confidence"];
 	        this.boundary_source = source["boundary_source"];
+	        this.creation_decision = this.convertValues(source["creation_decision"], StructureDecision);
+	        this.membership_decisions = this.convertValues(source["membership_decisions"], StructureDecision);
+	        this.boundary_decision = this.convertValues(source["boundary_decision"], StructureDecision);
+	        this.temporal_decision = this.convertValues(source["temporal_decision"], StructureDecision);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -522,6 +662,108 @@ export namespace types {
 		    }
 		    return a;
 		}
+	}
+	export class StructureSignal {
+	    code: string;
+	    detail: string;
+	    weight?: number;
+	    evidence_ids?: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new StructureSignal(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.code = source["code"];
+	        this.detail = source["detail"];
+	        this.weight = source["weight"];
+	        this.evidence_ids = source["evidence_ids"];
+	    }
+	}
+	export class StructureDecision {
+	    kind: string;
+	    outcome: string;
+	    rule: string;
+	    summary: string;
+	    child_id?: string;
+	    candidate_id?: string;
+	    score?: number;
+	    threshold?: number;
+	    confidence: number;
+	    signals?: StructureSignal[];
+	
+	    static createFrom(source: any = {}) {
+	        return new StructureDecision(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.outcome = source["outcome"];
+	        this.rule = source["rule"];
+	        this.summary = source["summary"];
+	        this.child_id = source["child_id"];
+	        this.candidate_id = source["candidate_id"];
+	        this.score = source["score"];
+	        this.threshold = source["threshold"];
+	        this.confidence = source["confidence"];
+	        this.signals = this.convertValues(source["signals"], StructureSignal);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class StructureEvidenceRef {
+	    evidence_id: string;
+	    chapter_id: string;
+	    chapter_index: number;
+	    section: string;
+	    section_index: number;
+	    paragraph_index: number;
+	    sentence_index: number;
+	    start_offset: number;
+	    end_offset: number;
+	    quotation: string;
+	    confidence: number;
+	    status: string;
+	    source: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new StructureEvidenceRef(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.evidence_id = source["evidence_id"];
+	        this.chapter_id = source["chapter_id"];
+	        this.chapter_index = source["chapter_index"];
+	        this.section = source["section"];
+	        this.section_index = source["section_index"];
+	        this.paragraph_index = source["paragraph_index"];
+	        this.sentence_index = source["sentence_index"];
+	        this.start_offset = source["start_offset"];
+	        this.end_offset = source["end_offset"];
+	        this.quotation = source["quotation"];
+	        this.confidence = source["confidence"];
+	        this.status = source["status"];
+	        this.source = source["source"];
+	    }
 	}
 	export class SalienceBreakdown {
 	    base: number;
@@ -583,6 +825,16 @@ export namespace types {
 	    narrative_order: number;
 	    salience: number;
 	    salience_reasons: SalienceBreakdown;
+	    evidence_refs: StructureEvidenceRef[];
+	    creation_decision: StructureDecision;
+	    membership_decisions?: StructureDecision[];
+	    boundary_decisions?: StructureDecision[];
+	    salience_signals?: StructureSignal[];
+	    temporal_decision: StructureDecision;
+	    author_decision_ids?: string[];
+	    correction_ids?: string[];
+	    interpretation_status: string;
+	    interpretation_signals?: StructureSignal[];
 	    confidence: number;
 	
 	    static createFrom(source: any = {}) {
@@ -618,6 +870,16 @@ export namespace types {
 	        this.narrative_order = source["narrative_order"];
 	        this.salience = source["salience"];
 	        this.salience_reasons = this.convertValues(source["salience_reasons"], SalienceBreakdown);
+	        this.evidence_refs = this.convertValues(source["evidence_refs"], StructureEvidenceRef);
+	        this.creation_decision = this.convertValues(source["creation_decision"], StructureDecision);
+	        this.membership_decisions = this.convertValues(source["membership_decisions"], StructureDecision);
+	        this.boundary_decisions = this.convertValues(source["boundary_decisions"], StructureDecision);
+	        this.salience_signals = this.convertValues(source["salience_signals"], StructureSignal);
+	        this.temporal_decision = this.convertValues(source["temporal_decision"], StructureDecision);
+	        this.author_decision_ids = source["author_decision_ids"];
+	        this.correction_ids = source["correction_ids"];
+	        this.interpretation_status = source["interpretation_status"];
+	        this.interpretation_signals = this.convertValues(source["interpretation_signals"], StructureSignal);
 	        this.confidence = source["confidence"];
 	    }
 	
@@ -3619,6 +3881,11 @@ export namespace types {
 		    return a;
 		}
 	}
+	
+	
+	
+	
+	
 	
 	
 	

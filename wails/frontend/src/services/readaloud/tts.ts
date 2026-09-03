@@ -7,7 +7,10 @@
 
 import type { AudioChunk, SynthPort } from './controller'
 
-const MODEL_BASE = '/readaloud-models'
+// Fallback when the loopback server is unavailable: the Wails asset-handler
+// path (same-origin). Threading may not survive there — WebView2 does not
+// reliably route nested-worker requests through the asset scheme handler.
+const FALLBACK_BASE = '/readaloud-models'
 
 export interface ModelLoadProgress {
   file: string
@@ -40,6 +43,7 @@ export class WorkerSynth implements SynthPort {
     private onLoadProgress?: (p: ModelLoadProgress) => void,
     private onDevice?: (device: 'wasm' | 'webgpu') => void,
     private onDiagnostic?: (line: string) => void,
+    private getBase?: () => Promise<string>,
   ) {}
 
   private ensureReady(): Promise<void> {
@@ -47,11 +51,23 @@ export class WorkerSynth implements SynthPort {
     // sentence) await this same promise — the pipeline is built exactly once
     // per WorkerSynth lifetime, torn down only by shutdown().
     if (this.ready) return this.ready
+    this.ready = this.boot()
+    return this.ready
+  }
+
+  private async boot(): Promise<void> {
+    let base = FALLBACK_BASE
+    if (this.getBase) {
+      try {
+        base = (await this.getBase()) || FALLBACK_BASE
+      } catch { /* fall back to the asset-handler path */ }
+    }
+    this.onDiagnostic?.(`model base: ${base}${base === FALLBACK_BASE ? ' (asset-handler fallback — loopback server unavailable)' : ' (loopback server)'}`)
     const worker = new Worker(new URL('../../workers/readAloud.worker.ts', import.meta.url), { type: 'module' })
     this.worker = worker
     this.becameReady = false
     this.onDiagnostic?.(`worker start #${++workerStarts} (a growing count here means the pipeline is being rebuilt — it should stay at 1 per session)`)
-    this.ready = new Promise<void>((resolve, reject) => {
+    const readyPromise = new Promise<void>((resolve, reject) => {
       worker.onmessage = (event: MessageEvent) => {
         const msg = event.data
         switch (msg.type) {
@@ -107,8 +123,8 @@ export class WorkerSynth implements SynthPort {
     })
 
     const config = this.getConfig()
-    worker.postMessage({ type: 'init', base: MODEL_BASE, device: config.device, threads: config.threads })
-    return this.ready
+    worker.postMessage({ type: 'init', base, device: config.device, threads: config.threads })
+    return readyPromise
   }
 
   synthesize(id: number, text: string, voice: string, speed: number): Promise<AudioChunk> {
