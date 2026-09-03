@@ -131,7 +131,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   analysis_cpu_profile: 'adaptive',
   read_aloud_enabled: false,
   read_aloud_voice: 'af_heart',
-  read_aloud_speed: 1.2,
+  read_aloud_speed: 1.1,
   read_aloud_device: 'native',
   read_aloud_threads: 'auto',
   ai_enabled: false,
@@ -203,7 +203,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
           : 'adaptive',
         custom_dictionary: (raw as unknown as Partial<AppSettings>).custom_dictionary ?? [],
         read_aloud_voice: raw.read_aloud_voice || 'af_heart',
-        read_aloud_speed: Math.min(1.6, Math.max(0.8, Number(raw.read_aloud_speed) || 1.2)),
+        read_aloud_speed: Math.min(1.6, Math.max(0.8, Number(raw.read_aloud_speed) || 1.1)),
         read_aloud_device: 'native',
         read_aloud_threads: raw.read_aloud_threads === 'single' ? 'single' : 'auto',
       }

@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02523] - 2026-09-03
+
+### Changed
+- Changed Read Aloud's default playback speed from 1.2× to 1.1× for more natural narration. Existing saved speed choices remain unchanged; the new value applies to fresh settings and missing-value fallback behavior.
+
+---
+
 ## [0.17.02522] - 2026-09-03
 
 ### Fixed
