@@ -2,6 +2,13 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02515] - 2026-09-03
+
+### Fixed
+- Reduced gaps between sentences in Read Aloud.
+- Long sentences now start playing sooner.
+- Read Aloud prepares audio while the player is open, so playback starts immediately.
+
 ## [0.17.02513] - 2026-09-03
 
 ### Changed

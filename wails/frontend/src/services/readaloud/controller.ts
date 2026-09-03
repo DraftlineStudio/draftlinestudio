@@ -39,8 +39,12 @@ export interface AudioPort {
 
 export type ControllerStatus = 'idle' | 'starting' | 'playing' | 'paused'
 
-// How many sentences ahead of the audible one may be synthesizing/cached.
-const LOOKAHEAD = 2
+// Producer/consumer split: the producer keeps the buffer filled to LOOKAHEAD
+// units ahead of the playhead and never awaits playback (requests are fired
+// eagerly; the worker serializes actual synthesis). The consumer plays from
+// the cache and only ever waits on generation when the buffer is empty (the
+// waitingToPlay path).
+const LOOKAHEAD = 5
 
 // How many already-played chunks stay cached (instant short skip-backs).
 // Without a bound, a chapter-length play accumulates every sentence's
@@ -63,6 +67,7 @@ export class ReadAloudController {
   private nextRequestId = 1
 
   private playingIndex: number | null = null
+  private preparedStart: number | null = null
   private scheduledNext: { index: number; handle: PlaybackHandle } | null = null
   // Outstanding synthesis requests, index → request id (≤ LOOKAHEAD + the
   // immediately-needed sentence).
@@ -78,18 +83,42 @@ export class ReadAloudController {
     private events: ControllerEvents,
   ) {}
 
-  start(sentences: string[], startIndex: number, voice: string, speed: number): void {
+  // autoplay=false prepares: the producer pre-fills the buffer from
+  // startIndex but nothing becomes audible until beginPlayback(). Used to
+  // warm the pipeline the moment the player opens, before play is pressed.
+  start(sentences: string[], startIndex: number, voice: string, speed: number, autoplay = true): void {
     this.reset()
     if (!sentences.length) {
-      this.events.onFinished()
+      if (autoplay) this.events.onFinished()
       return
     }
     this.sentences = sentences
     this.voice = voice
     this.speed = speed
+    const clamped = Math.max(0, Math.min(startIndex, sentences.length - 1))
+    this.preparedStart = clamped
+    if (autoplay) {
+      this.setStatus('starting')
+      this.audio.resume()
+      this.playFrom(clamped)
+    } else {
+      // Producer only: fill the buffer silently.
+      this.topUp()
+    }
+  }
+
+  // Arms a prepared (autoplay=false) queue. No-op unless prepared and idle.
+  beginPlayback(): boolean {
+    if (this.status !== 'idle' || this.preparedStart === null || !this.sentences.length) return false
     this.setStatus('starting')
     this.audio.resume()
-    this.playFrom(Math.max(0, Math.min(startIndex, sentences.length - 1)))
+    this.playFrom(this.preparedStart)
+    return true
+  }
+
+  // True when a prepared buffer for this many sentences is standing by.
+  isPreparedFor(count: number): boolean {
+    return this.status === 'idle' && this.preparedStart !== null && this.sentences.length === count
   }
 
   pause(): void {
@@ -164,6 +193,7 @@ export class ReadAloudController {
     this.scheduledNext = null
     this.audio.stopAll()
     this.playingIndex = null
+    this.preparedStart = null
     this.waitingToPlay = null
   }
 
@@ -194,6 +224,8 @@ export class ReadAloudController {
     } else {
       this.request(index)
     }
+    // Fire the whole lookahead window immediately; the worker serializes.
+    this.topUp()
   }
 
   private request(index: number): void {
@@ -215,6 +247,9 @@ export class ReadAloudController {
         }
         this.cache.set(index, chunk)
         this.deliver(index, chunk)
+        // Producer pump: every completed unit immediately requests the next
+        // uncovered one, independent of playback progress.
+        this.topUp()
       },
       err => {
         if (generation !== this.generation || this.pendingSynth.get(index) !== id) return
@@ -222,6 +257,18 @@ export class ReadAloudController {
         this.fail(err instanceof Error ? err.message : String(err))
       },
     )
+  }
+
+  // Keeps the lookahead buffer filled to LOOKAHEAD units beyond the
+  // playhead (or the prepared start while nothing is audible).
+  private topUp(): void {
+    const base = this.playingIndex ?? this.waitingToPlay ?? this.preparedStart
+    if (base === null) return
+    for (let index = base; index <= base + LOOKAHEAD && index < this.sentences.length; index++) {
+      if (!this.cache.has(index) && !this.pendingSynth.has(index)) {
+        this.request(index)
+      }
+    }
   }
 
   private deliver(index: number, chunk: AudioChunk): void {
@@ -258,20 +305,15 @@ export class ReadAloudController {
     this.primeNext(index)
   }
 
-  // Gapless lookahead: schedule/synthesize the next LOOKAHEAD sentences.
-  // The immediate next is delivered (scheduled back-to-back when possible);
-  // the ones after only synthesize into the cache for their turn.
+  // Gapless handoff: make sure the immediate next chunk is scheduled if it
+  // is already cached, then let the producer keep the buffer filled.
   private primeNext(index: number): void {
-    for (let ahead = 1; ahead <= LOOKAHEAD; ahead++) {
-      const next = index + ahead
-      if (next >= this.sentences.length) return
+    const next = index + 1
+    if (next < this.sentences.length) {
       const cached = this.cache.get(next)
-      if (cached) {
-        this.deliver(next, cached)
-      } else {
-        this.request(next)
-      }
+      if (cached) this.deliver(next, cached)
     }
+    this.topUp()
   }
 
   private onChunkEnded(index: number): void {
