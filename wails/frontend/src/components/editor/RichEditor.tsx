@@ -17,7 +17,8 @@ import { ReadAloud } from '../../extensions/ReadAloud'
 import { useEffect, useCallback, useState, useRef, useMemo } from 'react'
 import Toolbar from './Toolbar'
 import ChapterFindReplaceBar from './ChapterFindReplaceBar'
-import ReadAloudBar from './ReadAloudBar'
+import ReadAloudPlayerBar from './readaloud/ReadAloudPlayerBar'
+import ReopenButton from './readaloud/ReopenButton'
 import { useReadAloudStore } from '../../store/readAloudStore'
 import ContextMenu, { ContextMenuItem } from '../ContextMenu'
 import InlinePrompt from './InlinePrompt'
@@ -33,7 +34,7 @@ import { isConfirmedCharacter } from '../../utils/characterStatus'
 function ReadAloudBarGate() {
   const enabled = useAppStore(s => s.settings.read_aloud_enabled)
   const playerVisible = useReadAloudStore(s => s.playerVisible)
-  return enabled && playerVisible ? <ReadAloudBar /> : null
+  return enabled && playerVisible ? <ReadAloudPlayerBar /> : null
 }
 
 interface ContextMenuState {
@@ -492,7 +493,7 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
   )
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
       <Toolbar editor={editor} />
       <ChapterFindReplaceBar editor={editor} />
       <div className="editor-scroll" onContextMenu={handleContextMenu} data-context-menu>
@@ -563,6 +564,7 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
         )}
       </div>
       <ReadAloudBarGate />
+      <ReopenButton />
       {contextMenu && (
         <ContextMenu
           x={contextMenu.x}

@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02527] - 2026-09-03
+
+### Changed
+- Redesigned the Read Aloud player with seek, speed, volume, and a current speaker readout.
+
+### Added
+- Added a button to reopen the Read Aloud player.
+
 ## [0.17.02526] - 2026-09-03
 
 ### Added
