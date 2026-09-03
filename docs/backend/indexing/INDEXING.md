@@ -2,6 +2,23 @@
 
 `internal/indexing/` provides character detection and content analysis for the Story Bible.
 
+## Analysis concurrency
+
+Whole-book analysis is single-flight: Draftline accepts only one manuscript-
+scale analysis at a time. Within that run, the ProseV3 linguistic stage and
+the evidence stage each use their own bounded worker pool. The configured
+Gentle, Balanced, Fast, or Adaptive budget changes those pools only; analysis
+never changes the process-wide Go scheduler. Wails bindings, the asset server,
+file I/O, and Read Aloud therefore keep the runtime's normal scheduling
+capacity while analysis is active.
+
+Adaptive uses the Balanced worker count. Manuscripts at or above 750,000
+source bytes additionally use a 4 MiB weighted in-flight payload gate and
+512 KiB linguistic batches. This large-manuscript tier exists to bound the
+transient Prose document memory multiplied by concurrent work. It is a memory
+limit, not a hidden thread-count reduction. A chapter larger than the gate is
+kept intact for stable offsets and runs alone.
+
 ## Functions
 
 ### IndexBook(book types.BookData) types.IndexResult

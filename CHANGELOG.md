@@ -4,6 +4,22 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02513] - 2026-09-03
+
+### Fixed
+- Whole-book analysis no longer changes process-global `GOMAXPROCS`. ProseV3 linguistic extraction and evidence extraction now run in separate stage-local, semaphore-bounded worker pools, leaving the Go scheduler available to Wails bindings, the asset server, file operations, Read Aloud, and unrelated backend work.
+- The one-analysis-at-a-time backend guard remains intact across automatic full analysis and manual character/relationship indexing.
+
+### Changed
+- Gentle, Balanced, Fast, and Adaptive now size analysis workers rather than scheduler threads. Adaptive keeps the Balanced worker count for large books; the 750,000-byte tier is explicitly a memory safeguard, using a 4 MiB weighted in-flight payload gate and 512 KiB linguistic batches instead of silently reducing thread parallelism.
+- Settings now describe worker limits accurately. The backend guide documents pool behavior and the measured Reset/12-thread stress results, including the observed Read Aloud contention rather than claiming zero finite-CPU impact.
+
+### Added
+- Regression coverage proves analysis acquisition does not change the scheduler, the single-flight lock still rejects overlapping analyses, large-book batching preserves every chapter and respects its byte boundary, and the weighted memory gate bounds concurrent Prose payloads.
+- Read Aloud audio diagnostics now include each sentence's measured AudioContext handoff gap, allowing analysis/TTS contention to be quantified without changing playback behavior.
+
+---
+
 ## [0.17.02512] - 2026-09-03
 
 ### Fixed

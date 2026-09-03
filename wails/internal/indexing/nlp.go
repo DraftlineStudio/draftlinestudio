@@ -1,7 +1,6 @@
 package indexing
 
 import (
-	"runtime"
 	"strings"
 	"sync"
 
@@ -47,33 +46,65 @@ func analyzeLinguisticEvidence(text string) linguisticEvidence {
 // prose models are immutable and shared process-wide, so batching amortizes
 // document setup while the worker limit avoids multiplying model memory.
 func analyzeBookLinguisticEvidence(chapters []string) []linguisticEvidence {
+	return analyzeBookLinguisticEvidenceWithOptions(chapters, defaultAnalysisPoolOptions())
+}
+
+type linguisticBatch struct {
+	start int
+	end   int
+	bytes int
+}
+
+func analyzeBookLinguisticEvidenceWithOptions(chapters []string, pool AnalysisPoolOptions) []linguisticEvidence {
 	result := make([]linguisticEvidence, len(chapters))
 	if len(chapters) == 0 {
 		return result
 	}
-
-	workerCount := runtime.GOMAXPROCS(0)
-	if workerCount > 8 {
-		workerCount = 8
-	}
-	if workerCount > len(chapters) {
-		workerCount = len(chapters)
-	}
-
+	batches := linguisticBatches(chapters, pool)
+	pool = normalizeAnalysisPoolOptions(pool, len(batches))
+	jobs := make(chan linguisticBatch)
+	memory := newAnalysisMemoryGate(pool.MaxInFlightBytes)
 	var workers sync.WaitGroup
-	batchSize := (len(chapters) + workerCount - 1) / workerCount
-	for start := 0; start < len(chapters); start += batchSize {
-		end := start + batchSize
-		if end > len(chapters) {
-			end = len(chapters)
-		}
+	for range pool.Workers {
 		workers.Add(1)
-		go func(start, end int) {
+		go func() {
 			defer workers.Done()
-			analyzeChapterBatch(chapters, result, start, end)
-		}(start, end)
+			for batch := range jobs {
+				weight := memory.acquire(batch.bytes)
+				analyzeChapterBatch(chapters, result, batch.start, batch.end)
+				memory.release(weight)
+			}
+		}()
 	}
+	for _, batch := range batches {
+		jobs <- batch
+	}
+	close(jobs)
 	workers.Wait()
+	return result
+}
+
+func linguisticBatches(chapters []string, pool AnalysisPoolOptions) []linguisticBatch {
+	pool = normalizeAnalysisPoolOptions(pool, len(chapters))
+	targetCount := pool.Workers
+	defaultBatchChapters := (len(chapters) + targetCount - 1) / targetCount
+	result := []linguisticBatch{}
+	for start := 0; start < len(chapters); {
+		end, bytes := start, 0
+		for end < len(chapters) {
+			nextBytes := len(chapters[end])
+			if end > start && ((pool.MaxBatchBytes > 0 && bytes+nextBytes > pool.MaxBatchBytes) || end-start >= defaultBatchChapters) {
+				break
+			}
+			bytes += nextBytes
+			end++
+			if pool.MaxBatchBytes > 0 && bytes >= pool.MaxBatchBytes {
+				break
+			}
+		}
+		result = append(result, linguisticBatch{start: start, end: end, bytes: bytes})
+		start = end
+	}
 	return result
 }
 

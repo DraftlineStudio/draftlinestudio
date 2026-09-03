@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	engine  = "draftline-story-fingerprint-v2"
-	version = 2
+	engine  = "draftline-story-fingerprint-v3"
+	version = 3
 )
 
 // Build reconstructs all derived fingerprint data while preserving explicit
@@ -34,6 +34,7 @@ func Build(book *types.BookData, progress func(types.StoryAnalysisProgress)) *ty
 		progress(types.StoryAnalysisProgress{Phase: "chronology", Message: "Resolving story time and reality contexts", Current: 0, Total: len(book.Analysis.Evidence.Records), Percent: 78})
 	}
 	records := eligibleEvidence(book.Analysis.Evidence.Records)
+	reconcileStructureDecisions(result, records)
 	contexts, contextByEvidence := inferContexts(records, result.AuthorModel.Contexts)
 	result.Contexts = contexts
 	applyEvidenceContextCorrections(result.AuthorModel.Corrections, contextByEvidence)
@@ -53,6 +54,7 @@ func Build(book *types.BookData, progress func(types.StoryAnalysisProgress)) *ty
 	result.Diagnostics = append(result.Diagnostics, buildDiagnostics(book, result, records)...)
 	reconcileCorrections(result)
 	result.Diagnostics = append(result.Diagnostics, correctionDiagnostics(result.AuthorModel.Corrections)...)
+	result.Diagnostics = append(result.Diagnostics, structureDecisionDiagnostics(result.AuthorModel.StructureDecisions)...)
 	result.Structure = buildStructure(book, result, records)
 	if progress != nil {
 		progress(types.StoryAnalysisProgress{Phase: "chronology", Message: "Chronology model current", Current: len(records), Total: len(records), Percent: 82})

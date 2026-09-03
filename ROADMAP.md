@@ -80,9 +80,15 @@ retrieval, indexing, review, and refactoring must not depend on generative AI.
       current, stale, partially upgraded, and source-unavailable fingerprints.
 - [ ] Treat fingerprints as local derived intellectual property: portable and
       user-owned, never uploaded or submitted to AI without explicit action.
-- [x] Aggregate atomic evidence into significant events, semantic scenes,
-      sequences, temporary narrative threads, and story arcs without dropping
-      supporting facts. Story Map semantic zoom exposes the appropriate level.
+- [x] Preserve the complete atomic fingerprint beneath every author-facing
+      structural projection; incidental evidence remains searchable even when
+      it is not promoted into a visible narrative occurrence.
+- [ ] Complete the fixture-gated Story Structure v2 correction. Significant
+      event aggregation and explainable author decisions are complete;
+      semantic scenes, sequences, and narrative-thread continuation,
+      convergence, and separation must each pass their own universal fixture
+      gate. Remove arithmetic `StoryArc` records from author-facing output;
+      fixed processing partitions belong only in nonsemantic cache chunks.
 - [x] Keep separate manuscript-order and partial story-time projections;
       uncertain chronology remains visibly floating instead of being invented.
 - [ ] Extend the initial per-chapter evidence cache to paragraph-granular Prose

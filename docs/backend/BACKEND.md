@@ -122,6 +122,10 @@ bundled prose/v3 model plus conservative deterministic cues; it stores exact
 source sentences and coordinates in `analysis.json`, performs no network call,
 and is rebuildable from the manuscript.
 
+See [Analysis Concurrency and Performance](ANALYSIS-PERFORMANCE.md) for the
+stage-local pool design, large-manuscript memory gate, and measured 12-thread
+responsiveness results.
+
 Build 02476 adds author-owned review provenance without modifying source
 evidence. Confirm/reject status, a separate author interpretation, notes, pins,
 and review timestamps follow stable evidence IDs through reanalysis. The
@@ -135,6 +139,10 @@ and withholding. Claims require a confirmed named character in a conservative
 local grammatical position; Draftline does not resolve pronouns or distant
 clause subjects by guesswork. Existing evidence classifications remain stable
 so the upgrade does not orphan compatible author review decisions.
+
+### [Story Structure](STORY-STRUCTURE.md)
+The rebuildable semantic hierarchy over the lossless fingerprint, including
+fixture-gated significant-event aggregation and durable author decisions.
 
 ### storytimeline/
 Deterministic projection of the persistent evidence index into a manuscript-
