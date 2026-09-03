@@ -50,8 +50,8 @@ const LOOKAHEAD = 5
 // audio. A short unit can finish before the following long unit is ready even
 // on a faster-than-real-time backend. Holding a contiguous runway makes
 // that uneven sentence pair sound like prose instead of speak-wait-speak.
-const START_BUFFER_SECONDS = 8
-const START_BUFFER_UNITS = 2
+const START_BUFFER_SECONDS = 6
+const START_BUFFER_UNITS = 1
 
 // How many already-played chunks stay cached (instant short skip-backs).
 // Without a bound, a chapter-length play accumulates every sentence's

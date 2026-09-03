@@ -200,7 +200,7 @@ func NewNativeEngine(dir string, threads int) (*NativeEngine, error) {
 		return nil, err
 	}
 
-	modelPath := filepath.Join(dir, "native", "model", "model.int8.onnx")
+	modelPath := filepath.Join(dir, "native", "model", "model.onnx")
 	voicesPath := filepath.Join(dir, "native", "model", "voices.bin")
 	tokensPath := filepath.Join(dir, "native", "model", "tokens.txt")
 	lexiconPath := filepath.Join(dir, "native", "model", "lexicon-us-en.txt")

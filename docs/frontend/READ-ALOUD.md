@@ -18,8 +18,8 @@ Unsupported architectures report that native playback is unavailable. They do
 not download another platform's binaries or fall back to browser or network
 synthesis.
 
-The platform-dependent download is approximately 168 MB. It contains the
-Kokoro int8 model, voice table, English pronunciation data, eSpeak data, ONNX
+The platform-dependent download is approximately 370–385 MiB. It contains the
+clean FP32 Kokoro model, voice table, English pronunciation data, eSpeak data, ONNX
 Runtime, and sherpa C API. Every artifact has an immutable source revision,
 expected byte count, and SHA-256 in wails/internal/readaloud/manifest.go.
 Files are stored under UserCacheDir/draftline/models/kokoro/.
@@ -30,8 +30,8 @@ successfully before declaring playback ready.
 
 ## Playback pipeline
 
-Sentence and clause queue → authenticated loopback requests → bounded hot
-sherpa-onnx session pool → 24 kHz Float32 PCM → Web Audio scheduling and exact
+Sentence and clause queue → authenticated loopback requests → one bounded hot
+sherpa-onnx session → 24 kHz Float32 PCM → Web Audio scheduling and exact
 sentence highlighting.
 
 The local service binds only to 127.0.0.1 on an ephemeral port. Every launch
@@ -40,16 +40,19 @@ text to /readaloud-native/synthesize; the response exposes its sample rate
 through X-Draftline-Sample-Rate and returns raw little-endian Float32 PCM.
 No manuscript text or audio leaves the machine.
 
-Auto threading uses at most three hot sessions with two inference threads each,
-scaled down for machines with fewer logical CPUs. Independent lookahead
-requests keep later sentences rendering while the current sentence plays.
-Single mode uses one one-thread session as a low-memory compatibility option.
-The pool is released when the plugin is disabled or the model is removed.
+Auto threading uses one hot session with at most half of the machine's logical
+CPUs, capped at six inference threads. Requests are serialized in manuscript
+order because eSpeak phonemization has process-global state and concurrent
+sessions can silently corrupt speech. The FP32 engine remains faster than real
+time while ordered lookahead keeps later sentences ready. Single mode uses the
+same session with one inference thread as a low-resource compatibility option.
+The engine is released when the plugin is disabled or the model is removed.
 
 Long sentences may split at natural clause boundaries for latency, but the UI
-continues to highlight and navigate by full sentence. Playback begins when the
-first native result is ready; generated successors are scheduled on one Web
-Audio clock without inserting synthetic pauses.
+continues to highlight and navigate by full sentence. Playback waits for a
+six-second contiguous runway (unless the selection ends sooner); generated
+successors are scheduled on one Web Audio clock without inserting synthetic
+pauses.
 
 ## Controls
 
@@ -75,7 +78,7 @@ time, audio duration, real-time factor, playback handoff gaps, and process RSS.
 
 The Go backend is built with CGO_ENABLED=0. Cross-compilation covers every
 listed Linux and macOS target; the real-model test exercises dynamic loading,
-callback PCM, sequential latency, and pooled throughput on Windows.
+callback PCM, waveform integrity, and serialized sequential latency on Windows.
 
 ## File map
 

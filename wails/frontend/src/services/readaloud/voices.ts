@@ -1,6 +1,6 @@
 // Read Aloud voice catalog. Must stay in sync with the Go-side manifest
-// (wails/internal/readaloud/manifest.go): every id here has a pinned
-// voices/<id>.bin artifact in the downloaded bundle.
+// (wails/internal/readaloud/native.go): every id here maps to a speaker in the
+// pinned voices.bin table.
 
 export interface ReadAloudVoice {
   id: string

@@ -165,8 +165,8 @@ export default function ReadAloudSection({
           </button>
         </div>
         <div className="settings-hint">
-          Auto runs a bounded pool of native sessions for continuous sentence lookahead. Single
-          uses one native session as a low-memory compatibility mode. Changes apply next playback.
+          Auto uses a bounded native session with ordered sentence lookahead. Single limits the
+          same session to one inference thread as a low-resource compatibility mode. Changes apply next playback.
         </div>
       </div>
 

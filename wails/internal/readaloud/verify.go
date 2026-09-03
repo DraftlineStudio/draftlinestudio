@@ -9,10 +9,9 @@ import (
 	"draftline/internal/fsutil"
 )
 
-// Version 3 is the native-only bundle. Older browser-model files may remain
-// on disk until the user removes the model, but they are neither verified nor
-// used by Read Aloud.
-const bundleVersion = "3"
+// Version 4 replaces the noisy quantized vocoder with the clean FP32 Kokoro
+// model. The installer removes the one known obsolete model after migration.
+const bundleVersion = "4"
 const manifestFileName = "manifest.json"
 
 type InstalledManifest struct {

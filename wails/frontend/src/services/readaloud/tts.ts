@@ -11,6 +11,10 @@ export interface SynthConfig {
 
 export class NativeSynth implements SynthPort {
   private pending = new Map<number, AbortController>()
+  // sherpa's eSpeak phonemizer has process-global state. Keep requests in
+  // document order and never invoke it concurrently; the native engine is
+  // faster than real time and the controller maintains an audio runway.
+  private queue: Promise<void> = Promise.resolve()
 
   constructor(
     private getConfig: () => SynthConfig,
@@ -21,34 +25,39 @@ export class NativeSynth implements SynthPort {
   async synthesize(id: number, text: string, voice: string, speed: number): Promise<AudioChunk> {
     const abort = new AbortController()
     this.pending.set(id, abort)
-    const started = performance.now()
-    try {
-      const base = await this.getBase()
-      if (!base) throw new Error('Native Read Aloud service is unavailable')
-      const response = await fetch(`${base}/readaloud-native/synthesize`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text, voice, speed,
-          threads: this.getConfig().threads === 'single' ? 1 : 0,
-        }),
-        signal: abort.signal,
-      })
-      if (!response.ok) throw new Error((await response.text()) || `Native synthesis failed (${response.status})`)
-      const sampleRate = Number(response.headers.get('X-Draftline-Sample-Rate'))
-      if (!Number.isFinite(sampleRate) || sampleRate <= 0) {
-        throw new Error('Native synthesis response did not expose its sample rate')
+    const result = this.queue.then(async () => {
+      const started = performance.now()
+      try {
+        const base = await this.getBase()
+        if (!base) throw new Error('Native Read Aloud service is unavailable')
+        const response = await fetch(`${base}/readaloud-native/synthesize`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text, voice, speed,
+            threads: this.getConfig().threads === 'single' ? 1 : 0,
+          }),
+          signal: abort.signal,
+        })
+        if (!response.ok) throw new Error((await response.text()) || `Native synthesis failed (${response.status})`)
+        const sampleRate = Number(response.headers.get('X-Draftline-Sample-Rate'))
+        if (!Number.isFinite(sampleRate) || sampleRate <= 0) {
+          throw new Error('Native synthesis response did not expose its sample rate')
+        }
+        const bytes = await response.arrayBuffer()
+        if (bytes.byteLength === 0 || bytes.byteLength % 4 !== 0) throw new Error('Native synthesis returned invalid PCM')
+        const samples = new Float32Array(bytes)
+        const elapsed = performance.now() - started
+        const audioMs = samples.length / sampleRate * 1000
+        this.onDiagnostic?.(`native synthesis ${elapsed.toFixed(0)} ms for ${(audioMs / 1000).toFixed(1)}s audio (RTF ${(elapsed / audioMs).toFixed(2)})`)
+        return { samples, sampleRate }
+      } finally {
+        this.pending.delete(id)
       }
-      const bytes = await response.arrayBuffer()
-      if (bytes.byteLength === 0 || bytes.byteLength % 4 !== 0) throw new Error('Native synthesis returned invalid PCM')
-      const samples = new Float32Array(bytes)
-      const elapsed = performance.now() - started
-      const audioMs = samples.length / sampleRate * 1000
-      this.onDiagnostic?.(`native synthesis ${elapsed.toFixed(0)} ms for ${(audioMs / 1000).toFixed(1)}s audio (RTF ${(elapsed / audioMs).toFixed(2)})`)
-      return { samples, sampleRate }
-    } finally {
-      this.pending.delete(id)
-    }
+    })
+    // A failed or cancelled request must not poison later queue entries.
+    this.queue = result.then(() => undefined, () => undefined)
+    return result
   }
 
   cancel(id: number): void {
