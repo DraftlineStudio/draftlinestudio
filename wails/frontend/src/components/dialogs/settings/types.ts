@@ -2,7 +2,7 @@
 
 import type { types } from '../../../../wailsjs/go/models'
 
-export type SettingsSection = 'application' | 'plugins' | 'ai' | 'book'
+export type SettingsSection = 'application' | 'plugins' | 'ai' | 'readaloud' | 'book'
 
 export type AIMode = 'claudecode' | 'codex' | 'api' | 'local'
 export type AIProvider = 'claude' | 'openai' | 'gemini' | 'grok' | ''
@@ -78,6 +78,14 @@ export interface AIStudioSectionProps {
   testStatus: TestStatus
   testMsg: string
   onTestLocal: () => void
+}
+
+export interface ReadAloudSectionProps {
+  readAloudEnabled: boolean
+  voice: string
+  setVoice: (v: string) => void
+  speed: number
+  setSpeed: (v: number) => void
 }
 
 export interface BookSectionProps {
