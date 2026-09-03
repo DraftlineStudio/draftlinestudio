@@ -68,7 +68,8 @@ receive no sentence-level pause.
 | Jump to sentence | Click prose while playback is active |
 | Stop | Stop button, edit, chapter switch, or close player |
 
-Voice and speed persist in settings. Diagnostics report native synthesis wall
+Voice and speed persist in settings; new installations default to 1.1× speed.
+Diagnostics report native synthesis wall
 time, audio duration, real-time factor, playback handoff gaps, and process RSS.
 
 ## Verification

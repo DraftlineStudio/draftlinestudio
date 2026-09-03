@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02523] - 2026-09-03
+
+### Changed
+- Read Aloud now defaults to 1.1x speed.
+
 ## [0.17.02522] - 2026-09-03
 
 ### Fixed
