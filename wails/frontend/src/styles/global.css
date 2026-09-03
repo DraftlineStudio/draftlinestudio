@@ -4234,6 +4234,71 @@ html, body, #root {
   gap: 8px;
 }
 
+/* Read Aloud current-sentence highlight (decoration, never document content) */
+.read-aloud-current {
+  background: color-mix(in srgb, var(--app-accent) 22%, transparent);
+  border-radius: 2px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--app-accent) 22%, transparent);
+  transition: background 0.15s ease;
+}
+
+/* Read Aloud floating player */
+.read-aloud-player {
+  position: fixed;
+  right: 18px;
+  bottom: 40px;
+  z-index: 100;
+  width: 264px;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  padding: 10px 12px;
+}
+.read-aloud-player-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.read-aloud-player-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+}
+.read-aloud-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.read-aloud-close:hover { color: var(--text); }
+.read-aloud-player-body { display: flex; flex-direction: column; gap: 8px; }
+.read-aloud-note {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0;
+}
+.read-aloud-transport {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.read-aloud-position {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.read-aloud-options { display: flex; gap: 6px; }
+.read-aloud-voice-select { flex: 1; min-width: 0; }
+.read-aloud-speed-select { width: 64px; }
+
 /* Read Aloud settings */
 .read-aloud-speed-slider {
   width: 100%;
