@@ -6,6 +6,8 @@ export namespace readaloud {
 	    bytes_total: number;
 	    bytes_on_disk: number;
 	    missing: string[];
+	    gpu_installed: boolean;
+	    gpu_bytes_total: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Status(source);
@@ -18,6 +20,8 @@ export namespace readaloud {
 	        this.bytes_total = source["bytes_total"];
 	        this.bytes_on_disk = source["bytes_on_disk"];
 	        this.missing = source["missing"];
+	        this.gpu_installed = source["gpu_installed"];
+	        this.gpu_bytes_total = source["gpu_bytes_total"];
 	    }
 	}
 

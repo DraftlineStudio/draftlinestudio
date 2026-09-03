@@ -133,7 +133,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   read_aloud_voice: 'af_heart',
   read_aloud_speed: 1.2,
   read_aloud_device: 'wasm',
-  read_aloud_threads: 'single',
+  read_aloud_threads: 'auto',
   ai_enabled: false,
   ai_mode: 'claudecode',
   ai_provider: '',
@@ -205,7 +205,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         read_aloud_voice: raw.read_aloud_voice || 'af_heart',
         read_aloud_speed: Math.min(1.6, Math.max(0.8, Number(raw.read_aloud_speed) || 1.2)),
         read_aloud_device: raw.read_aloud_device === 'webgpu' ? 'webgpu' : 'wasm',
-        read_aloud_threads: raw.read_aloud_threads === 'auto' ? 'auto' : 'single',
+        read_aloud_threads: raw.read_aloud_threads === 'single' ? 'single' : 'auto',
       }
       set({ settings, loaded: true })
     } catch {

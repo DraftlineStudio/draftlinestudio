@@ -13,6 +13,7 @@ The one-time download is **~130 MB** from pinned, immutable revisions:
 | Kokoro q8 model + tokenizer/config | Hugging Face, pinned commit `1939ad2a…` | ~92 MB |
 | 8 English voices (`.bin` embeddings) | same pinned commit | ~4 MB |
 | onnxruntime-web runtime (`.mjs`/`.wasm`, plain + jsep) | jsdelivr, exact npm version | ~33 MB |
+| *(optional, GPU path only)* fp32 model `onnx/model.onnx` | same pinned commit | ~311 MB |
 
 Every file is verified against a SHA-256 and byte count hard-coded in `wails/internal/readaloud/manifest.go` before it is installed; a longer-than-pinned body or checksum mismatch is refused. Downloads stream with byte-level progress (`readaloud:progress` events), can be cancelled, and resume at file granularity. Files land in `<UserCacheDir>/draftline/models/kokoro/` (Windows: `%LOCALAPPDATA%\draftline\models\kokoro`) and survive restarts. **Remove downloaded model** in settings deletes the directory.
 
@@ -54,11 +55,15 @@ The player is a **bar docked at the bottom of the editor column** (the bottom co
 
 Sentence-final punctuation inside closing quotes (`"Go away." Then he left.`); `?!` clusters; abbreviation and single-capital-initial suppression (`Mr.`, `J. R. R.`); decimals; `No.` only before a number; ellipses continue when prose resumes lowercase and end before a capital; em dashes never terminate; block boundaries always do. Ambiguity leans toward *not* splitting — a missed split just reads two sentences in one breath. Tests: `segmentation.test.ts` (26 cases), `controller.test.ts` (15 state-machine cases with fake ports), plus Go download/handler/security tests in `internal/readaloud`.
 
-## Device selection & diagnostics
+## Device selection, threading & diagnostics
 
-Synthesis runs on **CPU (WASM) with the q8 model, explicitly, on every platform** — never autodetected. WebGPU passed a naive load-time smoke test on real hardware while producing badly distorted audio, so it is only available as the explicit "GPU — experimental" option under Settings → Read Aloud → Performance, alongside a threads option (Single recommended / Auto; without cross-origin isolation WASM is single-threaded regardless). Device/thread changes tear the worker down and apply on the next playback session.
+Device⇒dtype is fixed policy, never autodetected: **CPU runs WASM + q8** (fp32 in WASM is ~double the work for no audible gain); **GPU runs WebGPU + fp32** (the quantized variants are what produced corrupted audio on WebGPU). CPU is the default. The GPU path needs the optional full-precision model (~311 MB), a separate pinned artifact group downloaded on demand from Settings → Read Aloud → Performance; a load-time smoke synthesis guards it and playback falls back to CPU with a diagnostic line if WebGPU misbehaves.
 
-Every model load logs a fixed diagnostic sequence — to the WebView console (`[readaloud]` prefix) and to the Diagnostics readout in settings: `navigator.gpu` presence; resolved device and dtype; `crossOriginIsolated`; ONNX-runtime wasm `numThreads`/`simd`; each runtime `.wasm` file actually fetched; model load time; and the wall time of the first synthesized sentence.
+**Threading:** the Wails asset server sets `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` on every response, making the webview cross-origin isolated so the ONNX runtime gets SharedArrayBuffer and real WASM threads (everything the app loads is same-origin, so COEP blocks nothing). Threads default to Auto = `hardwareConcurrency − 1` (capped at 8) when isolation is active, else 1; Single is the fallback option. Device/thread changes tear the worker down and apply on the next playback session.
+
+**Run performance check** (Settings → Performance) times a steady-state sentence on each installed backend and persists the faster device — the cross-platform answer to "which config should this machine use".
+
+Every model load logs a fixed diagnostic sequence — to the WebView console (`[readaloud]` prefix) and to the selectable, copyable Diagnostics readout in settings: `navigator.gpu` presence; resolved device and dtype; `crossOriginIsolated`; ONNX-runtime wasm `numThreads`/`simd`; each runtime `.wasm` file actually fetched; model load time; and per-sentence synthesis wall time for the first three sentences (a single "model loaded" line before them proves the model is held for the whole session, not reloaded per sentence).
 
 ## Limitations
 

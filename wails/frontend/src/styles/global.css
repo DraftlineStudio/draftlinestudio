@@ -4796,7 +4796,12 @@ html, body, #root {
   line-height: 1.6;
   max-height: 90px;
   overflow-y: auto;
+  /* The app body disables selection (frameless-window dragging); logs are
+     for copying into bug reports, so selection comes back on here. */
+  user-select: text;
+  cursor: text;
 }
+.read-aloud-diag-log { max-height: 180px; }
 
 /* ===== AI SPINNER (shared) ===== */
 .ai-spinner {
