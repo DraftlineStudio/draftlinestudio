@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02526] - 2026-09-03
+
+### Added
+- Voice cast assignments are saved inside the book.
+- Added automatic voice casting that never overrides manual choices.
+- Added elapsed and remaining time to Read Aloud.
+- Added Read Aloud volume control.
+
 ## [0.17.02525] - 2026-09-03
 
 ### Added

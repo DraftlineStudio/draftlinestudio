@@ -68,6 +68,43 @@ func TestWriteOpenRoundTrip(t *testing.T) {
 	}
 }
 
+func TestReadAloudCastRoundTrip(t *testing.T) {
+	isolateConfigDir(t)
+	path := filepath.Join(t.TempDir(), "book.draftline")
+
+	// A book that never used cast mode must not grow the optional member.
+	if res := Write(path, testBook(), "test-version"); !res.Success {
+		t.Fatalf("Write failed: %s", res.Error)
+	}
+	r, err := zip.OpenReader(path)
+	if err != nil {
+		t.Fatalf("open zip: %v", err)
+	}
+	if _, err := ReadZipEntry(r, "read_aloud_cast.json"); err == nil {
+		t.Fatal("read_aloud_cast.json written for a book without casting")
+	}
+	_ = r.Close()
+
+	withCast := testBook()
+	withCast.ReadAloudCast = types.ReadAloudCast{
+		CastMode: true,
+		Voices:   map[string]string{"renee alvarez": "af_bella", "marcus webb": "am_puck"},
+	}
+	if res := Write(path, withCast, "test-version"); !res.Success {
+		t.Fatalf("Write failed: %s", res.Error)
+	}
+	got, err := Open(path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if !got.ReadAloudCast.CastMode {
+		t.Fatal("cast_mode lost in round-trip")
+	}
+	if got.ReadAloudCast.Voices["renee alvarez"] != "af_bella" || got.ReadAloudCast.Voices["marcus webb"] != "am_puck" {
+		t.Fatalf("voices lost in round-trip: %v", got.ReadAloudCast.Voices)
+	}
+}
+
 func TestWriteOpenPersistsAnalysisAndCorrections(t *testing.T) {
 	isolateConfigDir(t)
 	path := filepath.Join(t.TempDir(), "analysis.draftline")

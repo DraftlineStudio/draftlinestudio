@@ -31,6 +31,11 @@ type AppSettings struct {
 	// but one core when cross-origin isolation is active) | "single".
 	ReadAloudDevice  string `json:"read_aloud_device"`
 	ReadAloudThreads string `json:"read_aloud_threads"`
+	// ReadAloudVolume is the player's master gain, 0–1. Mute is session-only.
+	ReadAloudVolume float64 `json:"read_aloud_volume"`
+	// ReadAloudGlow toggles the player's glow accents (progress playhead dot
+	// and play-button ring).
+	ReadAloudGlow bool `json:"read_aloud_glow"`
 	// AnalysisCPUProfile controls each analysis stage's local worker-pool size:
 	// "adaptive" | "gentle" | "balanced" | "fast". It never changes the
 	// process-wide Go scheduler.
