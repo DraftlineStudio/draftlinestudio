@@ -9,6 +9,29 @@ export interface SynthConfig {
   threads: 'single' | 'auto'
 }
 
+const SENTENCE_PAUSE_MS = 220
+const STRONG_SENTENCE_PAUSE_MS = 280
+
+// Very long sentences can be split into clause-sized synthesis units. Those
+// units already receive Kokoro's punctuation cadence and must not sound like
+// separate sentences. Completed sentences receive a small explicit rest so
+// individually generated buffers do not run together unnaturally.
+function pauseAfter(text: string): number {
+  const ending = text.trim()
+  if (/[,;:—–-]["'”’\)\]]*$/.test(ending)) return 0
+  if (/[!?]["'”’\)\]]*$/.test(ending)) return STRONG_SENTENCE_PAUSE_MS
+  return SENTENCE_PAUSE_MS
+}
+
+function appendSentencePause(samples: Float32Array, sampleRate: number, text: string): Float32Array {
+  const pauseMs = pauseAfter(text)
+  const pauseSamples = Math.round(sampleRate * pauseMs / 1000)
+  if (pauseSamples <= 0) return samples
+  const result = new Float32Array(samples.length + pauseSamples)
+  result.set(samples)
+  return result
+}
+
 export class NativeSynth implements SynthPort {
   private pending = new Map<number, AbortController>()
   // sherpa's eSpeak phonemizer has process-global state. Keep requests in
@@ -46,10 +69,12 @@ export class NativeSynth implements SynthPort {
         }
         const bytes = await response.arrayBuffer()
         if (bytes.byteLength === 0 || bytes.byteLength % 4 !== 0) throw new Error('Native synthesis returned invalid PCM')
-        const samples = new Float32Array(bytes)
+        const generatedSamples = new Float32Array(bytes)
         const elapsed = performance.now() - started
-        const audioMs = samples.length / sampleRate * 1000
-        this.onDiagnostic?.(`native synthesis ${elapsed.toFixed(0)} ms for ${(audioMs / 1000).toFixed(1)}s audio (RTF ${(elapsed / audioMs).toFixed(2)})`)
+        const audioMs = generatedSamples.length / sampleRate * 1000
+        const pauseMs = pauseAfter(text)
+        const samples = appendSentencePause(generatedSamples, sampleRate, text)
+        this.onDiagnostic?.(`native synthesis ${elapsed.toFixed(0)} ms for ${(audioMs / 1000).toFixed(1)}s audio (RTF ${(elapsed / audioMs).toFixed(2)}), ${pauseMs} ms sentence pause`)
         return { samples, sampleRate }
       } finally {
         this.pending.delete(id)

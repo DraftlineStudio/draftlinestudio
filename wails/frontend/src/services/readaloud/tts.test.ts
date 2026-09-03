@@ -39,12 +39,12 @@ describe('NativeSynth', () => {
 
   it('continues the queue after a cancelled request', async () => {
     globalThis.fetch = vi.fn((_url, init) => new Promise<Response>((resolve, reject) => {
-	  if (init?.signal?.aborted) {
-	    reject(new DOMException('cancelled', 'AbortError'))
-	    return
-	  }
+      if (init?.signal?.aborted) {
+        reject(new DOMException('cancelled', 'AbortError'))
+        return
+      }
       init?.signal?.addEventListener('abort', () => reject(new DOMException('cancelled', 'AbortError')))
-	  setTimeout(() => resolve(pcmResponse()), 0)
+      setTimeout(() => resolve(pcmResponse()), 0)
     })) as typeof fetch
     const synth = new NativeSynth(() => ({ threads: 'auto' }), async () => 'http://127.0.0.1/token')
 
@@ -54,5 +54,19 @@ describe('NativeSynth', () => {
 
     await expect(cancelled).rejects.toThrow()
     await expect(next).resolves.toMatchObject({ sampleRate: 24_000 })
+  })
+
+  it('adds a natural pause after sentences but not internal clause chunks', async () => {
+    globalThis.fetch = vi.fn(async () => pcmResponse()) as typeof fetch
+    const synth = new NativeSynth(() => ({ threads: 'auto' }), async () => 'http://127.0.0.1/token')
+
+    const sentence = await synth.synthesize(1, 'A completed sentence.', 'af_heart', 1.2)
+    const question = await synth.synthesize(2, 'A completed question?', 'af_heart', 1.2)
+    const clause = await synth.synthesize(3, 'An internal clause,', 'af_heart', 1.2)
+
+    expect(sentence.samples).toHaveLength(24_000 + 5_280)
+    expect(question.samples).toHaveLength(24_000 + 6_720)
+    expect(clause.samples).toHaveLength(24_000)
+    expect(sentence.samples.slice(24_000).every(sample => sample === 0)).toBe(true)
   })
 })

@@ -4,6 +4,14 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02522] - 2026-09-03
+
+### Fixed
+- Restored natural sentence pacing in Read Aloud. Ordinary sentence buffers now end with a deliberate 220 ms rest and questions or exclamations receive 280 ms, preventing clean gapless scheduling from sounding like one run-on sentence.
+- Kept long-sentence clause splitting natural: synthesis units ending in a comma, semicolon, colon, or dash do not receive the full sentence pause. Regression coverage validates both behaviors at the exact sample level.
+
+---
+
 ## [0.17.02521] - 2026-09-03
 
 ### Fixed
