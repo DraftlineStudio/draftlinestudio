@@ -52,7 +52,9 @@ Long sentences may split at natural clause boundaries for latency, but the UI
 continues to highlight and navigate by full sentence. Playback waits for a
 six-second contiguous runway (unless the selection ends sooner); generated
 successors are scheduled on one Web Audio clock without inserting synthetic
-pauses.
+transport gaps. Draftline appends a deliberate 220 ms rest after ordinary
+sentences and 280 ms after questions or exclamations. Internal clause chunks
+receive no sentence-level pause.
 
 ## Controls
 
