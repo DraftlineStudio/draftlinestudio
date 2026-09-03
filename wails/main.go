@@ -2,10 +2,7 @@ package main
 
 import (
 	"embed"
-	"net/http"
 	"os"
-
-	"draftline/internal/readaloud"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -36,22 +33,6 @@ func main() {
 		Frameless: true,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
-			// Fallback for paths missing from the embedded frontend: serves the
-			// downloaded Read Aloud voice model read-only from the user cache.
-			Handler: readaloud.NewHandler(readAloudModelDir()),
-			// Cross-origin isolation gives the webview SharedArrayBuffer, which
-			// lets the Read Aloud ONNX runtime run real WASM threads instead of
-			// being silently capped at one. Everything the app loads is
-			// same-origin (embedded assets + the model handler), so COEP
-			// require-corp blocks nothing.
-			Middleware: func(next http.Handler) http.Handler {
-				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
-					w.Header().Set("Cross-Origin-Embedder-Policy", "require-corp")
-					w.Header().Set("Cross-Origin-Resource-Policy", "same-origin")
-					next.ServeHTTP(w, r)
-				})
-			},
 		},
 		BackgroundColour: &options.RGBA{R: 43, G: 45, B: 48, A: 255},
 		OnStartup:        app.startup,

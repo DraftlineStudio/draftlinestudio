@@ -85,8 +85,6 @@ export interface ReadAloudSectionProps {
   setVoice: (v: string) => void
   speed: number
   setSpeed: (v: number) => void
-  device: 'wasm' | 'webgpu'
-  setDevice: (v: 'wasm' | 'webgpu') => void
   threads: 'single' | 'auto'
   setThreads: (v: 'single' | 'auto') => void
 }
