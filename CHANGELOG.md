@@ -4,6 +4,16 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02502] - 2026-09-03
+
+### Added
+- Prose-aware sentence segmentation for Read Aloud: sentence-final punctuation inside closing quotes (`"Go away." Then he left.`), `?!` clusters, honorifics and other abbreviations, single-capital initials, decimals, `No.` before numbers, trailing-off ellipses (continue on lowercase, end on a capital), and em dashes that never terminate. A companion walker maps every sentence onto ProseMirror document positions — coalescing across bold/italic mark boundaries the way chapter search does — with range clamping that keeps a straddling sentence whole for play-from-cursor.
+
+### Internal
+- Segmentation is a pure text→spans function under `services/readaloud/`, separate from the position walker, with 26 unit tests covering dialogue, abbreviations, ellipses, em dashes, fragment merging, and position mapping.
+
+---
+
 ## [0.17.02501] - 2026-09-03
 
 ### Added
