@@ -12,16 +12,12 @@ import { useReadAloudStore } from '../../../store/readAloudStore'
 import { READ_ALOUD_VOICES } from '../../../services/readaloud/voices'
 import { speedLabel } from '../../../services/readaloud/speeds'
 import { formatClock } from '../../../services/readaloud/estimates'
-import SeekBar, { type SeekTick } from './SeekBar'
-
-// Per-speaker coloring and dialogue ticks arrive with cast wiring; until
-// then the current speaker is always Narration in the accent color.
-const EMPTY_TICKS: SeekTick[] = []
+import SeekBar from './SeekBar'
 
 function Eq({ playing, color }: { playing: boolean; color?: string }) {
   const style = {
     animationPlayState: playing ? 'running' : 'paused',
-    background: color || 'var(--app-accent-text)',
+    background: color || 'var(--rap-speaker, var(--app-accent-text))',
   } as const
   return (
     <span className="rap-eq" aria-hidden="true">
@@ -118,6 +114,8 @@ export default function ReadAloudPlayerBar() {
   const expanded = useReadAloudStore(s => s.expanded)
   const setExpanded = useReadAloudStore(s => s.setExpanded)
   const setPlayerVisible = useReadAloudStore(s => s.setPlayerVisible)
+  const currentSpeaker = useReadAloudStore(s => s.currentSpeaker)
+  const ticks = useReadAloudStore(s => s.ticks)
 
   useEffect(() => {
     void refreshModelStatus()
@@ -165,8 +163,11 @@ export default function ReadAloudPlayerBar() {
     )
   }
 
+  const speakerName = currentSpeaker?.name ?? 'Narration'
+  const speakerColor = currentSpeaker?.color || ''
+
   return (
-    <div className="rap-dock">
+    <div className="rap-dock" style={speakerColor ? ({ '--rap-speaker': speakerColor } as React.CSSProperties) : undefined}>
       <div className="rap-bar" role="region" aria-label="Read aloud player">
         <span className="rap-topline" aria-hidden="true">
           <span className="rap-topline-fill" style={{ width: `${(fraction * 100).toFixed(2)}%` }} />
@@ -179,7 +180,7 @@ export default function ReadAloudPlayerBar() {
           <Eq playing={status === 'playing'} />
           <span className="rap-ident-text">
             <span className="rap-wordmark">READ ALOUD</span>
-            <span className="rap-speaker">Narration</span>
+            <span className="rap-speaker">{speakerName}</span>
           </span>
         </div>
         <span className="rap-divider" />
@@ -221,7 +222,7 @@ export default function ReadAloudPlayerBar() {
           </div>
           <SeekBar
             fraction={fraction}
-            ticks={EMPTY_TICKS}
+            ticks={ticks}
             variant="bar"
             onSeek={seekToFraction}
             disabled={!sentences.length}

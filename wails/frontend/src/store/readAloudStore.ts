@@ -15,6 +15,9 @@ import { WebAudioPort } from '../services/readaloud/audio'
 import { collectSentences, buildGenerationUnits, firstUnitOfSentence, type DocSentence, type GenerationUnit } from '../services/readaloud/docSentences'
 import { DurationEstimator } from '../services/readaloud/estimates'
 import { clampReadAloudSpeed, nextReadAloudSpeed } from '../services/readaloud/speeds'
+import { attributeSpeakers, type AttributedSentence, type AttributionResult, type RosterEntry, type SpeakerKey } from '../services/readaloud/attribution'
+import { autoCast, buildChapterCast, buildRoster, castVoiceKey, type ChapterSpeaker } from '../services/readaloud/cast'
+import { useBookStore } from './bookStore'
 import { updateReadAloud, clearReadAloud, setReadAloudHandlers } from '../extensions/ReadAloud'
 import { useAppStore } from './appStore'
 import { useEditorStore } from './editorStore'
@@ -59,6 +62,14 @@ interface ReadAloudStore {
   expanded: boolean
   muted: boolean
   progress: { fraction: number; elapsedSec: number; remainingSec: number } | null
+  // Voice cast: mirrors the book's cast_mode, the current chapter's speaker
+  // rows, per-speaker dialogue ticks for the seek bar (empty when cast mode
+  // is off), and the speaker of the sentence being read (null = Narration).
+  castMode: boolean
+  speakers: ChapterSpeaker[]
+  ticks: Array<{ fraction: number; color: string }>
+  currentSpeaker: { name: string; color: string } | null
+  dialogueLineCount: number
 
   refreshModelStatus: () => Promise<void>
   // Full sha256 audit against the pinned manifest; run on plugin enable and
@@ -95,6 +106,11 @@ interface ReadAloudStore {
   setVolume: (volume: number) => void
   toggleMute: () => void
   setExpanded: (expanded: boolean) => void
+  // Voice cast actions. All persist through the book (read_aloud_cast.json)
+  // and re-voice not-yet-synthesized playback immediately.
+  setCastMode: (on: boolean) => void
+  setSpeakerVoice: (key: SpeakerKey, voiceId: string) => void
+  autoCastVoices: () => void
   setPlayerVisible: (visible: boolean) => void
   // Full teardown: stops playback and unloads the model/worker (plugin
   // disable). The next play starts a fresh worker.
@@ -135,6 +151,120 @@ function resetProgressTracking(unitCount: number): void {
   playingUnit = -1
   playingUnitDuration = 0
   playingUnitStartClock = 0
+}
+
+// ── Voice cast machinery ─────────────────────────────────────────────────────
+// Attribution runs over the FULL chapter once per document version and is
+// joined to whatever sub-queue plays (cursor/selection/chapter) by
+// DocSentence.from — the segmenter keeps true positions under range slicing,
+// so the two always agree on boundaries.
+
+let attributionDoc: unknown = null
+let attribution: AttributionResult | null = null
+let attributionRoster: RosterEntry[] = []
+let sentenceSpeakerByFrom = new Map<number, AttributedSentence>()
+
+function combinedChapterIndex(): number {
+  const bookState = useBookStore.getState()
+  const book = bookState.book
+  if (!book) return 0
+  const front = book.front_matter?.length ?? 0
+  const body = book.body?.length ?? 0
+  if (bookState.currentSection === 'front_matter') return bookState.currentIndex
+  if (bookState.currentSection === 'body') return front + bookState.currentIndex
+  return front + body + bookState.currentIndex
+}
+
+// Recomputes speaker attribution for the current chapter when the document
+// changed; a few ms of pure string work, memoized on the ProseMirror doc.
+function ensureAttribution(): void {
+  const editor = liveEditor()
+  const book = useBookStore.getState().book
+  if (!editor || !book) {
+    attributionDoc = null
+    attribution = null
+    attributionRoster = []
+    sentenceSpeakerByFrom = new Map()
+    return
+  }
+  const doc = editor.state.doc
+  if (attributionDoc === doc && attribution) return
+  const chapterSentences = collectSentences(doc)
+  const chapterText = chapterSentences.map(s => s.text).join('\n')
+  attributionRoster = buildRoster(book, combinedChapterIndex(), chapterText)
+  attribution = attributeSpeakers(chapterSentences, attributionRoster)
+  attributionDoc = doc
+  sentenceSpeakerByFrom = new Map(attribution.sentences.map(s => [s.from, s]))
+}
+
+// Rebuilds the derived cast state (speaker rows, seek-bar ticks, dialogue
+// count) for the active queue. Ticks follow the mock: hidden entirely while
+// cast mode is off.
+function refreshCastState(): void {
+  const book = useBookStore.getState().book
+  const settings = useAppStore.getState().settings
+  const state = useReadAloudStore.getState()
+  if (!attribution) {
+    useReadAloudStore.setState({ castMode: false, speakers: [], ticks: [], dialogueLineCount: 0, currentSpeaker: null })
+    return
+  }
+  const castMode = book?.read_aloud_cast?.cast_mode ?? false
+  const speakers = buildChapterCast(attribution, attributionRoster, book?.read_aloud_cast, settings.read_aloud_voice)
+  const queue = state.sentences
+  const ticks: Array<{ fraction: number; color: string }> = []
+  let dialogueLineCount = 0
+  if (queue.length) {
+    const colorFor = new Map(speakers.map(s => [s.key, s.color]))
+    for (let i = 0; i < queue.length; i++) {
+      const attributed = sentenceSpeakerByFrom.get(queue[i].from)
+      if (!attributed || attributed.kind === 'narration') continue
+      dialogueLineCount++
+      if (!castMode) continue
+      ticks.push({
+        fraction: queue.length > 1 ? i / (queue.length - 1) : 0,
+        color: colorFor.get(attributed.speaker) || 'var(--text-muted)',
+      })
+    }
+  }
+  useReadAloudStore.setState({ castMode, speakers, ticks: castMode ? ticks : [], dialogueLineCount })
+  refreshCurrentSpeaker()
+}
+
+// The speaker shown in the EQ/label/chip. Cast mode off forces the display
+// to Narration even though attribution is retained (mock behavior).
+function refreshCurrentSpeaker(): void {
+  const state = useReadAloudStore.getState()
+  let next: { name: string; color: string } | null = null
+  if (state.castMode && state.currentIndex >= 0) {
+    const sentence = state.sentences[state.currentIndex]
+    const attributed = sentence ? sentenceSpeakerByFrom.get(sentence.from) : undefined
+    if (attributed && attributed.kind !== 'narration') {
+      const speaker = state.speakers.find(s => s.key === attributed.speaker)
+      if (speaker && speaker.key !== 'narrator') next = { name: speaker.name, color: speaker.color }
+    }
+  }
+  const prev = state.currentSpeaker
+  if (prev?.name !== next?.name || prev?.color !== next?.color) {
+    useReadAloudStore.setState({ currentSpeaker: next })
+  }
+}
+
+// Per-unit synthesis voices for the queue: character voice when cast mode is
+// on and the sentence's speaker has one; null falls back to the narrator.
+function buildVoiceOverrides(units: GenerationUnit[], sentences: DocSentence[]): (string | null)[] | null {
+  const state = useReadAloudStore.getState()
+  if (!state.castMode) return null
+  const voiceFor = new Map(state.speakers.map(s => [s.key, s.voice]))
+  let any = false
+  const overrides = units.map(unit => {
+    const sentence = sentences[unit.sentenceIndex]
+    const attributed = sentence ? sentenceSpeakerByFrom.get(sentence.from) : undefined
+    if (!attributed || attributed.speaker === 'narrator' || attributed.speaker === 'unknown') return null
+    const voice = voiceFor.get(attributed.speaker) ?? null
+    if (voice) any = true
+    return voice
+  })
+  return any ? overrides : null
 }
 
 // The editorStore holds the full TipTap Editor behind a narrow interface;
@@ -287,6 +417,7 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
         // sentence actually changes.
         if (get().currentIndex !== sentenceIndex) {
           set({ currentIndex: sentenceIndex })
+          refreshCurrentSpeaker()
           withEditorView(view => updateReadAloud(view, { activeIndex: sentenceIndex }))
           scrollHighlightIntoView()
         }
@@ -342,6 +473,11 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
     expanded: false,
     muted: false,
     progress: null,
+    castMode: false,
+    speakers: [],
+    ticks: [],
+    currentSpeaker: null,
+    dialogueLineCount: 0,
 
     refreshModelStatus: async () => {
       bindEvents()
@@ -431,13 +567,16 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
       const startUnit = Math.max(0, firstUnitOfSentence(units, start))
       const proceed = () => {
         const settings = useAppStore.getState().settings
+        ensureAttribution()
         set({ sentences, playbackError: null, playerVisible: true, currentIndex: -1 })
+        refreshCastState()
         withEditorView(view => updateReadAloud(view, {
           active: true,
           sentences: sentences.map(s => ({ from: s.from, to: s.to })),
           activeIndex: -1,
         }))
         const ctrl = ensureController()
+        const overrides = buildVoiceOverrides(units, sentences)
         // If the buffer was pre-filled for exactly this queue while the
         // player sat open, arm it — first audio is already synthesized.
         // Only valid from the top: beginPlayback always plays from the
@@ -448,14 +587,16 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
           && ctrl.isPreparedFor(units.length)
           && currentUnits.length === units.length
           && currentUnits.every((u, i) => u.text === units[i].text)
-          && ctrl.beginPlayback()
         ) {
-          return
+          // Sync the cast first: a changed voice map silently refills the
+          // prepared buffer instead of arming stale audio.
+          ctrl.setVoiceOverrides(overrides)
+          if (ctrl.beginPlayback()) return
         }
         currentUnits = units
         currentSentences = sentences
         resetProgressTracking(units.length)
-        ctrl.start(units.map(u => u.text), startUnit, settings.read_aloud_voice, settings.read_aloud_speed)
+        ctrl.start(units.map(u => u.text), startUnit, settings.read_aloud_voice, settings.read_aloud_speed, true, overrides)
       }
       if (get().modelState === 'ready' && get().verified) {
         proceed()
@@ -490,8 +631,10 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
       currentSentences = sentences
       resetProgressTracking(units.length)
       set(s => ({ diagnostics: [...s.diagnostics.slice(-59), `[main t+${Math.round(performance.now())}ms] prefill: ${units.length} units queued from cursor`] }))
-      ensureController().start(units.map(u => u.text), 0, settings.read_aloud_voice, settings.read_aloud_speed, false)
+      ensureAttribution()
       set({ sentences })
+      refreshCastState()
+      ensureController().start(units.map(u => u.text), 0, settings.read_aloud_voice, settings.read_aloud_speed, false, buildVoiceOverrides(units, sentences))
     },
 
     playFromCursor: () => {
@@ -529,7 +672,7 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
       currentSentences = []
       resetProgressTracking(0)
       stopProgressTicker()
-      set({ currentIndex: -1, sentences: [], progress: null })
+      set({ currentIndex: -1, sentences: [], progress: null, ticks: [], currentSpeaker: null })
       clearHighlight()
     },
 
@@ -601,6 +744,48 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
 
     setExpanded: (expanded) => set({ expanded }),
 
+    setCastMode: (on) => {
+      const book = useBookStore.getState().book
+      if (!book) return
+      useBookStore.getState().updateReadAloudCast({ cast_mode: on, voices: book.read_aloud_cast?.voices ?? {} })
+      refreshCastState()
+      controller?.setVoiceOverrides(buildVoiceOverrides(currentUnits, currentSentences))
+    },
+
+    setSpeakerVoice: (key, voiceId) => {
+      if (key === 'narrator') {
+        // The narrator's voice is the app-level default voice.
+        get().setVoice(voiceId)
+        refreshCastState()
+        return
+      }
+      const nameKey = castVoiceKey(key)
+      const book = useBookStore.getState().book
+      if (!nameKey || !book) return
+      const cast = book.read_aloud_cast
+      useBookStore.getState().updateReadAloudCast({
+        cast_mode: cast?.cast_mode ?? get().castMode,
+        voices: { ...(cast?.voices ?? {}), [nameKey]: voiceId },
+      })
+      refreshCastState()
+      controller?.setVoiceOverrides(buildVoiceOverrides(currentUnits, currentSentences))
+    },
+
+    autoCastVoices: () => {
+      const book = useBookStore.getState().book
+      if (!book || !attribution) return
+      const settings = useAppStore.getState().settings
+      const assignments = autoCast(get().speakers, attribution.genderEvidence, settings.read_aloud_voice)
+      if (!Object.keys(assignments).length) return
+      const cast = book.read_aloud_cast
+      useBookStore.getState().updateReadAloudCast({
+        cast_mode: cast?.cast_mode ?? get().castMode,
+        voices: { ...(cast?.voices ?? {}), ...assignments },
+      })
+      refreshCastState()
+      controller?.setVoiceOverrides(buildVoiceOverrides(currentUnits, currentSentences))
+    },
+
     setPlayerVisible: (visible) => {
       if (!visible) get().stop()
       set({ playerVisible: visible, expanded: visible && get().expanded })
@@ -621,7 +806,7 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
       stopProgressTicker()
       estimator.reset()
       clearHighlight()
-      set({ status: 'idle', sentences: [], currentIndex: -1, playerVisible: false, modelLoading: null, playbackError: null, expanded: false, progress: null })
+      set({ status: 'idle', sentences: [], currentIndex: -1, playerVisible: false, modelLoading: null, playbackError: null, expanded: false, progress: null, ticks: [], currentSpeaker: null, speakers: [], dialogueLineCount: 0 })
     },
   }
 })
