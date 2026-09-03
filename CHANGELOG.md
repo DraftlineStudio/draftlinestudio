@@ -2,6 +2,16 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02499] - 2026-09-02
+
+### Added
+- Added a hierarchical Story Map with overview, sequence, scene, and detail zoom levels.
+- Added Story Time and Manuscript Order views to the Story Map.
+
+### Changed
+- Moved to version 0.17.
+- Unchanged chapters are no longer reanalyzed.
+
 ## [0.16.02498] - 2026-09-01
 
 ### Added

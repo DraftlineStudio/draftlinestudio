@@ -22,8 +22,8 @@ func (a *App) UpdateStoryAuthorModel(book types.BookData, model types.StoryAutho
 	}
 	book.Analysis.Fingerprint.AuthorModel = model
 	book.Analysis.Fingerprint = fingerprint.Build(&book, nil)
-	if book.Analysis.Version < 4 {
-		book.Analysis.Version = 4
+	if book.Analysis.Version < 5 {
+		book.Analysis.Version = 5
 	}
 	return types.FullAnalysisResult{Success: true, Book: book}
 }
