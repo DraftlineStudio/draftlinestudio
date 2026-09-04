@@ -202,6 +202,72 @@ describe('attributeSpeakers', () => {
     expect(result.lineCounts.get('narrator')).toBe(1)
   })
 
+  it('does not let a nearby male name steal an established she-tag (evidence poisoning)', () => {
+    const input = paragraphs(
+      'Renee stepped inside.',
+      '“You were there,” she said.',
+      'Marcus watched her leave without answering.',
+      '“Stop,” she said.',
+    )
+    const result = attributeSpeakers(input, ROSTER)
+    expect(result.sentences[1].speaker).toBe(RENEE)
+    // The last-named character is Marcus, but Renee owns the she-evidence.
+    expect(result.sentences[3].speaker).toBe(RENEE)
+    expect(result.genderEvidence.get(MARCUS)?.she ?? 0).toBe(0)
+  })
+
+  it('harvests gender evidence from narration co-reference (pre-pass)', () => {
+    const input = paragraphs(
+      'Renee closed the door.',
+      'She counted to ten before speaking.',
+      'Marcus arrived late and said nothing.',
+      '“Sorry,” she said.',
+    )
+    const result = attributeSpeakers(input, ROSTER)
+    expect(result.genderEvidence.get(RENEE)?.she ?? 0).toBeGreaterThan(0)
+    // "she said" resolves to Renee even though Marcus was named last.
+    expect(result.sentences[result.sentences.length - 1].speaker).toBe(RENEE)
+  })
+
+  it('unifies a paragraph around its single attributed speaker (backward case)', () => {
+    const input = paragraphs('“We move at dawn.” Renee tapped the map. “No exceptions.”')
+    const result = attributeSpeakers(input, ROSTER)
+    const dialogue = result.sentences.filter(s => s.kind !== 'narration')
+    expect(dialogue.length).toBeGreaterThan(1)
+    expect(dialogue.every(s => s.speaker === RENEE)).toBe(true)
+  })
+
+  it('continues the paragraph speaker for later untagged quotes (forward case)', () => {
+    const input = paragraphs('“You were there,” Renee said. “I can prove it.” “Tonight.”')
+    const result = attributeSpeakers(input, ROSTER)
+    expect(result.sentences.every(s => s.kind === 'narration' || s.speaker === RENEE)).toBe(true)
+  })
+
+  it('alternates untagged paragraphs even in a multi-speaker scene', () => {
+    const dana: RosterEntry[] = [...ROSTER, { key: speakerKeyFor('Dana'), name: 'Dana', aliases: ['Dana'] }]
+    const input = paragraphs(
+      '“Report,” Renee said.',
+      '“All clear,” Marcus said.',
+      '“Radio silence from the tower,” said Dana.',
+      '“Keep trying.”',
+    )
+    const result = attributeSpeakers(input, dana)
+    const last = result.sentences[result.sentences.length - 1]
+    // Not narrator-bucketed any more; the hand-off answers the previous
+    // paragraph with the other recent speaker.
+    expect(last.speaker).not.toBe('unknown')
+    expect([speakerKeyFor('Dana'), MARCUS]).toContain(last.speaker)
+  })
+
+  it('reports quoted char ranges for cast-mode splitting', () => {
+    const input = paragraphs('“You were there,” she said, and waited for an answer.')
+    const result = attributeSpeakers(input, ROSTER)
+    const first = result.sentences[0]
+    expect(first.quotedRanges).toHaveLength(1)
+    const [start, end] = first.quotedRanges[0]
+    expect(input[0].text.slice(start, end)).toBe('“You were there,”')
+  })
+
   it('prefers the longest alias when names overlap', () => {
     const roster: RosterEntry[] = [
       { key: speakerKeyFor('Detective Alvarez'), name: 'Detective Alvarez', aliases: ['Detective Alvarez'] },
