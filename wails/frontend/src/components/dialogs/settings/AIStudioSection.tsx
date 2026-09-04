@@ -3,10 +3,28 @@
 import type { AIStudioSectionProps, AIProvider } from './types'
 import { CLAUDE_MODELS, OPENAI_MODELS, GEMINI_MODELS, GROK_MODELS, DEFAULT_MODELS } from './constants'
 import { useState } from 'react'
+import type { AIEditingTask, AIProviderMode } from '../../../services/aiRouting'
+import { setTaskProvider } from '../../../services/aiRouting'
+
+const TASK_ROUTES: { id: AIEditingTask; label: string }[] = [
+  { id: 'line_edit', label: 'Line Edit' },
+  { id: 'copy_edit', label: 'Copy Edit' },
+  { id: 'expand', label: 'Expand' },
+  { id: 'smooth', label: 'Smooth' },
+  { id: 'custom', label: 'Custom Prompt' },
+]
+
+const PROVIDER_NAMES: Record<AIProviderMode, string> = {
+  claudecode: 'Claude Code',
+  codex: 'Codex',
+  api: 'API Key',
+  local: 'Local Model',
+}
 
 export default function AIStudioSection({
   aiEnabled, setAiEnabled,
   aiMode, setAiMode,
+  taskRoutes, setTaskRoutes,
   provider, setProvider,
   apiKey, setApiKey,
   hasStoredKey, onClearKey,
@@ -54,7 +72,7 @@ export default function AIStudioSection({
 
       {aiEnabled && <>
         <div className="dialog-field">
-          <label className="dialog-label">AI Source</label>
+          <label className="dialog-label">Default Provider</label>
           <div className="settings-theme-row">
             <button className={`settings-theme-btn${aiMode === 'claudecode' ? ' active' : ''}`} onClick={() => handleModeChange('claudecode')}>
               Claude Code
@@ -69,6 +87,34 @@ export default function AIStudioSection({
               Local Model
             </button>
           </div>
+          <div className="settings-hint">Used for every task unless it has an override below.</div>
+        </div>
+
+        <div className="dialog-field">
+          <label className="dialog-label">Provider by Task</label>
+          <div className="settings-ai-routing">
+            {TASK_ROUTES.map(task => (
+              <label className="settings-ai-route" key={task.id}>
+                <span>{task.label}</span>
+                <select
+                  className="dialog-select"
+                  value={taskRoutes[task.id] ?? ''}
+                  onChange={e => setTaskRoutes(setTaskProvider(
+                    taskRoutes,
+                    task.id,
+                    (e.target.value || null) as AIProviderMode | null,
+                  ))}
+                >
+                  <option value="">Default ({PROVIDER_NAMES[aiMode]})</option>
+                  <option value="claudecode">Claude Code</option>
+                  <option value="codex">Codex</option>
+                  <option value="api">API Key</option>
+                  <option value="local">Local Model</option>
+                </select>
+              </label>
+            ))}
+          </div>
+          <div className="settings-hint">Assignments are explicit. Draftline never sends a task to a different provider as a fallback.</div>
         </div>
 
         {/* Claude Code */}

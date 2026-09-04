@@ -190,12 +190,12 @@ export function RestoreBackup(arg1) {
   return window['go']['main']['App']['RestoreBackup'](arg1);
 }
 
-export function RewriteText(arg1, arg2, arg3) {
-  return window['go']['main']['App']['RewriteText'](arg1, arg2, arg3);
+export function RewriteText(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['RewriteText'](arg1, arg2, arg3, arg4);
 }
 
-export function RewriteTextCustom(arg1, arg2) {
-  return window['go']['main']['App']['RewriteTextCustom'](arg1, arg2);
+export function RewriteTextCustom(arg1, arg2, arg3) {
+  return window['go']['main']['App']['RewriteTextCustom'](arg1, arg2, arg3);
 }
 
 export function SaveBook(arg1) {

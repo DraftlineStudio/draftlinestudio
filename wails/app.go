@@ -43,7 +43,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.17.02535"
+const AppVersion = "0.17.02536"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -550,6 +550,8 @@ func (a *App) settingsPath() string {
 func (a *App) loadSettingsFromDisk() types.AppSettings {
 	defaults := types.AppSettings{
 		AIEnabled:               false,
+		AIMode:                  "claudecode",
+		AITaskRoutes:            map[string]string{},
 		DarkMode:                true,
 		ThemeMode:               "dark",
 		AutoThemeUseManual:      true,
@@ -821,10 +823,10 @@ func (a *App) TestLocalAI(endpoint string) types.AIRewriteResult {
 // RewriteText sends the HTML chapter content to the configured AI provider.
 // mode: "line_edit" | "copy_edit" | "expand" | "smooth"
 // styleOptionsJson: JSON string of types.WritingStyleOptions (for expand/smooth modes)
-func (a *App) RewriteText(html string, mode string, styleOptionsJson string) types.AIRewriteResult {
+func (a *App) RewriteText(html string, mode string, styleOptionsJson string, providerMode string) types.AIRewriteResult {
 	s := a.getSettings()
 	logging.AI("========== RewriteText START ==========")
-	logging.AI("mode=%s ai_mode=%s provider=%s", mode, s.AIMode, s.AIProvider)
+	logging.AI("mode=%s ai_mode=%s task_provider=%s provider=%s", mode, s.AIMode, providerMode, s.AIProvider)
 	logging.AIContent("INPUT_HTML", html)
 
 	if !s.AIEnabled {
@@ -860,7 +862,7 @@ func (a *App) RewriteText(html string, mode string, styleOptionsJson string) typ
 		userMsg = "Rewrite the following, returning only the rewritten HTML paragraphs:\n\n" + html
 	}
 
-	res := a.dispatchAI(system, userMsg, rewriteRequestProfile(mode))
+	res := a.dispatchAIWithMode(system, userMsg, rewriteRequestProfile(mode), providerMode)
 
 	// If the model returned diff format, reconstruct full HTML before handing back.
 	if res.Error == "" && useDiffFormat {
@@ -878,10 +880,10 @@ func (a *App) RewriteText(html string, mode string, styleOptionsJson string) typ
 }
 
 // RewriteTextCustom applies a custom user prompt to rewrite text.
-func (a *App) RewriteTextCustom(text string, prompt string) types.AIRewriteResult {
+func (a *App) RewriteTextCustom(text string, prompt string, providerMode string) types.AIRewriteResult {
 	s := a.getSettings()
 	logging.AI("========== RewriteTextCustom START ==========")
-	logging.AI("prompt=%s ai_mode=%s provider=%s", prompt, s.AIMode, s.AIProvider)
+	logging.AI("prompt=%s ai_mode=%s task_provider=%s provider=%s", prompt, s.AIMode, providerMode, s.AIProvider)
 	logging.AIContent("INPUT_TEXT", text)
 
 	if !s.AIEnabled {
@@ -912,7 +914,7 @@ CRITICAL: Return ONLY the revised text content. Do not include any instructions,
 
 	userMsg := fmt.Sprintf("Instruction: %s\n\nText to revise:\n%s", prompt, text)
 
-	res := a.dispatchAI(system, userMsg, standardAIRequest)
+	res := a.dispatchAIWithMode(system, userMsg, standardAIRequest, providerMode)
 
 	// Log the result
 	if res.Error != "" {
@@ -1084,7 +1086,12 @@ func (a *App) OpenCodexAuth() {
 // callCodexCLI handles the "codex" AI mode: prose rewrites through the OpenAI
 // Codex CLI using the user's ChatGPT account.
 func (a *App) callCodexCLI(ctx context.Context, system, userMsg string, profile aiRequestProfile) types.AIRewriteResult {
-	path := resolveCodexBin()
+	return a.callCodexCLIAtPath(ctx, resolveCodexBin(), system, userMsg, profile)
+}
+
+// callCodexCLIAtPath keeps the managed executable dependency injectable for
+// tests. Production always reaches it through callCodexCLI/resolveCodexBin.
+func (a *App) callCodexCLIAtPath(ctx context.Context, path, system, userMsg string, profile aiRequestProfile) types.AIRewriteResult {
 	if path == "" {
 		return types.AIRewriteResult{Error: "Codex CLI is not installed — open Settings › AI Studio to set it up"}
 	}
@@ -1219,57 +1226,6 @@ func (a *App) aiEmit(event string, data any) {
 	runtime.EventsEmit(a.ctx, event, data)
 }
 
-// dispatchAI routes the AI request to the appropriate provider based on settings.
-// This is the central dispatch point for all AI modes (claudecode, local, api)
-// and the single place that claims the AI-request slot: concurrent requests
-// get a clean "busy" error instead of corrupting each other's cancel handles.
-func (a *App) dispatchAI(system, userMsg string, profile aiRequestProfile) types.AIRewriteResult {
-	ctx, release, ok := a.acquireAI()
-	if !ok {
-		return types.AIRewriteResult{Error: "an AI request is already in progress — wait for it to finish or cancel it"}
-	}
-	defer release()
-
-	s := a.getSettings()
-	switch s.AIMode {
-	case "claudecode":
-		return a.callClaudeCode(ctx, system, userMsg, profile)
-	case "codex":
-		return a.callCodexCLI(ctx, system, userMsg, profile)
-	case "local":
-		if s.AILocalEndpoint == "" {
-			return types.AIRewriteResult{Error: "no local endpoint configured — set it in App Settings"}
-		}
-		return providers.Local(providers.Request{
-			Ctx: ctx, System: system, UserMsg: userMsg, Settings: s, Emit: a.aiEmit,
-		})
-	default: // "api"
-		if s.AIProvider == "" || a.getAPIKey() == "" {
-			return types.AIRewriteResult{Error: "no API provider configured — add your key in App Settings"}
-		}
-		req := providers.Request{
-			Ctx: ctx, System: system, UserMsg: userMsg,
-			APIKey: a.getAPIKey(), Settings: s, Emit: a.aiEmit,
-		}
-		switch s.AIProvider {
-		case "claude":
-			req.Model = a.resolveRequestModel("claude-sonnet-4-6", "claude-haiku-4-5-20251001", profile)
-			return providers.Claude(req)
-		case "openai":
-			req.Model = a.resolveRequestModel("gpt-4o", "gpt-4o-mini", profile)
-			return providers.OpenAI(req)
-		case "gemini":
-			req.Model = a.resolveRequestModel("gemini-1.5-pro", "gemini-1.5-flash", profile)
-			return providers.Gemini(req)
-		case "grok":
-			req.Model = a.resolveRequestModel("grok-2", "", profile)
-			return providers.Grok(req)
-		default:
-			return types.AIRewriteResult{Error: "unknown provider: " + s.AIProvider}
-		}
-	}
-}
-
 // acquireAI claims the single AI-request slot. On success it returns a
 // 180-second timeout context, an idempotent release function that must be
 // deferred by the caller, and ok=true. If another AI request is already in
@@ -1312,7 +1268,7 @@ func (a *App) acquireAI() (ctx context.Context, release func(), ok bool) {
 // resolveAIModel returns the configured model name, falling back to the
 // provider's default when none is set.
 func (a *App) resolveAIModel(defaultModel string) string {
-	if model := a.getSettings().AIModel; model != "" {
+	if model := a.getSettings().AIModel; model != "" && modelMatchesProvider(model, defaultModel) {
 		return model
 	}
 	return defaultModel

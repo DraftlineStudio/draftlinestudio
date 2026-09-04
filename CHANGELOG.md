@@ -4,6 +4,21 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02536] - 2026-09-04
+
+### Added
+- AI Studio now supports explicit provider routing by editing task. Claude Code, Codex, the configured API provider, or a local model can independently handle Line Edit, Copy Edit, Expand, Smooth, and Custom Prompt; unassigned tasks inherit a user-selected default. Settings exposes the complete routing table, while the sidebar provider menu changes the route for the currently selected task.
+
+### Changed
+- Provider routing never falls through to another service. An unavailable assigned provider produces its own setup guidance instead of silently sending manuscript text to a different provider. Clearly incompatible values from the legacy shared model override are ignored in favor of the selected provider's default model.
+- A fresh installation with no CLI, API key, or configured local model now says **Set Up an AI Provider** and opens Settings directly on AI Studio instead of steering everyone toward Claude Code.
+
+### Fixed
+- The AI sidebar now refreshes Claude Code and Codex readiness after Settings closes and when authentication completes. The sidebar previously retained its mount-time Codex result while the Settings dialog independently showed a successful installation, trapping users in a setup loop.
+- Made the Codex-not-installed regression independent of the workstation's real managed Codex installation, preventing installed developer tooling from invalidating or accidentally executing during the test.
+
+---
+
 ## [0.17.02535] - 2026-09-03
 
 ### Fixed

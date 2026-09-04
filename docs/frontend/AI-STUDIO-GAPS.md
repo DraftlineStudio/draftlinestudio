@@ -14,9 +14,11 @@ The design lists every API provider as its own switchable row. The app stores **
 
 **Fix when wanted:** per-provider keyring entries (`draftline/ai_api_key_<provider>`), migration from the single slot, `HasAPIKey(provider)` binding, and then one menu row per provider with real ready states.
 
-## 3. Model names in the menu are display-only
+## 3. Task routing is implemented; per-provider model memory is not
 
-The design shows a model name per provider row (e.g. "Sonnet 4.6", "GPT-5.2"). The app has a single shared `ai_model` setting (plus CLI defaults when blank), so the menu displays a model only for the active route and an account label for inactive routes — it is not a per-provider model picker. The quick-switcher clears incompatible provider-specific values, and the backend independently prevents non-Codex model IDs from reaching the Codex CLI. A per-route model memory would still need per-route settings fields.
+Line Edit, Copy Edit, Expand, Smooth, and Custom Prompt each support an explicit provider override and otherwise inherit the default provider. The sidebar menu edits the active task's route; Settings exposes all routes together. Routing is strict and never falls through to another provider.
+
+The app still has one shared optional `ai_model` override (plus the independent local-model field), so it does not remember a different model for every provider. The backend rejects a clearly incompatible shared override and uses that provider's safe default instead. True per-provider model memory still needs separate persisted model fields.
 
 ## 4. Kept intentionally different from the design
 

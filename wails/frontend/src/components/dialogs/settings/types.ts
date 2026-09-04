@@ -1,10 +1,11 @@
 // Settings Dialog Types
 
 import type { types } from '../../../../wailsjs/go/models'
+import type { AIProviderMode, AITaskRoutes } from '../../../services/aiRouting'
 
 export type SettingsSection = 'application' | 'plugins' | 'ai' | 'readaloud' | 'book'
 
-export type AIMode = 'claudecode' | 'codex' | 'api' | 'local'
+export type AIMode = AIProviderMode
 export type AIProvider = 'claude' | 'openai' | 'gemini' | 'grok' | ''
 export type ThemeMode = 'light' | 'dark' | 'auto'
 export type EditorFontSize = 'small' | 'normal' | 'large'
@@ -42,6 +43,8 @@ export interface AIStudioSectionProps {
   setAiEnabled: (v: boolean) => void
   aiMode: AIMode
   setAiMode: (v: AIMode) => void
+  taskRoutes: AITaskRoutes
+  setTaskRoutes: (v: AITaskRoutes) => void
   provider: AIProvider
   setProvider: (v: AIProvider) => void
   apiKey: string

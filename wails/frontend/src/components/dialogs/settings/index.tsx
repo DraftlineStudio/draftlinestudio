@@ -56,6 +56,7 @@ export default function AppSettingsDialog() {
   // AI state
   const [aiEnabled, setAiEnabled]         = useState(settings.ai_enabled)
   const [aiMode, setAiMode]               = useState<AIMode>(settings.ai_mode)
+  const [taskRoutes, setTaskRoutes]        = useState(settings.ai_task_routes)
   const [provider, setProvider]           = useState<AIProvider>(settings.ai_provider)
   // The stored key never leaves the backend; this field only holds a NEW key
   // the user types, and is sent via SetAPIKey rather than the settings blob.
@@ -256,6 +257,7 @@ export default function AppSettingsDialog() {
       read_aloud_threads: readAloudThreads,
       ai_enabled: aiEnabled,
       ai_mode: aiMode,
+      ai_task_routes: taskRoutes,
       ai_provider: provider,
       ai_debug_logging: debugLogging,
       ai_model: model,
@@ -369,6 +371,7 @@ export default function AppSettingsDialog() {
               <AIStudioSection
                 aiEnabled={aiEnabled} setAiEnabled={setAiEnabled}
                 aiMode={aiMode} setAiMode={setAiMode}
+                taskRoutes={taskRoutes} setTaskRoutes={setTaskRoutes}
                 provider={provider} setProvider={setProvider}
                 apiKey={apiKey} setApiKey={setApiKey}
                 hasStoredKey={hasStoredKey} onClearKey={handleClearKey}

@@ -5235,6 +5235,25 @@ html, body, #root {
 .settings-provider-btn:hover { border-color: var(--border-strong); color: var(--text-primary); }
 .settings-provider-btn.active { background: var(--app-accent-dim); border-color: var(--app-accent); color: var(--app-accent-text); }
 
+/* Per-editing-task AI provider routing */
+.settings-ai-routing {
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--bg-surface-alt);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+}
+.settings-ai-route {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) minmax(170px, 1.35fr);
+  align-items: center;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.settings-ai-route .dialog-select { width: 100%; }
+
 /* Path row (input + browse btn) */
 .settings-path-row { display: flex; gap: 6px; }
 .settings-path-row .dialog-input { flex: 1; }
