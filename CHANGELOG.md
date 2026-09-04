@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02532] - 2026-09-03
+
+### Fixed
+- Read Aloud cast attribution is far more consistent. A gender-evidence pre-pass now learns each character's pronoun from narration co-reference before any dialogue is attributed, and pronoun tags ("she said") only resolve to a character with positive matching evidence — a nearby male name can no longer steal a she-tag and be remembered in the wrong voice from then on. Dialogue within a paragraph follows fiction's one-speaker-per-paragraph convention (forward and backward), and untagged paragraph hand-offs now alternate between the two most recent speakers even in multi-party scenes instead of dropping whole exchanges into the narrator's voice.
+
+---
+
 ## [0.17.02531] - 2026-09-03
 
 ### Changed
