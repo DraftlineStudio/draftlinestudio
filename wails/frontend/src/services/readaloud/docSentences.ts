@@ -82,6 +82,10 @@ export function splitLeadClause(sentence: DocSentence): DocSentence[] {
 export interface GenerationUnit {
   text: string
   sentenceIndex: number
+  // Cast mode only: true when this unit is quoted speech (character voice),
+  // false for narration/tags/asides (narrator voice). Absent on units built
+  // without cast splitting — those are voiced per sentence.
+  quoted?: boolean
 }
 
 // This is intentionally high. Splitting normal prose at commas makes each
@@ -128,6 +132,61 @@ export function buildGenerationUnits(sentences: DocSentence[], _startIndex: numb
     const pieces = splitClauses(sentence.text, MAX_UNIT_WORDS)
     for (const text of pieces) {
       units.push({ text, sentenceIndex })
+    }
+  })
+  return units
+}
+
+// Minimum characters worth synthesizing on their own; smaller fragments are
+// merged into a neighboring piece rather than spoken as a lone comma or dash.
+const MIN_CAST_PIECE_CHARS = 4
+
+// Splits a sentence's text along its quoted-speech char ranges (from the
+// attribution scan) into alternating narrator/speech pieces. Slivers merge
+// into their neighbor, adopting the larger side's voice.
+export function splitByQuotedRanges(text: string, ranges: Array<[number, number]>): Array<{ text: string; quoted: boolean }> {
+  if (!ranges.length) return [{ text, quoted: false }]
+  const raw: Array<{ text: string; quoted: boolean }> = []
+  let pos = 0
+  for (const [start, end] of ranges) {
+    if (start > pos) raw.push({ text: text.slice(pos, start), quoted: false })
+    raw.push({ text: text.slice(start, end), quoted: true })
+    pos = end
+  }
+  if (pos < text.length) raw.push({ text: text.slice(pos), quoted: false })
+
+  const trimmed = raw.map(p => ({ text: p.text.trim(), quoted: p.quoted })).filter(p => p.text)
+  const merged: Array<{ text: string; quoted: boolean }> = []
+  for (const piece of trimmed) {
+    const prev = merged[merged.length - 1]
+    if (prev && piece.text.length < MIN_CAST_PIECE_CHARS) {
+      prev.text += ' ' + piece.text
+      continue
+    }
+    if (prev && prev.text.length < MIN_CAST_PIECE_CHARS) {
+      merged[merged.length - 1] = { text: prev.text + ' ' + piece.text, quoted: piece.quoted }
+      continue
+    }
+    merged.push({ ...piece })
+  }
+  return merged.length ? merged : [{ text, quoted: true }]
+}
+
+// Cast-mode unit builder: like buildGenerationUnits, but sentences split at
+// quote boundaries first so dialogue can synthesize in the character's voice
+// while tags and asides stay with the narrator. quotedRangesByFrom is keyed
+// by DocSentence.from (the attribution join key).
+export function buildCastGenerationUnits(
+  sentences: DocSentence[],
+  quotedRangesByFrom: Map<number, Array<[number, number]>>,
+): GenerationUnit[] {
+  const units: GenerationUnit[] = []
+  sentences.forEach((sentence, sentenceIndex) => {
+    const ranges = quotedRangesByFrom.get(sentence.from) ?? []
+    for (const piece of splitByQuotedRanges(sentence.text, ranges)) {
+      for (const text of splitClauses(piece.text, MAX_UNIT_WORDS)) {
+        units.push({ text, sentenceIndex, quoted: piece.quoted })
+      }
     }
   })
   return units

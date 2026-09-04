@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { autoCast, buildChapterCast, buildRoster, castVoiceKey, type ChapterSpeaker } from './cast'
+import { buildCastGenerationUnits, splitByQuotedRanges, type DocSentence } from './docSentences'
 import { speakerKeyFor, type AttributionResult, type GenderEvidence, type SpeakerKey } from './attribution'
 import { DurationEstimator } from './estimates'
 import { nextReadAloudSpeed, speedLabel } from './speeds'
@@ -138,6 +139,54 @@ describe('DurationEstimator', () => {
       b.record(100, 5, 2) // 5s at 2.0× — same underlying rate
     }
     expect(a.secondsFor(100, 1)).toBeCloseTo(b.secondsFor(100, 1), 5)
+  })
+})
+
+describe('splitByQuotedRanges', () => {
+  it('separates speech from the tag', () => {
+    const text = '“You were there,” she said.'
+    const pieces = splitByQuotedRanges(text, [[0, 17]])
+    expect(pieces).toEqual([
+      { text: '“You were there,”', quoted: true },
+      { text: 'she said.', quoted: false },
+    ])
+  })
+
+  it('handles an interrupting aside between two quotes', () => {
+    const text = '“Wait here,” Renee said, checking the hallway, “and stay quiet.”'
+    const pieces = splitByQuotedRanges(text, [[0, 12], [47, 65]])
+    expect(pieces.map(p => p.quoted)).toEqual([true, false, true])
+    expect(pieces[1].text).toBe('Renee said, checking the hallway,')
+  })
+
+  it('merges slivers into a neighbor instead of speaking a fragment', () => {
+    const text = '“Stop.” A.'
+    const pieces = splitByQuotedRanges(text, [[0, 7]])
+    expect(pieces).toHaveLength(1)
+    expect(pieces[0].quoted).toBe(true)
+  })
+
+  it('returns a single narrator piece when nothing is quoted', () => {
+    expect(splitByQuotedRanges('The rain kept falling.', [])).toEqual([
+      { text: 'The rain kept falling.', quoted: false },
+    ])
+  })
+})
+
+describe('buildCastGenerationUnits', () => {
+  it('splits mixed sentences and keeps sentence indexes intact', () => {
+    const sentences: DocSentence[] = [
+      { from: 1, to: 20, text: 'Renee waited by the door.' },
+      { from: 30, to: 60, text: '“You were there,” she said.' },
+    ]
+    const units = buildCastGenerationUnits(sentences, new Map([[30, [[0, 17]] as Array<[number, number]>]]))
+    expect(units.map(u => ({ i: u.sentenceIndex, q: u.quoted }))).toEqual([
+      { i: 0, q: false },
+      { i: 1, q: true },
+      { i: 1, q: false },
+    ])
+    expect(units[1].text).toBe('“You were there,”')
+    expect(units[2].text).toBe('she said.')
   })
 })
 
