@@ -13,7 +13,6 @@ import {
   usePreviousOverview,
   useReviewCount,
 } from './shared'
-import './signals.css'
 
 function ChevronRight() {
   return (

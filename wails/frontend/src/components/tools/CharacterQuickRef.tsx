@@ -11,7 +11,6 @@ import { hexToRgba } from '../../utils/accentColor'
 import { isConfirmedCharacter } from '../../utils/characterStatus'
 import { allChapters, chapterName, cellAlpha, chapterLocation, requestCharacterFocus } from '../characters/shared'
 import type { Character } from '../../types/draftline'
-import '../characters/characters.css'
 
 export default function CharacterQuickRef() {
   const {

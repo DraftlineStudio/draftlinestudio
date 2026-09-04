@@ -11,7 +11,6 @@ import type { AIMode, AIState } from '../types'
 import { AI_MODES, STYLE_FEATURES, INTENSITY_LABELS } from '../constants'
 import { resolveTaskProvider, setTaskProvider } from '../../../services/aiRouting'
 import NoAIProviderSetup from './NoAIProviderSetup'
-import './aistudio.css'
 
 // Icon paths per editing mode (24-viewBox, stroke-based, per the design).
 const MODE_ICONS: Record<AIMode, string> = {

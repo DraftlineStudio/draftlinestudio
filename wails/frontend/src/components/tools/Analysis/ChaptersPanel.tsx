@@ -7,7 +7,6 @@ import { useAnalysisStore } from '../../../store/analysisStore'
 import { useAppStore } from '../../../store/appStore'
 import { goToChapter } from './shared'
 import type { ChapterAnalysis } from '../../../types/draftline'
-import './chapters-panel.css'
 
 const VISIBLE_LIMIT = 8
 const KEYWORD_LIMIT = 6

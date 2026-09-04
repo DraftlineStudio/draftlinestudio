@@ -14,7 +14,6 @@ import {
   restoreAllObservations,
   useDismissedSet,
 } from './shared'
-import './review.css'
 
 function capitalize(word: string): string {
   return word.charAt(0).toUpperCase() + word.slice(1)

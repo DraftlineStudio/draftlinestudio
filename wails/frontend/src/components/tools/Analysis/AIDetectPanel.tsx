@@ -18,7 +18,6 @@ import { useBookAIScan, scanPassages, type ChapterAIScore } from '../../../servi
 import { htmlToText, getCurrentContent } from '../../../utils/textUtils'
 import { allChapters } from '../../characters/shared'
 import { goToChapter } from './shared'
-import './aidetect.css'
 
 const GAUGE_ARC_LENGTH = 188.5 // length of the 150x84 semicircle path
 

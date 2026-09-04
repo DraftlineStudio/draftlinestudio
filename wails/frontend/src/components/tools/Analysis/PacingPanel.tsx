@@ -8,7 +8,6 @@ import { useAnalysisStore } from '../../../store/analysisStore'
 import { useAppStore } from '../../../store/appStore'
 import { goToChapter } from './shared'
 import type { ChapterAnalysis } from '../../../types/draftline'
-import './pacing.css'
 
 const MIN_ANALYZABLE_WORDS = 20
 const NOTICEABLE_SHIFT = 10
