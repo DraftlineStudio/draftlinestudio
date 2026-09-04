@@ -35,6 +35,9 @@ export interface AttributedSentence {
   speaker: SpeakerKey
   kind: SentenceKind
   confidence: Confidence
+  // Quoted-speech char ranges (quote marks included) — cast mode splits the
+  // sentence along these so narration asides stay in the narrator's voice.
+  quotedRanges: Array<[number, number]>
 }
 
 export interface GenderEvidence {
@@ -93,6 +96,8 @@ interface QuoteScan {
   // including paragraph continuations); null for pure narration. A tag found
   // anywhere in a span names every sentence of it.
   spanId: number | null
+  // Char ranges of quoted speech within the sentence (quote marks included).
+  quotedRanges: Array<[number, number]>
   // Unquoted stretches of the sentence text (for tag matching), and the
   // unquoted prefix before the first quote (for pre-quote tag matching).
   unquoted: string
@@ -110,6 +115,7 @@ function scanQuotes(sentences: AttributionInput[]): QuoteScan[] {
   for (const sentence of sentences) {
     const text = sentence.text
     let index = 0
+    let quoteStartIdx = 0 // range start when the sentence begins inside a quote
 
     if (sentence.block !== prevBlock && prevBlock !== undefined && inQuote) {
       // Convention: a speech spanning paragraphs leaves its quote unclosed
@@ -119,7 +125,8 @@ function scanQuotes(sentences: AttributionInput[]): QuoteScan[] {
       const first = text.trimStart()[0] ?? ''
       if (OPENERS[first] && OPENERS[first] === closer) {
         // Continuation: consume the re-opening char as a marker, stay inside.
-        index = text.indexOf(first) + 1
+        quoteStartIdx = text.indexOf(first)
+        index = quoteStartIdx + 1
       } else {
         inQuote = false
         closer = ''
@@ -131,6 +138,9 @@ function scanQuotes(sentences: AttributionInput[]): QuoteScan[] {
     let spanId: number | null = startsInsideQuote ? activeSpanId : null
     let quoteOpensHere = false
     let quoted = 0
+    // Char ranges of quoted speech within this sentence (quote marks
+    // included) — the seams the cast-mode unit splitter cuts along.
+    const quotedRanges: Array<[number, number]> = []
     const unquotedParts: string[] = []
     let current = ''
     let beforeQuote: string | null = null
@@ -144,6 +154,7 @@ function scanQuotes(sentences: AttributionInput[]): QuoteScan[] {
           inQuote = true
           closer = OPENERS[ch]
           quoteOpensHere = true
+          quoteStartIdx = index
           activeSpanId = nextSpanId++
           if (spanId === null) spanId = activeSpanId
           if (beforeQuote === null) beforeQuote = current
@@ -156,12 +167,14 @@ function scanQuotes(sentences: AttributionInput[]): QuoteScan[] {
         if (ch === closer) {
           inQuote = false
           closer = ''
+          quotedRanges.push([quoteStartIdx, index + 1])
           continue
         }
         quoted++
       }
     }
     if (current.trim()) unquotedParts.push(current)
+    if (inQuote) quotedRanges.push([quoteStartIdx, text.length])
 
     const unquoted = unquotedParts.join(' ')
     const unquotedDense = unquoted.replace(/\s/g, '').length
@@ -174,6 +187,7 @@ function scanQuotes(sentences: AttributionInput[]): QuoteScan[] {
       startsInsideQuote,
       quoteOpensHere,
       spanId: kind === 'narration' ? null : spanId,
+      quotedRanges,
       unquoted,
       unquotedBeforeQuote: beforeQuote ?? '',
     })
@@ -235,12 +249,18 @@ function emptyEvidence(): GenderEvidence {
   return { he: 0, she: 0, they: 0 }
 }
 
-function compatible(evidence: GenderEvidence | undefined, pronoun: Pronoun): boolean {
-  if (!evidence) return true
-  const total = evidence.he + evidence.she + evidence.they
-  if (total === 0) return true
+// Positive support: the pronoun has been observed for this character and is
+// their majority pronoun. (Empty evidence is NOT support — guessing "she" at
+// whoever was last named is how a male character ends up remembered as
+// "she" and cast in the wrong voice.)
+function evidenceSupports(evidence: GenderEvidence | undefined, pronoun: Pronoun): boolean {
+  if (!evidence) return false
   const count = evidence[pronoun]
-  return count >= evidence.he && count >= evidence.she && count >= evidence.they
+  return count > 0 && count >= evidence.he && count >= evidence.she && count >= evidence.they
+}
+
+function evidenceEmpty(evidence: GenderEvidence | undefined): boolean {
+  return !evidence || evidence.he + evidence.she + evidence.they === 0
 }
 
 // Finds "<Name> said" / "said <Name>" in unquoted text; returns the speaker.
@@ -274,8 +294,8 @@ export function attributeSpeakers(
 
   // Scene-scoped context; reset at separator blocks.
   let lastSpeaker: SpeakerKey | null = null
-  let prevParaSpeaker: SpeakerKey | null = null
-  let currentParaSpeaker: SpeakerKey | null = null
+  let prevParaSpeaker: SpeakerKey | null = null // last CHARACTER dialogue speaker of the previous paragraph
+  let paraCharSpeaker: SpeakerKey | null = null // last character dialogue speaker within THIS paragraph
   let recentSpeakers: SpeakerKey[] = [] // last two DISTINCT dialogue speakers, most recent first
   let lastNamedInNarration: { key: SpeakerKey; block: number | undefined } | null = null
   let sceneSpeakers = new Set<SpeakerKey>()
@@ -283,7 +303,7 @@ export function attributeSpeakers(
   const resetScene = () => {
     lastSpeaker = null
     prevParaSpeaker = null
-    currentParaSpeaker = null
+    paraCharSpeaker = null
     recentSpeakers = []
     lastNamedInNarration = null
     sceneSpeakers = new Set()
@@ -295,6 +315,31 @@ export function attributeSpeakers(
     genderEvidence.set(key, evidence)
   }
 
+  // Pre-pass: harvest gender evidence from narration co-reference — a solo
+  // character mention followed (within a paragraph) by a He/She/They-initial
+  // narration sentence. Gives pronoun tags something solid to resolve
+  // against from the first page, so an early wrong guess can't poison the
+  // ledger and flip a character's voice mid-chapter.
+  {
+    let solo: { key: SpeakerKey; block: number | undefined } | null = null
+    for (let i = 0; i < sentences.length; i++) {
+      const sentence = sentences[i]
+      if (SCENE_SEPARATOR.test(sentence.text)) {
+        solo = null
+        continue
+      }
+      if (scans[i].kind !== 'narration') continue
+      const lead = /^(He|She|They)\b/.exec(sentence.text.trim())
+      if (lead && solo
+        && (sentence.block === undefined || solo.block === undefined || sentence.block - solo.block <= 1)) {
+        bumpEvidence(solo.key, lead[1].toLowerCase() as Pronoun)
+      }
+      const hits = findRosterHits(sentence.text, matchers)
+      if (hits.length === 1) solo = { key: hits[0].key, block: sentence.block }
+      else if (hits.length > 1) solo = null
+    }
+  }
+
   let prevBlock: number | undefined
 
   for (let i = 0; i < sentences.length; i++) {
@@ -303,27 +348,28 @@ export function attributeSpeakers(
     const newParagraph = sentence.block !== prevBlock
 
     if (newParagraph) {
-      prevParaSpeaker = currentParaSpeaker ?? prevParaSpeaker
-      currentParaSpeaker = null
+      prevParaSpeaker = paraCharSpeaker ?? prevParaSpeaker
+      paraCharSpeaker = null
     }
     prevBlock = sentence.block
 
     if (SCENE_SEPARATOR.test(sentence.text)) {
       resetScene()
-      out.push({ from: sentence.from, speaker: 'narrator', kind: 'narration', confidence: 'none' })
+      out.push({ from: sentence.from, speaker: 'narrator', kind: 'narration', confidence: 'none', quotedRanges: [] })
       continue
     }
 
     if (scan.kind === 'narration') {
       const hits = findRosterHits(sentence.text, matchers)
       if (hits.length) lastNamedInNarration = { key: hits[hits.length - 1].key, block: sentence.block }
-      out.push({ from: sentence.from, speaker: 'narrator', kind: 'narration', confidence: 'none' })
+      out.push({ from: sentence.from, speaker: 'narrator', kind: 'narration', confidence: 'none', quotedRanges: [] })
       continue
     }
 
     // Dialogue or mixed — rules in order, first hit wins.
     let speaker: SpeakerKey | null = null
     let confidence: Confidence = 'none'
+    const pronoun = findPronounTag(scan.unquoted)
 
     // 1a/1b. Same-sentence named tag.
     const named = findNamedTag(scan.unquoted, matchers)
@@ -332,28 +378,49 @@ export function attributeSpeakers(
       confidence = 'tag'
     }
 
-    // 1c. Same-sentence pronoun tag ("he said").
-    if (!speaker) {
-      const pronoun = findPronounTag(scan.unquoted)
-      if (pronoun) {
-        // A narration name only anchors a pronoun while it's fresh — this
-        // paragraph or the one before.
-        const fresh = lastNamedInNarration
-          && (sentence.block === undefined || lastNamedInNarration.block === undefined
-            || sentence.block - lastNamedInNarration.block <= 1)
-        if (fresh && lastNamedInNarration && compatible(genderEvidence.get(lastNamedInNarration.key), pronoun)) {
-          speaker = lastNamedInNarration.key
+    // 1c. Same-sentence pronoun tag ("he said"): resolve against POSITIVE
+    //     gender evidence first — the fresh narration name, then recent
+    //     speakers. A no-evidence fallback to the last-named character runs
+    //     only when nobody in the scene matches the pronoun, so "Marcus
+    //     watched her leave. 'Stop,' she said." can't hand Marcus the line
+    //     once anyone female is established.
+    if (!speaker && pronoun) {
+      // A narration name only anchors a pronoun while it's fresh — this
+      // paragraph or the one before.
+      const fresh = lastNamedInNarration
+        && (sentence.block === undefined || lastNamedInNarration.block === undefined
+          || sentence.block - lastNamedInNarration.block <= 1)
+      if (fresh && lastNamedInNarration && evidenceSupports(genderEvidence.get(lastNamedInNarration.key), pronoun)) {
+        speaker = lastNamedInNarration.key
+        confidence = 'tag'
+      } else {
+        const candidate = recentSpeakers.find(key => key !== 'unknown'
+          && evidenceSupports(genderEvidence.get(key), pronoun))
+        if (candidate) {
+          speaker = candidate
           confidence = 'tag'
         } else {
-          const candidate = recentSpeakers.find(key => key !== 'unknown'
-            && (genderEvidence.get(key)?.[pronoun] ?? 0) > 0
-            && compatible(genderEvidence.get(key), pronoun))
-          if (candidate) {
-            speaker = candidate
+          // Anyone in the ledger with supporting evidence beats a
+          // no-evidence guess (pre-pass often establishes characters before
+          // they've spoken).
+          let best: SpeakerKey | null = null
+          let bestCount = 0
+          for (const [key, evidence] of genderEvidence) {
+            if (evidenceSupports(evidence, pronoun) && evidence[pronoun] > bestCount) {
+              best = key
+              bestCount = evidence[pronoun]
+            }
+          }
+          if (best) {
+            speaker = best
+            confidence = 'tag'
+          } else if (fresh && lastNamedInNarration && evidenceEmpty(genderEvidence.get(lastNamedInNarration.key))) {
+            // Cold start: truly no one has evidence yet — the fresh name is
+            // the best available guess.
+            speaker = lastNamedInNarration.key
             confidence = 'tag'
           }
         }
-        if (speaker) bumpEvidence(speaker, pronoun)
       }
     }
 
@@ -381,6 +448,14 @@ export function attributeSpeakers(
       confidence = 'continuation'
     }
 
+    // 3b. One paragraph, one speaker: further dialogue in a paragraph whose
+    //     earlier dialogue already resolved to a character continues that
+    //     character ("A," she said. "B." "C.").
+    if (!speaker && paraCharSpeaker) {
+      speaker = paraCharSpeaker
+      confidence = 'continuation'
+    }
+
     // 4. Nearby mention: nearest earlier narration sentence in this
     //    paragraph, then the previous paragraph, holding exactly one name.
     if (!speaker) {
@@ -399,9 +474,11 @@ export function attributeSpeakers(
       }
     }
 
-    // 5. Two-speaker alternation: a fresh dialogue paragraph in a
-    //    two-character scene answers the previous paragraph's speaker.
-    if (!speaker && newParagraph && recentSpeakers.length === 2 && sceneSpeakers.size === 2
+    // 5. Alternation: an untagged fresh dialogue paragraph answers the
+    //    previous paragraph's speaker with the other of the two most recent
+    //    speakers. Applies in any scene — multi-party scenes going all
+    //    narrator is worse than an occasional wrong hand-off.
+    if (!speaker && newParagraph && recentSpeakers.length === 2
       && prevParaSpeaker && prevParaSpeaker === recentSpeakers[0]) {
       speaker = recentSpeakers[1]
       confidence = 'alternation'
@@ -421,6 +498,14 @@ export function attributeSpeakers(
       confidence = 'none'
     }
 
+    // A pronoun tag observed alongside a confident resolution feeds the
+    // gender ledger (guessed continuations/alternations don't — a wrong
+    // hand-off must not compound into wrong voices later).
+    if (pronoun && speaker !== 'unknown'
+      && (confidence === 'tag' || confidence === 'pretag' || confidence === 'nearby')) {
+      bumpEvidence(speaker, pronoun)
+    }
+
     // Tagged sentences name people in their unquoted parts too ("," Marcus
     // said.) — remember them for later pronoun tags.
     if (scan.unquoted) {
@@ -428,11 +513,11 @@ export function attributeSpeakers(
       if (hits.length) lastNamedInNarration = { key: hits[hits.length - 1].key, block: sentence.block }
     }
 
-    out.push({ from: sentence.from, speaker, kind: scan.kind, confidence })
+    out.push({ from: sentence.from, speaker, kind: scan.kind, confidence, quotedRanges: scan.quotedRanges })
 
     lastSpeaker = speaker
-    currentParaSpeaker = speaker
     if (speaker !== 'unknown' && speaker !== 'narrator') {
+      paraCharSpeaker = speaker
       sceneSpeakers.add(speaker)
       if (recentSpeakers[0] !== speaker) {
         recentSpeakers = [speaker, ...recentSpeakers.filter(key => key !== speaker)].slice(0, 2)
@@ -455,6 +540,31 @@ export function attributeSpeakers(
     if (spanId === null || out[i].speaker !== 'unknown') continue
     const speaker = spanSpeaker.get(spanId)
     if (speaker) out[i] = { ...out[i], speaker, confidence: 'continuation' }
+  }
+
+  // One paragraph, one speaker (post-pass): when a paragraph's dialogue
+  // resolved to exactly one character, its remaining unknown dialogue joins
+  // that character — this fixes the backward case ("A." "B," Renee said.)
+  // that the forward paragraph rule can't see.
+  let blockStart = 0
+  while (blockStart < out.length) {
+    const block = sentences[blockStart].block
+    let blockEnd = blockStart
+    while (blockEnd < out.length && sentences[blockEnd].block === block) blockEnd++
+    const blockSpeakers = new Set<SpeakerKey>()
+    for (let j = blockStart; j < blockEnd; j++) {
+      const s = out[j].speaker
+      if (out[j].kind !== 'narration' && s !== 'unknown' && s !== 'narrator') blockSpeakers.add(s)
+    }
+    if (blockSpeakers.size === 1) {
+      const only = [...blockSpeakers][0]
+      for (let j = blockStart; j < blockEnd; j++) {
+        if (out[j].kind !== 'narration' && out[j].speaker === 'unknown') {
+          out[j] = { ...out[j], speaker: only, confidence: 'continuation' }
+        }
+      }
+    }
+    blockStart = blockEnd
   }
 
   for (const attributed of out) {

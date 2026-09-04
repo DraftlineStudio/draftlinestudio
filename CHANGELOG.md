@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02532] - 2026-09-03
+
+### Fixed
+- Improved consistency of Read Aloud speaker attribution.
+
 ## [0.17.02531] - 2026-09-03
 
 ### Changed
