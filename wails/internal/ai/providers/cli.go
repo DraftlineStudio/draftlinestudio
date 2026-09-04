@@ -21,13 +21,16 @@ import (
 // out of the progress stream.
 func CodexExecArgs(model, lastMessageFile string, lightweight bool) []string {
 	args := []string{
+		// Approval policy is a root-level Codex option. It must precede the
+		// exec subcommand; placing it after exec makes 0.151 reject the request
+		// before any model call is made.
+		"--ask-for-approval", "never",
 		"exec",
 		"--skip-git-repo-check", // temp workdir is not a git repo
 		"--ignore-user-config",
 		"--ignore-rules",
 		"--strict-config",
 		"--sandbox", "read-only",
-		"--ask-for-approval", "never",
 		"--config", `shell_environment_policy.inherit="none"`,
 		"--ephemeral",
 		"--color", "never",

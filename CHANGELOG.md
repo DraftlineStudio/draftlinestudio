@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02539] - 2026-09-04
+
+### Fixed
+- Fixed every Codex request failing on an invalid argument.
+
 ## [0.17.02536] - 2026-09-04
 
 ### Added
