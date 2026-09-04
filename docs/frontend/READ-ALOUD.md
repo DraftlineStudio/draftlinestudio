@@ -111,13 +111,20 @@ optional `read_aloud_cast.json` member keyed by lowercased character name;
 books that never cast are byte-identical to before. Changing a voice mid-play
 lets the audible sentence finish and re-synthesizes everything after it.
 
-Accuracy expectations: name-tagged dialogue attributes reliably; pronoun tags
-and untagged two-speaker exchanges usually resolve once the scene establishes
-its speakers; untagged three-plus-party dialogue lands in an explicit
-"Unknown speaker" bucket that reads in the narrator's voice. Out of scope for
-now (read as narration): em-dash dialogue and single-quote-delimited
-dialogue. A sentence containing both quote and tag is spoken whole in the
-character's voice.
+In cast mode, sentences split at quote boundaries for synthesis: quoted
+speech plays in the character's voice while tags and asides ("…," she said,
+checking the hallway) stay with the narrator, audiobook-style. Tiny fragments
+merge into their neighbor rather than being spoken alone.
+
+Accuracy expectations: name-tagged dialogue attributes reliably. A gender
+pre-pass learns each character's pronoun from narration co-reference, so
+pronoun tags resolve against positive evidence (a nearby name of the wrong
+gender can't take the line). Dialogue follows the one-speaker-per-paragraph
+convention, and untagged paragraph hand-offs alternate between the two most
+recent speakers. What still lands in the explicit "Unknown speaker" bucket
+(read in the narrator's voice): dialogue with no tags, no nearby mentions,
+and no alternation pattern to follow. Out of scope for now (read as
+narration): em-dash dialogue and single-quote-delimited dialogue.
 
 ## Verification
 

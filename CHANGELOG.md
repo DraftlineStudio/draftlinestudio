@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02533] - 2026-09-03
+
+### Fixed
+- Cast mode no longer speaks narrator asides in the character's voice. Sentences now split at quote boundaries for synthesis: quoted speech plays in the assigned character voice while dialogue tags and interrupting asides ("…," she said, checking the hallway, "…") stay with the narrator, audiobook-style. Fragments too short to speak alone merge into a neighboring piece, and highlighting/navigation still work on whole sentences.
+
+---
+
 ## [0.17.02532] - 2026-09-03
 
 ### Fixed
