@@ -28,7 +28,7 @@ export interface RosterEntry {
 }
 
 export type SentenceKind = 'narration' | 'dialogue' | 'mixed'
-export type Confidence = 'tag' | 'pretag' | 'continuation' | 'nearby' | 'alternation' | 'none'
+export type Confidence = 'tag' | 'adjacent-tag' | 'pretag' | 'continuation' | 'nearby' | 'alternation' | 'none'
 
 export interface AttributedSentence {
   from: number // join key back to DocSentence.from
@@ -281,6 +281,11 @@ function findPronounTag(unquoted: string): Pronoun | null {
   return null
 }
 
+function findLeadingPronoun(text: string): Pronoun | null {
+  const match = /^(he|she|they)\b/i.exec(text.trim())
+  return match ? match[1].toLowerCase() as Pronoun : null
+}
+
 export function attributeSpeakers(
   sentences: AttributionInput[],
   roster: RosterEntry[],
@@ -340,6 +345,63 @@ export function attributeSpeakers(
     }
   }
 
+  // A dialogue tag is often its own segmented sentence between quotations:
+  // “Officer Hanlon.” She said flatly. “Thank you for waiting.” Treat the
+  // narration sentence as an attribution anchor for adjacent quote spans in
+  // the same paragraph. The tag itself remains narration and keeps the
+  // narrator voice.
+  const adjacentSpanSpeakers = new Map<number, SpeakerKey>()
+  const conflictedSpans = new Set<number>()
+  const anchorSpan = (spanId: number | null, speaker: SpeakerKey) => {
+    if (spanId === null || conflictedSpans.has(spanId)) return
+    const existing = adjacentSpanSpeakers.get(spanId)
+    if (existing && existing !== speaker) {
+      adjacentSpanSpeakers.delete(spanId)
+      conflictedSpans.add(spanId)
+      return
+    }
+    adjacentSpanSpeakers.set(spanId, speaker)
+  }
+  const resolveStandalonePronoun = (index: number, pronoun: Pronoun): SpeakerKey | null => {
+    let nearestWithoutEvidence: SpeakerKey | null = null
+    const block = sentences[index].block
+    for (let j = index - 1; j >= 0; j--) {
+      const candidateBlock = sentences[j].block
+      if (block !== undefined && candidateBlock !== undefined && block - candidateBlock > 3) break
+      if (scans[j].kind !== 'narration') continue
+      const hits = findRosterHits(sentences[j].text, matchers)
+      for (let h = hits.length - 1; h >= 0; h--) {
+        const key = hits[h].key
+        const evidence = genderEvidence.get(key)
+        if (evidenceSupports(evidence, pronoun)) return key
+        if (!nearestWithoutEvidence && evidenceEmpty(evidence)) nearestWithoutEvidence = key
+      }
+    }
+    const supported = [...genderEvidence.entries()]
+      .filter(([, evidence]) => evidenceSupports(evidence, pronoun))
+      .sort((a, b) => b[1][pronoun] - a[1][pronoun])
+    if (supported.length === 1 || (supported.length > 1 && supported[0][1][pronoun] > supported[1][1][pronoun])) {
+      return supported[0][0]
+    }
+    return nearestWithoutEvidence
+  }
+  for (let i = 0; i < sentences.length; i++) {
+    if (scans[i].kind !== 'narration') continue
+    const sameBlock = (index: number) => index >= 0 && index < sentences.length
+      && sentences[index].block === sentences[i].block
+    const previous = sameBlock(i - 1) && scans[i - 1].kind !== 'narration' ? scans[i - 1].spanId : null
+    const next = sameBlock(i + 1) && scans[i + 1].kind !== 'narration' ? scans[i + 1].spanId : null
+    if (previous === null && next === null) continue
+
+    let speaker = findNamedTag(sentences[i].text, matchers)
+    const pronoun = speaker ? null : findPronounTag(sentences[i].text)
+    if (!speaker && pronoun) speaker = resolveStandalonePronoun(i, pronoun)
+    if (!speaker) continue
+    anchorSpan(previous, speaker)
+    anchorSpan(next, speaker)
+    if (pronoun) bumpEvidence(speaker, pronoun)
+  }
+
   let prevBlock: number | undefined
 
   for (let i = 0; i < sentences.length; i++) {
@@ -371,9 +433,19 @@ export function attributeSpeakers(
     let confidence: Confidence = 'none'
     const pronoun = findPronounTag(scan.unquoted)
 
+    // 0. A standalone narration tag immediately beside this quote is more
+    // explicit than all continuity and alternation guesses below.
+    if (scan.spanId !== null) {
+      const adjacent = adjacentSpanSpeakers.get(scan.spanId)
+      if (adjacent) {
+        speaker = adjacent
+        confidence = 'adjacent-tag'
+      }
+    }
+
     // 1a/1b. Same-sentence named tag.
-    const named = findNamedTag(scan.unquoted, matchers)
-    if (named) {
+    const named = speaker ? null : findNamedTag(scan.unquoted, matchers)
+    if (!speaker && named) {
       speaker = named
       confidence = 'tag'
     }
@@ -437,6 +509,12 @@ export function attributeSpeakers(
         if (prevHits.length === 1) {
           speaker = prevHits[0].key
           confidence = 'pretag'
+        } else if (prevHits.length === 0) {
+          const lead = findLeadingPronoun(sentences[i - 1].text)
+          if (lead) {
+            speaker = resolveStandalonePronoun(i - 1, lead)
+            if (speaker) confidence = 'pretag'
+          }
         }
       }
     }
@@ -456,21 +534,19 @@ export function attributeSpeakers(
       confidence = 'continuation'
     }
 
-    // 4. Nearby mention: nearest earlier narration sentence in this
-    //    paragraph, then the previous paragraph, holding exactly one name.
+    // 4. Nearby mention within this paragraph. A previous paragraph is held
+    //    until after turn-taking: in alternating dialogue, an action beat for
+    //    speaker A commonly precedes speaker B's answer and must not steal it.
     if (!speaker) {
-      outer: for (const scope of [sentence.block, (sentence.block ?? 0) - 1]) {
-        for (let j = i - 1; j >= 0; j--) {
-          if (sentences[j].block !== scope) continue
-          if (scans[j].kind !== 'narration') continue
-          const hits = findRosterHits(sentences[j].text, matchers)
-          if (hits.length === 1) {
-            speaker = hits[0].key
-            confidence = 'nearby'
-            break outer
-          }
-          if (hits.length > 1) break outer // ambiguous — don't guess farther
+      for (let j = i - 1; j >= 0 && sentences[j].block === sentence.block; j--) {
+        if (scans[j].kind !== 'narration') continue
+        const hits = findRosterHits(sentences[j].text, matchers)
+        if (hits.length === 1) {
+          speaker = hits[0].key
+          confidence = 'nearby'
+          break
         }
+        if (hits.length > 1) break
       }
     }
 
@@ -492,6 +568,23 @@ export function attributeSpeakers(
       confidence = 'alternation'
     }
 
+    // 5c. Previous-paragraph mention is a last-resort local hint after
+    // stronger conversational continuity has had its chance.
+    if (!speaker && sentence.block !== undefined) {
+      const scope = sentence.block - 1
+      for (let j = i - 1; j >= 0; j--) {
+        if (sentences[j].block !== scope) continue
+        if (scans[j].kind !== 'narration') continue
+        const hits = findRosterHits(sentences[j].text, matchers)
+        if (hits.length === 1) {
+          speaker = hits[0].key
+          confidence = 'nearby'
+          break
+        }
+        if (hits.length > 1) break
+      }
+    }
+
     // 6. Unknown.
     if (!speaker) {
       speaker = 'unknown'
@@ -502,7 +595,7 @@ export function attributeSpeakers(
     // gender ledger (guessed continuations/alternations don't — a wrong
     // hand-off must not compound into wrong voices later).
     if (pronoun && speaker !== 'unknown'
-      && (confidence === 'tag' || confidence === 'pretag' || confidence === 'nearby')) {
+      && (confidence === 'tag' || confidence === 'adjacent-tag' || confidence === 'pretag' || confidence === 'nearby')) {
       bumpEvidence(speaker, pronoun)
     }
 

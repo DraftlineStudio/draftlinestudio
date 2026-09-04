@@ -116,6 +116,15 @@ speech plays in the character's voice while tags and asides ("…," she said,
 checking the hallway) stay with the narrator, audiobook-style. Tiny fragments
 merge into their neighbor rather than being spoken alone.
 
+Dialogue tags may be segmented into their own narration sentence between two
+quotes (for example, `“Officer Hanlon.” She said flatly. “Thank you for
+waiting.”`). Draftline treats that intervening tag as evidence for both
+adjacent quote spans while continuing to read the tag itself in the narrator's
+voice. Pronoun-led action beats can similarly anchor the quote that follows.
+Surname ambiguity is evaluated within the active chapter, so two different
+characters who share a surname in different parts of a book do not make an
+otherwise explicit local tag invisible.
+
 Accuracy expectations: name-tagged dialogue attributes reliably. A gender
 pre-pass learns each character's pronoun from narration co-reference, so
 pronoun tags resolve against positive evidence (a nearby name of the wrong

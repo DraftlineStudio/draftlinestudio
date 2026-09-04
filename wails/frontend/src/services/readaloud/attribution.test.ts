@@ -54,6 +54,50 @@ describe('attributeSpeakers', () => {
     expect(speakers(input)).toEqual([MARCUS])
   })
 
+  it('uses a standalone pronoun tag between two quotes for both spans', () => {
+    const input = paragraphs(
+      'Detective Renee Alvarez entered the room.',
+      'Her expression gave nothing away.',
+      '“Officer Hanlon.” She said flatly. “Thank you for waiting.”',
+    )
+    const result = attributeSpeakers(input, ROSTER)
+    const dialogue = result.sentences.filter(sentence => sentence.kind !== 'narration')
+    expect(dialogue).toHaveLength(2)
+    expect(dialogue.every(sentence => sentence.speaker === RENEE)).toBe(true)
+    expect(dialogue.every(sentence => sentence.confidence === 'adjacent-tag')).toBe(true)
+  })
+
+  it('uses a standalone named tag between adjacent quotes', () => {
+    const input = paragraphs('“Wait here.” Marcus said quietly. “I will be back.”')
+    const dialogue = attributeSpeakers(input, ROSTER).sentences.filter(sentence => sentence.kind !== 'narration')
+    expect(dialogue).toHaveLength(2)
+    expect(dialogue.every(sentence => sentence.speaker === MARCUS)).toBe(true)
+  })
+
+  it('tracks the benchmark manuscript interrogation exchange across tags, action beats, and alternation', () => {
+    const hanlon = speakerKeyFor('Daniel Hanlon')
+    const roster: RosterEntry[] = [
+      { key: hanlon, name: 'Daniel Hanlon', aliases: ['Daniel Hanlon', 'Hanlon', 'Officer Hanlon', 'Detective Hanlon'] },
+      ...ROSTER.slice(0, 1),
+    ]
+    const input = paragraphs(
+      'Hanlon sat across from the empty chair.',
+      'He had used these same tactics on suspects for years.',
+      'Detective Renee Alvarez entered the room.',
+      'Her expression gave nothing away.',
+      '“Officer Hanlon.” She said flatly. “Thank you for waiting.”',
+      'As if the mandatory interviews were somehow voluntary.',
+      '“Detective,” he said.',
+      'Alvarez tilted her head slightly. “I’m sorry?”',
+      '“Detective Hanlon. My title is still Detective.”',
+      'She looked down at the folder. “Of course. My apologies, Detective.”',
+    )
+    const dialogue = attributeSpeakers(input, roster).sentences
+      .filter(sentence => sentence.kind !== 'narration')
+      .map(sentence => sentence.speaker)
+    expect(dialogue).toEqual([RENEE, RENEE, hanlon, RENEE, hanlon, hanlon, RENEE, RENEE])
+  })
+
   it('distinguishes narration from quoted speech kinds', () => {
     const input = paragraphs('Renee waited. “Forty-one Hoyt Street. You were there,” she said.')
     const result = attributeSpeakers(input, ROSTER)
