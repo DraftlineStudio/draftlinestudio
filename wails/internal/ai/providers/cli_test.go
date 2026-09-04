@@ -23,6 +23,19 @@ func TestCodexExecArgs(t *testing.T) {
 			t.Fatalf("missing %q in %v", want, args)
 		}
 	}
+	approvalIndex := -1
+	execIndex := -1
+	for i, arg := range args {
+		if arg == "--ask-for-approval" {
+			approvalIndex = i
+		}
+		if arg == "exec" {
+			execIndex = i
+		}
+	}
+	if approvalIndex < 0 || execIndex < 0 || approvalIndex > execIndex {
+		t.Fatalf("root approval option must precede exec subcommand: %v", args)
+	}
 	for _, feature := range []string{"shell_tool", "unified_exec", "view_image", "apps", "browser_use", "computer_use", "image_generation", "multi_agent", "skill_search", "hooks"} {
 		if !strings.Contains(joined, "--disable "+feature) {
 			t.Fatalf("capability %q was not disabled in %v", feature, args)
