@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02540] - 2026-09-04
+
+### Changed
+- Renamed the AI diff buttons to Reject Change and Accept Change.
+
 ## [0.17.02539] - 2026-09-04
 
 ### Fixed
