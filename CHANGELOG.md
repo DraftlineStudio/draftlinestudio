@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02539] - 2026-09-04
+
+### Fixed
+- Fixed every Codex AI Studio request failing before execution with `argument '--ask-for-approval' not found`. Codex CLI 0.151 still supports the policy, but it is a root option; Draftline now places `--ask-for-approval never` before the `exec` subcommand and locks that ordering with a regression test. The read-only sandbox, ignored user configuration, disabled tools, ephemeral session, and isolated working directory remain unchanged.
+
+---
+
 ## [0.17.02538] - 2026-09-04
 
 ### Fixed
