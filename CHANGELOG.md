@@ -4,6 +4,16 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02537] - 2026-09-04
+
+### Changed
+- Consolidated all co-located component stylesheets back into the single global.css: the ten fragment files under components/characters, tools/AIStudio, tools/Analysis, and tools/Dashboard (~2,300 lines that had accumulated during the late-August sidebar redesigns) now live as bannered feature sections at the end of global.css, in the same cascade order they previously loaded, and the fragment files and their component imports are gone. global.css's header now states the one-stylesheet rule explicitly for future contributors and agents.
+
+### Fixed
+- Pruned the last dead rules from global.css (orphaned diff-view button styles) and corrected the stale "AI MODES GRID" section banner, which had outlived its rules and was mislabeling unrelated tool-panel styles — the mislabeling that made AI Studio's actual styles hard to find.
+
+---
+
 ## [0.17.02536] - 2026-09-04
 
 ### Added

@@ -9,7 +9,6 @@ import { analyzeText, getScoreColor } from '../../../services/aiDetection'
 import { countWords, countBookWords, getCurrentContent, htmlToText } from '../../../utils/textUtils'
 import { bookKey, openToolsSection } from '../Analysis/shared'
 import { recordTodayWords, getLastNDays, todayISO } from './history'
-import './dashboard.css'
 
 interface BreakdownRow {
   key: string

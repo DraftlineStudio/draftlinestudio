@@ -11,7 +11,6 @@ import { useAnalysisStore } from '../../../store/analysisStore'
 import { useAppStore } from '../../../store/appStore'
 import { getCurrentContent, htmlToText } from '../../../utils/textUtils'
 import { aggregateWordClasses, bookKey } from './shared'
-import './prose.css'
 
 const LONG_SENTENCE_WORDS = 25
 const SHORT_SENTENCE_WORDS = 8

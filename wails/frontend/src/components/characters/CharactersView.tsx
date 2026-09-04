@@ -12,7 +12,6 @@ import { characterColor, characterInitials } from '../../utils/characterVisuals'
 import { hexToRgba } from '../../utils/accentColor'
 import { confirmedCharacterIds, confirmedEvents, confirmedRelationships, isConfirmedCharacter } from '../../utils/characterStatus'
 import type { BookData, Character, CharacterRole, CharacterEvent, MentionRecord } from '../../types/draftline'
-import './characters.css'
 import CharacterInterweave from './CharacterInterweave'
 
 import { allChapters, chapterName, cellAlpha, chapterLocation, takeCharacterFocus } from './shared'
