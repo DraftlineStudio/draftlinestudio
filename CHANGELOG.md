@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02538] - 2026-09-04
+
+### Fixed
+- Rewrote three literal NUL bytes in tools/Analysis/shared.ts (used as cache-key separators inside template strings) as `\u0000` escapes. Runtime values are byte-identical, but the raw NULs made git and grep treat the file as binary, hiding it from text search and diffs.
+
+---
+
 ## [0.17.02537] - 2026-09-04
 
 ### Changed
