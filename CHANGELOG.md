@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02534] - 2026-09-03
+
+### Fixed
+- Voice casting now recognizes dialogue tags that use part of a character's name.
+
 ## [0.17.02533] - 2026-09-03
 
 ### Fixed
