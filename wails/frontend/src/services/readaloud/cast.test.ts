@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { autoCast, buildChapterCast, buildRoster, castVoiceKey, type ChapterSpeaker } from './cast'
 import { buildCastGenerationUnits, splitByQuotedRanges, type DocSentence } from './docSentences'
-import { speakerKeyFor, type AttributionResult, type GenderEvidence, type SpeakerKey } from './attribution'
+import { attributeSpeakers, speakerKeyFor, type AttributionResult, type GenderEvidence, type SpeakerKey } from './attribution'
 import { DurationEstimator } from './estimates'
 import { nextReadAloudSpeed, speedLabel } from './speeds'
 import type { BookData } from '../../types/draftline'
@@ -37,6 +37,64 @@ describe('buildRoster', () => {
     expect(keys).toContain(speakerKeyFor('Renee Alvarez')) // indexed in chapter 0
     expect(keys).toContain(speakerKeyFor('Marcus Webb')) // not indexed here, but in the text
     expect(keys).not.toContain(speakerKeyFor('The Precinct')) // places don't speak
+  })
+
+  it('derives surname and given-name aliases even when entity resolution recorded none', () => {
+    const roster = buildRoster(book(), 0, '')
+    const renee = roster.find(r => r.key === speakerKeyFor('Renee Alvarez'))
+    expect(renee?.aliases).toContain('Alvarez')
+    expect(renee?.aliases).toContain('Renee')
+  })
+
+  it('drops a surname shared by two characters from both, keeping given names', () => {
+    const data = book()
+    data.story_bible!.characters.push({
+      id: 'c4', name: 'Sarah Webb', role: 'other', description: '', appearance: '', personality: '',
+      motivation: '', notes: '', chapter_mentions: { 0: 3 },
+    } as never)
+    const roster = buildRoster(data, 0, 'Marcus Webb entered.')
+    const marcus = roster.find(r => r.key === speakerKeyFor('Marcus Webb'))
+    const sarah = roster.find(r => r.key === speakerKeyFor('Sarah Webb'))
+    expect(marcus?.aliases).not.toContain('Webb')
+    expect(sarah?.aliases).not.toContain('Webb')
+    expect(marcus?.aliases).toContain('Marcus')
+    expect(sarah?.aliases).toContain('Sarah')
+  })
+
+  it('keeps review-status detections and excludes only rejected ones', () => {
+    const data = book()
+    data.story_bible!.characters.push(
+      {
+        id: 'c5', name: 'Hanlon', role: 'other', description: '', appearance: '', personality: '',
+        motivation: '', notes: '', is_auto_detected: true, detection_status: 'review', chapter_mentions: { 0: 5 },
+      } as never,
+      {
+        id: 'c6', name: 'Falseread', role: 'other', description: '', appearance: '', personality: '',
+        motivation: '', notes: '', is_auto_detected: true, detection_status: 'rejected', chapter_mentions: { 0: 5 },
+      } as never,
+    )
+    const keys = buildRoster(data, 0, '').map(r => r.key)
+    expect(keys).toContain(speakerKeyFor('Hanlon'))
+    expect(keys).not.toContain(speakerKeyFor('Falseread'))
+  })
+
+  it('attributes a surname tag to the right character end to end (Alvarez vs Hanlon)', () => {
+    const data = book()
+    data.story_bible!.characters.push({
+      id: 'c5', name: 'Hanlon', role: 'other', description: '', appearance: '', personality: '',
+      motivation: '', notes: '', is_auto_detected: true, detection_status: 'review', chapter_mentions: { 0: 5 },
+    } as never)
+    const roster = buildRoster(data, 0, 'Hanlon and Renee Alvarez sat down.')
+    const text = [
+      '“Take a seat,” Hanlon said.',
+      '“Thank you for coming in again,” Alvarez said.',
+    ]
+    const input = text.flatMap((t, block) => [{ from: block * 100 + 1, text: t, block }])
+    const result = attributeSpeakers(input, roster)
+    expect(result.sentences[0].speaker).toBe(speakerKeyFor('Hanlon'))
+    // The whole complaint: a clean "Alvarez said." tag must beat every
+    // fallback rule, even though the character is stored as "Renee Alvarez".
+    expect(result.sentences[1].speaker).toBe(speakerKeyFor('Renee Alvarez'))
   })
 })
 

@@ -5,7 +5,6 @@
 // character names so they survive re-indexing.
 
 import type { BookData, Character, ReadAloudCast } from '../../types/draftline'
-import { isConfirmedCharacter } from '../../utils/characterStatus'
 import { characterColor } from '../../utils/characterVisuals'
 import { READ_ALOUD_VOICES } from './voices'
 import { speakerKeyFor, type AttributionResult, type GenderEvidence, type RosterEntry, type SpeakerKey } from './attribution'
@@ -27,30 +26,74 @@ export function castVoiceKey(key: SpeakerKey): string | null {
   return key.startsWith('char:') ? key.slice(5) : null
 }
 
+// TTS attribution is recall-first, unlike the precision-first analysis
+// sidebars: a name the roster can't see doesn't just miss its own lines — it
+// hands them to whoever the fallback rules guess ("Alvarez said" attributed
+// to Hanlon because Alvarez was still in review). So review-status
+// auto-detections stay in; only explicit rejections are excluded.
 function speakableCharacter(character: Character): boolean {
-  if (!isConfirmedCharacter(character)) return false
+  if (character.is_auto_detected && character.detection_status === 'rejected') return false
   const kind = character.entity_kind
   return kind === undefined || kind === 'person' || kind === 'unknown'
 }
 
-// The characters that can speak in this chapter: confirmed people mentioned
-// here per the analysis index, plus any whose name literally appears in the
-// chapter text (covers stale analysis and manual characters).
+// Honorifics and connectives never identify a character on their own.
+const NON_IDENTIFYING_PARTS = new Set([
+  'mr', 'mrs', 'ms', 'miss', 'dr', 'sir', 'lady', 'lord', 'madam', 'dame',
+  'detective', 'officer', 'sergeant', 'captain', 'lieutenant', 'colonel',
+  'general', 'major', 'agent', 'professor', 'doctor', 'judge', 'father',
+  'mother', 'sister', 'brother', 'aunt', 'uncle', 'the', 'old', 'young',
+  'saint', 'st', 'van', 'von', 'del', 'de', 'la', 'le',
+])
+
+// Individual capitalized words of a name ("Renee Alvarez" → Renee, Alvarez)
+// — dialogue tags usually use just the surname or given name, and entity
+// resolution doesn't always record each part as an alias.
+function nameParts(alias: string): string[] {
+  return alias
+    .split(/[\s-]+/)
+    .map(part => part.replace(/[^\p{L}'’]/gu, ''))
+    .filter(part => part.length >= 3 && /^\p{Lu}/u.test(part) && !NON_IDENTIFYING_PARTS.has(part.toLowerCase()))
+}
+
+// The characters that can speak in this chapter: people mentioned here per
+// the analysis index, plus any whose name literally appears in the chapter
+// text (covers stale analysis and manual characters). Aliases are expanded
+// with their individual name parts; a part claimed by more than one
+// character ("Webb" of Marcus Webb and Sarah Webb) identifies nobody and is
+// dropped from everyone — except a character's own full name, which always
+// stands.
 export function buildRoster(book: BookData, globalChapterIdx: number, chapterText: string): RosterEntry[] {
-  const characters = book.story_bible?.characters ?? []
+  const characters = (book.story_bible?.characters ?? []).filter(c => c.name?.trim() && speakableCharacter(c))
+
+  // Expand every character's aliases with derived name parts.
+  const expanded = characters.map(character => {
+    const name = character.name.trim()
+    const explicit = [name, ...(character.aliases ?? [])].map(a => a.trim()).filter(a => a.length > 1)
+    const derived = explicit.flatMap(nameParts)
+    return { character, name, aliases: [...new Set([...explicit, ...derived])] }
+  })
+
+  // Any alias string claimed by two or more characters is ambiguous.
+  const claims = new Map<string, number>()
+  for (const entry of expanded) {
+    for (const alias of new Set(entry.aliases.map(a => a.toLowerCase()))) {
+      claims.set(alias, (claims.get(alias) ?? 0) + 1)
+    }
+  }
+
   const roster: RosterEntry[] = []
   const seen = new Set<string>()
-  for (const character of characters) {
-    const name = character.name?.trim()
-    if (!name || !speakableCharacter(character)) continue
-    const key = speakerKeyFor(name)
+  for (const entry of expanded) {
+    const key = speakerKeyFor(entry.name)
     if (seen.has(key)) continue
-    const mentionedHere = (character.chapter_mentions?.[globalChapterIdx] ?? 0) > 0
-    const aliases = [name, ...(character.aliases ?? [])].filter(a => a.trim().length > 1)
-    const appearsInText = !mentionedHere && aliases.some(alias => chapterText.includes(alias))
+    const aliases = entry.aliases.filter(alias =>
+      alias === entry.name || (claims.get(alias.toLowerCase()) ?? 0) <= 1)
+    const mentionedHere = (entry.character.chapter_mentions?.[globalChapterIdx] ?? 0) > 0
+    const appearsInText = mentionedHere || aliases.some(alias => chapterText.includes(alias))
     if (!mentionedHere && !appearsInText) continue
     seen.add(key)
-    roster.push({ key, name, aliases })
+    roster.push({ key, name: entry.name, aliases })
   }
   return roster
 }
