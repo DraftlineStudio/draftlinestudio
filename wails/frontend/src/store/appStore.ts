@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { LoadSettings, SaveSettings, BrowseForDirectory, GetRecentProjects, AddRecentProject, RemoveRecentProject, ClearRecentProjects } from '../../wailsjs/go/main/App'
 import { types } from '../../wailsjs/go/models'
 import type { Section } from '../types/draftline'
+import type { AITaskRoutes } from '../services/aiRouting'
 
 type RecentProject = types.RecentProject
 
@@ -36,6 +37,7 @@ export interface AppSettings {
   // AI
   ai_enabled: boolean
   ai_mode: 'claudecode' | 'codex' | 'api' | 'local'
+  ai_task_routes: AITaskRoutes
   ai_provider: 'claude' | 'openai' | 'gemini' | 'grok' | ''
   characters_lane_view: 'grid' | 'heat' | 'weave'
   has_api_key: boolean
@@ -140,6 +142,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   read_aloud_glow: true,
   ai_enabled: false,
   ai_mode: 'claudecode',
+  ai_task_routes: {},
   ai_provider: '',
   characters_lane_view: 'grid',
   has_api_key: false,
@@ -197,6 +200,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         ...raw,
         ai_provider: (raw.ai_provider as AppSettings['ai_provider']) ?? '',
         ai_mode: (raw.ai_mode as AppSettings['ai_mode']) || 'claudecode',
+        ai_task_routes: (raw as unknown as Partial<AppSettings>).ai_task_routes ?? {},
         theme_mode: (raw.theme_mode as AppSettings['theme_mode']) || (raw.dark_mode ? 'dark' : 'light'),
         editor_font_size: (raw.editor_font_size as AppSettings['editor_font_size']) || 'normal',
         characters_lane_view: raw.characters_lane_view === 'heat' || raw.characters_lane_view === 'weave'

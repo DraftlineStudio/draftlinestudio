@@ -2144,6 +2144,7 @@ export namespace types {
 	    characters_lane_view: string;
 	    ai_enabled: boolean;
 	    ai_mode: string;
+	    ai_task_routes?: Record<string, string>;
 	    ai_provider: string;
 	    ai_api_key?: string;
 	    has_api_key: boolean;
@@ -2195,6 +2196,7 @@ export namespace types {
 	        this.characters_lane_view = source["characters_lane_view"];
 	        this.ai_enabled = source["ai_enabled"];
 	        this.ai_mode = source["ai_mode"];
+	        this.ai_task_routes = source["ai_task_routes"];
 	        this.ai_provider = source["ai_provider"];
 	        this.ai_api_key = source["ai_api_key"];
 	        this.has_api_key = source["has_api_key"];
