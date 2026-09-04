@@ -74,9 +74,28 @@ export function buildRoster(book: BookData, globalChapterIdx: number, chapterTex
     return { character, name, aliases: [...new Set([...explicit, ...derived])] }
   })
 
-  // Any alias string claimed by two or more characters is ambiguous.
-  const claims = new Map<string, number>()
+  // First determine who can actually belong to this chapter. Globally unique
+  // aliases may pull in a character when analysis is stale, but an ambiguous
+  // surname must not pull every same-named character from the whole novel into
+  // this chapter and then erase the useful alias from the real participant.
+  const globalClaims = new Map<string, number>()
   for (const entry of expanded) {
+    for (const alias of new Set(entry.aliases.map(a => a.toLowerCase()))) {
+      globalClaims.set(alias, (globalClaims.get(alias) ?? 0) + 1)
+    }
+  }
+  const candidates = expanded.filter(entry => {
+    const mentionedHere = (entry.character.chapter_mentions?.[globalChapterIdx] ?? 0) > 0
+    if (mentionedHere || chapterText.includes(entry.name)) return true
+    return entry.aliases.some(alias =>
+      (globalClaims.get(alias.toLowerCase()) ?? 0) === 1 && chapterText.includes(alias))
+  })
+
+  // An alias is ambiguous only among characters who can occur in this
+  // chapter. The same surname used by unrelated characters elsewhere in the
+  // novel should not disable ordinary surname dialogue tags here.
+  const claims = new Map<string, number>()
+  for (const entry of candidates) {
     for (const alias of new Set(entry.aliases.map(a => a.toLowerCase()))) {
       claims.set(alias, (claims.get(alias) ?? 0) + 1)
     }
@@ -84,14 +103,11 @@ export function buildRoster(book: BookData, globalChapterIdx: number, chapterTex
 
   const roster: RosterEntry[] = []
   const seen = new Set<string>()
-  for (const entry of expanded) {
+  for (const entry of candidates) {
     const key = speakerKeyFor(entry.name)
     if (seen.has(key)) continue
     const aliases = entry.aliases.filter(alias =>
       alias === entry.name || (claims.get(alias.toLowerCase()) ?? 0) <= 1)
-    const mentionedHere = (entry.character.chapter_mentions?.[globalChapterIdx] ?? 0) > 0
-    const appearsInText = mentionedHere || aliases.some(alias => chapterText.includes(alias))
-    if (!mentionedHere && !appearsInText) continue
     seen.add(key)
     roster.push({ key, name: entry.name, aliases })
   }

@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02535] - 2026-09-03
+
+### Fixed
+- Improved Read Aloud voice casting for dialogue tags split into narration.
+- Voice casting now only considers characters who can appear in the current chapter.
+
 ## [0.17.02534] - 2026-09-03
 
 ### Fixed

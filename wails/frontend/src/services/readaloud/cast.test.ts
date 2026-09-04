@@ -61,6 +61,18 @@ describe('buildRoster', () => {
     expect(sarah?.aliases).toContain('Sarah')
   })
 
+  it('keeps a surname when its namesake only appears in another chapter', () => {
+    const data = book()
+    data.story_bible!.characters.push({
+      id: 'c4', name: 'Dr. Renee Alvarez', role: 'other', description: '', appearance: '', personality: '',
+      motivation: '', notes: '', aliases: ['Alvarez', 'Dr. Alvarez'], chapter_mentions: { 12: 4 },
+    } as never)
+    const roster = buildRoster(data, 0, 'Detective Alvarez entered the room.')
+    const detective = roster.find(entry => entry.key === speakerKeyFor('Renee Alvarez'))
+    expect(detective?.aliases).toContain('Alvarez')
+    expect(roster.some(entry => entry.key === speakerKeyFor('Dr. Renee Alvarez'))).toBe(false)
+  })
+
   it('keeps review-status detections and excludes only rejected ones', () => {
     const data = book()
     data.story_bible!.characters.push(
