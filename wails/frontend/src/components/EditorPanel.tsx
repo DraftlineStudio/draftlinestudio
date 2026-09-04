@@ -62,7 +62,7 @@ function DiffPanel({ label, name }: { label: string; name: string }) {
     el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [pendingDiff?.focusedChangeIdx])
 
-  // Keyboard nav: ← → to move between changes, a/k to accept/keep
+  // Keyboard nav: ← → to move between changes, a/k to accept/reject
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (!pendingDiff) return
@@ -111,17 +111,17 @@ function DiffPanel({ label, name }: { label: string; name: string }) {
           <button className="diff-ctrl-btn nav" onClick={nextChange} disabled={focusedChangeIdx >= total - 1} title="Next change (→)">›</button>
         </div>
 
-        {/* Accept / Keep for focused change */}
+        {/* Accept / reject the focused change */}
         <button
           className={`diff-ctrl-btn${focused?.decided && !focused.accepted ? ' active-reject' : ''}`}
           onClick={() => rejectChange(focusedChangeIdx)}
-          title="Keep original (k)"
-        >Keep</button>
+          title="Reject change (k)"
+        >Reject change</button>
         <button
           className={`diff-ctrl-btn${focused?.decided && focused.accepted ? ' active-accept' : ''}`}
           onClick={() => acceptChange(focusedChangeIdx)}
-          title="Accept suggestion (a)"
-        >Accept</button>
+          title="Accept change (a)"
+        >Accept change</button>
 
         <div className="diff-accept-sep" />
 

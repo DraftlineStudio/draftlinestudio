@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02540] - 2026-09-04
+
+### Changed
+- Renamed the focused AI-diff actions from the ambiguous `Keep` and `Accept` labels to `Reject change` and `Accept change`, matching the established bulk-action language without changing their behavior or keyboard shortcuts.
+
+---
+
 ## [0.17.02539] - 2026-09-04
 
 ### Fixed
