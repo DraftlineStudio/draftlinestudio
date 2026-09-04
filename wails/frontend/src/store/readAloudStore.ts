@@ -12,7 +12,7 @@ import { EventsOn } from '../../wailsjs/runtime/runtime'
 import { ReadAloudController, type AudioChunk, type ControllerStatus, type PlaybackHandle, type SynthPort } from '../services/readaloud/controller'
 import { NativeSynth } from '../services/readaloud/tts'
 import { WebAudioPort } from '../services/readaloud/audio'
-import { collectSentences, buildGenerationUnits, firstUnitOfSentence, type DocSentence, type GenerationUnit } from '../services/readaloud/docSentences'
+import { collectSentences, buildGenerationUnits, buildCastGenerationUnits, firstUnitOfSentence, type DocSentence, type GenerationUnit } from '../services/readaloud/docSentences'
 import { DurationEstimator } from '../services/readaloud/estimates'
 import { clampReadAloudSpeed, nextReadAloudSpeed } from '../services/readaloud/speeds'
 import { attributeSpeakers, type AttributedSentence, type AttributionResult, type RosterEntry, type SpeakerKey } from '../services/readaloud/attribution'
@@ -275,12 +275,15 @@ function refreshCurrentSpeaker(): void {
 
 // Per-unit synthesis voices for the queue: character voice when cast mode is
 // on and the sentence's speaker has one; null falls back to the narrator.
+// Units flagged as unquoted (tags/asides from cast splitting) always stay
+// with the narrator, whoever the sentence's speaker is.
 function buildVoiceOverrides(units: GenerationUnit[], sentences: DocSentence[]): (string | null)[] | null {
   const state = useReadAloudStore.getState()
   if (!state.castMode) return null
   const voiceFor = new Map(state.speakers.map(s => [s.key, s.voice]))
   let any = false
   const overrides = units.map(unit => {
+    if (unit.quoted === false) return null
     const sentence = sentences[unit.sentenceIndex]
     const attributed = sentence ? sentenceSpeakerByFrom.get(sentence.from) : undefined
     if (!attributed || attributed.speaker === 'narrator' || attributed.speaker === 'unknown') return null
@@ -289,6 +292,24 @@ function buildVoiceOverrides(units: GenerationUnit[], sentences: DocSentence[]):
     return voice
   })
   return any ? overrides : null
+}
+
+// Quote ranges for the cast unit splitter, keyed by sentence position.
+function quotedRangesByFrom(): Map<number, Array<[number, number]>> {
+  const map = new Map<number, Array<[number, number]>>()
+  for (const [from, attributed] of sentenceSpeakerByFrom) {
+    if (attributed.quotedRanges.length) map.set(from, attributed.quotedRanges)
+  }
+  return map
+}
+
+// Builds the synthesis queue for a sentence list: quote-boundary split units
+// in cast mode (speech in character voices, asides with the narrator),
+// whole-sentence units otherwise.
+function buildQueueUnits(sentences: DocSentence[], castMode: boolean): GenerationUnit[] {
+  return castMode
+    ? buildCastGenerationUnits(sentences, quotedRangesByFrom())
+    : buildGenerationUnits(sentences, 0)
 }
 
 // The editorStore holds the full TipTap Editor behind a narrow interface;
@@ -589,13 +610,15 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
     play: (sentences, startIndex) => {
       if (!sentences.length) return
       const start = Math.max(0, Math.min(startIndex, sentences.length - 1))
-      const units = buildGenerationUnits(sentences, start)
-      const startUnit = Math.max(0, firstUnitOfSentence(units, start))
       const proceed = () => {
         const settings = useAppStore.getState().settings
         ensureAttribution()
         set({ sentences, playbackError: null, playerVisible: true, currentIndex: -1 })
         refreshCastState()
+        // Units are cast-aware (quote-boundary splits), so they can only be
+        // built after attribution and cast state are current.
+        const units = buildQueueUnits(sentences, get().castMode)
+        const startUnit = Math.max(0, firstUnitOfSentence(units, start))
         withEditorView(view => updateReadAloud(view, {
           active: true,
           sentences: sentences.map(s => ({ from: s.from, to: s.to })),
@@ -647,7 +670,9 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
       if (!editor) return
       const sentences = collectSentences(editor.state.doc, editor.state.selection.from)
       if (!sentences.length) return
-      const units = buildGenerationUnits(sentences, 0)
+      ensureAttribution()
+      const castMode = useBookStore.getState().book?.read_aloud_cast?.cast_mode ?? false
+      const units = buildQueueUnits(sentences, castMode)
       if (
         currentUnits.length === units.length
         && currentUnits.every((u, i) => u.text === units[i].text)
@@ -657,7 +682,6 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
       currentSentences = sentences
       resetProgressTracking(units.length)
       set(s => ({ diagnostics: [...s.diagnostics.slice(-59), `[main t+${Math.round(performance.now())}ms] prefill: ${units.length} units queued from cursor`] }))
-      ensureAttribution()
       set({ sentences })
       refreshCastState()
       ensureController().start(units.map(u => u.text), 0, settings.read_aloud_voice, settings.read_aloud_speed, false, buildVoiceOverrides(units, sentences))

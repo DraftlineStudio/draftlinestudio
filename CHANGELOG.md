@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02533] - 2026-09-03
+
+### Fixed
+- Cast mode no longer reads narrator asides in a character's voice.
+
 ## [0.17.02532] - 2026-09-03
 
 ### Fixed
