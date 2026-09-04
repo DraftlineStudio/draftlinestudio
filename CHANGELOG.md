@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02534] - 2026-09-03
+
+### Fixed
+- Cast attribution now recognizes dialogue tags that use part of a character's name. The speaker roster derives surname and given-name aliases from every recorded name ("Renee Alvarez" also matches "Alvarez said" and "Renee said"), so a clean tag can no longer be invisible and hand the line to another character; honorifics never identify anyone, and a surname shared by two characters is dropped from both as ambiguous. The roster is also recall-first for playback: auto-detected characters still awaiting review are included (only explicit rejections are excluded), because a name attribution can't see corrupts other characters' lines.
+
+---
+
 ## [0.17.02533] - 2026-09-03
 
 ### Fixed
