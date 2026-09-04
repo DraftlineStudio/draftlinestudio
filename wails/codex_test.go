@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"strings"
 	"testing"
 )
@@ -29,9 +30,8 @@ func TestLightweightRewriteProfileAndProviderModels(t *testing.T) {
 
 // Codex mode with no CLI installed must fail with guidance, not a crash.
 func TestCallCodexCLINotInstalled(t *testing.T) {
-	t.Setenv("PATH", "") // ensure no system codex is found
 	a := &App{}
-	res := a.callCodexCLI(nil, "sys", "msg", standardAIRequest)
+	res := a.callCodexCLIAtPath(context.Background(), "", "sys", "msg", standardAIRequest)
 	if res.Error == "" || !strings.Contains(res.Error, "not installed") {
 		t.Fatalf("expected not-installed error, got %+v", res)
 	}

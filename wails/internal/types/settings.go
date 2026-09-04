@@ -43,9 +43,13 @@ type AppSettings struct {
 	// CharactersLaneView remembers the codex lane style: "grid" | "heat" | "weave".
 	CharactersLaneView string `json:"characters_lane_view"`
 	// AI
-	AIEnabled  bool   `json:"ai_enabled"`
-	AIMode     string `json:"ai_mode"`     // "claudecode" | "codex" | "api" | "local"
-	AIProvider string `json:"ai_provider"` // "claude" | "openai" | ""
+	AIEnabled bool   `json:"ai_enabled"`
+	AIMode    string `json:"ai_mode"` // "claudecode" | "codex" | "api" | "local"
+	// AITaskRoutes optionally overrides AIMode for individual editing tasks.
+	// Missing keys inherit AIMode. Supported keys are line_edit, copy_edit,
+	// expand, smooth, and custom.
+	AITaskRoutes map[string]string `json:"ai_task_routes,omitempty"`
+	AIProvider   string            `json:"ai_provider"` // "claude" | "openai" | ""
 	// AIAPIKey is legacy: keys now live in the OS keyring. The tag is kept
 	// (with omitempty) so old settings.json files can still be read and
 	// migrated; it is never returned to the frontend or written back once the

@@ -64,3 +64,35 @@ func TestAcquireAISerializes(t *testing.T) {
 	}
 	release3()
 }
+
+func TestNormalizeAIProviderMode(t *testing.T) {
+	for _, mode := range []string{"claudecode", "codex", "api", "local"} {
+		if got := normalizeAIProviderMode(mode, "claudecode"); got != mode {
+			t.Fatalf("explicit mode %q resolved as %q", mode, got)
+		}
+	}
+	if got := normalizeAIProviderMode("", "codex"); got != "codex" {
+		t.Fatalf("empty task route should inherit default, got %q", got)
+	}
+	if got := normalizeAIProviderMode("not-a-provider", "local"); got != "local" {
+		t.Fatalf("invalid task route should inherit valid default, got %q", got)
+	}
+	if got := normalizeAIProviderMode("", "not-a-provider"); got != "claudecode" {
+		t.Fatalf("invalid default should use safe legacy default, got %q", got)
+	}
+}
+
+func TestProviderModelOverridesDoNotLeakAcrossTaskRoutes(t *testing.T) {
+	app := &App{}
+	app.settings.AIModel = "gpt-5.4"
+	if got := app.resolveAIModel("claude-sonnet-4-6"); got != "claude-sonnet-4-6" {
+		t.Fatalf("OpenAI model leaked into Claude route: %q", got)
+	}
+	app.settings.AIModel = "claude-opus-4-6"
+	if got := app.resolveAIModel("gpt-4o"); got != "gpt-4o" {
+		t.Fatalf("Claude model leaked into OpenAI route: %q", got)
+	}
+	if got := app.resolveAIModel("claude-sonnet-4-6"); got != "claude-opus-4-6" {
+		t.Fatalf("compatible Claude override was not retained: %q", got)
+	}
+}

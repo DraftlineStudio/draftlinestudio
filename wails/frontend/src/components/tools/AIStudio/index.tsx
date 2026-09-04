@@ -9,6 +9,8 @@ import { EventsOn, EventsOff } from '../../../../wailsjs/runtime/runtime'
 import type { WritingStyleOptions } from '../../../types/draftline'
 import type { AIMode, AIState } from '../types'
 import { AI_MODES, STYLE_FEATURES, INTENSITY_LABELS } from '../constants'
+import { resolveTaskProvider, setTaskProvider } from '../../../services/aiRouting'
+import NoAIProviderSetup from './NoAIProviderSetup'
 import './aistudio.css'
 
 // Icon paths per editing mode (24-viewBox, stroke-based, per the design).
@@ -25,7 +27,7 @@ const STOP_CENTERS = [12.5, 37.5, 62.5, 87.5]
 
 export default function AiStudioTab() {
   const { book, currentSection, currentIndex, setPendingDiff, getStyleOptions, updateStyleOptions, getEditorSelection } = useBookStore()
-  const { settings, saveSettings, openSettings } = useAppStore()
+  const { settings, saveSettings, openSettings, showSettings } = useAppStore()
 
   const [aiMode, setAiMode] = useState<AIMode>('line_edit')
   const [aiState, setAiState] = useState<AIState>('idle')
@@ -38,37 +40,67 @@ export default function AiStudioTab() {
   const [ccChecking, setCcChecking] = useState(false)
   const [cxStatus, setCxStatus] = useState<types.ClaudeCodeStatus | null>(null)
   const [cxChecking, setCxChecking] = useState(false)
+  const settingsWasOpen = useRef(showSettings)
 
   const styleOptions = getStyleOptions()
   const selection = getEditorSelection()
 
   const [providerMenuOpen, setProviderMenuOpen] = useState(false)
+  const openAISettings = () => openSettings('ai')
+
+  function refreshClaudeStatus() {
+    setCcChecking(true)
+    return CheckClaudeCode()
+      .then(setCcStatus)
+      .catch(() => setCcStatus({ installed: false, authenticated: false, npm_available: false, version: '' }))
+      .finally(() => setCcChecking(false))
+  }
+
+  function refreshCodexStatus() {
+    setCxChecking(true)
+    return CheckCodexCLI()
+      .then(setCxStatus)
+      .catch(() => setCxStatus({ installed: false, authenticated: false, npm_available: false, version: '' }))
+      .finally(() => setCxChecking(false))
+  }
 
   // Check both CLIs on mount so the provider quick-switcher shows accurate
   // ready states without a trip through settings.
   useEffect(() => {
-    if (!ccStatus && !ccChecking) {
-      setCcChecking(true)
-      CheckClaudeCode()
-        .then(setCcStatus)
-        .catch(() => {})
-        .finally(() => setCcChecking(false))
-    }
-    if (!cxStatus && !cxChecking) {
-      setCxChecking(true)
-      CheckCodexCLI()
-        .then(setCxStatus)
-        .catch(() => {})
-        .finally(() => setCxChecking(false))
-    }
+    void refreshClaudeStatus()
+    void refreshCodexStatus()
   }, [])
 
-  // Determine if AI is configured based on mode
+  // The settings dialog owns its own setup-status state. Re-check when it
+  // closes so this already-mounted sidebar cannot keep displaying the stale
+  // result it captured before a CLI was installed or authenticated.
+  useEffect(() => {
+    if (showSettings) {
+      settingsWasOpen.current = true
+      return
+    }
+    if (!settingsWasOpen.current) return
+    settingsWasOpen.current = false
+    void refreshClaudeStatus()
+    void refreshCodexStatus()
+  }, [showSettings])
+
+  // Authentication can finish while settings remains open or after the user
+  // closes it. Refresh immediately in either case.
+  useEffect(() => {
+    const offClaude = EventsOn('claude:auth_complete', () => { void refreshClaudeStatus() })
+    const offCodex = EventsOn('codex:auth_complete', () => { void refreshCodexStatus() })
+    return () => { offClaude(); offCodex() }
+  }, [])
+
+  const taskProvider = resolveTaskProvider(settings.ai_mode, settings.ai_task_routes, aiMode)
+
+  // Determine if the provider assigned to this editing task is configured.
   const aiConfigured = settings.ai_enabled && (
-    (settings.ai_mode === 'claudecode' && ccStatus?.installed && ccStatus?.authenticated) ||
-    (settings.ai_mode === 'codex' && cxStatus?.installed && cxStatus?.authenticated) ||
-    (settings.ai_mode === 'api' && settings.ai_provider !== '' && settings.has_api_key) ||
-    (settings.ai_mode === 'local' && settings.ai_local_endpoint !== '')
+    (taskProvider === 'claudecode' && ccStatus?.installed && ccStatus?.authenticated) ||
+    (taskProvider === 'codex' && cxStatus?.installed && cxStatus?.authenticated) ||
+    (taskProvider === 'api' && settings.ai_provider !== '' && settings.has_api_key) ||
+    (taskProvider === 'local' && settings.ai_local_endpoint !== '' && settings.ai_local_model !== '')
   )
 
   function getCurrentHTML(): string {
@@ -81,9 +113,9 @@ export default function AiStudioTab() {
   }
 
   function getAiLabel(): string {
-    if (settings.ai_mode === 'claudecode') return 'Claude Code'
-    if (settings.ai_mode === 'codex') return 'Codex'
-    if (settings.ai_mode === 'local') return settings.ai_local_model || 'Local AI'
+    if (taskProvider === 'claudecode') return 'Claude Code'
+    if (taskProvider === 'codex') return 'Codex'
+    if (taskProvider === 'local') return settings.ai_local_model || 'Local AI'
     const providerLabels: Record<string, string> = {
       claude: 'Claude',
       openai: 'OpenAI',
@@ -103,12 +135,12 @@ export default function AiStudioTab() {
     {
       mode: 'claudecode', name: 'Claude Code', mono: 'C',
       ready: !!(ccStatus?.installed && ccStatus?.authenticated),
-      model: (settings.ai_mode === 'claudecode' && settings.ai_model) || 'Claude.ai account',
+      model: (taskProvider === 'claudecode' && settings.ai_model) || 'Claude.ai account',
     },
     {
       mode: 'codex', name: 'Codex', mono: 'O',
       ready: !!(cxStatus?.installed && cxStatus?.authenticated),
-      model: settings.ai_mode === 'codex' && !/^(claude|gemini|grok|llama|mistral)/i.test(settings.ai_model)
+      model: taskProvider === 'codex' && !/^(claude|gemini|grok|llama|mistral)/i.test(settings.ai_model)
         ? settings.ai_model || 'ChatGPT account'
         : 'ChatGPT account',
     },
@@ -117,32 +149,22 @@ export default function AiStudioTab() {
       name: settings.ai_provider ? `${providerLabels[settings.ai_provider]} API` : 'API key',
       mono: settings.ai_provider ? providerLabels[settings.ai_provider][0] : 'A',
       ready: settings.ai_provider !== '' && settings.has_api_key,
-      model: (settings.ai_mode === 'api' && settings.ai_model)
+      model: (taskProvider === 'api' && settings.ai_model)
         || (settings.ai_provider ? providerLabels[settings.ai_provider] : 'no key stored'),
     },
     {
       mode: 'local', name: 'Local', mono: 'L',
-      ready: settings.ai_local_endpoint !== '',
+      ready: settings.ai_local_endpoint !== '' && settings.ai_local_model !== '',
       model: settings.ai_local_model || settings.ai_local_endpoint || 'no endpoint',
     },
   ]
-  const activeRoute = routes.find(r => r.mode === settings.ai_mode) ?? routes[0]
+  const activeRoute = routes.find(r => r.mode === taskProvider) ?? routes[0]
 
   function pickRoute(route: (typeof routes)[number]) {
     setProviderMenuOpen(false)
-    if (route.ready) {
-      const currentModel = settings.ai_model.trim()
-      const incompatibleWithCodex = /^(claude|gemini|grok|llama|mistral)/i.test(currentModel)
-      const patch: Partial<typeof settings> = { ai_mode: route.mode }
-      if (route.mode === 'codex' && incompatibleWithCodex) patch.ai_model = ''
-      if (route.mode === 'claudecode' && (!currentModel || !currentModel.toLowerCase().startsWith('claude'))) {
-        patch.ai_model = 'claude-sonnet-4-6'
-      }
-      if (route.mode === 'api' && settings.ai_mode !== 'api') patch.ai_model = ''
-      void saveSettings(patch)
-    } else {
-      openSettings()
-    }
+    const override = route.mode === settings.ai_mode ? null : route.mode
+    void saveSettings({ ai_task_routes: setTaskProvider(settings.ai_task_routes, aiMode, override) })
+    if (!route.ready) openAISettings()
   }
 
   async function handleRun() {
@@ -186,13 +208,13 @@ export default function AiStudioTab() {
           cleanText = textToProcess.replace(/@ai\s+.+?(?:\n|$)/gi, '')
         }
 
-        res = await RewriteTextCustom(cleanText, prompt)
+        res = await RewriteTextCustom(cleanText, prompt, taskProvider)
         originalHtml = hasSelection ? currentSelection.text : fullHtml
       } else {
         // Standard modes: use selection if available
         const textToProcess = hasSelection ? wrapSelectionAsHtml(currentSelection.text) : fullHtml
         const useStyleOptions = aiMode === 'expand' || aiMode === 'smooth'
-        res = await RewriteText(textToProcess, aiMode, useStyleOptions ? JSON.stringify(styleOptions) : '')
+        res = await RewriteText(textToProcess, aiMode, useStyleOptions ? JSON.stringify(styleOptions) : '', taskProvider)
         originalHtml = textToProcess
       }
 
@@ -288,7 +310,7 @@ export default function AiStudioTab() {
             Try Again
           </button>
           {(isAuthError || isNotInstalled) && (
-            <button className="ai-link-btn" onClick={() => openSettings()}>
+            <button className="ai-link-btn" onClick={openAISettings}>
               Open Settings
             </button>
           )}
@@ -332,7 +354,7 @@ export default function AiStudioTab() {
           <>
             <div className="ais-menu-overlay" onClick={() => setProviderMenuOpen(false)} />
             <div className="ais-menu">
-              <div className="ais-menu-label">Provider</div>
+              <div className="ais-menu-label">Provider for {currentMode.label}</div>
               {routes.map(r => (
                 <button
                   key={r.mode}
@@ -347,7 +369,7 @@ export default function AiStudioTab() {
                   {r.ready
                     ? <span className="ais-menu-ready" />
                     : <span className="ais-menu-status">Not configured</span>}
-                  {r.mode === settings.ai_mode && (
+                  {r.mode === taskProvider && (
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--app-accent-text)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M5 13l4 4L19 7" />
                     </svg>
@@ -355,7 +377,7 @@ export default function AiStudioTab() {
                 </button>
               ))}
               <div className="ais-menu-sep" />
-              <button className="ais-menu-manage" onClick={() => { setProviderMenuOpen(false); openSettings() }}>
+              <button className="ais-menu-manage" onClick={() => { setProviderMenuOpen(false); openAISettings() }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1" />
                 </svg>
@@ -486,7 +508,8 @@ export default function AiStudioTab() {
             cxStatus={cxStatus}
             cxChecking={cxChecking}
             settings={settings}
-            onOpenSettings={openSettings}
+            providerMode={taskProvider}
+            onOpenSettings={openAISettings}
           />
         )}
       </div>
@@ -515,19 +538,34 @@ interface AiSetupGuidanceProps {
   ccChecking: boolean
   cxStatus: types.ClaudeCodeStatus | null
   cxChecking: boolean
-  settings: { ai_mode: string; ai_provider: string; has_api_key: boolean; ai_local_endpoint: string }
+  settings: { ai_mode: string; ai_provider: string; has_api_key: boolean; ai_local_endpoint: string; ai_local_model: string }
+  providerMode: string
   onOpenSettings: () => void
 }
 
-function AiSetupGuidance({ ccStatus, ccChecking, cxStatus, cxChecking, settings, onOpenSettings }: AiSetupGuidanceProps) {
+function AiSetupGuidance({ ccStatus, ccChecking, cxStatus, cxChecking, settings, providerMode, onOpenSettings }: AiSetupGuidanceProps) {
   // Determine what's configured
   const ccInstalled = ccStatus?.installed
   const ccAuthenticated = ccStatus?.authenticated
   const hasApiKey = settings.ai_provider !== '' && settings.has_api_key
-  const hasLocalEndpoint = settings.ai_local_endpoint !== ''
+  const hasLocalEndpoint = settings.ai_local_endpoint !== '' && settings.ai_local_model !== ''
+
+  // Do not steer a fresh installation toward one vendor simply because the
+  // legacy default mode happens to be Claude Code. Wait for both checks, then
+  // present the provider-neutral setup route when nothing is installed or
+  // configured yet.
+  const checksComplete = ccStatus !== null && cxStatus !== null && !ccChecking && !cxChecking
+  const hasNoProvider = checksComplete
+    && !ccStatus.installed
+    && !cxStatus.installed
+    && !hasApiKey
+    && !hasLocalEndpoint
+  if (hasNoProvider) {
+    return <NoAIProviderSetup onOpenSettings={onOpenSettings} />
+  }
 
   // If Claude Code mode is selected but not set up
-  if (settings.ai_mode === 'claudecode') {
+  if (providerMode === 'claudecode') {
     if (ccChecking) {
       return (
         <div className="ai-setup-pane">
@@ -583,7 +621,7 @@ function AiSetupGuidance({ ccStatus, ccChecking, cxStatus, cxChecking, settings,
   }
 
   // If Codex mode is selected but not set up
-  if (settings.ai_mode === 'codex') {
+  if (providerMode === 'codex') {
     if (cxChecking) {
       return (
         <div className="ai-setup-pane">
@@ -617,7 +655,7 @@ function AiSetupGuidance({ ccStatus, ccChecking, cxStatus, cxChecking, settings,
   }
 
   // If API mode is selected but no key
-  if (settings.ai_mode === 'api' && !hasApiKey) {
+  if (providerMode === 'api' && !hasApiKey) {
     return (
       <div className="ai-setup-pane">
         <div className="ai-setup-icon">
@@ -643,7 +681,7 @@ function AiSetupGuidance({ ccStatus, ccChecking, cxStatus, cxChecking, settings,
   }
 
   // If Local mode is selected but no endpoint
-  if (settings.ai_mode === 'local' && !hasLocalEndpoint) {
+  if (providerMode === 'local' && !hasLocalEndpoint) {
     return (
       <div className="ai-setup-pane">
         <div className="ai-setup-icon">
@@ -663,24 +701,7 @@ function AiSetupGuidance({ ccStatus, ccChecking, cxStatus, cxChecking, settings,
     )
   }
 
-  // Generic fallback - nothing configured at all
-  return (
-    <div className="ai-setup-pane">
-      <div className="ai-setup-icon">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-        </svg>
-      </div>
-      <div className="ai-setup-title">AI Features Ready</div>
-      <p className="ai-setup-desc">
-        Configure AI-assisted editing in Settings. Choose from Claude Code, cloud APIs, or local models.
-      </p>
-      <button className="ai-run-btn" onClick={onOpenSettings}>
-        Open Settings
-      </button>
-    </div>
-  )
+  return <NoAIProviderSetup onOpenSettings={onOpenSettings} />
 }
 
 // ── Loading pane ─────────────────────────────────────────────────────────────

@@ -97,9 +97,9 @@ export function RemoveRecentProject(arg1:string):Promise<void>;
 
 export function RestoreBackup(arg1:number):Promise<types.SaveResult>;
 
-export function RewriteText(arg1:string,arg2:string,arg3:string):Promise<types.AIRewriteResult>;
+export function RewriteText(arg1:string,arg2:string,arg3:string,arg4:string):Promise<types.AIRewriteResult>;
 
-export function RewriteTextCustom(arg1:string,arg2:string):Promise<types.AIRewriteResult>;
+export function RewriteTextCustom(arg1:string,arg2:string,arg3:string):Promise<types.AIRewriteResult>;
 
 export function SaveBook(arg1:types.BookData):Promise<types.SaveResult>;
 

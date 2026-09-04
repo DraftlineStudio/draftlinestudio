@@ -2,6 +2,18 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02536] - 2026-09-04
+
+### Added
+- AI Studio can now route each editing task to a specific provider.
+
+### Changed
+- Provider routing no longer falls back to a different service.
+- A fresh install with no AI provider now shows Set Up an AI Provider.
+
+### Fixed
+- The AI sidebar now refreshes Claude Code and Codex status after closing Settings.
+
 ## [0.17.02535] - 2026-09-03
 
 ### Fixed
