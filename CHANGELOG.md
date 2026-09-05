@@ -2,6 +2,13 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02541] - 2026-09-05
+
+### Fixed
+- Fixed applying a selected-text AI edit deleting the rest of the chapter.
+- Applied AI changes can now be undone with Ctrl+Z.
+- Chapter history now records a version before and after each applied AI pass.
+
 ## [0.17.02540] - 2026-09-04
 
 ### Changed

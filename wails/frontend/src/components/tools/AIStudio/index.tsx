@@ -8,21 +8,10 @@ import type { types } from '../../../../wailsjs/go/models'
 import { EventsOn, EventsOff } from '../../../../wailsjs/runtime/runtime'
 import type { WritingStyleOptions } from '../../../types/draftline'
 import type { AIMode, AIState } from '../types'
-import { AI_MODES, STYLE_FEATURES, INTENSITY_LABELS } from '../constants'
+import { AI_MODES, AI_MODE_ICONS as MODE_ICONS, STYLE_FEATURES, STYLE_STOP_CENTERS as STOP_CENTERS, INTENSITY_LABELS } from '../constants'
 import { resolveTaskProvider, setTaskProvider } from '../../../services/aiRouting'
+import { useEditorStore } from '../../../store/editorStore'
 import NoAIProviderSetup from './NoAIProviderSetup'
-
-// Icon paths per editing mode (24-viewBox, stroke-based, per the design).
-const MODE_ICONS: Record<AIMode, string> = {
-  line_edit: 'M4 20l3.2-.9L18 8.3 15.7 6 4.9 16.8 4 20zM13.5 8.2l2.3 2.3',
-  copy_edit: 'M4 7h9M4 11h6M12.5 15.5l2.6 2.6L20 13',
-  expand: 'M9 4H4v5M15 4h5v5M15 20h5v-5M9 20H4v-5',
-  smooth: 'M3 15c2.5-5 5.5-5 8 0s5.5 5 8 0',
-  custom: 'M5 7l4.5 5L5 17M12.5 17H19',
-}
-
-// Positions of the 4 style-option stop centers along the track (percent).
-const STOP_CENTERS = [12.5, 37.5, 62.5, 87.5]
 
 export default function AiStudioTab() {
   const { book, currentSection, currentIndex, setPendingDiff, getStyleOptions, updateStyleOptions, getEditorSelection } = useBookStore()
@@ -167,8 +156,12 @@ export default function AiStudioTab() {
   }
 
   async function handleRun() {
-    const fullHtml = getCurrentHTML()
+    // Read directly from TipTap when available. The book-store copy is
+    // debounced while typing and may lag behind the visible chapter.
+    const fullHtml = useEditorStore.getState().editorRef?.getHTML() ?? getCurrentHTML()
     if (!fullHtml || fullHtml === '<p></p>') return
+    const requestSection = currentSection
+    const requestIndex = currentIndex
 
     // Determine what text to process: selection or full chapter
     const currentSelection = getEditorSelection()
@@ -196,7 +189,7 @@ export default function AiStudioTab() {
 
       if (aiMode === 'custom') {
         // Custom mode: use the prompt
-        const textToProcess = hasSelection ? currentSelection.text : fullHtml
+        const textToProcess = hasSelection ? currentSelection.html : fullHtml
         const textToSearch = hasSelection ? currentSelection.text : fullHtml.replace(/<[^>]*>/g, ' ')
         const aiMatch = textToSearch.match(/@ai\s+(.+?)(?:\n|$)/i)
         const prompt = customPrompt.trim() || (aiMatch ? aiMatch[1].trim() : '')
@@ -208,10 +201,10 @@ export default function AiStudioTab() {
         }
 
         res = await RewriteTextCustom(cleanText, prompt, taskProvider)
-        originalHtml = hasSelection ? currentSelection.text : fullHtml
+        originalHtml = hasSelection ? currentSelection.html : fullHtml
       } else {
         // Standard modes: use selection if available
-        const textToProcess = hasSelection ? wrapSelectionAsHtml(currentSelection.text) : fullHtml
+        const textToProcess = hasSelection ? currentSelection.html : fullHtml
         const useStyleOptions = aiMode === 'expand' || aiMode === 'smooth'
         res = await RewriteText(textToProcess, aiMode, useStyleOptions ? JSON.stringify(styleOptions) : '', taskProvider)
         originalHtml = textToProcess
@@ -221,21 +214,38 @@ export default function AiStudioTab() {
         setError(res.error)
         setAiState('error')
       } else {
+        const latest = useBookStore.getState()
+        const liveHtml = useEditorStore.getState().editorRef?.getHTML()
+        if (
+          latest.currentSection !== requestSection
+          || latest.currentIndex !== requestIndex
+          || (liveHtml != null && liveHtml !== fullHtml)
+        ) {
+          setError('The chapter changed while the AI pass was running. No changes were applied.')
+          setAiState('error')
+          return
+        }
         const { diffContent } = await import('../../../utils/diff')
         const d = diffContent(originalHtml, res.result)
-        setPendingDiff({ diffs: d, originalHtml })
+        setPendingDiff({
+          diffs: d,
+          originalHtml,
+          target: hasSelection
+            ? {
+                kind: 'selection',
+                from: currentSelection.from,
+                to: currentSelection.to,
+                sourceDocumentHtml: currentSelection.documentHtml,
+              }
+            : { kind: 'chapter' },
+          historyReason: `AI ${currentMode.label}`,
+        })
         setAiState('idle')
       }
     } catch (e) {
       setError(String(e))
       setAiState('error')
     }
-  }
-
-  // Helper to wrap plain text selection as HTML paragraphs
-  function wrapSelectionAsHtml(text: string): string {
-    if (text.trim().startsWith('<')) return text
-    return text.split(/\n\n+/).map(p => `<p>${p.trim()}</p>`).join('\n')
   }
 
   function handleStyleChange(key: keyof WritingStyleOptions, value: number) {

@@ -5800,6 +5800,13 @@ html, body, #root {
 .diff-nav-group { display: flex; align-items: center; gap: 2px; margin-right: 4px; }
 .diff-nav-counter { font-size: 12px; color: var(--text-secondary); min-width: 44px; text-align: center; }
 .diff-accept-sep { flex: 1; }
+.diff-apply-error {
+  padding: 7px 12px;
+  border-bottom: 1px solid rgba(224, 108, 117, 0.45);
+  background: rgba(224, 108, 117, 0.1);
+  color: #E06C75;
+  font-size: 12px;
+}
 
 .diff-ctrl-btn {
   font-size: 12px;

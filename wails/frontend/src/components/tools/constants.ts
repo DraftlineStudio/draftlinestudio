@@ -27,6 +27,16 @@ export const STYLE_FEATURES: { key: keyof WritingStyleOptions; label: string; de
 // Intensity labels for style sliders
 export const INTENSITY_LABELS = ['Off', 'Subtle', 'Moderate', 'Heavy']
 
+// AI Studio icon paths (24-viewBox, stroke-based) and style-track stops.
+export const AI_MODE_ICONS: Record<AIMode, string> = {
+  line_edit: 'M4 20l3.2-.9L18 8.3 15.7 6 4.9 16.8 4 20zM13.5 8.2l2.3 2.3',
+  copy_edit: 'M4 7h9M4 11h6M12.5 15.5l2.6 2.6L20 13',
+  expand: 'M9 4H4v5M15 4h5v5M15 20h5v-5M9 20H4v-5',
+  smooth: 'M3 15c2.5-5 5.5-5 8 0s5.5 5 8 0',
+  custom: 'M5 7l4.5 5L5 17M12.5 17H19',
+}
+export const STYLE_STOP_CENTERS = [12.5, 37.5, 62.5, 87.5]
+
 // Glyph section configuration for the sidebar
 export const SECTION_CONFIG: { id: Exclude<GlyphSection, null>; label: string; tooltip: string }[] = [
   { id: 'dashboard', label: 'Dashboard', tooltip: 'Writing Dashboard' },

@@ -85,7 +85,7 @@ interface ChapterItem {
 
 Archive format 2.2 stores snapshot metadata in `history/index.json` and chapter HTML in `history/snapshots/`. A snapshot records the stable chapter ID, section and title at capture time, timestamp, reason, word count, and SHA-256 content hash. Identical content is not stored twice. Draftline retains at most 50 snapshots per chapter and 1,000 per project.
 
-Automatic snapshots are activity-driven: editing marks the affected chapter, and Draftline records its current content after ten minutes. An unchanged or background-idle project produces no snapshot. Ordinary saves copy unchanged history in its compressed ZIP representation.
+Automatic snapshots are activity-driven: editing marks the affected chapter, and Draftline records its current content after ten minutes. An unchanged or background-idle project produces no snapshot. Chapter history remains active when activity-based autosave is disabled. Accepted AI and comparison passes atomically record the chapter immediately before and after the change rather than waiting for the periodic timer. Ordinary saves copy unchanged history in its compressed ZIP representation.
 
 ### Derived Story Analysis
 
@@ -274,7 +274,7 @@ Stored separately in OS config directory:
 
 ```typescript
 interface AppSettings {
-  activity_autosave_enabled: boolean // paused-edit saves + automatic chapter history
+  activity_autosave_enabled: boolean // paused-edit project saves; chapter history is independent
   // AI Configuration
   ai_enabled: boolean
   ai_mode: 'claudecode' | 'api' | 'local'
