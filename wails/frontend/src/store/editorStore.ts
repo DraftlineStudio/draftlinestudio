@@ -1,6 +1,7 @@
 // Editor Store - Editor reference, selection, inline prompt, diff/review state
 
 import { create } from 'zustand'
+import { getHTMLFromFragment } from '@tiptap/core'
 import type { ParagraphDiff, DiffChange } from '../utils/diff'
 
 // Invalidates async diff operations when navigation or a newer AI result
@@ -10,19 +11,38 @@ let pendingDiffGeneration = 0
 // Editor instance type (minimal interface for selection access)
 export interface EditorInstance {
   state: {
-    selection: { from: number; to: number; empty: boolean }
+    selection: {
+      from: number
+      to: number
+      empty: boolean
+      content: () => { content: Parameters<typeof getHTMLFromFragment>[0] }
+    }
+    schema: Parameters<typeof getHTMLFromFragment>[1]
     doc: { textBetween: (from: number, to: number, separator: string) => string }
   }
   getHTML: () => string
   view: { state: { selection: { from: number; to: number } } }
-  commands: { setTextSelection: (range: { from: number; to: number }) => boolean }
+  commands: {
+    setTextSelection: (range: { from: number; to: number }) => boolean
+    insertContentAt: (range: { from: number; to: number }, content: string) => boolean
+  }
+}
+
+export type DiffTarget =
+  | { kind: 'chapter' }
+  | { kind: 'selection'; from: number; to: number; sourceDocumentHtml: string }
+
+export interface AppliedDiff {
+  beforeHtml: string
+  afterHtml: string
+  historyReason?: string
 }
 
 interface EditorStore {
   // Editor reference
   editorRef: EditorInstance | null
   setEditorRef: (editor: EditorInstance | null) => void
-  getEditorSelection: () => { html: string; text: string; from: number; to: number } | null
+  getEditorSelection: () => { html: string; text: string; from: number; to: number; documentHtml: string } | null
 
   // Inline AI prompt (Ctrl+L)
   inlinePrompt: {
@@ -38,8 +58,11 @@ interface EditorStore {
     changes: DiffChange[]
     focusedChangeIdx: number
     originalHtml: string
+    target: DiffTarget
+    historyReason?: string
+    applyError?: string
   } | null
-  setPendingDiff: (payload: { diffs: ParagraphDiff[]; originalHtml: string }) => Promise<void>
+  setPendingDiff: (payload: { diffs: ParagraphDiff[]; originalHtml: string; target?: DiffTarget; historyReason?: string }) => Promise<void>
   acceptChange: (idx: number) => void
   rejectChange: (idx: number) => void
   setFocusedChange: (idx: number) => void
@@ -47,7 +70,7 @@ interface EditorStore {
   nextChange: () => void
   acceptAllDiff: () => void
   rejectAllDiff: () => void
-  applyPendingDiff: (updateContent: (html: string) => void) => Promise<void>
+  applyPendingDiff: (updateContent: (html: string) => void) => Promise<AppliedDiff | null>
   clearPendingDiff: () => void
 }
 
@@ -63,7 +86,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     if (selection.empty) return null
     const { from, to } = selection
     const text = editorRef.state.doc.textBetween(from, to, '\n')
-    return { html: text, text, from, to }
+    const html = getHTMLFromFragment(selection.content().content, editorRef.state.schema)
+    return { html, text, from, to, documentHtml: editorRef.getHTML() }
   },
 
   // Inline AI prompt
@@ -80,7 +104,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   // Diff/review state
   pendingDiff: null,
 
-  setPendingDiff: async ({ diffs, originalHtml }) => {
+  setPendingDiff: async ({ diffs, originalHtml, target = { kind: 'chapter' }, historyReason }) => {
     const generation = ++pendingDiffGeneration
     // Lazy-load the diff engine so it stays out of the main bundle
     // (AIStudio already imports it dynamically; a static import here
@@ -88,7 +112,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     const { extractChanges } = await import('../utils/diff')
     if (pendingDiffGeneration !== generation) return
     const changes = extractChanges(diffs)
-    set({ pendingDiff: { diffs, changes, focusedChangeIdx: 0, originalHtml } })
+    set({ pendingDiff: { diffs, changes, focusedChangeIdx: 0, originalHtml, target, historyReason } })
   },
 
   acceptChange: (idx) => set(s => {
@@ -152,15 +176,55 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     : {}),
 
   applyPendingDiff: async (updateContent) => {
-    if (!get().pendingDiff) return
+    if (!get().pendingDiff) return null
     const generation = pendingDiffGeneration
     const { assembleFromChanges } = await import('../utils/diff')
-    if (pendingDiffGeneration !== generation) return
+    if (pendingDiffGeneration !== generation) return null
     const { pendingDiff } = get()
-    if (!pendingDiff) return
-    updateContent(assembleFromChanges(pendingDiff.diffs, pendingDiff.changes))
+    if (!pendingDiff) return null
+
+    const accepted = pendingDiff.changes.some(change => change.accepted)
+    if (!accepted) {
+      pendingDiffGeneration++
+      set({ pendingDiff: null })
+      return null
+    }
+
+    const revisedHtml = assembleFromChanges(pendingDiff.diffs, pendingDiff.changes)
+    let beforeHtml: string
+    let afterHtml: string
+
+    if (pendingDiff.target.kind === 'selection') {
+      const editor = get().editorRef
+      if (!editor) {
+        set({ pendingDiff: { ...pendingDiff, applyError: 'The editor is unavailable. No text was changed.' } })
+        return null
+      }
+      beforeHtml = editor.getHTML()
+      if (beforeHtml !== pendingDiff.target.sourceDocumentHtml) {
+        set({ pendingDiff: { ...pendingDiff, applyError: 'The chapter changed after this AI pass started. No text was changed.' } })
+        return null
+      }
+      const applied = editor.commands.insertContentAt(
+        { from: pendingDiff.target.from, to: pendingDiff.target.to },
+        revisedHtml,
+      )
+      if (!applied) {
+        set({ pendingDiff: { ...pendingDiff, applyError: 'Draftline could not replace the selected range. No text was changed.' } })
+        return null
+      }
+      afterHtml = editor.getHTML()
+      // Keep the book model synchronized immediately. The same replacement is
+      // one TipTap transaction, so Ctrl+Z can still undo it in the live editor.
+      updateContent(afterHtml)
+    } else {
+      beforeHtml = pendingDiff.originalHtml
+      afterHtml = revisedHtml
+      updateContent(afterHtml)
+    }
     pendingDiffGeneration++
     set({ pendingDiff: null })
+    return { beforeHtml, afterHtml, historyReason: pendingDiff.historyReason }
   },
 
   clearPendingDiff: () => {
