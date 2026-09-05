@@ -136,6 +136,7 @@ function DiffPanel({ label, name }: { label: string; name: string }) {
         </button>
         <button className="diff-ctrl-btn discard" onClick={clearPendingDiff} title="Discard all changes">✕</button>
       </div>
+      {pendingDiff.applyError && <div className="diff-apply-error">{pendingDiff.applyError}</div>}
 
       {/* Chapter content with inline diff */}
       <div className="editor-scroll" ref={scrollRef}>
@@ -287,14 +288,6 @@ export default function EditorPanel() {
     )
   }
 
-  if (pendingDiff) {
-    return (
-      <div className="editor-panel" style={editorStyle}>
-        <DiffPanel label={label} name={name} />
-      </div>
-    )
-  }
-
   const editorKey = `${currentSection}-${currentIndex}`
 
   // Only allow editing for non-copyright sections
@@ -302,16 +295,19 @@ export default function EditorPanel() {
 
   return (
     <div className="editor-panel" style={editorStyle}>
-      <RichEditor
-        key={editorKey}
-        content={content}
-        onUpdate={handleUpdate}
-        chapterLabel={label}
-        chapterName={name}
-        chapterSubtitle={subtitle}
-        onRenameChapter={canEdit ? handleRenameChapter : undefined}
-        onEditSubtitle={canEdit ? handleEditSubtitle : undefined}
-      />
+      <div style={{ display: pendingDiff ? 'none' : 'block', height: '100%' }}>
+        <RichEditor
+          key={editorKey}
+          content={content}
+          onUpdate={handleUpdate}
+          chapterLabel={label}
+          chapterName={name}
+          chapterSubtitle={subtitle}
+          onRenameChapter={canEdit ? handleRenameChapter : undefined}
+          onEditSubtitle={canEdit ? handleEditSubtitle : undefined}
+        />
+      </div>
+      {pendingDiff && <DiffPanel label={label} name={name} />}
     </div>
   )
 }

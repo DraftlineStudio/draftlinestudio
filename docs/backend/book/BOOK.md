@@ -44,7 +44,7 @@ Helper to read a named entry from an open ZIP archive.
 
 ### WriteWithSnapshots(path string, book types.BookData, appVersion string, snapshots []types.ChapterSnapshotRequest) types.SaveResult
 
-Atomically saves the book and adds deduplicated, bounded chapter snapshots to the archive. `ListChapterHistory` reads metadata for a stable chapter ID; `GetChapterHistorySnapshot` resolves one indexed snapshot and returns its HTML.
+Atomically saves the book and adds deduplicated, bounded chapter snapshots to the archive. AI review application supplies its before/after chapter states together so both recovery boundaries and the resulting manuscript are committed in one archive replacement. `ListChapterHistory` reads metadata for a stable chapter ID; `GetChapterHistorySnapshot` resolves one indexed snapshot and returns its HTML.
 
 ## Archive Format Versions
 

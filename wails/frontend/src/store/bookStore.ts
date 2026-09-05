@@ -10,8 +10,9 @@ import { countBookWords } from '../utils/textUtils'
 import { NewBook, OpenBookDialog, SaveBook, SaveBookAs, SaveBookSnapshots, OpenRecentProject, AddRecentProject, IndexBook, MergeEntities, SplitEntity, ImportEPUB, ImportDOCX, ShowInfoDialog } from '../../wailsjs/go/main/App'
 import { types } from '../../wailsjs/go/models'
 import { useAppStore } from './appStore'
-import { useEditorStore, type EditorInstance } from './editorStore'
+import { useEditorStore, type DiffTarget, type EditorInstance } from './editorStore'
 import { useStoryBibleStore } from './storyBibleStore'
+import { resetChapterHistorySession, saveAIChapterHistory, scheduleChapterHistory as queueChapterHistory, type ChapterHistoryDependencies } from './chapterHistory'
 
 // Status-bar text lives in appStore (app-level UI state); this is the funnel
 // bookStore's save/index flows report through.
@@ -20,9 +21,6 @@ const setStatus = (msg: string) => useAppStore.getState().setStatusMessage(msg)
 // Auto-save debounce timer
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
 const AUTO_SAVE_DELAY = 5000
-const HISTORY_SNAPSHOT_DELAY = 10 * 60 * 1000
-let historySnapshotTimer: ReturnType<typeof setTimeout> | null = null
-const changedChapterIDs = new Set<string>()
 
 // Save serialization + staleness tracking (module-scoped, not reactive state).
 // saveRevision is bumped by scheduleAutoSave() — the funnel every dirty-marking
@@ -50,11 +48,7 @@ function beginBookSession() {
     clearTimeout(autoSaveTimer)
     autoSaveTimer = null
   }
-  if (historySnapshotTimer) {
-    clearTimeout(historySnapshotTimer)
-    historySnapshotTimer = null
-  }
-  changedChapterIDs.clear()
+  resetChapterHistorySession()
 }
 
 function newChapterID(): string {
@@ -136,56 +130,28 @@ function scheduleAutoSave() {
   }, AUTO_SAVE_DELAY)
 }
 
+function enqueueSaveTask(task: () => Promise<void>): Promise<void> {
+  const run = saveChain.then(task)
+  saveChain = run.catch(() => {})
+  return run
+}
+
+function chapterHistoryDependencies(): ChapterHistoryDependencies {
+  return {
+    getBook: () => useBookStore.getState().book,
+    getSession: () => bookSession,
+    getRevision: () => saveRevision,
+    enqueue: enqueueSaveTask,
+    setStatus,
+    onSaved: (filePath, revision) => useBookStore.setState(current => ({
+      isDirty: saveRevision === revision ? false : current.isDirty,
+      book: current.book ? { ...current.book, file_path: filePath } : null,
+    })),
+  }
+}
+
 function scheduleChapterHistory(chapterID?: string) {
-  if (!chapterID || !useAppStore.getState().settings.activity_autosave_enabled) return
-  changedChapterIDs.add(chapterID)
-  if (historySnapshotTimer) return
-  historySnapshotTimer = setTimeout(() => {
-    historySnapshotTimer = null
-    if (!useAppStore.getState().settings.activity_autosave_enabled) {
-      changedChapterIDs.clear()
-      return
-    }
-    const ids = new Set(changedChapterIDs)
-    changedChapterIDs.clear()
-    const state = useBookStore.getState()
-    const book = state.book
-    if (!book?.file_path || ids.size === 0) return
-    const requests = (['front_matter', 'body', 'back_matter'] as const).flatMap(section =>
-      book[section]
-        .filter(chapter => chapter.id && ids.has(chapter.id))
-        .map(chapter => ({
-          chapter_id: chapter.id!,
-          section,
-          chapter_title: chapter.title,
-          content: chapter.content,
-          reason: 'Writing session',
-        })),
-    )
-    if (requests.length === 0) return
-    const session = bookSession
-    const run = saveChain.then(async () => {
-      if (bookSession !== session || !useAppStore.getState().settings.activity_autosave_enabled) return
-      const latestBook = useBookStore.getState().book
-      if (!latestBook) return
-      try {
-        const result = await SaveBookSnapshots(latestBook as any, requests as any)
-        if (bookSession !== session) return
-        if (result.success) {
-          setStatus('Chapter history updated')
-        } else {
-          ids.forEach(id => changedChapterIDs.add(id))
-          setStatus(`Chapter history failed: ${result.error || 'unknown error'}`)
-        }
-      } catch (e) {
-        if (bookSession === session) {
-          ids.forEach(id => changedChapterIDs.add(id))
-          setStatus(`Chapter history failed: ${String(e)}`)
-        }
-      }
-    })
-    saveChain = run.catch(() => {})
-  }, HISTORY_SNAPSHOT_DELAY)
+  queueChapterHistory(chapterID, chapterHistoryDependencies())
 }
 
 // Only the dialogs entangled with the save pipeline live here; self-contained
@@ -278,7 +244,7 @@ interface BookStore {
   // Editor store bridge (for backwards compatibility)
   editorRef: EditorInstance | null
   setEditorRef: (editor: EditorInstance | null) => void
-  getEditorSelection: () => { html: string; text: string; from: number; to: number } | null
+  getEditorSelection: () => { html: string; text: string; from: number; to: number; documentHtml: string } | null
   inlinePrompt: { active: boolean; cursorPos: number } | null
   openInlinePrompt: (cursorPos: number) => void
   closeInlinePrompt: () => void
@@ -287,8 +253,11 @@ interface BookStore {
     changes: DiffChange[]
     focusedChangeIdx: number
     originalHtml: string
+    target: DiffTarget
+    historyReason?: string
+    applyError?: string
   } | null
-  setPendingDiff: (payload: { diffs: ParagraphDiff[]; originalHtml: string }) => void
+  setPendingDiff: (payload: { diffs: ParagraphDiff[]; originalHtml: string; target?: DiffTarget; historyReason?: string }) => void
   acceptChange: (idx: number) => void
   rejectChange: (idx: number) => void
   setFocusedChange: (idx: number) => void
@@ -296,7 +265,7 @@ interface BookStore {
   nextChange: () => void
   acceptAllDiff: () => void
   rejectAllDiff: () => void
-  applyPendingDiff: () => void
+  applyPendingDiff: () => Promise<void>
   clearPendingDiff: () => void
 }
 
@@ -407,7 +376,23 @@ export const useBookStore = create<BookStore>((set, get) => ({
   nextChange: () => useEditorStore.getState().nextChange(),
   acceptAllDiff: () => useEditorStore.getState().acceptAllDiff(),
   rejectAllDiff: () => useEditorStore.getState().rejectAllDiff(),
-  applyPendingDiff: () => useEditorStore.getState().applyPendingDiff(get().updateCurrentContent),
+  applyPendingDiff: async () => {
+    const before = get()
+    const section = before.currentSection
+    const index = before.currentIndex
+    const chapter = section === 'copyright' || !before.book
+      ? null
+      : getSectionArray(before.book, section)[index]
+    const applied = await useEditorStore.getState().applyPendingDiff(get().updateCurrentContent)
+    if (!applied || !chapter || section === 'copyright') return
+    await saveAIChapterHistory({
+      chapter,
+      section,
+      beforeHtml: applied.beforeHtml,
+      afterHtml: applied.afterHtml,
+      reason: applied.historyReason || 'AI edit',
+    }, chapterHistoryDependencies())
+  },
   clearPendingDiff: () => useEditorStore.getState().clearPendingDiff(),
 
   // File operations

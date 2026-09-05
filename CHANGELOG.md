@@ -4,6 +4,15 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02541] - 2026-09-05
+
+### Fixed
+- Fixed a critical selected-text AI data-loss path where applying the review treated the selected excerpt as a complete chapter and deleted all surrounding prose. Selection reviews now retain their exact TipTap range, refuse stale results, replace only that range through one undoable editor transaction, and never fall back to whole-chapter replacement.
+- Kept the live editor mounted behind AI review so an applied AI change remains available to TipTap's normal `Ctrl+Z` undo history.
+- Added immediate atomic Chapter History boundaries before and after every applied AI or comparison pass. Periodic Chapter History capture is now independent of the activity-based autosave toggle, which previously allowed disabling autosave to silently disable all version-history snapshots too.
+
+---
+
 ## [0.17.02540] - 2026-09-04
 
 ### Changed

@@ -14,6 +14,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { BookData } from '../../types/draftline'
+import { diffContent } from '../../utils/diff'
 
 // Stable mock fns that survive vi.resetModules() (the factory re-runs on
 // re-import but returns this same hoisted object, so references stay valid).
@@ -89,16 +90,21 @@ beforeEach(async () => {
 })
 
 describe('activity-based saving and chapter history', () => {
-  it('does not autosave when activity-based saving is disabled', async () => {
+  it('disables autosave without disabling independent chapter history', async () => {
+    mocks.SaveBookSnapshots.mockResolvedValue(okSave())
     appStoreMod.useAppStore.setState(s => ({ settings: { ...s.settings, activity_autosave_enabled: false } }))
-    bookStoreMod.useBookStore.setState({ book: makeBook(), isDirty: false })
+    const book = makeBook({ body: [{ id: 'ch-one', title: 'Chapter 1', type: 'chapter', content: '<p>original</p>' }] })
+    bookStoreMod.useBookStore.setState({ book, isDirty: false })
 
     store().updateCurrentContent('<p>manual only</p>')
     await vi.advanceTimersByTimeAsync(15 * 60 * 1000)
+    await flushMicrotasks()
 
     expect(mocks.SaveBook).not.toHaveBeenCalled()
-    expect(mocks.SaveBookSnapshots).not.toHaveBeenCalled()
-    expect(store().isDirty).toBe(true)
+    expect(mocks.SaveBookSnapshots).toHaveBeenCalledTimes(1)
+    expect(mocks.SaveBookSnapshots.mock.calls[0][1]).toEqual([
+      expect.objectContaining({ chapter_id: 'ch-one', content: '<p>manual only</p>' }),
+    ])
   })
 
   it('snapshots only a changed chapter after ten minutes of writing activity', async () => {
@@ -116,6 +122,45 @@ describe('activity-based saving and chapter history', () => {
     expect(mocks.SaveBookSnapshots).toHaveBeenCalledTimes(1)
     expect(mocks.SaveBookSnapshots.mock.calls[0][1]).toEqual([
       expect.objectContaining({ chapter_id: 'ch-one', content: '<p>changed</p>' }),
+    ])
+  })
+
+  it('atomically snapshots both sides of an accepted AI selection edit', async () => {
+    mocks.SaveBookSnapshots.mockResolvedValue(okSave())
+    const before = '<p>Before old after.</p>'
+    const after = '<p>Before new after.</p>'
+    const book = makeBook({ body: [{ id: 'ch-one', title: 'Chapter 1', type: 'chapter', content: before }] })
+    bookStoreMod.useBookStore.setState({ book, currentSection: 'body', currentIndex: 0, isDirty: false })
+
+    const editorStoreMod = await import('../editorStore')
+    let editorHtml = before
+    editorStoreMod.useEditorStore.setState({
+      editorRef: {
+        getHTML: () => editorHtml,
+        commands: {
+          insertContentAt: () => {
+            editorHtml = after
+            return true
+          },
+        },
+      } as any,
+    })
+    await editorStoreMod.useEditorStore.getState().setPendingDiff({
+      diffs: diffContent('<p>old</p>', '<p>new</p>'),
+      originalHtml: '<p>old</p>',
+      target: { kind: 'selection', from: 8, to: 11, sourceDocumentHtml: before },
+      historyReason: 'AI Line Edit',
+    })
+    editorStoreMod.useEditorStore.getState().acceptAllDiff()
+
+    await store().applyPendingDiff()
+
+    expect(store().book?.body[0].content).toBe(after)
+    expect(mocks.SaveBookSnapshots).toHaveBeenCalledTimes(1)
+    expect(mocks.SaveBookSnapshots.mock.calls[0][0].body[0].content).toBe(after)
+    expect(mocks.SaveBookSnapshots.mock.calls[0][1]).toEqual([
+      expect.objectContaining({ chapter_id: 'ch-one', content: before, reason: 'Before AI Line Edit' }),
+      expect.objectContaining({ chapter_id: 'ch-one', content: after, reason: 'After AI Line Edit' }),
     ])
   })
 })
