@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02542] - 2026-09-05
+
+### Changed
+- Selected-text AI reviews now open in a dialog over the manuscript.
+
 ## [0.17.02541] - 2026-09-05
 
 ### Fixed
