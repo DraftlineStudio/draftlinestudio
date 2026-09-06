@@ -27,14 +27,12 @@ frontend/src/
 │   │   ├── GlyphIcon.tsx       # Glyph bar icons
 │   │   ├── Dashboard/          # Writing activity (redesigned 0.16.02456)
 │   │   │   ├── index.tsx       # Progress, goals, streak, session, breakdown
-│   │   │   ├── dashboard.css   # dash-* styles for the redesign
 │   │   │   └── history.ts      # Per-book daily word history (localStorage)
 │   │   ├── AIStudio/
 │   │   │   └── index.tsx       # AI modes, style mixer, streaming
 │   │   └── Analysis/           # Analysis sidebar suite (see ANALYSIS-SIDEBARS.md)
 │   │       ├── shared.ts       # Cross-panel nav, deltas, dismissals
-│   │       ├── analysis.css    # Shared .an-* visual vocabulary
-│   │       └── *Panel.tsx      # One component + css per panel
+│   │       └── *Panel.tsx      # One component per panel (styles in global.css)
 │   └── dialogs/
 │       ├── AppSettingsDialog.tsx
 │       ├── ExportWizard.tsx

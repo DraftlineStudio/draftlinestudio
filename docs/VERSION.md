@@ -2,7 +2,7 @@
 
 The project version (`MAJOR.MINOR.BUILD`, e.g. `0.15.02374`) is not generated from a single source — it is hand-maintained in the locations below. **When bumping the version, update every one of them.** (See `CHANGELOG.md` for the versioning scheme: BUILD increments by 1 per change; one fix = one number.)
 
-Current version as of this writing: **0.17.02543**
+Current version as of this writing: **0.17.02544**
 
 ## Locations to update
 
@@ -17,6 +17,5 @@ Current version as of this writing: **0.17.02543**
 
 ## Notes
 
-- `wails/wails.json` currently has **no** version field — nothing to update there. If one is ever added (e.g. `info.productVersion` for the Windows exe metadata), add it to the table.
-- Quick way to catch stragglers after a bump: search the repo for the **old** build number (excluding `node_modules/`). The only remaining hits should be historical `CHANGELOG.md` entries.
-- Long-term fix worth considering: inject the version at build time (Go `-ldflags "-X main.AppVersion=..."` + a single VERSION file the frontend reads at build), so this document becomes obsolete.
+- `wails/wails.json` has no version field; there is nothing to update there.
+- To catch stragglers after a bump, search the repo for the **old** build number (excluding `node_modules/`). The only remaining hits should be historical `CHANGELOG.md` entries.
