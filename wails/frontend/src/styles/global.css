@@ -5787,6 +5787,76 @@ html, body, #root {
 /* ===== DIFF VIEW — REDESIGNED ===== */
 
 /* ── Inline diff (rendered in editor pane) ─────────────────────────────────── */
+.diff-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.editor-live-host { height: 100%; }
+.editor-live-host.selection-review-active {
+  pointer-events: none;
+  user-select: none;
+}
+.selection-diff-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  background: rgba(9, 11, 15, 0.58);
+  backdrop-filter: blur(1px);
+}
+.selection-diff-card {
+  display: flex;
+  flex-direction: column;
+  width: min(920px, 100%);
+  height: min(620px, calc(100% - 48px));
+  min-height: 280px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg-editor);
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.48);
+}
+.selection-diff-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--toolbar-bg);
+}
+.selection-diff-title {
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.selection-diff-chapter {
+  margin-left: 10px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.selection-diff-safety {
+  color: var(--text-secondary);
+  font-size: 11px;
+  text-align: right;
+}
+.selection-diff-card .editor-scroll { background: var(--bg-editor); }
+.selection-diff-card .editor-content-wrapper {
+  width: auto;
+  min-height: 0;
+  margin: 28px 36px;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .diff-accept-bar {
   display: flex;
   align-items: center;

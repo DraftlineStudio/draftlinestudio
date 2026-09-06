@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02542] - 2026-09-05
+
+### Changed
+- Replaced the alarming full-page presentation for selected-text AI reviews with a contained review dialog over the still-visible, muted manuscript. The dialog identifies the AI pass and chapter and explicitly states that only the selection can change; true whole-chapter passes retain the full-page diff workspace.
+
+---
+
 ## [0.17.02541] - 2026-09-05
 
 ### Fixed

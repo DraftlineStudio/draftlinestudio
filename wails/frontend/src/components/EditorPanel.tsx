@@ -27,7 +27,7 @@ function getChapterInfo(book: ReturnType<typeof useBookStore.getState>['book'], 
   return { label: '', name: '', subtitle: '' }
 }
 
-function DiffPanel({ label, name }: { label: string; name: string }) {
+function DiffPanel({ label, name, selectionReview = false }: { label: string; name: string; selectionReview?: boolean }) {
   // pendingDiff lives in editorStore — subscribe there directly; the bookStore
   // bridge getter does not notify bookStore subscribers when editorStore changes
   const pendingDiff = useEditorStore(s => s.pendingDiff)
@@ -101,7 +101,7 @@ function DiffPanel({ label, name }: { label: string; name: string }) {
   }, [changes])
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className="diff-panel">
       {/* Control bar */}
       <div className="diff-accept-bar">
         {/* Per-change navigation */}
@@ -141,7 +141,7 @@ function DiffPanel({ label, name }: { label: string; name: string }) {
       {/* Chapter content with inline diff */}
       <div className="editor-scroll" ref={scrollRef}>
         <div className="editor-content-wrapper">
-          {(label || name) && (
+          {!selectionReview && (label || name) && (
             <div className="editor-page-header">
               {label && <span className="editor-page-chapter-title">{label}</span>}
               {name && <span className="editor-page-chapter-name">{name}</span>}
@@ -289,13 +289,18 @@ export default function EditorPanel() {
   }
 
   const editorKey = `${currentSection}-${currentIndex}`
+  const selectionReview = pendingDiff?.target.kind === 'selection'
 
   // Only allow editing for non-copyright sections
   const canEdit = currentSection !== 'copyright'
 
   return (
     <div className="editor-panel" style={editorStyle}>
-      <div style={{ display: pendingDiff ? 'none' : 'block', height: '100%' }}>
+      <div
+        className={selectionReview ? 'editor-live-host selection-review-active' : 'editor-live-host'}
+        style={{ display: pendingDiff && !selectionReview ? 'none' : 'block' }}
+        aria-hidden={selectionReview || undefined}
+      >
         <RichEditor
           key={editorKey}
           content={content}
@@ -307,7 +312,21 @@ export default function EditorPanel() {
           onEditSubtitle={canEdit ? handleEditSubtitle : undefined}
         />
       </div>
-      {pendingDiff && <DiffPanel label={label} name={name} />}
+      {pendingDiff && !selectionReview && <DiffPanel label={label} name={name} />}
+      {pendingDiff && selectionReview && (
+        <div className="selection-diff-overlay" role="dialog" aria-modal="true" aria-label="Review selected-text AI changes">
+          <div className="selection-diff-card">
+            <div className="selection-diff-heading">
+              <div>
+                <span className="selection-diff-title">{pendingDiff.historyReason || 'AI edit'}</span>
+                {name && <span className="selection-diff-chapter">{name}</span>}
+              </div>
+              <span className="selection-diff-safety">Only this selection can change. The rest of the chapter stays untouched.</span>
+            </div>
+            <DiffPanel label={label} name={name} selectionReview />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
