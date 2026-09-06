@@ -2,8 +2,7 @@
 
 The bottom tool window (`components/StorySearchToolWindow.tsx`, mounted in
 `App.tsx` above the status bar, resizable 170–560px) is the UI surface for the
-Story Fingerprint v2 engine. Design reference:
-`reference-assets/Bottom bar timeline redesign/Draftline Bottom Bar v7.dc.html`.
+Story Fingerprint v2 engine, built to the v7 bottom-bar design.
 
 Five tabs — **Story Map · Threads · Review · Continuity · Ask Draftline** —
 plus the fingerprint icon-button for the Evidence index. The shell owns the
