@@ -12,7 +12,6 @@ import { AI_MODES, AI_MODE_ICONS as MODE_ICONS, STYLE_FEATURES, STYLE_STOP_CENTE
 import { resolveTaskProvider, setTaskProvider } from '../../../services/aiRouting'
 import { useEditorStore } from '../../../store/editorStore'
 import NoAIProviderSetup from './NoAIProviderSetup'
-
 export default function AiStudioTab() {
   const { book, currentSection, currentIndex, setPendingDiff, getStyleOptions, updateStyleOptions, getEditorSelection } = useBookStore()
   const { settings, saveSettings, openSettings, showSettings } = useAppStore()
@@ -236,6 +235,9 @@ export default function AiStudioTab() {
                 from: currentSelection.from,
                 to: currentSelection.to,
                 sourceDocumentHtml: currentSelection.documentHtml,
+                sameTextBlock: currentSelection.sameTextBlock,
+                startsAtTextBlockBoundary: currentSelection.startsAtTextBlockBoundary,
+                endsAtTextBlockBoundary: currentSelection.endsAtTextBlockBoundary,
               }
             : { kind: 'chapter' },
           historyReason: `AI ${currentMode.label}`,

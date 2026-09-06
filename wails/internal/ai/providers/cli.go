@@ -67,7 +67,9 @@ func ClaudeCodeExecArgs(model string, lightweight bool) []string {
 		"--safe-mode",
 		"--disable-slash-commands",
 		"--strict-mcp-config",
-		"--mcp-config", `{}`,
+		// Claude requires the mcpServers record even when it is empty. `{}`
+		// fails schema validation before authentication or a model request.
+		"--mcp-config", `{"mcpServers":{}}`,
 		"--tools", "",
 		"--permission-mode", "dontAsk",
 		"--no-session-persistence",
