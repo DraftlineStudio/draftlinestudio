@@ -28,14 +28,15 @@ here because the design treats the seven as one suite).
     observations stay dismissed across runs.
   - `aggregateWordClasses(chapters)` — manuscript word-class percentages weighted
     by chapter word count.
-- `components/tools/Analysis/analysis.css` — shared visual vocabulary (`.an-*`):
-  panel scaffold, micro-labels, stat tiles, cards, chips, badges, jump rows, bars,
-  heat strips, tabs, freshness row, footnotes, empty states.
+- The ANALYSIS SUITE section of `styles/global.css` — shared visual vocabulary
+  (`.an-*`): panel scaffold, micro-labels, stat tiles, cards, chips, badges, jump
+  rows, bars, heat strips, tabs, freshness row, footnotes, empty states. (All
+  styles live in global.css; each panel has its own bannered section there.)
 - Semantic status tokens `--status-success/warning/error/issue/complete` and
   `--status-badge-text` were added to `global.css` for both themes.
 - ToolsPanel renders a `.glyph-badge` count on the Worth Reviewing rail glyph.
 
-## Prose panel (`ProsePanel.tsx`, `prose.css`, prefix `prose-`)
+## Prose panel (`ProsePanel.tsx`, prefix `prose-`)
 
 Design section 3c "Prose expanded". Five `.an-block` sections, top to bottom:
 
@@ -51,7 +52,7 @@ Design section 3c "Prose expanded". Five `.an-block` sections, top to bottom:
 
 No localStorage keys. Shared helpers used: `aggregateWordClasses`, `bookKey`.
 
-## Pacing panel (`PacingPanel.tsx`, `pacing.css`)
+## Pacing panel (`PacingPanel.tsx`, prefix `pace-`)
 
 An explainable prose-tempo view. Tempo describes how quickly the writing reads
 from sentence shape and dialogue; the panel explicitly avoids presenting it as
@@ -74,7 +75,7 @@ only the stored `StoryAnalysisData` metrics.
 explanation and an Analyze now button, disabled while running or when Story
 Analysis is switched off.
 
-## Chapters panel (`ChaptersPanel.tsx`, `chapters-panel.css`)
+## Chapters panel (`ChaptersPanel.tsx`, prefix `chp-`)
 
 Design section 3e. A skimmable per-chapter recap of the manuscript: for each analyzed chapter, a clickable card with its number and title, a meta line (`{word_count} words · {scenes} scenes · {breaks} breaks`, pluralized, scenes = scene_break_count + 1), the extractive summary in Merriweather italic (`.an-serif`), and up to 6 keyword chips (`.an-chip`).
 
@@ -122,10 +123,11 @@ localStorage `draftline.analysis.dismissed.{bookKey}` via shared.ts's `dismissOb
   `.an-run-btn` "Restore dismissed".
 - Analysis has zero observations: `.an-empty` "Nothing worth flagging — the manuscript reads evenly."
 
-**CSS**: panel-specific rules in `review.css` (`rv-` prefix); shared vocabulary from
-`analysis.css`. No hardcoded colors — all values are theme custom properties.
+**CSS**: panel-specific rules (`rv-` prefix) and the shared `.an-*` vocabulary both
+live in `styles/global.css`. No hardcoded colors — all values are theme custom
+properties.
 
-## Signals panel (`SignalsPanel.tsx`, `signals.css`, prefix `sg-`)
+## Signals panel (`SignalsPanel.tsx`, prefix `sg-`)
 
 Hub overview of the local manuscript analysis (design 3b).
 
@@ -157,11 +159,11 @@ Heuristic AI-detection for the whole book. Unlike the other analysis panels it d
 - `useBookAIScan(book)` → `{ scores: ChapterAIScore[], done }`. Scans all chapters (front_matter + body + back_matter, combined global index) in batches of 3 per `setTimeout(0)` tick; eligibility (≥ 100 plain-text chars) is checked *inside* the tick so no whole-book HTML parse ever happens synchronously. Partial results stream out per tick. Caches: a `WeakMap` per book object (reopening the panel after a completed scan is instant; a remount mid-scan restarts immediately), plus a per-identity map (`file_path` + `metadata.created`) that keeps the last complete scan on screen while a 2s-debounced re-scan runs after edits. First scan of a book identity starts immediately; re-scans (new book object, same identity) are debounced 2s.
 - `scanPassages(html, analyzeThreshold = 150)` → `[{ excerpt, score }]` sorted descending: paragraphs from `<p>` elements (fallback: blank-line split), scored with `analyzeText` when ≥ 150 chars.
 
-No localStorage keys. No new dependencies. Panel-specific styles in `aidetect.css` (`.ai-*` prefix); shared vocabulary from `analysis.css`.
+No localStorage keys. No new dependencies. Panel-specific styles (`.ai-*` prefix) and the shared `.an-*` vocabulary live in `styles/global.css`.
 
 ## Writing Dashboard (redesigned)
 
-**Component:** `wails/frontend/src/components/tools/Dashboard/index.tsx` (+ `dashboard.css`, `history.ts`). Root classes `dashboard-content dash-panel`; reuses the existing `dashboard-*` / `big-number` / `progress-bar*` / `chapter-bar-*` / `goal-input*` classes from global.css, with new panel-specific styles prefixed `dash-` in `dashboard.css`.
+**Component:** `wails/frontend/src/components/tools/Dashboard/index.tsx` (+ `history.ts`). Root classes `dashboard-content dash-panel`; reuses the existing `dashboard-*` / `big-number` / `progress-bar*` / `chapter-bar-*` / `goal-input*` classes from global.css, with panel-specific styles prefixed `dash-` in the WRITING DASHBOARD section of the same file.
 
 **What it shows (top to bottom):**
 - **Manuscript** — total book words (memoized `countBookWords` keyed on the `book` reference), hint button "target {n}k" when a target is set, progress bar with "{pct}%" left and "{remaining} to go" right (both hint and right label open the target editor; the set/edit input flows are unchanged from the old dashboard).

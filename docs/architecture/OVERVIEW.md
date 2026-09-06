@@ -181,7 +181,7 @@ book.draftline (ZIP)
 └── knowledge_matrix.json # Secrets tracking
 ```
 
-See [Data Model](../data-model/README.md) for detailed schemas.
+See [Data Model](../data-model/DATA-MODEL.md) for detailed schemas.
 
 ## AI Integration Architecture
 
@@ -199,4 +199,4 @@ Claude Code can authenticate two ways:
 
 The app checks credentials and chooses the faster path automatically.
 
-See [AI Features](../ai/README.md) for prompt engineering details.
+See [AI Features](../ai/AI-REWRITING.md) for prompt engineering details.
