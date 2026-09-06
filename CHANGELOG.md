@@ -2,6 +2,15 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02543] - 2026-09-05
+
+### Fixed
+- Selected-text AI edits no longer leave empty paragraphs at the edges of the selection.
+- Fixed Claude Code requests failing with an invalid MCP configuration.
+
+### Removed
+- Removed the duplicate Read Aloud button from the sidebar rail.
+
 ## [0.17.02542] - 2026-09-05
 
 ### Changed

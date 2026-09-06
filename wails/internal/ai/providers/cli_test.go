@@ -1,6 +1,7 @@
 package providers
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -63,15 +64,34 @@ func TestClaudeCodeExecArgsDisableAllTools(t *testing.T) {
 			t.Fatalf("missing %q in %v", want, args)
 		}
 	}
+	foundTools := false
+	foundMCPConfig := false
 	for i := range args {
 		if args[i] == "--tools" {
 			if i+1 >= len(args) || args[i+1] != "" {
 				t.Fatalf("Claude tool list is not explicitly empty: %v", args)
 			}
-			return
+			foundTools = true
+		}
+		if args[i] == "--mcp-config" {
+			if i+1 >= len(args) {
+				t.Fatalf("Claude MCP config value missing: %v", args)
+			}
+			var config struct {
+				MCPServers map[string]any `json:"mcpServers"`
+			}
+			if err := json.Unmarshal([]byte(args[i+1]), &config); err != nil || config.MCPServers == nil {
+				t.Fatalf("Claude MCP config must contain an empty mcpServers record: %q (%v)", args[i+1], err)
+			}
+			foundMCPConfig = true
 		}
 	}
-	t.Fatal("Claude --tools flag missing")
+	if !foundTools {
+		t.Fatal("Claude --tools flag missing")
+	}
+	if !foundMCPConfig {
+		t.Fatal("Claude --mcp-config flag missing")
+	}
 }
 
 func TestClaudeFailureMessageDoesNotEchoPrompt(t *testing.T) {

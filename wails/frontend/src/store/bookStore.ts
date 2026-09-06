@@ -10,7 +10,7 @@ import { countBookWords } from '../utils/textUtils'
 import { NewBook, OpenBookDialog, SaveBook, SaveBookAs, SaveBookSnapshots, OpenRecentProject, AddRecentProject, IndexBook, MergeEntities, SplitEntity, ImportEPUB, ImportDOCX, ShowInfoDialog } from '../../wailsjs/go/main/App'
 import { types } from '../../wailsjs/go/models'
 import { useAppStore } from './appStore'
-import { useEditorStore, type DiffTarget, type EditorInstance } from './editorStore'
+import { useEditorStore, type DiffTarget, type EditorInstance, type EditorSelection } from './editorStore'
 import { useStoryBibleStore } from './storyBibleStore'
 import { resetChapterHistorySession, saveAIChapterHistory, scheduleChapterHistory as queueChapterHistory, type ChapterHistoryDependencies } from './chapterHistory'
 
@@ -244,7 +244,7 @@ interface BookStore {
   // Editor store bridge (for backwards compatibility)
   editorRef: EditorInstance | null
   setEditorRef: (editor: EditorInstance | null) => void
-  getEditorSelection: () => { html: string; text: string; from: number; to: number; documentHtml: string } | null
+  getEditorSelection: () => EditorSelection | null
   inlinePrompt: { active: boolean; cursorPos: number } | null
   openInlinePrompt: (cursorPos: number) => void
   closeInlinePrompt: () => void
