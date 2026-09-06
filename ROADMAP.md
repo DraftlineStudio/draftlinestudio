@@ -1,8 +1,8 @@
 # Draftline Roadmap
 
-This is the short, current product roadmap. Detailed architecture and older
-design exploration live in [PlotWalker](docs/roadmaps/PLOTWALKER.md) and the
-[Storiverse roadmap](docs/roadmaps/ROADMAP-STORIVERSE.md).
+This is the short, current product roadmap. Deeper architecture notes live in
+[docs/](docs/README.md); longer-range design exploration is tracked in the
+maintainers' planning notes.
 
 Draftline's default story tools remain local and deterministic. Optional model
 plugins may enhance ambiguous interpretation later, but core writing,

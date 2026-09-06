@@ -1,6 +1,6 @@
 # Characters View — Design Gaps & Deferred Work
 
-The Characters workspace (0.16.02394–02396) implements the "Hybrid: swimlanes + ego view" design from `reference-assets/Draftline character relationship redesign/`. Everything the current data model supports is in. This documents what the design implies but the app cannot honestly deliver yet, for separate work.
+The Characters workspace (0.16.02394–02396) implements the "Hybrid: swimlanes + ego view" design. Everything the current data model supports is in. This documents what the design implies but the app cannot honestly deliver yet, for separate work.
 
 ## 1. Sentence-quality mention excerpts (backend)
 
