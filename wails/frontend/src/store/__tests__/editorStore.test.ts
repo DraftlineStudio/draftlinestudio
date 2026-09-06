@@ -21,6 +21,34 @@ beforeEach(async () => {
 })
 
 describe('lazy diff-engine coordination', () => {
+  it('keeps a one-paragraph selection inline instead of inserting a nested paragraph', () => {
+    const replacement = editorStoreMod.prepareSelectionReplacement({
+      kind: 'selection',
+      from: 8,
+      to: 11,
+      sourceDocumentHtml: '<p>Before old after.</p>',
+      sameTextBlock: true,
+    }, '<p><em>new</em></p>')
+
+    expect(replacement).toEqual({ range: { from: 8, to: 11 }, content: '<em>new</em>' })
+  })
+
+  it('consumes fully selected paragraph wrappers for a multi-paragraph replacement', () => {
+    const replacement = editorStoreMod.prepareSelectionReplacement({
+      kind: 'selection',
+      from: 12,
+      to: 40,
+      sourceDocumentHtml: '<p>Before.</p><p>One.</p><p>Two.</p><p>After.</p>',
+      startsAtTextBlockBoundary: true,
+      endsAtTextBlockBoundary: true,
+    }, '<p>Revised one.</p><p>Revised two.</p>')
+
+    expect(replacement).toEqual({
+      range: { from: 11, to: 41 },
+      content: '<p>Revised one.</p><p>Revised two.</p>',
+    })
+  })
+
   it('does not resurrect a diff cleared while the module is loading', async () => {
     const pending = editorStoreMod.useEditorStore.getState().setPendingDiff({
       diffs: [changedParagraph],

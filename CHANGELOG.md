@@ -4,6 +4,17 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02543] - 2026-09-05
+
+### Fixed
+- Prevented selected-text AI edits from leaving empty paragraphs at selection boundaries. Single-paragraph replacements now remain inline, while fully selected paragraph wrappers are consumed for multi-paragraph replacements.
+- Restored Claude Code requests by supplying the pinned CLI with its required empty `mcpServers` record instead of an invalid bare MCP configuration object.
+
+### Changed
+- Removed the duplicate Read Aloud control from the right sidebar rail. The floating editor control remains the single reopen affordance.
+
+---
+
 ## [0.17.02542] - 2026-09-05
 
 ### Changed

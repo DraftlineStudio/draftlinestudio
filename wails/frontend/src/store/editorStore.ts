@@ -15,6 +15,8 @@ export interface EditorInstance {
       from: number
       to: number
       empty: boolean
+      $from: { parentOffset: number; parent: { content: { size: number } } }
+      $to: { parentOffset: number; parent: { content: { size: number } } }
       content: () => { content: Parameters<typeof getHTMLFromFragment>[0] }
     }
     schema: Parameters<typeof getHTMLFromFragment>[1]
@@ -28,9 +30,58 @@ export interface EditorInstance {
   }
 }
 
+export interface EditorSelection {
+  html: string
+  text: string
+  from: number
+  to: number
+  documentHtml: string
+  sameTextBlock: boolean
+  startsAtTextBlockBoundary: boolean
+  endsAtTextBlockBoundary: boolean
+}
+
 export type DiffTarget =
   | { kind: 'chapter' }
-  | { kind: 'selection'; from: number; to: number; sourceDocumentHtml: string }
+  | {
+      kind: 'selection'
+      from: number
+      to: number
+      sourceDocumentHtml: string
+      sameTextBlock?: boolean
+      startsAtTextBlockBoundary?: boolean
+      endsAtTextBlockBoundary?: boolean
+    }
+
+interface SelectionReplacement {
+  range: { from: number; to: number }
+  content: string
+}
+
+/** Adapt block-wrapped AI HTML to the shape of the original TipTap selection. */
+export function prepareSelectionReplacement(target: Extract<DiffTarget, { kind: 'selection' }>, revisedHtml: string): SelectionReplacement {
+  // TipTap serializes even an inline selection as <p>...</p>. Reinserting that
+  // block inside its original paragraph splits the paragraph and can leave an
+  // empty paragraph at either boundary. Keep a one-paragraph inline edit inline.
+  const trimmed = revisedHtml.trim()
+  const paragraphBlocks = trimmed.match(/<p(?:\s[^>]*)?>[\s\S]*?<\/p>/gi)
+  const singleParagraph = paragraphBlocks?.length === 1
+    ? trimmed.match(/^<p(?:\s[^>]*)?>([\s\S]*)<\/p>$/i)
+    : null
+  if (target.sameTextBlock && singleParagraph) {
+    return { range: { from: target.from, to: target.to }, content: singleParagraph[1] }
+  }
+
+  // For a multi-block edit, consume wrappers that the original selection
+  // covered completely so they cannot survive as empty paragraphs.
+  return {
+    range: {
+      from: target.startsAtTextBlockBoundary ? Math.max(0, target.from - 1) : target.from,
+      to: target.endsAtTextBlockBoundary ? target.to + 1 : target.to,
+    },
+    content: revisedHtml,
+  }
+}
 
 export interface AppliedDiff {
   beforeHtml: string
@@ -42,7 +93,7 @@ interface EditorStore {
   // Editor reference
   editorRef: EditorInstance | null
   setEditorRef: (editor: EditorInstance | null) => void
-  getEditorSelection: () => { html: string; text: string; from: number; to: number; documentHtml: string } | null
+  getEditorSelection: () => EditorSelection | null
 
   // Inline AI prompt (Ctrl+L)
   inlinePrompt: {
@@ -87,7 +138,16 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     const { from, to } = selection
     const text = editorRef.state.doc.textBetween(from, to, '\n')
     const html = getHTMLFromFragment(selection.content().content, editorRef.state.schema)
-    return { html, text, from, to, documentHtml: editorRef.getHTML() }
+    return {
+      html,
+      text,
+      from,
+      to,
+      documentHtml: editorRef.getHTML(),
+      sameTextBlock: selection.$from.parent === selection.$to.parent,
+      startsAtTextBlockBoundary: selection.$from.parentOffset === 0,
+      endsAtTextBlockBoundary: selection.$to.parentOffset === selection.$to.parent.content.size,
+    }
   },
 
   // Inline AI prompt
@@ -205,10 +265,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
         set({ pendingDiff: { ...pendingDiff, applyError: 'The chapter changed after this AI pass started. No text was changed.' } })
         return null
       }
-      const applied = editor.commands.insertContentAt(
-        { from: pendingDiff.target.from, to: pendingDiff.target.to },
-        revisedHtml,
-      )
+      const replacement = prepareSelectionReplacement(pendingDiff.target, revisedHtml)
+      const applied = editor.commands.insertContentAt(replacement.range, replacement.content)
       if (!applied) {
         set({ pendingDiff: { ...pendingDiff, applyError: 'Draftline could not replace the selected range. No text was changed.' } })
         return null
