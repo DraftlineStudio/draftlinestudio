@@ -14,7 +14,7 @@ wails/
 ├── fileassoc_windows.go       # Per-user HKCU association self-registration
 ├── import.go                  # EPUB/DOCX import pipeline + routing (see import/IMPORT.md)
 ├── import_sanitize.go         # Import decoder, XHTML sanitizer, chaptering
-├── debt_guardrail_test.go     # 800-line file-size ratchet (see docs/TECHNICAL-DEBT.md)
+├── debt_guardrail_test.go     # 800-line file-size ratchet (fails `go test` when a source file outgrows its allowance)
 ├── setup.go                   # Claude Code + Node.js setup
 ├── hidewindow_windows.go      # Windows-specific process hiding
 ├── hidewindow_other.go        # No-op for non-Windows

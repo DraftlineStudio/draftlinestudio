@@ -20,8 +20,8 @@ gate and runs alone.
 
 ## Windows 12-thread validation — 2026-09-03
 
-the benchmark manuscript was re-opened fresh and its derived analysis cleared before every
-run. Its manuscript contains approximately 70,700 words and 469,876 source
+The benchmark manuscript was re-opened fresh and its derived analysis cleared before every
+run. It contains approximately 70,700 words and 469,876 source
 bytes, so it exercises the normal tier rather than the large-manuscript memory
 gate. CPU percentages are normalized to the machine's 12 logical threads.
 

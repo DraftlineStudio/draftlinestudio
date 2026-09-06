@@ -1,12 +1,12 @@
 # AI Studio Sidebar — Design Gaps & Deferred Work
 
-The AI Studio sidebar (0.16.02418–02419) implements the "AI Studio Sidebar" design from `reference-assets/AI sidebar redesign overhaul/`. This documents what the design shows but was deliberately not built, for separate work.
+The AI Studio sidebar (0.16.02418–02419) implements the "AI Studio Sidebar" design. This documents what the design shows but was deliberately not built, for separate work.
 
-## 1. Pass Strength (Light / Standard / Deep) — deferred by user decision
+## 1. Pass Strength (Light / Standard / Deep) — deferred
 
 The design shows a segmented "Pass Strength" control for Line Edit and Copy Edit with per-mode hints ("Light touches rhythm only where it stumbles" / "Deep restructures sentences aggressively"). The backend has one intensity per mode, so the control is not rendered.
 
-**Implementation sketch when wanted:** add a `strength` param to `RewriteText` (or fold into the style-options JSON), and in `internal/ai/prompt.go` `BuildSystemPrompt` append calibrated guidance per (mode, strength) — e.g. copy_edit Light = "fix only outright errors", Deep = "also enforce consistent house style". Persist the choice in `AppSettings`. The design's hint copy is in `AI Studio Sidebar.dc.html` (`HINTS` map).
+**Implementation sketch when wanted:** add a `strength` param to `RewriteText` (or fold into the style-options JSON), and in `internal/ai/prompt.go` `BuildSystemPrompt` append calibrated guidance per (mode, strength) — e.g. copy_edit Light = "fix only outright errors", Deep = "also enforce consistent house style". Persist the choice in `AppSettings`.
 
 ## 2. Single API-key slot limits the provider menu
 

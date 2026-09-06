@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02545] - 2026-09-06
+
+### Changed
+- Aligned the shared documentation with the public repository word for word: design-asset folder references removed, the AI Studio and Characters gap docs describe the shipped designs directly, VERSION.md drops the roadmap row from the bump table (the roadmap no longer carries a version line), and the root ROADMAP.md intro no longer links maintainers-only planning notes. Added the CONTRIBUTING.md guide. From here the docs trees diff clean between the two repositories.
+
+---
+
 ## [0.17.02544] - 2026-09-06
 
 ### Fixed

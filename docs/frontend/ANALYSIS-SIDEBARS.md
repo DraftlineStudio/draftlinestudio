@@ -2,8 +2,7 @@
 
 The analysis sidebar suite replaces the retired Story Bible / Plot Walker planning
 panes (removed in 0.16.02449) and the old single Story Analysis pane. Each tool has
-one glyph on the rail and one focused panel, following the design-center reference
-in `reference-assets/Draftline sidebar layout directions/Story Analysis Sidebars.dc.html`
+one glyph on the rail and one focused panel, following the suite's design reference
 (sections 3a–3g). Panels: Signals (hub overview), Prose, Pacing, Chapters,
 Worth Reviewing, and AI Analysis — plus the redesigned Writing Dashboard (documented
 here because the design treats the seven as one suite).

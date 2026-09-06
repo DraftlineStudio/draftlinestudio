@@ -2,7 +2,7 @@
 
 The project version (`MAJOR.MINOR.BUILD`, e.g. `0.15.02374`) is not generated from a single source — it is hand-maintained in the locations below. **When bumping the version, update every one of them.** (See `CHANGELOG.md` for the versioning scheme: BUILD increments by 1 per change; one fix = one number.)
 
-Current version as of this writing: **0.17.02544**
+Current version as of this writing: **0.17.02545**
 
 ## Locations to update
 
@@ -12,8 +12,7 @@ Current version as of this writing: **0.17.02544**
 | 2 | `wails/frontend/package.json` | `"version"` field (line 4). |
 | 3 | `wails/frontend/package-lock.json` | `"version"` appears **twice** — top-level (~line 3) and under `packages[""]` (~line 9). Running any `npm install` after editing package.json also syncs these. |
 | 4 | `CHANGELOG.md` (repo root) | Add a new `## [x.y.0zzzz] - YYYY-MM-DD` entry at the top describing the change. |
-| 5 | `docs/roadmaps/ROADMAP-STORIVERSE.md` | `**Current version:**` line (~line 57). |
-| 6 | This file | The "current version" line above, so it stays a reliable cross-check. |
+| 5 | This file | The "current version" line above, so it stays a reliable cross-check. |
 
 ## Notes
 
