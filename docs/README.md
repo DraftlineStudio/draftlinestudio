@@ -7,10 +7,11 @@ Draftline is a desktop writing application for novelists, built with Go (Wails) 
 | Document | Description |
 |----------|-------------|
 | [Architecture Overview](architecture/OVERVIEW.md) | High-level system design and data flow |
-| [Backend Guide](backend/README.md) | Go backend structure and APIs |
-| [Frontend Guide](frontend/README.md) | React components and state management |
-| [Data Model](data-model/README.md) | File format and data structures |
-| [AI Features](ai/README.md) | AI rewriting system and prompt engineering |
+| [Backend Guide](backend/BACKEND.md) | Go backend structure and APIs |
+| [Frontend Guide](frontend/FRONTEND.md) | React components and state management |
+| [Data Model](data-model/DATA-MODEL.md) | File format and data structures |
+| [AI Rewriting](ai/AI-REWRITING.md) | AI rewriting system and providers |
+| [AI Prompt Engineering](ai/AI-PROMPT-ENGINEERING.md) | Prompt design for the rewrite modes |
 | [Changelog](../CHANGELOG.md) | Version history and changes |
 
 ## Mental Model
@@ -86,6 +87,6 @@ Layer 4: External Systems
 ## Getting Started
 
 1. **Understand the data flow**: Start with [Architecture Overview](architecture/OVERVIEW.md)
-2. **Frontend work**: Read [Frontend Guide](frontend/README.md)
-3. **Backend work**: Read [Backend Guide](backend/README.md)
+2. **Frontend work**: Read [Frontend Guide](frontend/FRONTEND.md)
+3. **Backend work**: Read [Backend Guide](backend/BACKEND.md)
 4. **AI features**: Read [AI Prompt Engineering](ai/AI-PROMPT-ENGINEERING.md)

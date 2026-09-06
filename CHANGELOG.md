@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02544] - 2026-09-06
+
+### Fixed
+- Repaired stale documentation references: the doc index and architecture overview now link the guides that exist (BACKEND.md, FRONTEND.md, DATA-MODEL.md, the AI docs) instead of never-written per-directory README files, and the analysis-suite/frontend docs reflect the single-stylesheet consolidation (panel styles live in bannered global.css sections, not per-panel .css files). Trimmed a speculative note from VERSION.md.
+
+---
+
 ## [0.17.02543] - 2026-09-05
 
 ### Fixed
