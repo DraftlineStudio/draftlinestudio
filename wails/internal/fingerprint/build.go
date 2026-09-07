@@ -50,7 +50,7 @@ func Build(book *types.BookData, progress func(types.StoryAnalysisProgress)) *ty
 	result.Frames = extractFrames(book, records, contextByEvidence, points, scopes)
 	result.Ledgers = buildLedgers(result.Frames)
 	result.EventIdentities = resolveEventIdentities(result.Frames)
-	result.Developments = synthesizeDevelopments(result.Frames, result.Ledgers, result.EventIdentities)
+	result.Developments = synthesizeDevelopments(book, result.Frames, result.Ledgers, result.EventIdentities)
 	result.Inspections = buildInspections(result.Frames, result.Ledgers, result.EventIdentities, scopes)
 
 	result.Profiles = deriveProfiles(records, result.AuthorModel.Profiles)
