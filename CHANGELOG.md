@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02563] - 2026-09-07
+
+### Fixed
+- Codex sign-in is now detected when credentials are stored in the system keychain.
+
 ## [0.17.02562] - 2026-09-07
 
 ### Changed

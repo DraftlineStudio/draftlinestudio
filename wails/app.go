@@ -43,7 +43,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.17.02562"
+const AppVersion = "0.17.02563"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -1044,23 +1044,7 @@ func (a *App) OpenClaudeAuth() {
 // CheckCodexCLI checks whether the OpenAI Codex CLI is installed and
 // authenticated (ChatGPT-account mode). Reuses the ClaudeCodeStatus shape.
 func (a *App) CheckCodexCLI() types.ClaudeCodeStatus {
-	npmAvailable := resolveNpmBin() != ""
-
-	codexPath := resolveCodexBin()
-	if codexPath == "" {
-		return types.ClaudeCodeStatus{NpmAvailable: npmAvailable}
-	}
-	out, err := codexExec(context.Background(), codexPath, "--version").Output()
-	version := ""
-	if err == nil {
-		version = strings.TrimSpace(string(out))
-	}
-	home, _ := os.UserHomeDir()
-	authenticated := false
-	if _, err := os.Stat(filepath.Join(home, ".codex", "auth.json")); err == nil {
-		authenticated = true
-	}
-	return types.ClaudeCodeStatus{Installed: true, Authenticated: authenticated, NpmAvailable: npmAvailable, Version: version}
+	return a.checkCodexCLI()
 }
 
 // OpenCodexAuth runs "codex login" as a hidden background process. It opens
@@ -1068,19 +1052,7 @@ func (a *App) CheckCodexCLI() types.ClaudeCodeStatus {
 // what would otherwise require running /login in a terminal. When the process
 // exits it emits "codex:auth_complete".
 func (a *App) OpenCodexAuth() {
-	codexPath := resolveCodexBin()
-	if codexPath == "" {
-		return
-	}
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-		defer cancel()
-		cmd := codexExec(ctx, codexPath, "login")
-		platform.HideWindow(cmd)
-		_ = cmd.Start()
-		_ = cmd.Wait()
-		runtime.EventsEmit(a.ctx, "codex:auth_complete", nil)
-	}()
+	a.openCodexAuth()
 }
 
 // callCodexCLI handles the "codex" AI mode: prose rewrites through the OpenAI
