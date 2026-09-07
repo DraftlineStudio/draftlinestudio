@@ -4,6 +4,20 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02551] - 2026-09-06
+
+### Added
+- Added contextual `NarrativeDevelopment` synthesis as a distinct layer above comprehensive manuscript fingerprints. Developments express objectives, obligations, relationship and persistent-state changes, discoveries, obstacles, threats, causal enablement, fulfillment, corroboration, contradiction, and supersession without treating every action as story movement.
+- Added retrospective significance for concrete findings: an otherwise ordinary discovery remains manuscript memory until later prose depends on the same semantic result. Each development retains its complete fingerprint and evidence dependencies, affected entities, reality scope, story-time placement, before/after state, reasons, confidence, and stable identity.
+- Added source-semantics metadata to each manuscript fingerprint, including original evidence types, actions, named entities, and time expressions, so contextual synthesis and downstream continuity tools do not have to reverse-engineer those details from prose.
+- Added a plain-text narrative-development diagnostic with normalized changes, synthesis reasons, epistemic and reality status, confidence, and every exact supporting quotation.
+
+### Changed
+- Expanded general objective and relationship recognition to cover determined or necessary courses of action and present-tense trust changes while requiring stable actors, substantive objectives, and actual relationship participants before creating a development.
+- Kept isolated object findings, routine movement, generic information exchange, and action-heavy passages in the fingerprint corpus unless later context establishes a meaningful consequence.
+
+---
+
 ## [0.17.02550] - 2026-09-06
 
 ### Added

@@ -234,6 +234,10 @@ type ManuscriptFingerprint struct {
 	AssertionIDs    []string                `json:"assertion_ids"`
 	EvidenceIDs     []string                `json:"evidence_ids"`
 	EvidenceSpans   []NarrativeEvidenceSpan `json:"evidence_spans"`
+	EvidenceTypes   []string                `json:"evidence_types,omitempty"`
+	Actions         []string                `json:"actions,omitempty"`
+	NamedEntities   []EvidenceTerm          `json:"named_entities,omitempty"`
+	TimeExpressions []string                `json:"time_expressions,omitempty"`
 	Participants    []NarrativeParticipant  `json:"participants,omitempty"`
 	StateChange     *NarrativeStateChange   `json:"state_change,omitempty"`
 	EpistemicStatus string                  `json:"epistemic_status"`
@@ -365,6 +369,12 @@ type FingerprintCorpusStats struct {
 	StateHistories  int `json:"state_histories"`
 	Developments    int `json:"developments"`
 	Inspections     int `json:"inspections"`
+}
+
+type FingerprintTextDiagnostics struct {
+	Corpus       string `json:"corpus"`
+	Developments string `json:"developments"`
+	Inspections  string `json:"inspections"`
 }
 
 type NarrativePromotionReason struct {

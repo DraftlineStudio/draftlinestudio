@@ -30,12 +30,20 @@ func buildFingerprintCorpus(assertions []types.StoryAssertion, records []types.E
 func manuscriptFingerprintFromAssertion(assertion types.StoryAssertion, records map[string]types.EvidenceRecord) types.ManuscriptFingerprint {
 	spans := make([]types.NarrativeEvidenceSpan, 0, len(assertion.EvidenceIDs))
 	participants := []types.NarrativeParticipant{}
+	evidenceTypes, actions, timeExpressions := []string{}, []string{}, []string{}
+	namedEntities := []types.EvidenceTerm{}
 	for _, id := range assertion.EvidenceIDs {
 		record, exists := records[id]
 		if !exists {
 			continue
 		}
 		spans = append(spans, evidenceSpan(record))
+		evidenceTypes = appendUnique(evidenceTypes, record.EvidenceType)
+		if action := strings.TrimSpace(record.Action); action != "" {
+			actions = appendUnique(actions, action)
+		}
+		namedEntities = appendUniqueTerms(namedEntities, record.NamedEntities)
+		timeExpressions = appendUnique(timeExpressions, record.TimeExpressions...)
 		for index, name := range record.CharacterNames {
 			entityID := ""
 			if index < len(record.CharacterIDs) {
@@ -56,6 +64,7 @@ func manuscriptFingerprintFromAssertion(assertion types.StoryAssertion, records 
 		ID: id, Kind: assertion.Kind, Statement: normalizedMemoryStatement(assertion), SemanticKey: assertion.SemanticKey,
 		SubjectID: assertion.SubjectID, Subject: assertion.Subject, Predicate: assertion.Predicate, ObjectID: assertion.ObjectID, Object: assertion.Object,
 		Polarity: assertion.Polarity, AssertionIDs: []string{assertion.ID}, EvidenceIDs: clone(assertion.EvidenceIDs), EvidenceSpans: spans,
+		EvidenceTypes: evidenceTypes, Actions: actions, NamedEntities: namedEntities, TimeExpressions: timeExpressions,
 		Participants: participants, StateChange: assertion.StateChange, EpistemicStatus: assertion.EpistemicStatus, Attribution: assertion.Attribution,
 		Scope: assertion.Scope, Persistence: assertion.Persistence, Temporal: assertion.Temporal, Confidence: assertion.Confidence, Status: assertion.Status,
 	}
