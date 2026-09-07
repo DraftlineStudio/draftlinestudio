@@ -102,6 +102,10 @@ export function GetCurrentFile() {
   return window['go']['main']['App']['GetCurrentFile']();
 }
 
+export function GetNarrativeFingerprintDiagnostic(arg1) {
+  return window['go']['main']['App']['GetNarrativeFingerprintDiagnostic'](arg1);
+}
+
 export function GetRecentProjects() {
   return window['go']['main']['App']['GetRecentProjects']();
 }

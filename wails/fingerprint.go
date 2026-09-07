@@ -11,6 +11,13 @@ func (a *App) QueryStoryFingerprint(book types.BookData, request types.Fingerpri
 	return fingerprint.Query(book, request)
 }
 
+// GetNarrativeFingerprintDiagnostic returns the complete textual quality-gate
+// report for the promoted narrative layer. It performs no I/O and never sends
+// manuscript content to an external service.
+func (a *App) GetNarrativeFingerprintDiagnostic(book types.BookData) string {
+	return fingerprint.DiagnosticReport(&book)
+}
+
 // UpdateStoryAuthorModel applies explicit author intent and rebuilds only the
 // semantic fingerprint. It does not rerun prose/v3 or mutate manuscript text.
 func (a *App) UpdateStoryAuthorModel(book types.BookData, model types.StoryAuthorModel) types.FullAnalysisResult {
@@ -22,8 +29,8 @@ func (a *App) UpdateStoryAuthorModel(book types.BookData, model types.StoryAutho
 	}
 	book.Analysis.Fingerprint.AuthorModel = model
 	book.Analysis.Fingerprint = fingerprint.Build(&book, nil)
-	if book.Analysis.Version < 5 {
-		book.Analysis.Version = 5
+	if book.Analysis.Version < 6 {
+		book.Analysis.Version = 6
 	}
 	return types.FullAnalysisResult{Success: true, Book: book}
 }

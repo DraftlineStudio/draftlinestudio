@@ -8,6 +8,17 @@ import (
 	"draftline/internal/types"
 )
 
+// DiagnosticReport rebuilds the semantic layers from persisted evidence and
+// returns the plain-text quality-gate report. The supplied book is copied by
+// callers that require immutability; Build changes only rebuildable analysis
+// fields and never manuscript prose.
+func DiagnosticReport(book *types.BookData) string {
+	if book == nil || book.Analysis.Evidence == nil {
+		return "Narrative fingerprint analysis has not run.\n"
+	}
+	return Build(book, nil).DiagnosticReport
+}
+
 // legacyEventsFromNarrative keeps existing non-visual consumers operational
 // while making their input honest: every compatibility event corresponds to a
 // promoted narrative fingerprint, never directly to an evidence atom.
