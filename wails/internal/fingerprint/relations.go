@@ -24,182 +24,9 @@ var semanticStopWords = map[string]bool{
 	"didn": true, "doesn": true, "wasn": true, "couldn": true, "wouldn": true, "answer": true,
 }
 
-// promoteNarrativeFingerprints applies precision-first narrative promotion.
-// It starts with independently defensible state changes, then revisits all
-// assertions for later contradiction, fulfillment, corroboration and causal
-// dependence. Unpromoted assertions and their evidence remain intact.
-func promoteNarrativeFingerprints(assertions []types.StoryAssertion, records []types.EvidenceRecord) ([]types.NarrativeFingerprint, []types.NarrativeFingerprintRelation) {
-	recordByID := evidenceRecordMap(records)
-	reasons := map[string][]types.NarrativePromotionReason{}
-	for _, assertion := range assertions {
-		reasons[assertion.ID] = initialPromotionReasons(assertion, recordByID)
-	}
-	relations := inferAssertionRelations(assertions, recordByID)
-	for _, relation := range relations {
-		switch relation.kind {
-		case "contradicts", "supersedes", "corroborates", "fulfills", "enables", "setup_for":
-			reasons[relation.from] = appendPromotionReason(reasons[relation.from], relationReason(relation, relation.from))
-			reasons[relation.to] = appendPromotionReason(reasons[relation.to], relationReason(relation, relation.to))
-		}
-	}
-
-	fingerprints := make([]types.NarrativeFingerprint, 0, len(reasons))
-	assertionToFingerprint := map[string]string{}
-	for _, assertion := range assertions {
-		if len(reasons[assertion.ID]) == 0 {
-			continue
-		}
-		fingerprint := fingerprintFromAssertion(assertion, reasons[assertion.ID], recordByID)
-		fingerprints = append(fingerprints, fingerprint)
-		assertionToFingerprint[assertion.ID] = fingerprint.ID
-	}
-
-	resultRelations := make([]types.NarrativeFingerprintRelation, 0, len(relations))
-	seen := map[string]bool{}
-	for _, relation := range relations {
-		from, fromOK := assertionToFingerprint[relation.from]
-		to, toOK := assertionToFingerprint[relation.to]
-		if !fromOK || !toOK || from == to {
-			continue
-		}
-		key := from + "\x00" + to + "\x00" + relation.kind
-		if seen[key] {
-			continue
-		}
-		seen[key] = true
-		resultRelations = append(resultRelations, types.NarrativeFingerprintRelation{
-			ID: stableID("narrative-relation", key), FromID: from, ToID: to, Kind: relation.kind,
-			Explanation: relation.explain, EvidenceIDs: clone(relation.evidence), Confidence: relation.confidence,
-		})
-		if relation.kind == "contradicts" {
-			markFingerprintStatus(fingerprints, from, "contradicted")
-		}
-		if relation.kind == "supersedes" {
-			markFingerprintStatus(fingerprints, from, "superseded")
-		}
-	}
-
-	sort.SliceStable(fingerprints, func(i, j int) bool {
-		return spanOrder(fingerprints[i].EvidenceSpans) < spanOrder(fingerprints[j].EvidenceSpans)
-	})
-	sort.SliceStable(resultRelations, func(i, j int) bool {
-		if resultRelations[i].FromID == resultRelations[j].FromID {
-			return resultRelations[i].ToID < resultRelations[j].ToID
-		}
-		return resultRelations[i].FromID < resultRelations[j].FromID
-	})
-	return fingerprints, resultRelations
-}
-
-func initialPromotionReasons(assertion types.StoryAssertion, records map[string]types.EvidenceRecord) []types.NarrativePromotionReason {
-	result := []types.NarrativePromotionReason{}
-	for _, id := range assertion.EvidenceIDs {
-		record := records[id]
-		if record.Pinned || record.Source == "author" || record.Status == "confirmed" {
-			result = appendPromotionReason(result, promotionReason("author_confirmed", "The author explicitly confirmed or pinned the supporting evidence.", assertion, .99))
-			break
-		}
-	}
-	switch assertion.Kind {
-	case "commitment":
-		if meaningfulClause(assertion.Object) {
-			result = appendPromotionReason(result, promotionReason("commitment_created", "The passage establishes a durable promise, agreement, or obligation.", assertion, .92))
-		}
-	case "goal":
-		if decisiveGoal(assertion) {
-			result = appendPromotionReason(result, promotionReason("goal_or_plan_changed", "The passage establishes or changes a character's intended course of action.", assertion, .88))
-		}
-	case "relationship":
-		result = appendPromotionReason(result, promotionReason("relationship_changed", "The passage explicitly changes a relationship between story entities.", assertion, .9))
-	case "state":
-		if assertion.StateChange != nil && assertion.StateChange.Operation == "change" && assertion.Persistence == "persistent" && objectiveAssertion(assertion) && stableStateSubject(assertion.StateChange) {
-			result = appendPromotionReason(result, promotionReason("persistent_state_changed", "The passage changes a persistent character or world state.", assertion, .91))
-		}
-	case "knowledge":
-		if consequentialKnowledge(assertion, records) {
-			result = appendPromotionReason(result, promotionReason("consequential_knowledge_changed", "The passage explicitly establishes a substantive discovery or knowledge change.", assertion, .84))
-		}
-	case "claim":
-		if consequentialKnowledgeTransfer(assertion, records) {
-			result = appendPromotionReason(result, promotionReason("consequential_knowledge_transfer", "A character deliberately transfers substantive information to another character without making it objective world truth.", assertion, .86))
-		}
-	}
-	if assertion.EpistemicStatus == "deliberate_deception" && strings.TrimSpace(assertion.Object) != "" {
-		result = appendPromotionReason(result, promotionReason("identifiable_deception", "The manuscript explicitly identifies an attributed proposition as deception.", assertion, .95))
-	}
-	return result
-}
-
-func consequentialKnowledgeTransfer(assertion types.StoryAssertion, records map[string]types.EvidenceRecord) bool {
-	if assertion.EpistemicStatus != "attributed_claim" || len(semanticTerms(assertion.Subject+" "+assertion.Object)) < 2 {
-		return false
-	}
-	for _, id := range assertion.EvidenceIDs {
-		record := records[id]
-		for _, knowledge := range record.KnowledgeStates {
-			if knowledge.State == "shared" && len(knowledge.CounterpartyIDs) > 0 {
-				return true
-			}
-		}
-		cue := strings.ToLower(assertion.Attribution.Cue)
-		if len(record.CharacterIDs) >= 2 && (cue == "warned" || cue == "confessed" || cue == "admitted") {
-			return true
-		}
-	}
-	return false
-}
-
-func decisiveGoal(assertion types.StoryAssertion) bool {
-	if !meaningfulClause(assertion.Object) {
-		return false
-	}
-	switch assertion.Predicate {
-	case "decides", "plans", "ordered", "orders":
-		return true
-	default:
-		return false
-	}
-}
-
-func consequentialKnowledge(assertion types.StoryAssertion, records map[string]types.EvidenceRecord) bool {
-	if assertion.Predicate != "discovers" || !meaningfulClause(assertion.Object) {
-		return false
-	}
-	if len(semanticTerms(assertion.Object)) < 2 || routineLogisticsRe.MatchString(assertion.Statement) {
-		return false
-	}
-	for _, id := range assertion.EvidenceIDs {
-		record := records[id]
-		if len(nonParticipantTerms(record, assertion.Subject)) > 0 {
-			return true
-		}
-	}
-	words := semanticTerms(assertion.Object)
-	return len(words) >= 4 && containsStructuralRelation(assertion.Object)
-}
-
-func objectiveAssertion(assertion types.StoryAssertion) bool {
-	return assertion.EpistemicStatus == "world_state_fact" || assertion.EpistemicStatus == "externally_corroborated_fact"
-}
-
-func stableStateSubject(change *types.NarrativeStateChange) bool {
-	if change == nil {
-		return false
-	}
-	if change.EntityID != "" {
-		return true
-	}
-	words := strings.Fields(normalizeSemantic(change.EntityName))
-	if len(words) == 0 {
-		return false
-	}
-	switch words[0] {
-	case "he", "she", "they", "it", "you", "i", "we", "this", "that", "someone", "something":
-		return false
-	}
-	return true
-}
-
+// inferAssertionRelations builds semantic relationships across the complete
+// assertion corpus. These relationships support memory, state histories,
+// developments, and inspections; they do not promote or discard assertions.
 func inferAssertionRelations(assertions []types.StoryAssertion, records map[string]types.EvidenceRecord) []assertionRelation {
 	result := []assertionRelation{}
 	statePrior := map[string][]int{}
@@ -317,67 +144,8 @@ func corroborationRelation(left, right types.StoryAssertion) (assertionRelation,
 	return assertionRelation{from: left.ID, to: right.ID, kind: "corroborates", explain: "Later external evidence supports an earlier attributed or uncertain proposition.", evidence: appendUnique(clone(left.EvidenceIDs), right.EvidenceIDs...), confidence: .9}, true
 }
 
-func fingerprintFromAssertion(assertion types.StoryAssertion, reasons []types.NarrativePromotionReason, records map[string]types.EvidenceRecord) types.NarrativeFingerprint {
-	spans := make([]types.NarrativeEvidenceSpan, 0, len(assertion.EvidenceIDs))
-	participants := []types.NarrativeParticipant{}
-	for _, id := range assertion.EvidenceIDs {
-		if record, exists := records[id]; exists {
-			spans = append(spans, evidenceSpan(record))
-			for index, name := range record.CharacterNames {
-				entityID := ""
-				if index < len(record.CharacterIDs) {
-					entityID = record.CharacterIDs[index]
-				}
-				role := "mentioned"
-				if entityID != "" && entityID == assertion.SubjectID {
-					role = "subject"
-				}
-				participants = appendParticipant(participants, types.NarrativeParticipant{EntityID: entityID, EntityName: name, Role: role})
-			}
-		}
-	}
-	if assertion.Attribution.Kind == "character" {
-		participants = appendParticipant(participants, types.NarrativeParticipant{EntityID: assertion.Attribution.EntityID, EntityName: assertion.Attribution.EntityName, Role: "source"})
-	}
-	confidence := assertion.Confidence
-	for _, reason := range reasons {
-		if reason.Confidence < confidence {
-			confidence = reason.Confidence
-		}
-	}
-	return types.NarrativeFingerprint{
-		ID:   stableID("narrative-fingerprint", assertion.SemanticKey, assertion.Scope.ID, assertion.EpistemicStatus, assertion.Attribution.EntityID),
-		Kind: assertion.Kind, Summary: assertion.Statement, SemanticKey: assertion.SemanticKey,
-		AssertionIDs: []string{assertion.ID}, EvidenceIDs: clone(assertion.EvidenceIDs), EvidenceSpans: spans,
-		Participants: participants, StateChange: assertion.StateChange, EpistemicStatus: assertion.EpistemicStatus,
-		Attribution: assertion.Attribution, Scope: assertion.Scope, Persistence: assertion.Persistence, Temporal: assertion.Temporal,
-		PromotionReasons: reasons, Confidence: confidence, Status: assertion.Status,
-	}
-}
-
 func evidenceSpan(record types.EvidenceRecord) types.NarrativeEvidenceSpan {
 	return types.NarrativeEvidenceSpan{EvidenceID: record.ID, ChapterID: record.ChapterID, ChapterIndex: record.ChapterIndex, Section: record.Section, SectionIndex: record.SectionIndex, ParagraphIndex: record.ParagraphIndex, SentenceIndex: record.SentenceIndex, StartOffset: record.StartOffset, EndOffset: record.EndOffset, Quote: record.Text, Confidence: record.Confidence}
-}
-
-func promotionReason(code, explanation string, assertion types.StoryAssertion, confidence float64) types.NarrativePromotionReason {
-	return types.NarrativePromotionReason{Code: code, Explanation: explanation, AssertionIDs: []string{assertion.ID}, EvidenceIDs: clone(assertion.EvidenceIDs), Confidence: confidence}
-}
-
-func relationReason(relation assertionRelation, assertionID string) types.NarrativePromotionReason {
-	other := relation.to
-	if assertionID == relation.to {
-		other = relation.from
-	}
-	return types.NarrativePromotionReason{Code: "retrospective_" + relation.kind, Explanation: relation.explain, AssertionIDs: []string{assertionID, other}, EvidenceIDs: clone(relation.evidence), Confidence: relation.confidence}
-}
-
-func appendPromotionReason(values []types.NarrativePromotionReason, addition types.NarrativePromotionReason) []types.NarrativePromotionReason {
-	for _, value := range values {
-		if value.Code == addition.Code && strings.Join(value.AssertionIDs, "|") == strings.Join(addition.AssertionIDs, "|") {
-			return values
-		}
-	}
-	return append(values, addition)
 }
 
 func evidenceRecordMap(records []types.EvidenceRecord) map[string]types.EvidenceRecord {
@@ -387,8 +155,6 @@ func evidenceRecordMap(records []types.EvidenceRecord) map[string]types.Evidence
 	}
 	return result
 }
-
-func meaningfulClause(value string) bool { return len(semanticTerms(value)) >= 2 }
 
 func semanticTerms(value string) map[string]bool {
 	result := map[string]bool{}
@@ -560,26 +326,6 @@ func indexedCandidates(index map[string][]int, terms map[string]bool) []int {
 	return result
 }
 
-func containsStructuralRelation(value string) bool {
-	lower := strings.ToLower(value)
-	for _, cue := range []string{" was ", " is ", " were ", " are ", " had ", " has ", " caused ", " requires ", " required ", " beneath ", " inside ", " behind "} {
-		if strings.Contains(" "+lower+" ", cue) {
-			return true
-		}
-	}
-	return false
-}
-
-func nonParticipantTerms(record types.EvidenceRecord, subject string) []types.EvidenceTerm {
-	result := []types.EvidenceTerm{}
-	for _, term := range record.NamedEntities {
-		if !strings.EqualFold(term.Text, subject) {
-			result = append(result, term)
-		}
-	}
-	return result
-}
-
 func appendParticipant(values []types.NarrativeParticipant, addition types.NarrativeParticipant) []types.NarrativeParticipant {
 	if addition.EntityName == "" {
 		return values
@@ -596,15 +342,6 @@ func appendParticipant(values []types.NarrativeParticipant, addition types.Narra
 		}
 	}
 	return append(values, addition)
-}
-
-func markFingerprintStatus(values []types.NarrativeFingerprint, id, status string) {
-	for index := range values {
-		if values[index].ID == id {
-			values[index].Status = status
-			return
-		}
-	}
 }
 
 func dedupeAssertionRelations(values []assertionRelation) []assertionRelation {

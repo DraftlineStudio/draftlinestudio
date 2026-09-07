@@ -4,6 +4,20 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02552] - 2026-09-06
+
+### Added
+- Added three independently selectable, read-only textual quality gates for the fingerprint corpus, NarrativeDevelopments, and continuity inspections. The `fingerprintdiag` CLI supports `-report corpus|developments|inspections|all` and `-summary`; the Wails contract exposes the same reports through `GetFingerprintTextDiagnostics`.
+- Added generic regression coverage preventing idioms, scores, inanimate grammatical subjects, and bare intransitive returns from becoming object-custody history while retaining concrete acquisition, carrying, surrender, and transfer.
+
+### Changed
+- Removed the retired promoted-fingerprint schema, relations, statistics, report binding, compatibility projection, and implementation. All normalized assertions now enter the manuscript fingerprint corpus; contextual significance exists only as `NarrativeDevelopment`.
+- Renamed the remaining assertion-relation implementation around its actual corpus-memory role, and updated author correction reconciliation to recognize corpus fingerprints, same-event identities, and NarrativeDevelopments.
+- Limited the new inspection report to source-backed continuity categories. Noisy character-presence guesses and evidence-free orphan records remain available through their legacy diagnostics without masquerading as two-sided fingerprint conflicts.
+- Updated backend and roadmap documentation to make the evidence → assertion → fingerprint corpus → state/inspection and development boundaries explicit. Scenes, sequences, threads, arcs, and graphs remain disabled until they can consume trustworthy NarrativeDevelopments.
+
+---
+
 ## [0.17.02551] - 2026-09-06
 
 ### Added

@@ -80,15 +80,17 @@ retrieval, indexing, review, and refactoring must not depend on generative AI.
       current, stale, partially upgraded, and source-unavailable fingerprints.
 - [ ] Treat fingerprints as local derived intellectual property: portable and
       user-owned, never uploaded or submitted to AI without explicit action.
-- [x] Preserve the complete atomic fingerprint beneath every author-facing
-      structural projection; incidental evidence remains searchable even when
-      it is not promoted into a visible narrative occurrence.
-- [ ] Complete the fixture-gated Story Structure v2 correction. Significant
-      event aggregation and explainable author decisions are complete;
-      semantic scenes, sequences, and narrative-thread continuation,
-      convergence, and separation must each pass their own universal fixture
-      gate. Remove arithmetic `StoryArc` records from author-facing output;
-      fixed processing partitions belong only in nonsemantic cache chunks.
+- [x] Preserve the complete manuscript-memory fingerprint corpus beneath every
+      author-facing structural projection. Incidental evidence remains
+      searchable regardless of narrative significance.
+- [x] Separate contextual `NarrativeDevelopment` records from fingerprints so
+      objectives, discoveries, relationship changes, obstacles, threats,
+      setup/payoff, contradiction, and resolution can be synthesized without
+      turning memory records into roadmap nodes.
+- [ ] Rebuild scenes, sequences, threads, arcs, and the narrative graph only
+      after the development diagnostic is trustworthy across unrelated prose.
+      Those projections must consume NarrativeDevelopments, never fingerprint
+      counts or fixed manuscript partitions.
 - [x] Keep separate manuscript-order and partial story-time projections;
       uncertain chronology remains visibly floating instead of being invented.
 - [ ] Extend the initial per-chapter evidence cache to paragraph-granular Prose
