@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02563] - 2026-09-07
+
+### Fixed
+- Codex sign-in detection now asks the pinned CLI for `codex login status` instead of assuming authentication requires `~/.codex/auth.json`. ChatGPT sessions stored in macOS Keychain are therefore recognized after browser sign-in, and managed Codex login/status commands receive the real user home plus Draftline's bundled Node path when the app is launched outside a terminal.
+
+---
+
 ## [0.17.02562] - 2026-09-07
 
 ### Changed
