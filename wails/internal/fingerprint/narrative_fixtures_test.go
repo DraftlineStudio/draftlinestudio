@@ -1,6 +1,7 @@
 package fingerprint
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -52,6 +53,36 @@ func TestNarrativeBehavioralFixtures(t *testing.T) {
 				t.Fatalf("%s became objective truth", id)
 			}
 		}
+	})
+
+	t.Run("deictic claims do not become contradictions", func(t *testing.T) {
+		first := fixtureRecord("deictic-a", 0, `"This is the engine room," Mira said.`, "said", "interaction", "mira", "Mira")
+		second := fixtureRecord("deictic-b", 1, `"This is the infirmary," Oren said.`, "said", "interaction", "oren", "Oren")
+		model := buildFixture(first, second)
+		if hasNarrativeRelation(model.NarrativeRelations, "contradicts") || len(model.NarrativeFingerprints) != 0 {
+			t.Fatalf("unresolved deictic subjects created a false contradiction: %#v", model.NarrativeRelations)
+		}
+	})
+
+	t.Run("existential claims do not share a fabricated subject", func(t *testing.T) {
+		first := fixtureRecord("existential-a", 0, `"There is a sealed tunnel beneath the river," Mira said.`, "said", "interaction", "mira", "Mira")
+		second := fixtureRecord("existential-b", 1, `"There was no pilot before you," Oren said.`, "said", "interaction", "oren", "Oren")
+		model := buildFixture(first, second)
+		if hasNarrativeRelation(model.NarrativeRelations, "contradicts") || len(model.NarrativeFingerprints) != 0 {
+			t.Fatalf("existential clauses created a fabricated shared subject: %#v", model.NarrativeRelations)
+		}
+	})
+
+	t.Run("conditional decision is not a character goal", func(t *testing.T) {
+		conditional := fixtureRecord("conditional", 0, "The advocate would respond if the council decided to press charges.", "decided", "state", "advocate", "Advocate")
+		model := buildFixture(conditional)
+		assertEvidenceRetainedWithoutPromotion(t, model, "conditional")
+	})
+
+	t.Run("near injury does not establish injury", func(t *testing.T) {
+		nearMiss := fixtureRecord("near-miss", 0, "The falling beam nearly killed Avery.", "killed", "state", "avery", "Avery")
+		model := buildFixture(nearMiss)
+		assertEvidenceRetainedWithoutPromotion(t, model, "near-miss")
 	})
 
 	t.Run("dream information retains scope when later useful", func(t *testing.T) {
@@ -130,6 +161,17 @@ func TestNarrativeBehavioralFixtures(t *testing.T) {
 		model := buildFixture(records...)
 		if len(model.NarrativeFingerprints) != 0 {
 			t.Fatalf("grammatical activity became narrative significance: %#v", model.NarrativeFingerprints)
+		}
+	})
+
+	t.Run("large routine evidence remains sparse", func(t *testing.T) {
+		records := make([]types.EvidenceRecord, 0, 1500)
+		for index := 0; index < cap(records); index++ {
+			records = append(records, fixtureRecord(fmt.Sprintf("routine-%d", index), index/50, fmt.Sprintf("Avery walked past marker %d.", index), "walked", "transition", "avery", "Avery"))
+		}
+		model := buildFixture(records...)
+		if len(model.NarrativeFingerprints) != 0 || len(model.NarrativeRelations) != 0 {
+			t.Fatalf("routine scale created narrative structure: %d fingerprints, %d relations", len(model.NarrativeFingerprints), len(model.NarrativeRelations))
 		}
 	})
 
