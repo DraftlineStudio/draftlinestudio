@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02555] - 2026-09-06
+
+### Added
+- Typed frame extraction for the v5 manuscript-memory engine: life status, location, possession, transfer, injury, knowledge, belief, claim, goal, decision, obligation, relationship, access, and witnessed-event frames, each anchored on a sentence-initial canonical entity and carrying only verbatim slices of the source sentence. Attributed quotes become character claims that never masquerade as narrator truth; transfers without a resolvable distinct recipient abstain instead of inventing one; unanchored sentences produce nothing. Tests lock the verbatim invariant, the no-self-reference rule, abstention behavior, and the per-sentence frame cap.
+
+---
+
 ## [0.17.02554] - 2026-09-06
 
 ### Changed
