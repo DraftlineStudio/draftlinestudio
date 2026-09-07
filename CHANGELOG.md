@@ -4,6 +4,19 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02546] - 2026-09-06
+
+### Changed
+- Reset the deterministic story-fingerprint pipeline around explicit semantic boundaries: ProseV3 sentence records remain lossless evidence atoms, richer assertions preserve attribution, epistemic posture, reality scope, persistence, state transitions, temporal placement, and stable evidence provenance, and only independently justified assertions become narrative fingerprints.
+- Replaced the evidence-per-event build path with precision-first promotion plus retrospective dependency analysis. Routine movement, incidental activity, descriptive state, and ordinary dialogue remain queryable evidence; durable state changes, goals, commitments, consequential discoveries, relationship changes, identifiable deception, contradictions, fulfillment, corroboration, and later-used setup can be promoted with inspectable reasons.
+- Disabled legacy automatic thread and Story Structure generation until the promoted narrative layer is semantically trustworthy. Continuity state remains evidence-complete through an internal compatibility join, without exposing those support records as author-facing events.
+- Added manuscript-independent behavioral fixtures for routine motion, object setup and payoff, lies, beliefs, contradictory accounts, correcting reveals, dreams, flashbacks, false leads, promises, knowledge transfer, repeated evidence, retrospective significance, action-heavy but unchanged scenes, and quiet durable decisions.
+
+### Fixed
+- Prevented incidental relative phrases such as “two years ago” from relocating the containing scene or all later prose into a fabricated flashback context.
+
+---
+
 ## [0.17.02545] - 2026-09-06
 
 ### Changed

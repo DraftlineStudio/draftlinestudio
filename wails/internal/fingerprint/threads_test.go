@@ -6,7 +6,16 @@ import (
 	"draftline/internal/types"
 )
 
-func TestCommitmentBecomesThreadAndLaterEvidenceResolvesIt(t *testing.T) {
+func hasNarrativeRelation(values []types.NarrativeFingerprintRelation, kind string) bool {
+	for _, value := range values {
+		if value.Kind == kind {
+			return true
+		}
+	}
+	return false
+}
+
+func TestCommitmentAndFulfillmentBecomeRelatedFingerprints(t *testing.T) {
 	open := record("open", 0, 0, "Gary promised he would find the IBM building maps for Hanlon.")
 	open.CharacterIDs = []string{"gary", "hanlon"}
 	open.CharacterNames = []string{"Gary", "Hanlon"}
@@ -17,18 +26,11 @@ func TestCommitmentBecomesThreadAndLaterEvidenceResolvesIt(t *testing.T) {
 	close.Action = "handed"
 	book := testBook([]types.EvidenceRecord{open, close})
 	model := Build(&book, nil)
-	var found *types.StoryThread
-	for index := range model.Threads {
-		if model.Threads[index].Kind == "commitment" {
-			found = &model.Threads[index]
-			break
-		}
+	if len(model.Threads) != 0 {
+		t.Fatalf("thread inference is intentionally disabled in the semantic reset: %#v", model.Threads)
 	}
-	if found == nil {
-		t.Fatal("expected a commitment thread")
-	}
-	if found.State != "resolved" || found.ResolvedByEventID == "" {
-		t.Fatalf("expected resolved thread, got %#v", found)
+	if !hasNarrativeRelation(model.NarrativeRelations, "fulfills") {
+		t.Fatalf("expected source-backed fulfillment relation, got %#v", model.NarrativeRelations)
 	}
 }
 
@@ -44,11 +46,11 @@ func TestCheckpointRequiresEveryCriterionAndNeverSilentlyFulfills(t *testing.T) 
 	}}}}
 	model := Build(&book, nil)
 	checkpoint := model.AuthorModel.Checkpoints[0]
-	if checkpoint.Status != "partial" {
-		t.Fatalf("expected partial checkpoint, got %q", checkpoint.Status)
+	if checkpoint.Status != "planned" {
+		t.Fatalf("checkpoint evaluation must wait for validated higher-level analysis, got %q", checkpoint.Status)
 	}
-	if !checkpoint.Requirements[0].Satisfied || checkpoint.Requirements[1].Satisfied {
-		t.Fatalf("requirements evaluated incorrectly: %#v", checkpoint.Requirements)
+	if checkpoint.Requirements[0].Satisfied || checkpoint.Requirements[1].Satisfied {
+		t.Fatalf("semantic reset must not invent checkpoint fulfillment: %#v", checkpoint.Requirements)
 	}
 }
 

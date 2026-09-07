@@ -139,10 +139,8 @@ func TestStructureDecisionDependencyConflictIsNotSilentlyApplied(t *testing.T) {
 	if decision.Status != "conflict" || !contains(decision.ChangedDependencyIDs, "old-evidence") {
 		t.Fatalf("rewritten dependency should create an inspectable conflict: %#v", decision)
 	}
-	for _, event := range model.Structure.SignificantEvents {
-		if contains(event.AuthorDecisionIDs, "pinned-placement") {
-			t.Fatal("stale author decision was silently applied to rewritten prose")
-		}
+	if model.Structure != nil {
+		t.Fatal("legacy structure generation must remain disabled during narrative fingerprint validation")
 	}
 }
 
