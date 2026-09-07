@@ -1,13 +1,12 @@
 package fingerprint
 
 import (
-	"strings"
 	"testing"
 
 	"draftline/internal/types"
 )
 
-func TestBuildConsolidatesAdjacentEvidenceIntoOneEvent(t *testing.T) {
+func TestBuildDoesNotPromoteAdjacentActionsMerelyBecauseTheyShareCharacters(t *testing.T) {
 	first := record("maps-1", 0, 3, "Hanlon asked Gary for the building maps.")
 	first.CharacterIDs = []string{"hanlon", "gary"}
 	first.CharacterNames = []string{"Hanlon", "Gary"}
@@ -19,14 +18,11 @@ func TestBuildConsolidatesAdjacentEvidenceIntoOneEvent(t *testing.T) {
 	second.NamedEntities = []types.EvidenceTerm{{Text: "maps", Label: "PRODUCT"}}
 	book := testBook([]types.EvidenceRecord{first, second})
 	model := Build(&book, nil)
-	if len(model.Events) != 1 {
-		t.Fatalf("expected one consolidated event, got %d", len(model.Events))
+	if len(model.NarrativeFingerprints) != 0 {
+		t.Fatalf("adjacency is not narrative significance: %#v", model.NarrativeFingerprints)
 	}
-	if len(model.Events[0].EvidenceIDs) != 2 {
-		t.Fatalf("expected both sources, got %v", model.Events[0].EvidenceIDs)
-	}
-	if !strings.Contains(strings.ToLower(model.Events[0].Summary), "hanlon") {
-		t.Fatalf("expected mechanical summary, got %q", model.Events[0].Summary)
+	if len(model.Assertions) != 2 {
+		t.Fatalf("both low-level assertions must remain available, got %d", len(model.Assertions))
 	}
 }
 

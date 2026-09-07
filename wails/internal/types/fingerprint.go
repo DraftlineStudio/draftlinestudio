@@ -4,21 +4,30 @@ package types
 // threads, continuity and mechanical story questions. Every derived claim
 // points back to exact EvidenceRecord IDs.
 type StoryFingerprint struct {
-	ContentHash         string                  `json:"content_hash"`
-	Engine              string                  `json:"engine"`
-	LastAnalyzed        string                  `json:"last_analyzed"`
-	Version             int                     `json:"version"`
-	Contexts            []StoryContext          `json:"contexts"`
-	TemporalConstraints []TemporalConstraint    `json:"temporal_constraints"`
-	Assertions          []StoryAssertion        `json:"assertions"`
-	Events              []FingerprintEvent      `json:"events"`
-	States              []StoryStateInterval    `json:"states"`
-	Threads             []StoryThread           `json:"threads"`
-	Diagnostics         []FingerprintDiagnostic `json:"diagnostics"`
-	Profiles            []StoryProfile          `json:"profiles,omitempty"`
-	Voices              []CharacterVoiceProfile `json:"voices,omitempty"`
-	Structure           *StoryStructure         `json:"structure,omitempty"`
-	AuthorModel         StoryAuthorModel        `json:"author_model"`
+	ContentHash         string               `json:"content_hash"`
+	Engine              string               `json:"engine"`
+	LastAnalyzed        string               `json:"last_analyzed"`
+	Version             int                  `json:"version"`
+	Contexts            []StoryContext       `json:"contexts"`
+	TemporalConstraints []TemporalConstraint `json:"temporal_constraints"`
+	Assertions          []StoryAssertion     `json:"assertions"`
+	// NarrativeFingerprints are the precision-first, story-meaningful
+	// assertions promoted from the lossless evidence and assertion layers.
+	// Evidence records are never promoted merely because they contain a verb.
+	NarrativeFingerprints []NarrativeFingerprint         `json:"narrative_fingerprints"`
+	NarrativeRelations    []NarrativeFingerprintRelation `json:"narrative_relations,omitempty"`
+	DiagnosticReport      string                         `json:"diagnostic_report,omitempty"`
+	PromotionStats        NarrativePromotionStats        `json:"promotion_stats"`
+	// Events is a deprecated compatibility projection of promoted narrative
+	// fingerprints. It no longer mirrors the evidence record count.
+	Events      []FingerprintEvent      `json:"events"`
+	States      []StoryStateInterval    `json:"states"`
+	Threads     []StoryThread           `json:"threads"`
+	Diagnostics []FingerprintDiagnostic `json:"diagnostics"`
+	Profiles    []StoryProfile          `json:"profiles,omitempty"`
+	Voices      []CharacterVoiceProfile `json:"voices,omitempty"`
+	Structure   *StoryStructure         `json:"structure,omitempty"`
+	AuthorModel StoryAuthorModel        `json:"author_model"`
 }
 
 type StoryProfile struct {
@@ -118,17 +127,124 @@ type TemporalConstraint struct {
 }
 
 type StoryAssertion struct {
+	ID              string                `json:"id"`
+	EvidenceIDs     []string              `json:"evidence_ids"`
+	Kind            string                `json:"kind"` // occurrence | state | knowledge | goal | commitment | relationship | claim
+	Statement       string                `json:"statement"`
+	SemanticKey     string                `json:"semantic_key"`
+	SubjectID       string                `json:"subject_id,omitempty"`
+	Subject         string                `json:"subject,omitempty"`
+	Predicate       string                `json:"predicate"`
+	ObjectID        string                `json:"object_id,omitempty"`
+	Object          string                `json:"object,omitempty"`
+	Posture         string                `json:"posture"`  // fact | claim | memory | belief | suspicion | lie | dream
+	Polarity        string                `json:"polarity"` // positive | negative | uncertain
+	EpistemicStatus string                `json:"epistemic_status"`
+	Attribution     NarrativeAttribution  `json:"attribution"`
+	Scope           NarrativeRealityScope `json:"scope"`
+	StateChange     *NarrativeStateChange `json:"state_change,omitempty"`
+	Persistence     string                `json:"persistence"` // transient | scene | conditional | persistent
+	Temporal        StoryTime             `json:"temporal"`
+	Status          string                `json:"status"` // active | contradicted | superseded
+	ContextID       string                `json:"context_id"`
+	Confidence      float64               `json:"confidence"`
+}
+
+// NarrativeAttribution records whose proposition an assertion represents.
+// A character-attributed claim never silently becomes narrator/world truth.
+type NarrativeAttribution struct {
+	Kind       string  `json:"kind"` // narrator | character | document | unknown
+	EntityID   string  `json:"entity_id,omitempty"`
+	EntityName string  `json:"entity_name,omitempty"`
+	Cue        string  `json:"cue,omitempty"`
+	Confidence float64 `json:"confidence"`
+}
+
+// NarrativeRealityScope prevents assertions from incompatible realities from
+// being compared as though they happened in the same world state.
+type NarrativeRealityScope struct {
 	ID          string   `json:"id"`
-	EvidenceIDs []string `json:"evidence_ids"`
-	SubjectID   string   `json:"subject_id,omitempty"`
-	Subject     string   `json:"subject,omitempty"`
-	Predicate   string   `json:"predicate"`
-	ObjectID    string   `json:"object_id,omitempty"`
-	Object      string   `json:"object,omitempty"`
-	Posture     string   `json:"posture"`  // fact | claim | memory | belief | suspicion | lie | dream
-	Polarity    string   `json:"polarity"` // positive | negative | uncertain
-	ContextID   string   `json:"context_id"`
+	Kind        string   `json:"kind"` // current | flashback | dream | vision | hypothetical | remembered | story_within_story | simulation | alternate | uncertain
+	Label       string   `json:"label"`
+	ParentID    string   `json:"parent_id,omitempty"`
+	EvidenceIDs []string `json:"evidence_ids,omitempty"`
 	Confidence  float64  `json:"confidence"`
+}
+
+type NarrativeStateChange struct {
+	EntityID   string `json:"entity_id,omitempty"`
+	EntityName string `json:"entity_name,omitempty"`
+	StateKind  string `json:"state_kind"`
+	Previous   string `json:"previous,omitempty"`
+	New        string `json:"new"`
+	Operation  string `json:"operation"` // establish | change | acquire | relinquish | begin | end
+}
+
+type NarrativeParticipant struct {
+	EntityID   string `json:"entity_id,omitempty"`
+	EntityName string `json:"entity_name"`
+	Role       string `json:"role"` // subject | counterparty | source | affected | mentioned
+}
+
+type NarrativeEvidenceSpan struct {
+	EvidenceID     string  `json:"evidence_id"`
+	ChapterID      string  `json:"chapter_id"`
+	ChapterIndex   int     `json:"chapter_index"`
+	Section        string  `json:"section"`
+	SectionIndex   int     `json:"section_index"`
+	ParagraphIndex int     `json:"paragraph_index"`
+	SentenceIndex  int     `json:"sentence_index"`
+	StartOffset    int     `json:"start_offset"`
+	EndOffset      int     `json:"end_offset"`
+	Quote          string  `json:"quote"`
+	Confidence     float64 `json:"confidence"`
+}
+
+type NarrativePromotionReason struct {
+	Code         string   `json:"code"`
+	Explanation  string   `json:"explanation"`
+	AssertionIDs []string `json:"assertion_ids,omitempty"`
+	EvidenceIDs  []string `json:"evidence_ids,omitempty"`
+	Confidence   float64  `json:"confidence"`
+}
+
+// NarrativeFingerprint is a durable story assertion. It is deliberately
+// separate from EvidenceRecord: most evidence never becomes one of these.
+type NarrativeFingerprint struct {
+	ID               string                     `json:"id"`
+	Kind             string                     `json:"kind"`
+	Summary          string                     `json:"summary"`
+	SemanticKey      string                     `json:"semantic_key"`
+	AssertionIDs     []string                   `json:"assertion_ids"`
+	EvidenceIDs      []string                   `json:"evidence_ids"`
+	EvidenceSpans    []NarrativeEvidenceSpan    `json:"evidence_spans"`
+	Participants     []NarrativeParticipant     `json:"participants,omitempty"`
+	StateChange      *NarrativeStateChange      `json:"state_change,omitempty"`
+	EpistemicStatus  string                     `json:"epistemic_status"`
+	Attribution      NarrativeAttribution       `json:"attribution"`
+	Scope            NarrativeRealityScope      `json:"scope"`
+	Persistence      string                     `json:"persistence"`
+	Temporal         StoryTime                  `json:"temporal"`
+	PromotionReasons []NarrativePromotionReason `json:"promotion_reasons"`
+	Confidence       float64                    `json:"confidence"`
+	Status           string                     `json:"status"` // active | contradicted | superseded
+}
+
+type NarrativeFingerprintRelation struct {
+	ID          string   `json:"id"`
+	FromID      string   `json:"from_id"`
+	ToID        string   `json:"to_id"`
+	Kind        string   `json:"kind"` // enables | depends_on | fulfills | setup_for | contradicts | supersedes | corroborates
+	Explanation string   `json:"explanation"`
+	EvidenceIDs []string `json:"evidence_ids,omitempty"`
+	Confidence  float64  `json:"confidence"`
+}
+
+type NarrativePromotionStats struct {
+	EvidenceAtoms        int `json:"evidence_atoms"`
+	Assertions           int `json:"assertions"`
+	PromotedFingerprints int `json:"promoted_fingerprints"`
+	RetainedAsEvidence   int `json:"retained_as_evidence"`
 }
 
 type FingerprintEvent struct {

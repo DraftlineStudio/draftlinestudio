@@ -54,8 +54,8 @@ func (a *App) AnalyzeBook(bookData types.BookData) types.FullAnalysisResult {
 	bookData.Analysis.Evidence = indexing.AnalyzeEvidenceWithOptions(&bookData, a.emitAnalysisProgress, pool)
 	bookData.Analysis.Fingerprint = fingerprint.Build(&bookData, a.emitAnalysisProgress)
 	bookData.Analysis.Story = indexing.AnalyzeStory(&bookData, a.emitAnalysisProgress)
-	if bookData.Analysis.Version < 5 {
-		bookData.Analysis.Version = 5
+	if bookData.Analysis.Version < 6 {
+		bookData.Analysis.Version = 6
 	}
 	a.emitAnalysisProgress(types.StoryAnalysisProgress{
 		Phase: "complete", Message: "Story analysis current", Current: chapterCount, Total: chapterCount, Percent: 100,

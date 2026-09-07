@@ -12,20 +12,17 @@ func TestBuildSeparatesNarrativeOrderFromRelativeStoryTime(t *testing.T) {
 		record("past", 1, 0, "Three days ago, on Tuesday, Hanlon found the tunnel."),
 	})
 	model := Build(&book, nil)
-	if len(model.Events) != 2 {
-		t.Fatalf("expected two events, got %d", len(model.Events))
+	if len(model.Assertions) != 2 {
+		t.Fatalf("expected two assertions, got %d", len(model.Assertions))
 	}
-	if model.Events[0].NarrativeOrder >= model.Events[1].NarrativeOrder {
-		t.Fatal("narrative order was not preserved")
+	if model.Assertions[0].Temporal.DayOffset == nil || *model.Assertions[0].Temporal.DayOffset != 5 {
+		t.Fatalf("expected Friday anchor, got %#v", model.Assertions[0].Temporal)
 	}
-	if model.Events[0].StoryTime.DayOffset == nil || *model.Events[0].StoryTime.DayOffset != 5 {
-		t.Fatalf("expected Friday anchor, got %#v", model.Events[0].StoryTime)
+	if model.Assertions[1].Temporal.DayOffset == nil || *model.Assertions[1].Temporal.DayOffset != 2 {
+		t.Fatalf("expected Tuesday story time, got %#v", model.Assertions[1].Temporal)
 	}
-	if model.Events[1].StoryTime.DayOffset == nil || *model.Events[1].StoryTime.DayOffset != 2 {
-		t.Fatalf("expected Tuesday story time, got %#v", model.Events[1].StoryTime)
-	}
-	if model.Events[1].ContextID == "context-primary" {
-		t.Fatal("expected past context for explicit ago cue")
+	if model.Assertions[1].Scope.Kind != "current" {
+		t.Fatal("an incidental relative phrase must not relocate its containing scene")
 	}
 }
 
@@ -50,8 +47,15 @@ func TestRelativeClaimAnchorsToConversationTimeAcrossPastContext(t *testing.T) {
 		record("claim", 0, 2, `"Three days ago we found the tunnel," Ruiz said.`),
 	})
 	model := Build(&book, nil)
-	if model.Events[1].StoryTime.DayOffset == nil || *model.Events[1].StoryTime.DayOffset != 2 {
-		t.Fatalf("expected Friday minus three days, got %#v", model.Events[1].StoryTime)
+	var claim *types.StoryAssertion
+	for index := range model.Assertions {
+		if containsString(model.Assertions[index].EvidenceIDs, "claim") {
+			claim = &model.Assertions[index]
+			break
+		}
+	}
+	if claim == nil || claim.Temporal.DayOffset == nil || *claim.Temporal.DayOffset != 2 {
+		t.Fatalf("expected Friday minus three days, got %#v", claim)
 	}
 	var posture string
 	for _, constraint := range model.TemporalConstraints {
@@ -70,4 +74,13 @@ func testBook(records []types.EvidenceRecord) types.BookData {
 
 func record(id string, chapter, paragraph int, text string) types.EvidenceRecord {
 	return types.EvidenceRecord{ID: id, Kind: "event", EvidenceType: "discovery", ChapterID: "chapter-1", ChapterIndex: chapter, ParagraphIndex: paragraph, Text: text, TimeExpressions: []string{text}, Confidence: .9, Status: "detected", Source: "auto"}
+}
+
+func containsString(values []string, expected string) bool {
+	for _, value := range values {
+		if value == expected {
+			return true
+		}
+	}
+	return false
 }

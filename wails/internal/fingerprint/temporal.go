@@ -9,10 +9,12 @@ import (
 )
 
 var (
-	weekdayRe       = regexp.MustCompile(`(?i)\b(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b`)
-	relativeRe      = regexp.MustCompile(`(?i)\b(one|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+(day|week|month|year)s?\s+(ago|earlier|before|later|after)\b`)
-	pastCueRe       = regexp.MustCompile(`(?i)\b(?:flashback|remembered|recalled|years? ago|months? ago|days? ago|back then)\b`)
-	dreamCueRe      = regexp.MustCompile(`(?i)\b(?:dreamed|dreaming|nightmare|dream world)\b`)
+	weekdayRe  = regexp.MustCompile(`(?i)\b(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b`)
+	relativeRe = regexp.MustCompile(`(?i)\b(one|two|three|four|five|six|seven|eight|nine|ten|\d+)\s+(day|week|month|year)s?\s+(ago|earlier|before|later|after)\b`)
+	// Relative phrases such as "two years ago" are temporal evidence, not a
+	// license to relocate the containing scene or every later paragraph.
+	pastCueRe       = regexp.MustCompile(`(?i)\b(?:flashback|years? earlier|months? earlier|days? earlier|back then)\b`)
+	dreamCueRe      = regexp.MustCompile(`(?i)\b(?:dream|dreamed|dreaming|nightmare|dream world)\b`)
 	wakeCueRe       = regexp.MustCompile(`(?i)\b(?:awoke|woke up|woke)\b`)
 	simulationCueRe = regexp.MustCompile(`(?i)\b(?:simulation|sim reset|reset complete|rendering|buffer_overflow)\b`)
 )

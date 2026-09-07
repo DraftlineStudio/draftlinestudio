@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	engine  = "draftline-story-fingerprint-v3"
-	version = 3
+	engine  = "draftline-narrative-fingerprint-v4"
+	version = 4
 )
 
 // Build reconstructs all derived fingerprint data while preserving explicit
@@ -20,7 +20,8 @@ func Build(book *types.BookData, progress func(types.StoryAnalysisProgress)) *ty
 	result := &types.StoryFingerprint{
 		Engine: engine, Version: version, LastAnalyzed: time.Now().UTC().Format(time.RFC3339),
 		Contexts: []types.StoryContext{}, TemporalConstraints: []types.TemporalConstraint{},
-		Assertions: []types.StoryAssertion{}, Events: []types.FingerprintEvent{}, States: []types.StoryStateInterval{},
+		Assertions: []types.StoryAssertion{}, NarrativeFingerprints: []types.NarrativeFingerprint{}, NarrativeRelations: []types.NarrativeFingerprintRelation{},
+		Events: []types.FingerprintEvent{}, States: []types.StoryStateInterval{},
 		Threads: []types.StoryThread{}, Diagnostics: []types.FingerprintDiagnostic{},
 	}
 	if book.Analysis.Evidence == nil {
@@ -41,21 +42,40 @@ func Build(book *types.BookData, progress func(types.StoryAnalysisProgress)) *ty
 	result.TemporalConstraints = inferTemporalConstraints(records, contextByEvidence)
 	points, diagnostics := solveTemporal(records, contextByEvidence, result.TemporalConstraints)
 	result.Diagnostics = append(result.Diagnostics, diagnostics...)
-	result.Assertions = buildAssertions(records, contextByEvidence)
-	seeded := seedEvents(book, records, contextByEvidence, points)
-	result.Events = consolidateEvents(seeded, records, result.Assertions, prior)
+	result.Assertions = buildAssertions(records, result.Contexts, contextByEvidence, points)
+	applyAssertionCorrections(result.Assertions, result.AuthorModel.Corrections)
+	result.NarrativeFingerprints, result.NarrativeRelations = promoteNarrativeFingerprints(result.Assertions, records)
+	applyNarrativeFingerprintCorrections(result.NarrativeFingerprints, result.AuthorModel.Corrections)
+	result.Events = legacyEventsFromNarrative(book, result.NarrativeFingerprints, records)
 	applyEventCorrections(result.Events, result.AuthorModel.Corrections)
-	result.States = buildStates(result.Events, records, result.Assertions)
+	// Continuity state remains evidence-complete even when a detail is not
+	// promoted for narrative display. These support events are internal joins;
+	// they are never exposed as narrative fingerprints or timeline nodes.
+	supportEvents := consolidateEvents(seedEvents(book, records, contextByEvidence, points), records, result.Assertions, prior)
+	result.States = buildStates(supportEvents, records, result.Assertions)
 	result.Profiles = deriveProfiles(records, result.AuthorModel.Profiles)
 	result.Voices = buildVoiceProfiles(book, result.AuthorModel.VoiceNotes)
-	result.Threads = buildThreads(result.Events, records, result.Contexts)
-	result.AuthorModel.Checkpoints, diagnostics = evaluateCheckpoints(result.AuthorModel.Checkpoints, result.Events, records)
-	result.Diagnostics = append(result.Diagnostics, diagnostics...)
-	result.Diagnostics = append(result.Diagnostics, buildDiagnostics(book, result, records)...)
+	// Thread, structure and arc inference intentionally do not run in schema 4.
+	// They may consume narrative fingerprints only after this semantic layer is
+	// validated; evidence atoms must never leak into presentation again.
+	result.Threads = []types.StoryThread{}
+	result.Diagnostics = append(result.Diagnostics, buildDiagnostics(book, result, records, supportEvents)...)
+	result.Diagnostics = append(result.Diagnostics, narrativeDiagnostics(result.NarrativeRelations, result.NarrativeFingerprints)...)
 	reconcileCorrections(result)
 	result.Diagnostics = append(result.Diagnostics, correctionDiagnostics(result.AuthorModel.Corrections)...)
 	result.Diagnostics = append(result.Diagnostics, structureDecisionDiagnostics(result.AuthorModel.StructureDecisions)...)
-	result.Structure = buildStructure(book, result, records)
+	result.Structure = nil
+	promotedEvidence := map[string]bool{}
+	for _, fingerprint := range result.NarrativeFingerprints {
+		for _, evidenceID := range fingerprint.EvidenceIDs {
+			promotedEvidence[evidenceID] = true
+		}
+	}
+	result.PromotionStats = types.NarrativePromotionStats{
+		EvidenceAtoms: len(records), Assertions: len(result.Assertions), PromotedFingerprints: len(result.NarrativeFingerprints),
+		RetainedAsEvidence: len(records) - len(promotedEvidence),
+	}
+	result.DiagnosticReport = buildNarrativeDiagnosticReport(result)
 	if progress != nil {
 		progress(types.StoryAnalysisProgress{Phase: "chronology", Message: "Chronology model current", Current: len(records), Total: len(records), Percent: 82})
 	}
