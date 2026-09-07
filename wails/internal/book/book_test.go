@@ -135,10 +135,10 @@ func TestWriteOpenPersistsAnalysisAndCorrections(t *testing.T) {
 			}},
 		},
 		Fingerprint: &types.StoryFingerprint{
-			Version: 2, Engine: "draftline-story-fingerprint-v2", ContentHash: "fingerprint123",
-			Events:      []types.FingerprintEvent{{ID: "event-1", Summary: "Mara finds the door", EvidenceIDs: []string{"evidence-1"}}},
+			Version: 6, Engine: "draftline-manuscript-memory-v5", ContentHash: "fingerprint123",
+			Frames:      []types.NarrativeFrame{{ID: "frame-1", Type: types.FrameEvent, Detail: "found the door", EvidenceIDs: []string{"evidence-1"}}},
 			Voices:      []types.CharacterVoiceProfile{{CharacterID: "entity-1", CharacterName: "Mara", SampleCount: 2}},
-			AuthorModel: types.StoryAuthorModel{Canon: []types.CanonRule{{ID: "canon-1", Subject: "Mara", Predicate: "role", Object: "captain"}}, VoiceNotes: []types.CharacterVoiceNotes{{CharacterID: "entity-1", Dialect: "declared"}}},
+			AuthorModel: types.StoryAuthorModel{Corrections: []types.FingerprintCorrection{{ID: "correction-1", TargetID: "frame-1", Kind: "context", Value: "ctx-1", Status: "active"}}, VoiceNotes: []types.CharacterVoiceNotes{{CharacterID: "entity-1", Dialect: "declared"}}},
 		},
 	}
 
@@ -164,8 +164,8 @@ func TestWriteOpenPersistsAnalysisAndCorrections(t *testing.T) {
 	if got.Analysis.Evidence == nil || got.Analysis.Evidence.ContentHash != "evidence123" || len(got.Analysis.Evidence.Records) != 1 || got.Analysis.Evidence.Records[0].Status != "confirmed" {
 		t.Fatal("fact/event evidence did not survive round trip")
 	}
-	if got.Analysis.Fingerprint == nil || got.Analysis.Fingerprint.ContentHash != "fingerprint123" || len(got.Analysis.Fingerprint.Events) != 1 || len(got.Analysis.Fingerprint.AuthorModel.Canon) != 1 || len(got.Analysis.Fingerprint.Voices) != 1 || len(got.Analysis.Fingerprint.AuthorModel.VoiceNotes) != 1 {
-		t.Fatal("story fingerprint or author canon did not survive round trip")
+	if got.Analysis.Fingerprint == nil || got.Analysis.Fingerprint.ContentHash != "fingerprint123" || len(got.Analysis.Fingerprint.Frames) != 1 || len(got.Analysis.Fingerprint.AuthorModel.Corrections) != 1 || len(got.Analysis.Fingerprint.Voices) != 1 || len(got.Analysis.Fingerprint.AuthorModel.VoiceNotes) != 1 {
+		t.Fatal("story fingerprint or author model did not survive round trip")
 	}
 }
 
