@@ -4,6 +4,20 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02548] - 2026-09-06
+
+### Added
+- Added a read-only `GetNarrativeFingerprintDiagnostic` Wails binding and `fingerprintdiag` maintainer CLI. Both rebuild a plain-text semantic quality report from persisted evidence, including promoted assertions, epistemic status, attribution, reality scope, promotion reasons, exact supporting spans, and identified relationships; summary mode exposes only pipeline counts.
+- Added maintainer documentation for the evidence → assertion/state → narrative fingerprint boundary and the textual quality gate that must pass before higher-level story structure returns.
+
+### Changed
+- Kept formatted diagnostic reports transient instead of persisting duplicate manuscript quotations inside `analysis.json`; `.draftline` archives retain the canonical evidence once, and reports are regenerated locally on demand.
+
+### Fixed
+- Made the diagnostic CLI state plainly when an archive has no persisted evidence instead of printing an empty summary, and aligned author-model-only rebuilds with analysis schema 6.
+
+---
+
 ## [0.17.02547] - 2026-09-06
 
 ### Changed
