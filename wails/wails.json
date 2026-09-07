@@ -11,6 +11,10 @@
     "email": ""
   },
   "info": {
+    "companyName": "Draftline Studio",
+    "productName": "Draftline",
+    "copyright": "Copyright (c) 2026 Draftline contributors. MIT License.",
+    "comments": "Desktop writing environment for novelists. https://draftline.ink",
     "hideSponsorMessage": true
   }
 }
