@@ -53,6 +53,8 @@ export function GetCharacterTimeline(arg1:types.BookData,arg2:string):Promise<ty
 
 export function GetCurrentFile():Promise<string>;
 
+export function GetNarrativeFingerprintDiagnostic(arg1:types.BookData):Promise<string>;
+
 export function GetRecentProjects():Promise<Array<types.RecentProject>>;
 
 export function HasAPIKey():Promise<boolean>;

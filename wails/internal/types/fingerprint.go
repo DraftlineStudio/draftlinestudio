@@ -16,8 +16,11 @@ type StoryFingerprint struct {
 	// Evidence records are never promoted merely because they contain a verb.
 	NarrativeFingerprints []NarrativeFingerprint         `json:"narrative_fingerprints"`
 	NarrativeRelations    []NarrativeFingerprintRelation `json:"narrative_relations,omitempty"`
-	DiagnosticReport      string                         `json:"diagnostic_report,omitempty"`
-	PromotionStats        NarrativePromotionStats        `json:"promotion_stats"`
+	// DiagnosticReport is generated for the current in-memory result only.
+	// Persisting it would duplicate every quoted evidence span in analysis.json;
+	// callers can rebuild it on demand from the lossless evidence records.
+	DiagnosticReport string                  `json:"-"`
+	PromotionStats   NarrativePromotionStats `json:"promotion_stats"`
 	// Events is a deprecated compatibility projection of promoted narrative
 	// fingerprints. It no longer mirrors the evidence record count.
 	Events      []FingerprintEvent      `json:"events"`
