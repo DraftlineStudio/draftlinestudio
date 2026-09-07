@@ -4,6 +4,16 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02562] - 2026-09-07
+
+### Changed
+- Upgraded the spelling dictionary from the stock SCOWL size-60 en_US build (49,568 roots) to a size-70 build with common variants and diacritics (78,442 roots, generated at wordlist.aspell.net; provenance and license now recorded in `public/dictionaries/README-SCOWL.txt`). Professional vocabulary the old dictionary flagged — responder, responders, lockdown, takedown — and common variant spellings novelists rely on — grey, whisky, cancelled, towards — now pass, while real misspellings (recieve, definately) still flag.
+
+### Fixed
+- Spell-check tokenization was ASCII-only, so accented prose was split at the diacritic and flagged ("café" checked as "caf"). Word matching, root cleaning, cursor word lookup, and the suggestion index now operate on the full Latin script, and the dictionary carries the accented forms (café, naïve, fiancée). A bundled-dictionary test suite guards the vocabulary against regressions.
+
+---
+
 ## [0.17.02561] - 2026-09-07
 
 ### Added
