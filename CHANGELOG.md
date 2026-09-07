@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02564] - 2026-09-07
+
+### Added
+- A manual update checker in Settings → Application. "Check for Updates" queries the GitHub releases page and reports whether a newer version exists — nothing runs in the background and nothing is downloaded unasked. When an update is available, the download button fetches the platform's package (Windows installer, macOS disk image, Linux AppImage), verifies it against the release's SHA256SUMS.txt before anything opens, and then launches the installer on Windows, opens the disk image on macOS (drag to Applications and replace), or reveals the downloaded AppImage on Linux. A corrupted or unverifiable download is discarded, never opened.
+
+---
+
 ## [0.17.02563] - 2026-09-07
 
 ### Fixed
