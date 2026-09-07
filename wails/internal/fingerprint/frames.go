@@ -261,7 +261,7 @@ var (
 	locationSetRe = regexp.MustCompile(`(?i)\b(?:was|were|stood|sat|waited|lay|remained|lived)\s+(?:back\s+)?(in|at|inside|outside|near)\s+`)
 	locationMoveRe = regexp.MustCompile(`(?i)\b(entered|arrived at|reached|walked into|stepped into|returned to|went to|drove to|headed to|climbed to|crossed into)\s+`)
 	locationLeaveRe = regexp.MustCompile(`(?i)\b(left|departed|exited|fled|abandoned)\s+(the\s+|his\s+|her\s+)?`)
-	possessionGetRe = regexp.MustCompile(`(?i)\b(picked up|took|grabbed|pocketed|carried|held|clutched|drew|found|retrieved|kept)\s+(?:up\s+)?(the|a|an|his|her|their|its)\s+`)
+	possessionGetRe = regexp.MustCompile(`(?i)\b(picked up|took|grabbed|pocketed|carried|held|clutched|drew|retrieved|kept)\s+(?:up\s+)?(the|a|an|his|her|their|its)\s+`)
 	possessionLoseRe = regexp.MustCompile(`(?i)\b(dropped|lost|surrendered|discarded|tossed away|left behind)\s+(the|a|an|his|her|their)\s+`)
 	transferRe    = regexp.MustCompile(`(?i)\b(handed|gave|passed|tossed|slid|returned)\s+(the|a|an|his|her|their)?\s*`)
 	injuryRe      = regexp.MustCompile(`(?i)\b(wounded|bleeding|broken (?:arm|leg|rib|nose|wrist|ankle|hand)|bruised|shot|stabbed|burned|limping|concussion|sprained|fractured|injured)\b`)

@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02557] - 2026-09-06
+
+### Added
+- Structured event identity for the v5 manuscript-memory engine: accounts join one underlying event only through typed anchors (a person's life-status outcome, an injury condition, a transfer's item and recipient, an actor's action head) — never through shared vocabulary. Retellings keep every account as a property value, conflicting details mark the identity conflicted, and different subjects can never merge. Tests plant a twice-told death, a retold discovery, and two vocabulary-identical sentences with different actors.
+
+---
+
 ## [0.17.02556] - 2026-09-06
 
 ### Added
