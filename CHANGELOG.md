@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02564] - 2026-09-07
+
+### Added
+- Added a manual update checker with verified downloads in Settings.
+
 ## [0.17.02563] - 2026-09-07
 
 ### Fixed

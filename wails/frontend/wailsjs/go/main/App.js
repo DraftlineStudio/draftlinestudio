@@ -46,6 +46,10 @@ export function CheckCodexCLI() {
   return window['go']['main']['App']['CheckCodexCLI']();
 }
 
+export function CheckForUpdates() {
+  return window['go']['main']['App']['CheckForUpdates']();
+}
+
 export function ClearAPIKey() {
   return window['go']['main']['App']['ClearAPIKey']();
 }
@@ -60,6 +64,10 @@ export function DeleteCharacterEvent(arg1, arg2) {
 
 export function DownloadReadAloudNative() {
   return window['go']['main']['App']['DownloadReadAloudNative']();
+}
+
+export function DownloadUpdate() {
+  return window['go']['main']['App']['DownloadUpdate']();
 }
 
 export function ExportDOCX(arg1, arg2) {
