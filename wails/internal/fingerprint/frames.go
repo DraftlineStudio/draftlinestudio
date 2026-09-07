@@ -259,7 +259,7 @@ type extractor struct {
 var (
 	lifeStatusRe  = regexp.MustCompile(`(?i)\b(was killed|had died|died|was dead|is dead|passed away|survived|was alive|still alive)\b`)
 	locationSetRe = regexp.MustCompile(`(?i)\b(?:was|were|stood|sat|waited|lay|remained|lived)\s+(?:back\s+)?(in|at|inside|outside|near)\s+`)
-	locationMoveRe = regexp.MustCompile(`(?i)\b(entered|arrived at|reached|walked into|stepped into|returned to|went to|drove to|headed to|climbed to|crossed into)\s+`)
+	locationMoveRe = regexp.MustCompile(`(?i)\b(entered|arrived at|reached|walked into|stepped into|returned to|went to|drove to|headed to|climbed to|crossed into|(?:drove|headed|walked|rode)\s+(?:north|south|east|west)(?:\s+to)?)\s+`)
 	locationLeaveRe = regexp.MustCompile(`(?i)\b(left|departed|exited|fled|abandoned)\s+(the\s+|his\s+|her\s+)?`)
 	possessionGetRe = regexp.MustCompile(`(?i)\b(picked up|took|grabbed|pocketed|carried|held|clutched|drew|retrieved|kept)\s+(?:up\s+)?(the|a|an|his|her|their|its)\s+`)
 	possessionLoseRe = regexp.MustCompile(`(?i)\b(dropped|lost|surrendered|discarded|tossed away|left behind)\s+(the|a|an|his|her|their)\s+`)
@@ -409,7 +409,15 @@ func subjectFrames(fc *frameContext, text, subject, rest string) []types.Narrati
 	if match := knowledgeRe.FindStringSubmatchIndex(rest); match != nil {
 		if detail, _ := detailSlice(rest, match[1]); detail != "" {
 			frame := fc.newFrame(types.FrameKnowledge, detail, .85)
-			frame.Value = "knows"
+			// The verb distinguishes standing knowledge from acquisition —
+			// the knowledge-before-acquisition inspection depends on it.
+			verb := strings.ToLower(rest[match[2]:match[3]])
+			switch verb {
+			case "knew", "understood", "recognized":
+				frame.Value = "knows"
+			default: // learned, realized, discovered, remembered, noticed
+				frame.Value = "learned"
+			}
 			frame.Participants = []types.NarrativeParticipant{participant("subject", subject)}
 			frames = append(frames, frame)
 		}

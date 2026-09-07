@@ -185,7 +185,7 @@ func TestKnowledgeGoalObligationDecision(t *testing.T) {
 	})
 	frames := extract(t, book)
 	knowledge := frameOfType(frames, types.FrameKnowledge)
-	if knowledge == nil || knowledge.Value != "knows" || !strings.Contains(knowledge.Detail, "the manifest had been altered") {
+	if knowledge == nil || knowledge.Value != "learned" || !strings.Contains(knowledge.Detail, "the manifest had been altered") {
 		t.Fatalf("knowledge: %#v", knowledge)
 	}
 	goal := frameOfType(frames, types.FrameGoal)
