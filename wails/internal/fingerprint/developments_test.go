@@ -45,6 +45,16 @@ func TestNarrativeDevelopmentCapturesObjectiveAndObstacle(t *testing.T) {
 	}
 }
 
+func TestRepeatedAccountsOfConsequentialStateCreateRevelation(t *testing.T) {
+	first := fixtureRecord("first", 0, `"Avery died during the bridge crossing," Mira testified.`, "died", "interaction", "avery", "Avery", "mira", "Mira")
+	second := fixtureRecord("second", 2, `"Avery was killed during the bridge crossing," Oren reported.`, "killed", "interaction", "avery", "Avery", "oren", "Oren")
+	model := buildFixture(first, second)
+	development := findDevelopment(t, model.NarrativeDevelopments, "model_revelation")
+	if len(development.FingerprintIDs) != 2 || !strings.Contains(strings.ToLower(development.After), "dead") {
+		t.Fatalf("corroborating accounts did not synthesize a consequential revelation: %#v", development)
+	}
+}
+
 func TestActionHeavyPassageWithoutStoryChangeCreatesNoDevelopment(t *testing.T) {
 	records := []types.EvidenceRecord{
 		fixtureRecord("run", 0, "Ivo ran across the plaza.", "ran", "transition", "ivo", "Ivo"),

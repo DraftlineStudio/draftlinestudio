@@ -63,9 +63,19 @@ func buildFingerprintInspections(model *types.StoryFingerprint, records []types.
 	result = append(result, stateHistoryInspections(model.StateHistories, fingerprintByID)...)
 	result = append(result, openObligationInspections(model.Fingerprints, model.FingerprintRelations)...)
 	for _, diagnostic := range model.Diagnostics {
-		result = append(result, inspectionFromDiagnostic(diagnostic, fingerprintByEvidence, records))
+		if inspectionEligibleDiagnostic(diagnostic.Kind) {
+			result = append(result, inspectionFromDiagnostic(diagnostic, fingerprintByEvidence, records))
+		}
 	}
 	return dedupeInspections(result)
+}
+
+func inspectionEligibleDiagnostic(kind string) bool {
+	switch kind {
+	case "attribute_conflict", "identity_conflict", "direction_conflict", "near_duplicate_chapter", "canon_conflict":
+		return true
+	}
+	return false
 }
 
 func stateHistoryInspections(histories []types.FingerprintStateHistory, fingerprints map[string]types.ManuscriptFingerprint) []types.FingerprintInspection {

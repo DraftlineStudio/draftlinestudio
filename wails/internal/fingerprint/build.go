@@ -47,13 +47,14 @@ func Build(book *types.BookData, progress func(types.StoryAnalysisProgress)) *ty
 	result.Assertions = buildAssertions(records, result.Contexts, contextByEvidence, points)
 	applyAssertionCorrections(result.Assertions, result.AuthorModel.Corrections)
 	result.Fingerprints, result.FingerprintRelations, result.EventIdentities = buildFingerprintCorpus(result.Assertions, records)
+	applyManuscriptFingerprintCorrections(result.Fingerprints, result.AuthorModel.Corrections)
 	result.StateHistories = buildFingerprintStateHistories(result.Fingerprints, records)
 	result.NarrativeDevelopments = synthesizeNarrativeDevelopments(result.Fingerprints, result.FingerprintRelations, result.StateHistories, records)
 	// Events, threads and Story Structure intentionally remain empty. They are
 	// future projections of NarrativeDevelopment, never of raw fingerprints.
 	result.Events = []types.FingerprintEvent{}
 	// Continuity state remains evidence-complete even when a detail is not
-	// promoted for narrative display. These support events are internal joins;
+	// selected for narrative display. These support events are internal joins;
 	// they are never exposed as narrative fingerprints or timeline nodes.
 	supportEvents := consolidateEvents(seedEvents(book, records, contextByEvidence, points), records, result.Assertions, prior)
 	result.States = buildStates(supportEvents, records, result.Assertions)

@@ -36,12 +36,9 @@ func synthesizeNarrativeDevelopments(fingerprints []types.ManuscriptFingerprint,
 	relationMembers := map[string]bool{}
 	candidates := []developmentCandidate{}
 	for _, relation := range relations {
-		if !developmentRelation(relation.Kind) {
-			continue
-		}
 		left, leftOK := byID[relation.FromID]
 		right, rightOK := byID[relation.ToID]
-		if !leftOK || !rightOK {
+		if !leftOK || !rightOK || !developmentRelationForFingerprints(relation.Kind, left, right) {
 			continue
 		}
 		relationMembers[left.ID], relationMembers[right.ID] = true, true
@@ -98,6 +95,23 @@ func developmentRelation(kind string) bool {
 	return false
 }
 
+func developmentRelationForFingerprints(kind string, left, right types.ManuscriptFingerprint) bool {
+	if developmentRelation(kind) {
+		return true
+	}
+	if kind != "same_event" || left.StateChange == nil || right.StateChange == nil {
+		return false
+	}
+	if left.StateChange.StateKind != right.StateChange.StateKind || normalizeSemantic(left.StateChange.New) != normalizeSemantic(right.StateChange.New) {
+		return false
+	}
+	switch left.StateChange.StateKind {
+	case "life_status", "physical_condition", "identity", "world_object_condition", "freedom_or_presence":
+		return true
+	}
+	return false
+}
+
 func candidateFromRelation(relation types.ManuscriptFingerprintRelation, left, right types.ManuscriptFingerprint) developmentCandidate {
 	kind, before, after := relation.Kind, left.Statement, right.Statement
 	switch relation.Kind {
@@ -111,6 +125,12 @@ func candidateFromRelation(relation types.ManuscriptFingerprintRelation, left, r
 		kind, after = "model_revision", conciseFingerprintState(right)+" revises "+conciseFingerprintState(left)
 	case "corroborates":
 		kind, after = "theory_corroborated", conciseFingerprintState(right)+" supports "+conciseFingerprintState(left)
+	case "same_event":
+		kind = "model_revelation"
+		before = "The consequential event or state was not established by multiple passages"
+		change := right.StateChange
+		subject := developmentSubject(right, mergeParticipants(left.Participants, right.Participants))
+		after = strings.TrimSpace(subject + " " + strings.ReplaceAll(change.StateKind, "_", " ") + ": " + change.New)
 	}
 	startChapter, startParagraph := fingerprintPosition(left)
 	endChapter, endParagraph := fingerprintPosition(right)
@@ -143,8 +163,8 @@ func candidateFromFingerprint(fingerprint types.ManuscriptFingerprint, all []typ
 			if stableHistoryEntity(change.EntityID, change.EntityName) && distinctDevelopmentParticipants(fingerprint.Participants) >= 2 {
 				kind, after, concern, reason = "relationship_change", conciseFingerprintState(fingerprint), change.New, "The relationship between story entities materially changes."
 			}
-		case "life_status", "physical_condition", "world_object_condition":
-			if objectiveAssertionFingerprint(fingerprint) && stableHistoryEntity(change.EntityID, change.EntityName) {
+		case "life_status", "physical_condition", "world_object_condition", "freedom_or_presence":
+			if objectiveAssertionFingerprint(fingerprint) && (stableHistoryEntity(change.EntityID, change.EntityName) || consequentialAnonymousState(change.StateKind)) {
 				kind, after, concern, reason = "persistent_state_change", conciseFingerprintState(fingerprint), change.StateKind, "A durable character or world condition changes what later action is possible."
 			}
 		}
@@ -178,6 +198,14 @@ func candidateFromFingerprint(fingerprint types.ManuscriptFingerprint, all []typ
 		reasons:    []types.NarrativeDevelopmentReason{{Code: kind, Explanation: reason, FingerprintIDs: []string{fingerprint.ID}, EvidenceIDs: clone(fingerprint.EvidenceIDs), Confidence: fingerprint.Confidence}},
 		confidence: fingerprint.Confidence,
 	}, true
+}
+
+func consequentialAnonymousState(kind string) bool {
+	switch kind {
+	case "life_status", "world_object_condition", "freedom_or_presence":
+		return true
+	}
+	return false
 }
 
 func unstatedPriorState(kind string) string {
@@ -436,6 +464,9 @@ func developmentSummary(candidate developmentCandidate, fingerprints map[string]
 	case "threat_change":
 		return "A threat appears or escalates: " + conciseFingerprintState(primary)
 	case "persistent_state_change":
+		if subject == "The story" {
+			subject = "An unresolved entity"
+		}
 		return strings.TrimSpace(subject + " undergoes a consequential state change: " + conciseFingerprintState(primary))
 	}
 	return candidate.after

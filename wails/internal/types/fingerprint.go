@@ -12,7 +12,7 @@ type StoryFingerprint struct {
 	TemporalConstraints []TemporalConstraint `json:"temporal_constraints"`
 	Assertions          []StoryAssertion     `json:"assertions"`
 	// Fingerprints are the normalized manuscript-memory corpus. Unlike the
-	// retired promotion layer, an assertion does not need to be plot-important
+	// former significance gate, an assertion does not need to be plot-important
 	// to belong here; continuity-useful location, possession, knowledge and
 	// transient-state details remain first-class manuscript knowledge.
 	Fingerprints          []ManuscriptFingerprint         `json:"fingerprints"`
@@ -25,18 +25,8 @@ type StoryFingerprint struct {
 	CorpusDiagnostic      string                          `json:"-"`
 	DevelopmentDiagnostic string                          `json:"-"`
 	InspectionDiagnostic  string                          `json:"-"`
-	// NarrativeFingerprints are the precision-first, story-meaningful
-	// assertions promoted from the lossless evidence and assertion layers.
-	// Evidence records are never promoted merely because they contain a verb.
-	NarrativeFingerprints []NarrativeFingerprint         `json:"narrative_fingerprints"`
-	NarrativeRelations    []NarrativeFingerprintRelation `json:"narrative_relations,omitempty"`
-	// DiagnosticReport is generated for the current in-memory result only.
-	// Persisting it would duplicate every quoted evidence span in analysis.json;
-	// callers can rebuild it on demand from the lossless evidence records.
-	DiagnosticReport string                  `json:"-"`
-	PromotionStats   NarrativePromotionStats `json:"promotion_stats"`
-	// Events is a deprecated compatibility projection of promoted narrative
-	// fingerprints. It no longer mirrors the evidence record count.
+	// Events is a deprecated compatibility projection. It remains empty until a
+	// future roadmap consumes NarrativeDevelopment rather than corpus records.
 	Events      []FingerprintEvent      `json:"events"`
 	States      []StoryStateInterval    `json:"states"`
 	Threads     []StoryThread           `json:"threads"`
@@ -375,53 +365,6 @@ type FingerprintTextDiagnostics struct {
 	Corpus       string `json:"corpus"`
 	Developments string `json:"developments"`
 	Inspections  string `json:"inspections"`
-}
-
-type NarrativePromotionReason struct {
-	Code         string   `json:"code"`
-	Explanation  string   `json:"explanation"`
-	AssertionIDs []string `json:"assertion_ids,omitempty"`
-	EvidenceIDs  []string `json:"evidence_ids,omitempty"`
-	Confidence   float64  `json:"confidence"`
-}
-
-// NarrativeFingerprint is a durable story assertion. It is deliberately
-// separate from EvidenceRecord: most evidence never becomes one of these.
-type NarrativeFingerprint struct {
-	ID               string                     `json:"id"`
-	Kind             string                     `json:"kind"`
-	Summary          string                     `json:"summary"`
-	SemanticKey      string                     `json:"semantic_key"`
-	AssertionIDs     []string                   `json:"assertion_ids"`
-	EvidenceIDs      []string                   `json:"evidence_ids"`
-	EvidenceSpans    []NarrativeEvidenceSpan    `json:"evidence_spans"`
-	Participants     []NarrativeParticipant     `json:"participants,omitempty"`
-	StateChange      *NarrativeStateChange      `json:"state_change,omitempty"`
-	EpistemicStatus  string                     `json:"epistemic_status"`
-	Attribution      NarrativeAttribution       `json:"attribution"`
-	Scope            NarrativeRealityScope      `json:"scope"`
-	Persistence      string                     `json:"persistence"`
-	Temporal         StoryTime                  `json:"temporal"`
-	PromotionReasons []NarrativePromotionReason `json:"promotion_reasons"`
-	Confidence       float64                    `json:"confidence"`
-	Status           string                     `json:"status"` // active | contradicted | superseded
-}
-
-type NarrativeFingerprintRelation struct {
-	ID          string   `json:"id"`
-	FromID      string   `json:"from_id"`
-	ToID        string   `json:"to_id"`
-	Kind        string   `json:"kind"` // enables | depends_on | fulfills | setup_for | contradicts | supersedes | corroborates
-	Explanation string   `json:"explanation"`
-	EvidenceIDs []string `json:"evidence_ids,omitempty"`
-	Confidence  float64  `json:"confidence"`
-}
-
-type NarrativePromotionStats struct {
-	EvidenceAtoms        int `json:"evidence_atoms"`
-	Assertions           int `json:"assertions"`
-	PromotedFingerprints int `json:"promoted_fingerprints"`
-	RetainedAsEvidence   int `json:"retained_as_evidence"`
 }
 
 type FingerprintEvent struct {

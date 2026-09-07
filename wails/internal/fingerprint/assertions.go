@@ -14,6 +14,7 @@ var (
 	assertionUncertainRe     = regexp.MustCompile(`(?i)\b(?:maybe|perhaps|possibly|apparently|seemed|might|could have)\b`)
 	beliefCueRe              = regexp.MustCompile(`(?i)\b(believed|believes|thought|thinks|suspected|suspects|theorized|guessed|assumed|inferred)\b`)
 	claimCueRe               = regexp.MustCompile(`(?i)\b(said|says|told|claimed|claims|insisted|insists|reported|reports|testified|warned|explained|admitted|confessed|lied)\b`)
+	discourseSaidRe          = regexp.MustCompile(`(?i)^\s*that said\s*,`)
 	deceptionCueRe           = regexp.MustCompile(`(?i)\b(lied|deceived|fabricated|falsely claimed|pretended)\b`)
 	corroborationCueRe       = regexp.MustCompile(`(?i)\b(confirmed|corroborated|proved|verified|demonstrated|established)\b`)
 	narrativeCommitmentCueRe = regexp.MustCompile(`(?i)\b(promised|promises|swore|vowed|pledged|agreed\s+to|committed\s+(?:to|himself\s+to|herself\s+to|themselves\s+to))\b`)
@@ -22,7 +23,8 @@ var (
 	relationshipCueRe        = regexp.MustCompile(`(?i)\b(forgave|trust(?:ed|s)?|distrust(?:ed|s)?|betrayed|allied|reconciled|befriended|married|divorced|abandoned|rejected|accepted)\b`)
 	acquisitionCueRe         = regexp.MustCompile(`(?i)\b(obtained|acquired|received|picked up|took possession of|was given)\b`)
 	custodyCueRe             = regexp.MustCompile(`(?i)\b(carried|carries|carrying)\b`)
-	relinquishCueRe          = regexp.MustCompile(`(?i)\b(gave|handed|returned|lost|dropped|surrendered|destroyed)\b`)
+	relinquishCueRe          = regexp.MustCompile(`(?i)\b(gave|handed|returned|lost|dropped|surrendered)\b`)
+	nonPossessionObjectRe    = regexp.MustCompile(`(?i)^(?:it|his mind|her mind|their minds|any sense|the game|by \w+|control|interest|hope|patience|consciousness|track of|sight of|the ability|the chance)\b`)
 	persistentChangeRe       = regexp.MustCompile(`(?i)\b(died|was killed|killed|was injured|was wounded|became|resigned|was fired|was promoted|disappeared|escaped|was captured|broke apart|broke down|burned down|exploded|was destroyed|closed permanently|opened permanently)\b`)
 	attenuatedChangeRe       = regexp.MustCompile(`(?i)\b(?:nearly|almost|might have|could have|would have|about to|close to)\b[^.!?]{0,45}\b(?:died|killed|injured|wounded|destroyed|broke|burned|exploded|collapsed)\b`)
 	strongDiscoveryRe        = regexp.MustCompile(`(?i)\b(discovered|uncovered|learned|learnt|realized|found out|determined|revealed)\b`)
@@ -138,7 +140,6 @@ func primaryAssertion(record types.EvidenceRecord, attribution types.NarrativeAt
 			} else {
 				predicate, object = "claims", proposition
 			}
-			change = nil
 			persistence = "conditional"
 		}
 	}
@@ -198,15 +199,18 @@ func classifyAssertionMeaning(record types.EvidenceRecord, subjectID, subject st
 		match := attributeReV2.FindStringSubmatch(text)
 		value := strings.ToLower(match[1] + " " + match[2])
 		return "state", "has_attribute", value, "persistent", &types.NarrativeStateChange{EntityID: subjectID, EntityName: subject, StateKind: "attribute", New: value, Operation: "establish"}
-	case acquisitionCueRe.MatchString(text):
+	case acquisitionCueRe.MatchString(text) && concretePossessionChange(record, acquisitionCueRe, "acquire"):
 		object = clauseAfterMatch(text, acquisitionCueRe)
-		return "state", "acquires", object, "conditional", &types.NarrativeStateChange{EntityID: subjectID, EntityName: subject, StateKind: "possession", New: object, Operation: "acquire"}
-	case custodyCueRe.MatchString(text):
+		entityID, entityName := possessionActorBeforeCue(record, acquisitionCueRe, subjectID, subject)
+		return "state", "acquires", object, "conditional", &types.NarrativeStateChange{EntityID: entityID, EntityName: entityName, StateKind: "possession", New: object, Operation: "acquire"}
+	case custodyCueRe.MatchString(text) && concretePossessionChange(record, custodyCueRe, "carry"):
 		object = clauseAfterMatch(text, custodyCueRe)
-		return "state", "carries", object, "conditional", &types.NarrativeStateChange{EntityID: subjectID, EntityName: subject, StateKind: "possession", New: object, Operation: "carry"}
-	case relinquishCueRe.MatchString(text):
+		entityID, entityName := possessionActorBeforeCue(record, custodyCueRe, subjectID, subject)
+		return "state", "carries", object, "conditional", &types.NarrativeStateChange{EntityID: entityID, EntityName: entityName, StateKind: "possession", New: object, Operation: "carry"}
+	case relinquishCueRe.MatchString(text) && concretePossessionChange(record, relinquishCueRe, "relinquish"):
 		object = clauseAfterMatch(text, relinquishCueRe)
-		return "state", "relinquishes", object, "conditional", &types.NarrativeStateChange{EntityID: subjectID, EntityName: subject, StateKind: "possession", Previous: object, New: "not in custody", Operation: "relinquish"}
+		entityID, entityName := possessionActorBeforeCue(record, relinquishCueRe, subjectID, subject)
+		return "state", "relinquishes", object, "conditional", &types.NarrativeStateChange{EntityID: entityID, EntityName: entityName, StateKind: "possession", Previous: object, New: "not in custody", Operation: "relinquish"}
 	case persistentChangeRe.MatchString(text) && !attenuatedChangeRe.MatchString(text):
 		predicate = canonicalCue(persistentChangeRe.FindString(text))
 		object = clauseAfterMatch(text, persistentChangeRe)
@@ -227,9 +231,84 @@ func classifyAssertionMeaning(record types.EvidenceRecord, subjectID, subject st
 	}
 }
 
+func concretePossessionChange(record types.EvidenceRecord, cue *regexp.Regexp, operation string) bool {
+	match := cue.FindStringIndex(record.Text)
+	if match == nil {
+		return false
+	}
+	payload := strings.Join(strings.Fields(cleanClause(record.Text[match[1]:])), " ")
+	if payload == "" || nonPossessionObjectRe.MatchString(payload) {
+		return false
+	}
+	matchedCue := normalizeSemantic(record.Text[match[0]:match[1]])
+	if operation == "relinquish" {
+		switch matchedCue {
+		case "gave", "handed":
+			if regexp.MustCompile(`(?i)\b(?:gave|handed)\b[^.!?]{1,100}\bto\b`).MatchString(record.Text) {
+				return true
+			}
+			afterCue := strings.TrimSpace(record.Text[match[1]:])
+			for _, name := range record.CharacterNames {
+				if strings.HasPrefix(strings.ToLower(afterCue), strings.ToLower(name)+" ") {
+					return true
+				}
+			}
+			return false
+		case "returned":
+			return len(semanticTerms(payload)) >= 2
+		case "lost":
+			return concretePossessionTerm(record) && len(semanticTerms(payload)) >= 1
+		}
+	}
+	if operation == "carry" {
+		if record.EvidenceType != "state" && record.EvidenceType != "interaction" {
+			return false
+		}
+		_, name := possessionActorBeforeCue(record, cue, "", "")
+		return name != "" && len(semanticTerms(payload)) >= 1
+	}
+	return len(semanticTerms(payload)) >= 1
+}
+
+func concretePossessionTerm(record types.EvidenceRecord) bool {
+	for _, term := range record.NamedEntities {
+		switch term.Label {
+		case "PRODUCT", "WORK_OF_ART", "OBJECT":
+			return true
+		}
+	}
+	return regexp.MustCompile(`(?i)\blost\s+(?:a|an|the|his|her|their|my|our)\s+[a-z][a-z'-]*`).MatchString(record.Text)
+}
+
+func possessionActorBeforeCue(record types.EvidenceRecord, cue *regexp.Regexp, fallbackID, fallbackName string) (string, string) {
+	match := cue.FindStringIndex(record.Text)
+	if match == nil {
+		return fallbackID, fallbackName
+	}
+	prefix := strings.ToLower(record.Text[:match[0]])
+	bestID, bestName, bestPosition := "", "", -1
+	for index, name := range record.CharacterNames {
+		positions := allFoldIndexes(prefix, name)
+		if len(positions) == 0 || positions[len(positions)-1] <= bestPosition {
+			continue
+		}
+		bestPosition, bestName = positions[len(positions)-1], name
+		if index < len(record.CharacterIDs) {
+			bestID = record.CharacterIDs[index]
+		}
+	}
+	if bestName != "" && match[0]-bestPosition <= 24 {
+		return bestID, bestName
+	}
+	return fallbackID, fallbackName
+}
+
 func inferAttribution(record types.EvidenceRecord) types.NarrativeAttribution {
 	text := record.Text
 	match := claimCueRe.FindStringIndex(text)
+	if match != nil && discourseSaidRe.MatchString(text) && normalizeSemantic(text[match[0]:match[1]]) == "said" {
+		match = nil
+	}
 	if match == nil {
 		if hasDialogueBoundary(text) || beginsSecondPersonAddress(text) {
 			return types.NarrativeAttribution{Kind: "unknown", Cue: "unresolved dialogue attribution", Confidence: .35}
