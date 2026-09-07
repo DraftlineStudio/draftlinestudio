@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02558] - 2026-09-06
+
+### Added
+- Narrative development synthesis for the v5 engine: major discoveries (facts that recur across chapters), open questions created and resolved, goal and relationship changes, new obstacles from opened obligations, same-scope life-status reversals, corroborations and reveals from mixed claim/narration accounts of one event, item/access payoffs, and explicit decisions. Every development is chronological, grounded in frame and evidence IDs, states its mechanical basis, and quotes only verbatim source text. These developments — not raw frames — are the future PlotWalker input.
+
+---
+
 ## [0.17.02557] - 2026-09-06
 
 ### Added
