@@ -31,6 +31,19 @@ func buildCorpusDiagnosticReport(model *types.StoryFingerprint) string {
 			fmt.Fprintf(&b, " (%s)", fingerprint.Attribution.EntityName)
 		}
 		fmt.Fprintf(&b, "\n   Scope: %s — %s\n   Persistence: %s\n   Confidence: %.2f\n", fingerprint.Scope.Kind, fingerprint.Scope.Label, fingerprint.Persistence, fingerprint.Confidence)
+		if len(fingerprint.EvidenceTypes) > 0 {
+			fmt.Fprintf(&b, "   Evidence types: %s\n", strings.Join(fingerprint.EvidenceTypes, ", "))
+		}
+		if len(fingerprint.Actions) > 0 {
+			fmt.Fprintf(&b, "   Actions: %s\n", strings.Join(fingerprint.Actions, ", "))
+		}
+		if len(fingerprint.NamedEntities) > 0 {
+			terms := make([]string, 0, len(fingerprint.NamedEntities))
+			for _, term := range fingerprint.NamedEntities {
+				terms = append(terms, term.Text+" ["+term.Label+"]")
+			}
+			fmt.Fprintf(&b, "   Named entities: %s\n", strings.Join(terms, ", "))
+		}
 		if fingerprint.EventIdentityID != "" {
 			fmt.Fprintf(&b, "   Same-event identity: %s\n", fingerprint.EventIdentityID)
 		}

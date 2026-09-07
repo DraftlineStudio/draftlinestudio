@@ -48,6 +48,7 @@ func Build(book *types.BookData, progress func(types.StoryAnalysisProgress)) *ty
 	applyAssertionCorrections(result.Assertions, result.AuthorModel.Corrections)
 	result.Fingerprints, result.FingerprintRelations, result.EventIdentities = buildFingerprintCorpus(result.Assertions, records)
 	result.StateHistories = buildFingerprintStateHistories(result.Fingerprints, records)
+	result.NarrativeDevelopments = synthesizeNarrativeDevelopments(result.Fingerprints, result.FingerprintRelations, result.StateHistories, records)
 	// Events, threads and Story Structure intentionally remain empty. They are
 	// future projections of NarrativeDevelopment, never of raw fingerprints.
 	result.Events = []types.FingerprintEvent{}
@@ -69,9 +70,10 @@ func Build(book *types.BookData, progress func(types.StoryAnalysisProgress)) *ty
 	result.CorpusStats = types.FingerprintCorpusStats{
 		EvidenceAtoms: len(records), Assertions: len(result.Assertions), Fingerprints: len(result.Fingerprints),
 		Relations: len(result.FingerprintRelations), EventIdentities: len(result.EventIdentities), StateHistories: len(result.StateHistories),
-		Inspections: len(result.Inspections),
+		Developments: len(result.NarrativeDevelopments), Inspections: len(result.Inspections),
 	}
 	result.CorpusDiagnostic = buildCorpusDiagnosticReport(result)
+	result.DevelopmentDiagnostic = buildNarrativeDevelopmentDiagnosticReport(result)
 	result.InspectionDiagnostic = buildInspectionDiagnosticReport(result)
 	if progress != nil {
 		progress(types.StoryAnalysisProgress{Phase: "chronology", Message: "Chronology model current", Current: len(records), Total: len(records), Percent: 82})
