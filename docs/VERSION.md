@@ -16,5 +16,6 @@ Current version as of this writing: **0.17.02562**
 
 ## Notes
 
-- `wails/wails.json` has no version field; there is nothing to update there.
+- `wails/wails.json` has no version field; there is nothing to update there. The release workflow stamps `AppVersion` into it (and into `wails/build/darwin/Info.plist`) at build time — see `docs/RELEASING.md`.
+- A GitHub release tag must equal `AppVersion`, optionally prefixed with `v` and optionally followed by a pre-release suffix such as `-beta`; the release workflow refuses to build otherwise.
 - To catch stragglers after a bump, search the repo for the **old** build number (excluding `node_modules/`). The only remaining hits should be historical `CHANGELOG.md` entries.

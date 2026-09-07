@@ -1,0 +1,286 @@
+# Builds downloadable packages for every published GitHub release and attaches
+# them to that release:
+#
+#   Windows  Draftline-<version>-windows-amd64-setup.exe     (NSIS installer)
+#            Draftline-<version>-windows-amd64-portable.zip  (plain exe)
+#   macOS    Draftline-<version>-macos-universal.dmg          (Intel + Apple Silicon)
+#   Linux    Draftline-<version>-linux-x86_64.AppImage
+#            SHA256SUMS.txt
+#
+# The version is read from `const AppVersion` in wails/app.go and must match the
+# release tag (with or without a leading "v", optionally followed by a
+# pre-release suffix such as "-beta" or "-rc.1"; the suffix is used in asset
+# names only). Run the workflow manually
+# (workflow_dispatch) to produce the same packages as run artifacts without
+# touching a release. See docs/RELEASING.md.
+
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  WAILS_VERSION: v2.15.0
+  NODE_VERSION: "22"
+
+jobs:
+  version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      label: ${{ steps.resolve.outputs.label }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: resolve
+        shell: bash
+        run: |
+          version="$(sed -nE 's/^const AppVersion = "([^"]+)".*/\1/p' wails/app.go)"
+          if [ -z "$version" ]; then
+            echo "::error::Could not read AppVersion from wails/app.go"
+            exit 1
+          fi
+          tag="${{ github.event.release.tag_name }}"
+          label="$version"
+          if [ -n "$tag" ]; then
+            label="${tag#v}"
+            case "$label" in
+              "$version"|"$version"-[A-Za-z0-9.]*) ;;
+              *)
+                echo "::error::Release tag '$tag' does not match AppVersion '$version' in wails/app.go (allowed: v$version or v$version-<suffix>). Bump the version (docs/VERSION.md) or retag the release."
+                exit 1 ;;
+            esac
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "label=$label" >> "$GITHUB_OUTPUT"
+          echo "Building Draftline $version (assets labelled $label)"
+
+  windows:
+    name: Windows installer
+    needs: version
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      LABEL: ${{ needs.version.outputs.label }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: wails/go.mod
+          cache-dependency-path: wails/go.sum
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: wails/frontend/package-lock.json
+      - name: Install Wails CLI
+        run: go install "github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION}"
+      - name: Ensure NSIS is available
+        run: |
+          if ! command -v makensis >/dev/null 2>&1; then
+            choco install nsis -y --no-progress
+            echo "C:\\Program Files (x86)\\NSIS" >> "$GITHUB_PATH"
+          fi
+      - name: Install frontend dependencies
+        working-directory: wails/frontend
+        run: npm ci
+      - name: Stamp version into wails.json
+        run: node .github/scripts/stamp-version.js "$VERSION"
+      - name: Build and package
+        working-directory: wails
+        run: wails build -platform windows/amd64 -nsis -webview2 download -clean -trimpath -ldflags "-s -w"
+      - name: Collect artifacts
+        run: |
+          mkdir -p dist
+          cp wails/build/bin/draftline-amd64-installer.exe "dist/Draftline-${LABEL}-windows-amd64-setup.exe"
+          (cd wails/build/bin && 7z a -tzip "../../../dist/Draftline-${LABEL}-windows-amd64-portable.zip" draftline.exe)
+          ls -l dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows
+          path: dist/*
+          if-no-files-found: error
+
+  linux:
+    name: Linux AppImage
+    needs: version
+    runs-on: ubuntu-24.04
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      LABEL: ${{ needs.version.outputs.label }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: wails/go.mod
+          cache-dependency-path: wails/go.sum
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: wails/frontend/package-lock.json
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
+      - name: Install Wails CLI
+        run: go install "github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION}"
+      - name: Install frontend dependencies
+        working-directory: wails/frontend
+        run: npm ci
+      - name: Stamp version into wails.json
+        run: node .github/scripts/stamp-version.js "$VERSION"
+      - name: Build
+        working-directory: wails
+        run: wails build -platform linux/amd64 -tags webkit2_41 -clean -trimpath -ldflags "-s -w"
+      - name: Build AppImage
+        run: |
+          set -euo pipefail
+          appdir=AppDir
+          rm -rf "$appdir"
+          mkdir -p "$appdir/usr/bin" "$appdir/usr/share/applications" \
+                   "$appdir/usr/share/icons/hicolor/512x512/apps" "$appdir/usr/share/mime/packages"
+          install -m 755 wails/build/bin/draftline "$appdir/usr/bin/draftline"
+          install -m 644 wails/build/linux/draftline.desktop "$appdir/usr/share/applications/draftline.desktop"
+          install -m 644 wails/build/linux/draftline-mime.xml "$appdir/usr/share/mime/packages/draftline-mime.xml"
+          install -m 644 wails/build/appicon.png "$appdir/usr/share/icons/hicolor/512x512/apps/draftline.png"
+          cp "$appdir/usr/share/applications/draftline.desktop" "$appdir/draftline.desktop"
+          cp "$appdir/usr/share/icons/hicolor/512x512/apps/draftline.png" "$appdir/draftline.png"
+          ln -s usr/bin/draftline "$appdir/AppRun"
+
+          curl -fsSL -o appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+          chmod +x appimagetool
+          mkdir -p dist
+          ARCH=x86_64 ./appimagetool --appimage-extract-and-run --no-appstream "$appdir" "dist/Draftline-${LABEL}-linux-x86_64.AppImage"
+          ls -l dist
+      - uses: actions/upload-artifact@v7
+        with:
+          name: linux
+          path: dist/*
+          if-no-files-found: error
+
+  macos:
+    name: macOS DMG
+    needs: version
+    runs-on: macos-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      LABEL: ${{ needs.version.outputs.label }}
+      # Optional signing/notarization inputs. Every step below degrades to an
+      # ad-hoc-signed, un-notarized DMG when they are absent (docs/RELEASING.md).
+      APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: wails/go.mod
+          cache-dependency-path: wails/go.sum
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: wails/frontend/package-lock.json
+      - name: Install Wails CLI
+        run: go install "github.com/wailsapp/wails/v2/cmd/wails@${WAILS_VERSION}"
+      - name: Install frontend dependencies
+        working-directory: wails/frontend
+        run: npm ci
+      - name: Stamp version into wails.json and Info.plist
+        run: |
+          node .github/scripts/stamp-version.js "$VERSION"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" -c "Set :CFBundleVersion $VERSION" wails/build/darwin/Info.plist
+      - name: Build universal app bundle
+        working-directory: wails
+        run: wails build -platform darwin/universal -clean -trimpath -ldflags "-s -w"
+      - name: Import signing certificate
+        # Runs only when a Developer ID certificate is configured (docs/RELEASING.md).
+        if: ${{ env.APPLE_CERTIFICATE_P12 != '' }}
+        run: |
+          set -euo pipefail
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          keychain_password="$(uuidgen)"
+          echo "$APPLE_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$RUNNER_TEMP/certificate.p12" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$keychain_password" "$keychain" >/dev/null
+          security list-keychains -d user -s "$keychain" login.keychain-db
+          identity="$(security find-identity -v -p codesigning "$keychain" | sed -nE 's/.*"(Developer ID Application: [^"]+)".*/\1/p' | head -n 1)"
+          if [ -z "$identity" ]; then
+            echo "::error::No 'Developer ID Application' identity found in the imported certificate"
+            exit 1
+          fi
+          echo "SIGNING_IDENTITY=$identity" >> "$GITHUB_ENV"
+          rm -f "$RUNNER_TEMP/certificate.p12"
+      - name: Sign app bundle
+        run: |
+          set -euo pipefail
+          mv wails/build/bin/draftline.app Draftline.app
+          if [ -n "${SIGNING_IDENTITY:-}" ]; then
+            codesign --force --deep --options runtime --timestamp \
+              --entitlements wails/build/darwin/entitlements.plist \
+              --sign "$SIGNING_IDENTITY" Draftline.app
+          else
+            echo "No Developer ID certificate configured; applying an ad-hoc signature."
+            codesign --force --deep --sign - Draftline.app
+          fi
+          codesign --verify --verbose=2 Draftline.app
+      - name: Create DMG
+        run: |
+          set -euo pipefail
+          rm -rf dmg-root && mkdir dmg-root dist
+          cp -R Draftline.app dmg-root/
+          ln -s /Applications dmg-root/Applications
+          dmg="dist/Draftline-${LABEL}-macos-universal.dmg"
+          hdiutil create -volname "Draftline" -srcfolder dmg-root -ov -format UDZO "$dmg"
+          if [ -n "${SIGNING_IDENTITY:-}" ]; then
+            codesign --force --timestamp --sign "$SIGNING_IDENTITY" "$dmg"
+          fi
+          ls -l dist
+      - name: Notarize DMG
+        # Runs only when signing succeeded and notarization credentials exist (docs/RELEASING.md).
+        if: ${{ env.SIGNING_IDENTITY != '' && env.APPLE_ID != '' }}
+        run: |
+          set -euo pipefail
+          dmg="dist/Draftline-${LABEL}-macos-universal.dmg"
+          xcrun notarytool submit "$dmg" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" --wait
+          xcrun stapler staple "$dmg"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: macos
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    name: Attach to release
+    if: github.event_name == 'release'
+    needs: [version, windows, linux, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Write checksums
+        working-directory: dist
+        run: |
+          sha256sum -- * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" dist/* --clobber --repo "${{ github.repository }}"
