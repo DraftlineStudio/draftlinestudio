@@ -11,7 +11,7 @@ export function buildWordBuckets(entries: string[]): WordBuckets {
   const buckets: WordBuckets = new Map()
   const seen = new Set<string>()
   entries.forEach(entry => {
-    if (!/^[A-Za-z][A-Za-z'-]*$/.test(entry)) return
+    if (!/^\p{Script=Latin}[\p{Script=Latin}'-]*$/u.test(entry)) return
     const word = entry.toLocaleLowerCase()
     if (word.length < 2 || seen.has(word)) return
     seen.add(word)

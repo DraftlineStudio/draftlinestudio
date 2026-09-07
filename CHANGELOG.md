@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02562] - 2026-09-07
+
+### Changed
+- Upgraded the spelling dictionary to SCOWL size 70.
+
+### Fixed
+- Spell check now handles accented words correctly.
+
 ## [0.17.02543] - 2026-09-05
 
 ### Fixed
