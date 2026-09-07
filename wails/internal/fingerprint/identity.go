@@ -97,7 +97,7 @@ func applyAssertionCorrections(assertions []types.StoryAssertion, corrections []
 	}
 }
 
-func applyNarrativeFingerprintCorrections(fingerprints []types.NarrativeFingerprint, corrections []types.FingerprintCorrection) {
+func applyManuscriptFingerprintCorrections(fingerprints []types.ManuscriptFingerprint, corrections []types.FingerprintCorrection) {
 	for _, correction := range corrections {
 		for index := range fingerprints {
 			fingerprint := &fingerprints[index]
@@ -122,7 +122,7 @@ func applyNarrativeFingerprintCorrections(fingerprints []types.NarrativeFingerpr
 				}
 			case "summary":
 				if correction.Value != "" {
-					fingerprint.Summary = correction.Value
+					fingerprint.Statement = correction.Value
 				}
 			}
 		}
@@ -143,8 +143,14 @@ func reconcileCorrections(model *types.StoryFingerprint) {
 			known[evidenceID] = true
 		}
 	}
-	for _, fingerprint := range model.NarrativeFingerprints {
+	for _, fingerprint := range model.Fingerprints {
 		known[fingerprint.ID] = true
+	}
+	for _, development := range model.NarrativeDevelopments {
+		known[development.ID] = true
+	}
+	for _, identity := range model.EventIdentities {
+		known[identity.ID] = true
 	}
 	for _, context := range model.Contexts {
 		known[context.ID] = true

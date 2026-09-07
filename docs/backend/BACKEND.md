@@ -127,8 +127,9 @@ stage-local pool design, large-manuscript memory gate, and measured 12-thread
 responsiveness results.
 
 See [Narrative Fingerprint Pipeline](NARRATIVE-FINGERPRINT.md) for the
-evidence/assertion/promotion boundary, epistemic and reality-scope model, and
-the plain-text semantic diagnostic used before higher-level visualization.
+evidence/assertion/fingerprint/development boundary, epistemic and
+reality-scope model, and the three plain-text quality diagnostics used before
+higher-level visualization.
 
 Build 02476 adds author-owned review provenance without modifying source
 evidence. Confirm/reject status, a separate author interpretation, notes, pins,

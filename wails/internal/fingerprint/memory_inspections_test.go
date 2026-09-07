@@ -1,6 +1,7 @@
 package fingerprint
 
 import (
+	"strings"
 	"testing"
 
 	"draftline/internal/types"
@@ -27,6 +28,21 @@ func TestPossessionHistoryRemainsSeparateFromNarrativeDevelopment(t *testing.T) 
 	}
 }
 
+func TestPossessionHistoryRejectsLexicalLookalikes(t *testing.T) {
+	records := []types.EvidenceRecord{
+		fixtureRecord("mind", 0, "Avery thought he had lost his mind.", "lost", "state", "avery", "Avery"),
+		fixtureRecord("score", 1, "The Falcons had lost by two.", "lost", "state", "falcons", "Falcons"),
+		fixtureRecord("return", 2, "Silence returned.", "returned", "state"),
+		fixtureRecord("rails", 3, "Avery felt the rails that had carried carts underground.", "carried", "state", "avery", "Avery"),
+	}
+	model := buildFixture(records...)
+	for _, history := range model.StateHistories {
+		if history.Property == "possession" {
+			t.Fatalf("an idiom or inanimate grammatical subject became character custody: %#v", history)
+		}
+	}
+}
+
 func TestLocationAndKnowledgeHistoriesRetainMundaneMemory(t *testing.T) {
 	arrived := fixtureRecord("arrived", 0, "Avery arrived at the north depot.", "arrived", "transition", "avery", "Avery")
 	arrived.NamedEntities = []types.EvidenceTerm{{Text: "north depot", Label: "LOC"}}
@@ -48,6 +64,11 @@ func TestInspectionsUseFingerprintEvidenceFromBothSides(t *testing.T) {
 	inspection := findInspection(t, model.Inspections, "attribute_conflict")
 	if len(inspection.Sides) < 2 || len(inspection.Sides[0].EvidenceSpans) == 0 || len(inspection.Sides[1].EvidenceSpans) == 0 {
 		t.Fatalf("inspection did not preserve both sources: %#v", inspection)
+	}
+	for _, expected := range []string{"FINGERPRINT INSPECTION DIAGNOSTIC", first.Text, second.Text} {
+		if !strings.Contains(model.InspectionDiagnostic, expected) {
+			t.Fatalf("inspection report omitted %q:\n%s", expected, model.InspectionDiagnostic)
+		}
 	}
 }
 
