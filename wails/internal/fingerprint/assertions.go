@@ -20,7 +20,8 @@ var (
 	goalCueRe                = regexp.MustCompile(`(?i)\b(decided|decides|planned|plans|intended|intends|resolved|ordered|orders)\b`)
 	conditionalGoalRe        = regexp.MustCompile(`(?i)\b(?:if|whether|in case)\b[^.!?]{0,100}\b(?:decided|decides|planned|plans|intended|intends|ordered|orders)\b`)
 	relationshipCueRe        = regexp.MustCompile(`(?i)\b(forgave|trusted|distrusted|betrayed|allied|reconciled|befriended|married|divorced|abandoned|rejected|accepted)\b`)
-	acquisitionCueRe         = regexp.MustCompile(`(?i)\b(obtained|acquired|received|picked up|took possession of|was given|carried)\b`)
+	acquisitionCueRe         = regexp.MustCompile(`(?i)\b(obtained|acquired|received|picked up|took possession of|was given)\b`)
+	custodyCueRe             = regexp.MustCompile(`(?i)\b(carried|carries|carrying)\b`)
 	relinquishCueRe          = regexp.MustCompile(`(?i)\b(gave|handed|returned|lost|dropped|surrendered|destroyed)\b`)
 	persistentChangeRe       = regexp.MustCompile(`(?i)\b(died|was killed|killed|was injured|was wounded|became|resigned|was fired|was promoted|disappeared|escaped|was captured|broke apart|broke down|burned down|exploded|was destroyed|closed permanently|opened permanently)\b`)
 	attenuatedChangeRe       = regexp.MustCompile(`(?i)\b(?:nearly|almost|might have|could have|would have|about to|close to)\b[^.!?]{0,45}\b(?:died|killed|injured|wounded|destroyed|broke|burned|exploded|collapsed)\b`)
@@ -200,6 +201,9 @@ func classifyAssertionMeaning(record types.EvidenceRecord, subjectID, subject st
 	case acquisitionCueRe.MatchString(text):
 		object = clauseAfterMatch(text, acquisitionCueRe)
 		return "state", "acquires", object, "conditional", &types.NarrativeStateChange{EntityID: subjectID, EntityName: subject, StateKind: "possession", New: object, Operation: "acquire"}
+	case custodyCueRe.MatchString(text):
+		object = clauseAfterMatch(text, custodyCueRe)
+		return "state", "carries", object, "conditional", &types.NarrativeStateChange{EntityID: subjectID, EntityName: subject, StateKind: "possession", New: object, Operation: "carry"}
 	case relinquishCueRe.MatchString(text):
 		object = clauseAfterMatch(text, relinquishCueRe)
 		return "state", "relinquishes", object, "conditional", &types.NarrativeStateChange{EntityID: subjectID, EntityName: subject, StateKind: "possession", Previous: object, New: "not in custody", Operation: "relinquish"}

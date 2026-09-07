@@ -29,6 +29,9 @@ func Query(book types.BookData, request types.FingerprintQueryRequest) types.Fin
 		limit = 8
 	}
 	lower := strings.ToLower(query)
+	// Querying uses the complete manuscript-memory corpus. This projection is
+	// local to the answer and is never exposed as roadmap or graph events.
+	corpusEvents := corpusQueryEvents(book, model.Fingerprints)
 	switch {
 	case strings.Contains(lower, "voice") || strings.Contains(lower, "dialect") || strings.Contains(lower, "speak") || strings.Contains(lower, "vernacular"):
 		answer.Interpretation = "character voice and speaking traits"
@@ -69,16 +72,16 @@ func Query(book types.BookData, request types.FingerprintQueryRequest) types.Fin
 	case strings.HasPrefix(lower, "where") || strings.Contains(lower, " location"):
 		answer.Interpretation = "physical presence and location"
 		answer.States = rankedStates(model.States, query, []string{"presence"}, limit)
-		answer.Events = rankedEvents(model.Events, book, query, limit)
+		answer.Events = rankedEvents(corpusEvents, book, query, limit)
 		answer.Answer, answer.Confidence = eventAnswer(answer.Events)
 	case strings.HasPrefix(lower, "when"):
 		answer.Interpretation = "in-universe chronology"
-		answer.Events = rankedEvents(model.Events, book, query, limit)
+		answer.Events = rankedEvents(corpusEvents, book, query, limit)
 		sort.SliceStable(answer.Events, func(i, j int) bool { return storyEventLess(answer.Events[i], answer.Events[j]) })
 		answer.Answer, answer.Confidence = eventAnswer(answer.Events)
 	default:
 		answer.Interpretation = "story evidence"
-		answer.Events = queryAfterAnchor(model.Events, book, query, limit)
+		answer.Events = queryAfterAnchor(corpusEvents, book, query, limit)
 		answer.Threads = rankedThreads(model.Threads, query, min(limit, 4))
 		answer.Answer, answer.Confidence = trailAnswer(answer.Events)
 	}
@@ -89,6 +92,37 @@ func Query(book types.BookData, request types.FingerprintQueryRequest) types.Fin
 		answer.Answer = "The current fingerprint does not contain enough matching evidence to answer that confidently."
 	}
 	return answer
+}
+
+func corpusQueryEvents(book types.BookData, fingerprints []types.ManuscriptFingerprint) []types.FingerprintEvent {
+	records := evidenceRecordMap(nil)
+	if book.Analysis.Evidence != nil {
+		records = evidenceRecordMap(book.Analysis.Evidence.Records)
+	}
+	result := make([]types.FingerprintEvent, 0, len(fingerprints))
+	for order, fingerprint := range fingerprints {
+		if len(fingerprint.EvidenceIDs) == 0 {
+			continue
+		}
+		record, exists := records[fingerprint.EvidenceIDs[0]]
+		if !exists {
+			continue
+		}
+		locations, objects := eventTerms(record)
+		characterIDs, characterNames := []string{}, []string{}
+		for _, participant := range fingerprint.Participants {
+			characterIDs = appendUnique(characterIDs, participant.EntityID)
+			characterNames = appendUnique(characterNames, participant.EntityName)
+		}
+		result = append(result, types.FingerprintEvent{
+			ID: fingerprint.ID, Summary: fingerprint.Statement, EvidenceIDs: clone(fingerprint.EvidenceIDs), AssertionIDs: clone(fingerprint.AssertionIDs),
+			CharacterIDs: characterIDs, CharacterNames: characterNames, Locations: locations, Objects: objects, Kinds: []string{fingerprint.Kind},
+			ContextID: fingerprint.Scope.ID, StoryTime: fingerprint.Temporal, ChapterID: record.ChapterID, ChapterIndex: record.ChapterIndex,
+			ChapterTitle: chapterTitle(&book, record), ParagraphIndex: record.ParagraphIndex, StartOffset: record.StartOffset,
+			NarrativeOrder: order, Confidence: fingerprint.Confidence, Status: fingerprint.Status,
+		})
+	}
+	return result
 }
 
 type scoredVoice struct {
