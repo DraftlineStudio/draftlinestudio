@@ -4,6 +4,19 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02547] - 2026-09-06
+
+### Changed
+- Replaced the quadratic all-assertion relationship scan with semantic indexes for comparable durable states, commitments, potential setup, and uncertain claims. Retrospective promotion now evaluates only explainable candidates that share substantive terms, keeping large evidence sets responsive without introducing an event-count target.
+- Tightened narrative promotion around objective, durable state changes and explicit causal language. Conditional decisions, attenuated outcomes, routine logistics, ordinary object handling, and low-information discoveries remain lossless evidence unless later prose establishes their significance.
+
+### Fixed
+- Prevented dialogue, second-person address, pronouns, and deictic or existential subjects such as “this” and “there” from silently becoming objective world truth or fabricated contradiction anchors.
+- Canonicalized equivalent persistent outcomes such as death, injury, capture, escape, and destruction so alternate wording does not create false state conflicts.
+- Added generic regression fixtures for conditional decisions, near misses, deictic and existential claims, and 1,500 routine evidence atoms that must remain free of invented narrative structure.
+
+---
+
 ## [0.17.02546] - 2026-09-06
 
 ### Changed

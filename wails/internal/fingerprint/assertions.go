@@ -17,13 +17,15 @@ var (
 	deceptionCueRe           = regexp.MustCompile(`(?i)\b(lied|deceived|fabricated|falsely claimed|pretended)\b`)
 	corroborationCueRe       = regexp.MustCompile(`(?i)\b(confirmed|corroborated|proved|verified|demonstrated|established)\b`)
 	narrativeCommitmentCueRe = regexp.MustCompile(`(?i)\b(promised|promises|swore|vowed|pledged|agreed|committed)\b`)
-	goalCueRe                = regexp.MustCompile(`(?i)\b(decided|decides|planned|plans|intended|intends|resolved|ordered|orders|must|needed|needs)\b`)
+	goalCueRe                = regexp.MustCompile(`(?i)\b(decided|decides|planned|plans|intended|intends|resolved|ordered|orders)\b`)
+	conditionalGoalRe        = regexp.MustCompile(`(?i)\b(?:if|whether|in case)\b[^.!?]{0,100}\b(?:decided|decides|planned|plans|intended|intends|ordered|orders)\b`)
 	relationshipCueRe        = regexp.MustCompile(`(?i)\b(forgave|trusted|distrusted|betrayed|allied|reconciled|befriended|married|divorced|abandoned|rejected|accepted)\b`)
 	acquisitionCueRe         = regexp.MustCompile(`(?i)\b(obtained|acquired|received|picked up|took possession of|was given|carried)\b`)
 	relinquishCueRe          = regexp.MustCompile(`(?i)\b(gave|handed|returned|lost|dropped|surrendered|destroyed)\b`)
-	persistentChangeRe       = regexp.MustCompile(`(?i)\b(died|was killed|killed|was injured|was wounded|became|turned|resigned|was fired|was promoted|disappeared|escaped|was captured|collapsed|broke|burned|exploded|was destroyed|closed permanently|opened permanently)\b`)
+	persistentChangeRe       = regexp.MustCompile(`(?i)\b(died|was killed|killed|was injured|was wounded|became|resigned|was fired|was promoted|disappeared|escaped|was captured|broke apart|broke down|burned down|exploded|was destroyed|closed permanently|opened permanently)\b`)
+	attenuatedChangeRe       = regexp.MustCompile(`(?i)\b(?:nearly|almost|might have|could have|would have|about to|close to)\b[^.!?]{0,45}\b(?:died|killed|injured|wounded|destroyed|broke|burned|exploded|collapsed)\b`)
 	strongDiscoveryRe        = regexp.MustCompile(`(?i)\b(discovered|uncovered|learned|learnt|realized|found out|determined|revealed)\b`)
-	useCueRe                 = regexp.MustCompile(`(?i)\b(used|using|with|unlocked|opened|activated|disabled|decoded|accessed|started|stopped)\b`)
+	useCueRe                 = regexp.MustCompile(`(?i)\b(used|using|unlocked|activated|disabled|decoded|accessed|recognized|matched|recalled)\b`)
 	completionCueRe          = regexp.MustCompile(`(?i)\b(fulfilled|kept (?:the |his |her |their )?promise|completed|finished|returned|delivered|handed|repaid|rescued|solved|answered)\b`)
 	copulaPropositionRe      = regexp.MustCompile(`(?i)^\s*(.+?)\s+(is|are|was|were|has|have|had|will be|cannot be|isn't|wasn't)\s+(.+?)\s*$`)
 	attributeReV2            = regexp.MustCompile(`(?i)\b(?:has|had|with)\s+(?:a\s+)?(blond|blonde|brown|black|red|gray|grey|white|blue|green|hazel)\s+(hair|eyes?)\b`)
@@ -34,6 +36,7 @@ var (
 	visionScopeRe            = regexp.MustCompile(`(?i)\b(?:vision|vision of|saw in a vision)\b`)
 	hypotheticalScopeRe      = regexp.MustCompile(`(?i)\b(?:if .* would|imagined|supposed that|hypothetically|might have been)\b`)
 	storyWithinScopeRe       = regexp.MustCompile(`(?i)\b(?:in the story|the tale said|the letter read|the journal said|according to the diary)\b`)
+	routineLogisticsRe       = regexp.MustCompile(`(?i)\b(?:car|truck|vehicle|coat|phone|keys?)\b[^.!?]{0,80}\b(?:parked|left|sitting|waiting|charging|stored)\b`)
 )
 
 // buildAssertions turns source-located evidence into conservative semantic
@@ -107,6 +110,12 @@ func primaryAssertion(record types.EvidenceRecord, attribution types.NarrativeAt
 		statement = strings.TrimSpace(record.Text)
 	}
 	kind, predicate, object, persistence, change := classifyAssertionMeaning(record, subjectID, subject)
+	if change != nil && persistentChangeRe.MatchString(record.Text) {
+		if stateID, stateSubject := persistentChangeSubject(record); stateSubject != "" {
+			subjectID, subject = stateID, stateSubject
+			change.EntityID, change.EntityName = stateID, stateSubject
+		}
+	}
 	if kind == "occurrence" {
 		if propositionSubject, propositionPredicate, propositionObject := parseProposition(statement); propositionPredicate != "" {
 			if !strings.EqualFold(propositionSubject, subject) {
@@ -172,7 +181,7 @@ func classifyAssertionMeaning(record types.EvidenceRecord, subjectID, subject st
 		predicate = canonicalCue(narrativeCommitmentCueRe.FindString(text))
 		object = clauseAfterMatch(text, narrativeCommitmentCueRe)
 		return "commitment", predicate, object, "persistent", &types.NarrativeStateChange{EntityID: subjectID, EntityName: subject, StateKind: "commitment", New: object, Operation: "begin"}
-	case goalCueRe.MatchString(text):
+	case goalCueRe.MatchString(text) && !conditionalGoalRe.MatchString(text):
 		predicate = canonicalCue(goalCueRe.FindString(text))
 		object = clauseAfterMatch(text, goalCueRe)
 		return "goal", predicate, object, "persistent", &types.NarrativeStateChange{EntityID: subjectID, EntityName: subject, StateKind: "goal", New: object, Operation: "begin"}
@@ -194,10 +203,10 @@ func classifyAssertionMeaning(record types.EvidenceRecord, subjectID, subject st
 	case relinquishCueRe.MatchString(text):
 		object = clauseAfterMatch(text, relinquishCueRe)
 		return "state", "relinquishes", object, "conditional", &types.NarrativeStateChange{EntityID: subjectID, EntityName: subject, StateKind: "possession", Previous: object, New: "not in custody", Operation: "relinquish"}
-	case persistentChangeRe.MatchString(text):
+	case persistentChangeRe.MatchString(text) && !attenuatedChangeRe.MatchString(text):
 		predicate = canonicalCue(persistentChangeRe.FindString(text))
 		object = clauseAfterMatch(text, persistentChangeRe)
-		return "state", predicate, object, "persistent", &types.NarrativeStateChange{EntityID: subjectID, EntityName: subject, StateKind: persistentStateKind(predicate), New: nonEmpty(object, predicate), Operation: "change"}
+		return "state", predicate, object, "persistent", &types.NarrativeStateChange{EntityID: subjectID, EntityName: subject, StateKind: persistentStateKind(predicate), New: persistentStateValue(predicate, object), Operation: "change"}
 	case strongDiscoveryRe.MatchString(text):
 		predicate = canonicalCue(strongDiscoveryRe.FindString(text))
 		return "knowledge", predicate, clauseAfterMatch(text, strongDiscoveryRe), "persistent", nil
@@ -218,6 +227,9 @@ func inferAttribution(record types.EvidenceRecord) types.NarrativeAttribution {
 	text := record.Text
 	match := claimCueRe.FindStringIndex(text)
 	if match == nil {
+		if hasDialogueBoundary(text) || beginsSecondPersonAddress(text) {
+			return types.NarrativeAttribution{Kind: "unknown", Cue: "unresolved dialogue attribution", Confidence: .35}
+		}
 		return types.NarrativeAttribution{Kind: "narrator", Confidence: .72}
 	}
 	cue := strings.ToLower(text[match[0]:match[1]])
@@ -249,6 +261,8 @@ func inferEpistemicStatus(text string, attribution types.NarrativeAttribution, s
 	case beliefCueRe.MatchString(text):
 		return "character_belief"
 	case attribution.Kind == "character":
+		return "attributed_claim"
+	case attribution.Kind == "unknown":
 		return "attributed_claim"
 	case assertionUncertainRe.MatchString(text):
 		return "uncertain_interpretation"
@@ -321,7 +335,60 @@ func semanticAssertionKey(item types.StoryAssertion) string {
 	if item.StateChange != nil {
 		state = strings.Join([]string{item.StateChange.StateKind, item.StateChange.Previous, item.StateChange.New, item.StateChange.Operation}, "|")
 	}
-	return strings.Join([]string{normalizeSemantic(item.Subject), normalizeSemantic(item.Predicate), normalizeSemantic(item.Object), item.Polarity, normalizeSemantic(state)}, "|")
+	parts := []string{normalizeSemantic(item.Subject), normalizeSemantic(item.Predicate), normalizeSemantic(item.Object), item.Polarity, normalizeSemantic(state)}
+	if item.Kind == "occurrence" || (item.StateChange == nil && len(semanticTerms(item.Object)) < 2) {
+		parts = append(parts, normalizeSemantic(item.Statement))
+	}
+	return strings.Join(parts, "|")
+}
+
+func persistentChangeSubject(record types.EvidenceRecord) (string, string) {
+	match := persistentChangeRe.FindStringIndex(record.Text)
+	if match == nil {
+		return "", ""
+	}
+	prefix := record.Text[:match[0]]
+	bestID, bestName, bestPosition := "", "", -1
+	for index, name := range record.CharacterNames {
+		positions := allFoldIndexes(prefix, name)
+		if len(positions) == 0 || positions[len(positions)-1] <= bestPosition {
+			continue
+		}
+		bestPosition, bestName = positions[len(positions)-1], name
+		if index < len(record.CharacterIDs) {
+			bestID = record.CharacterIDs[index]
+		}
+	}
+	if bestName != "" {
+		return bestID, bestName
+	}
+	for _, separator := range []string{"\n", ".", ";", ":", ","} {
+		if index := strings.LastIndex(prefix, separator); index >= 0 {
+			prefix = prefix[index+len(separator):]
+		}
+	}
+	words := strings.Fields(cleanClause(prefix))
+	if len(words) > 6 {
+		words = words[len(words)-6:]
+	}
+	for len(words) > 0 {
+		last := strings.ToLower(strings.Trim(words[len(words)-1], "'’"))
+		if last == "who" || last == "who'd" || last == "that" || last == "had" || last == "was" || last == "were" || last == "and" || last == "shot" {
+			words = words[:len(words)-1]
+			continue
+		}
+		break
+	}
+	return "", strings.Join(words, " ")
+}
+
+func hasDialogueBoundary(text string) bool {
+	return strings.ContainsAny(text, "\"\u201c\u201d")
+}
+
+func beginsSecondPersonAddress(text string) bool {
+	words := strings.Fields(normalizeSemantic(text))
+	return len(words) > 0 && words[0] == "you"
 }
 
 func assertionObject(record types.EvidenceRecord, subject string) (string, string) {
@@ -489,6 +556,25 @@ func persistentStateKind(predicate string) string {
 		return "world_object_condition"
 	default:
 		return "character_or_world_state"
+	}
+}
+
+func persistentStateValue(predicate, object string) string {
+	switch {
+	case strings.Contains(predicate, "died") || strings.Contains(predicate, "killed"):
+		return "dead"
+	case strings.Contains(predicate, "injur") || strings.Contains(predicate, "wound"):
+		return "injured"
+	case strings.Contains(predicate, "captur"):
+		return "captured"
+	case strings.Contains(predicate, "escaped"):
+		return "escaped"
+	case strings.Contains(predicate, "disappeared"):
+		return "missing"
+	case strings.Contains(predicate, "destroy") || strings.Contains(predicate, "broke") || strings.Contains(predicate, "burn") || strings.Contains(predicate, "explod"):
+		return "destroyed or inoperable"
+	default:
+		return nonEmpty(object, predicate)
 	}
 }
 
