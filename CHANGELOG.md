@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02556] - 2026-09-06
+
+### Added
+- Canonical state ledgers for the v5 manuscript-memory engine: per-entity histories for location, possession (with both sides of every transfer), condition, life status, knowledge, goals, obligations, relationships, access, and a per-scope timeline. Conflicting accounts are preserved as separate entries with their own scope and epistemic posture, never averaged; item qualifiers normalize noun phrases so "picked up the brass key" and "handed the brass key to Mira" meet in one history.
+
+---
+
 ## [0.17.02555] - 2026-09-06
 
 ### Added
