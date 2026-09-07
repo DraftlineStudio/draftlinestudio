@@ -6,7 +6,7 @@ import (
 	"draftline/internal/types"
 )
 
-func TestBuildDoesNotPromoteAdjacentActionsMerelyBecauseTheyShareCharacters(t *testing.T) {
+func TestBuildRetainsAdjacentActionsWithoutInventingADevelopment(t *testing.T) {
 	first := record("maps-1", 0, 3, "Hanlon asked Gary for the building maps.")
 	first.CharacterIDs = []string{"hanlon", "gary"}
 	first.CharacterNames = []string{"Hanlon", "Gary"}
@@ -18,8 +18,11 @@ func TestBuildDoesNotPromoteAdjacentActionsMerelyBecauseTheyShareCharacters(t *t
 	second.NamedEntities = []types.EvidenceTerm{{Text: "maps", Label: "PRODUCT"}}
 	book := testBook([]types.EvidenceRecord{first, second})
 	model := Build(&book, nil)
-	if len(model.NarrativeFingerprints) != 0 {
-		t.Fatalf("adjacency is not narrative significance: %#v", model.NarrativeFingerprints)
+	if len(model.Fingerprints) != 2 {
+		t.Fatalf("both manuscript memories must survive: %#v", model.Fingerprints)
+	}
+	if len(model.NarrativeDevelopments) != 0 {
+		t.Fatalf("adjacency alone became narrative significance: %#v", model.NarrativeDevelopments)
 	}
 	if len(model.Assertions) != 2 {
 		t.Fatalf("both low-level assertions must remain available, got %d", len(model.Assertions))

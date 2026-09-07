@@ -17,9 +17,6 @@ func TestFingerprintCorpusRetainsRoutineContinuityMemory(t *testing.T) {
 	if fingerprint.Statement == "" || !containsString(fingerprint.EvidenceIDs, "movement") || len(fingerprint.EvidenceSpans) != 1 {
 		t.Fatalf("fingerprint lost semantic detail or provenance: %#v", fingerprint)
 	}
-	if len(model.NarrativeFingerprints) != 0 {
-		t.Fatalf("legacy narrative promotion unexpectedly admitted routine motion: %#v", model.NarrativeFingerprints)
-	}
 }
 
 func TestFingerprintCorpusPreservesEpistemicAndRealityScope(t *testing.T) {
