@@ -121,23 +121,56 @@ func attributionName(attribution types.NarrativeAttribution) string {
 	return " (" + attribution.EntityName + ")"
 }
 
+// buildDevelopmentReport renders the synthesized story account, grouped by
+// chapter and scene, so reading it top to bottom follows the manuscript's
+// plot progression. Every development shows its full diagnostic record.
 func buildDevelopmentReport(model *types.StoryFingerprint) string {
 	var b strings.Builder
 	b.WriteString(reportHeader("NARRATIVE DEVELOPMENTS", model))
+	lastChapter, lastScene := -1, -1
 	for i, development := range model.Developments {
-		fmt.Fprintf(&b, "%d. [ch %d] %s: %s\n", i+1, development.ChapterIndex+1, development.Kind, development.Summary)
+		if development.ChapterIndex != lastChapter || development.SceneIndex != lastScene {
+			lastChapter, lastScene = development.ChapterIndex, development.SceneIndex
+			fmt.Fprintf(&b, "── Chapter %d · Scene %d ", development.ChapterIndex+1, development.SceneIndex+1)
+			b.WriteString(strings.Repeat("─", 40))
+			b.WriteString("\n\n")
+		}
+		fmt.Fprintf(&b, "%d. [%s] %s\n", i+1, development.Kind, development.Summary)
+		fmt.Fprintf(&b, "   ID: %s · Confidence: %.2f\n", development.ID, development.Confidence)
 		if line := participantLine(development.Entities); line != "" {
 			fmt.Fprintf(&b, "   Entities: %s\n", line)
+		}
+		if development.Before != "" || development.After != "" {
+			fmt.Fprintf(&b, "   State: %s → %s\n", orDash(development.Before), orDash(development.After))
+		}
+		if development.Advances != "" {
+			fmt.Fprintf(&b, "   Advances: %s\n", development.Advances)
+		}
+		if development.PredecessorID != "" {
+			fmt.Fprintf(&b, "   Follows from: %s\n", development.PredecessorID)
+		}
+		if development.SuccessorID != "" {
+			fmt.Fprintf(&b, "   Leads to: %s\n", development.SuccessorID)
 		}
 		if len(development.Basis) > 0 {
 			fmt.Fprintf(&b, "   Basis: %s\n", strings.Join(development.Basis, "; "))
 		}
+		fmt.Fprintf(&b, "   Frames: %s\n", strings.Join(development.FrameIDs, ", "))
+		b.WriteString("   Evidence:\n")
+		writeSpans(&b, "     ", development.EvidenceSpans)
 		b.WriteString("\n")
 	}
 	if len(model.Developments) == 0 {
 		b.WriteString("(no developments)\n")
 	}
 	return b.String()
+}
+
+func orDash(value string) string {
+	if value == "" {
+		return "—"
+	}
+	return value
 }
 
 func buildInspectionReport(model *types.StoryFingerprint) string {

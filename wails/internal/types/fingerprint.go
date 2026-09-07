@@ -150,25 +150,43 @@ type EventPropertyValue struct {
 	Epistemic   string   `json:"epistemic"`
 }
 
-// NarrativeDevelopment is a synthesized story-level change, derived from
-// clusters of frames and ledger transitions across scenes. Developments —
-// not raw frames — are the future input to PlotWalker.
+// NarrativeDevelopment is a synthesized story-level change, reconstructed
+// from combinations of trusted frames, ledgers, and event identities at
+// scene/chapter scope. Developments — not raw frames — are the future input
+// to PlotWalker. A development may be supported by several frames and
+// several evidence spans; no single sentence has to state it outright.
 type NarrativeDevelopment struct {
 	ID string `json:"id"`
-	// Kind: major_discovery | goal_change | relationship_change |
-	// new_obstacle | corroboration | reversal | reveal | mystery_created |
-	// mystery_resolved | setup | payoff | major_decision
+	// Kind: investigation_progress | major_discovery | corroboration |
+	// disconfirmation | mystery_introduced | mystery_narrowed |
+	// mystery_reframed | mystery_resolved | obstacle_introduced |
+	// obstacle_overcome | major_decision | goal_established | goal_change |
+	// relationship_change | threat_escalation | threat_reduction |
+	// revelation | setup | payoff
 	Kind    string `json:"kind"`
 	Summary string `json:"summary"`
 	// Basis lists the mechanical reasons this development was synthesized.
-	Basis          []string               `json:"basis"`
-	Entities       []NarrativeParticipant `json:"entities,omitempty"`
-	FrameIDs       []string               `json:"frame_ids"`
-	EvidenceIDs    []string               `json:"evidence_ids"`
-	ScopeID        string                 `json:"scope_id"`
-	ChapterIndex   int                    `json:"chapter_index"`
-	NarrativeOrder int                    `json:"narrative_order"`
-	Confidence     float64                `json:"confidence"`
+	Basis          []string                `json:"basis"`
+	Entities       []NarrativeParticipant  `json:"entities,omitempty"`
+	FrameIDs       []string                `json:"frame_ids"`
+	EvidenceIDs    []string                `json:"evidence_ids"`
+	EvidenceSpans  []NarrativeEvidenceSpan `json:"evidence_spans,omitempty"`
+	ScopeID        string                  `json:"scope_id"`
+	ChapterIndex   int                     `json:"chapter_index"`
+	SceneIndex     int                     `json:"scene_index"`
+	NarrativeOrder int                     `json:"narrative_order"`
+	// Before/After capture the state transition where one applies, using
+	// verbatim or closed-vocabulary values from the supporting frames.
+	Before string `json:"before,omitempty"`
+	After  string `json:"after,omitempty"`
+	// Advances names the active goal, question, or mystery this development
+	// moves, with the frames that established it.
+	Advances         string   `json:"advances,omitempty"`
+	AdvancesFrameIDs []string `json:"advances_frame_ids,omitempty"`
+	// Causal neighbors, filled when the synthesis rules support the link.
+	PredecessorID string  `json:"predecessor_id,omitempty"`
+	SuccessorID   string  `json:"successor_id,omitempty"`
+	Confidence    float64 `json:"confidence"`
 }
 
 // NarrativeInspection is one continuity finding over the frame corpus and
