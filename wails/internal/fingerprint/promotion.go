@@ -21,6 +21,7 @@ var semanticStopWords = map[string]bool{
 	"her": true, "hers": true, "him": true, "his": true, "i": true, "in": true, "is": true, "it": true,
 	"its": true, "of": true, "on": true, "or": true, "she": true, "that": true, "the": true, "their": true,
 	"them": true, "they": true, "this": true, "to": true, "was": true, "were": true, "with": true, "you": true,
+	"didn": true, "doesn": true, "wasn": true, "couldn": true, "wouldn": true, "answer": true,
 }
 
 // promoteNarrativeFingerprints applies precision-first narrative promotion.
@@ -42,11 +43,9 @@ func promoteNarrativeFingerprints(assertions []types.StoryAssertion, records []t
 		}
 	}
 
-	assertionByID := map[string]types.StoryAssertion{}
 	fingerprints := make([]types.NarrativeFingerprint, 0, len(reasons))
 	assertionToFingerprint := map[string]string{}
 	for _, assertion := range assertions {
-		assertionByID[assertion.ID] = assertion
 		if len(reasons[assertion.ID]) == 0 {
 			continue
 		}
@@ -89,7 +88,6 @@ func promoteNarrativeFingerprints(assertions []types.StoryAssertion, records []t
 		}
 		return resultRelations[i].FromID < resultRelations[j].FromID
 	})
-	_ = assertionByID
 	return fingerprints, resultRelations
 }
 
@@ -114,7 +112,7 @@ func initialPromotionReasons(assertion types.StoryAssertion, records map[string]
 	case "relationship":
 		result = appendPromotionReason(result, promotionReason("relationship_changed", "The passage explicitly changes a relationship between story entities.", assertion, .9))
 	case "state":
-		if assertion.StateChange != nil && assertion.StateChange.Operation == "change" && assertion.Persistence == "persistent" {
+		if assertion.StateChange != nil && assertion.StateChange.Operation == "change" && assertion.Persistence == "persistent" && objectiveAssertion(assertion) && stableStateSubject(assertion.StateChange) {
 			result = appendPromotionReason(result, promotionReason("persistent_state_changed", "The passage changes a persistent character or world state.", assertion, .91))
 		}
 	case "knowledge":
@@ -133,7 +131,7 @@ func initialPromotionReasons(assertion types.StoryAssertion, records map[string]
 }
 
 func consequentialKnowledgeTransfer(assertion types.StoryAssertion, records map[string]types.EvidenceRecord) bool {
-	if assertion.EpistemicStatus != "attributed_claim" || len(assertionTerms(assertion)) < 2 {
+	if assertion.EpistemicStatus != "attributed_claim" || len(semanticTerms(assertion.Subject+" "+assertion.Object)) < 2 {
 		return false
 	}
 	for _, id := range assertion.EvidenceIDs {
@@ -167,6 +165,9 @@ func consequentialKnowledge(assertion types.StoryAssertion, records map[string]t
 	if assertion.Predicate != "discovers" || !meaningfulClause(assertion.Object) {
 		return false
 	}
+	if len(semanticTerms(assertion.Object)) < 2 || routineLogisticsRe.MatchString(assertion.Statement) {
+		return false
+	}
 	for _, id := range assertion.EvidenceIDs {
 		record := records[id]
 		if len(nonParticipantTerms(record, assertion.Subject)) > 0 {
@@ -177,24 +178,76 @@ func consequentialKnowledge(assertion types.StoryAssertion, records map[string]t
 	return len(words) >= 4 && containsStructuralRelation(assertion.Object)
 }
 
+func objectiveAssertion(assertion types.StoryAssertion) bool {
+	return assertion.EpistemicStatus == "world_state_fact" || assertion.EpistemicStatus == "externally_corroborated_fact"
+}
+
+func stableStateSubject(change *types.NarrativeStateChange) bool {
+	if change == nil {
+		return false
+	}
+	if change.EntityID != "" {
+		return true
+	}
+	words := strings.Fields(normalizeSemantic(change.EntityName))
+	if len(words) == 0 {
+		return false
+	}
+	switch words[0] {
+	case "he", "she", "they", "it", "you", "i", "we", "this", "that", "someone", "something":
+		return false
+	}
+	return true
+}
+
 func inferAssertionRelations(assertions []types.StoryAssertion, records map[string]types.EvidenceRecord) []assertionRelation {
 	result := []assertionRelation{}
-	for earlier := 0; earlier < len(assertions); earlier++ {
-		for later := earlier + 1; later < len(assertions); later++ {
-			left, right := assertions[earlier], assertions[later]
-			if relation, ok := contradictionRelation(left, right); ok {
-				result = append(result, relation)
-				continue
+	statePrior := map[string][]int{}
+	commitmentByTerm := map[string][]int{}
+	setupByTerm := map[string][]int{}
+	uncertainByTerm := map[string][]int{}
+	for index, right := range assertions {
+		if key := comparableStateKey(right); key != "" {
+			for _, earlier := range statePrior[key] {
+				if relation, ok := contradictionRelation(assertions[earlier], right); ok {
+					result = append(result, relation)
+				}
 			}
-			if relation, ok := fulfillmentRelation(left, right); ok {
-				result = append(result, relation)
+		}
+		if completionCueRe.MatchString(right.Statement) {
+			for _, earlier := range indexedCandidates(commitmentByTerm, relationTerms(right)) {
+				if relation, ok := fulfillmentRelation(assertions[earlier], right); ok {
+					result = append(result, relation)
+				}
 			}
-			if relation, ok := enablingRelation(left, right, records); ok {
-				result = append(result, relation)
+		}
+		if useCueRe.MatchString(right.Statement) || explicitDependencyLanguage(right.Statement) {
+			for _, earlier := range indexedCandidates(setupByTerm, relationTerms(right)) {
+				if relation, ok := enablingRelation(assertions[earlier], right); ok {
+					result = append(result, relation)
+				}
 			}
-			if relation, ok := corroborationRelation(left, right); ok {
-				result = append(result, relation)
+		}
+		if right.EpistemicStatus == "externally_corroborated_fact" {
+			for _, earlier := range indexedCandidates(uncertainByTerm, relationTerms(right)) {
+				if relation, ok := corroborationRelation(assertions[earlier], right); ok {
+					result = append(result, relation)
+				}
 			}
+		}
+
+		if key := comparableStateKey(right); key != "" {
+			statePrior[key] = append(statePrior[key], index)
+		}
+		if right.Kind == "commitment" {
+			indexAssertionTerms(commitmentByTerm, index, right)
+		}
+		if isPotentialSetup(right) {
+			indexAssertionTerms(setupByTerm, index, right)
+		}
+		switch right.EpistemicStatus {
+		case "attributed_claim", "character_belief", "character_inference", "uncertain_interpretation":
+			indexAssertionTerms(uncertainByTerm, index, right)
 		}
 	}
 	return dedupeAssertionRelations(result)
@@ -229,22 +282,25 @@ func fulfillmentRelation(left, right types.StoryAssertion) (assertionRelation, b
 	if left.Kind != "commitment" || !completionCueRe.MatchString(right.Statement) {
 		return assertionRelation{}, false
 	}
-	if semanticOverlap(assertionTerms(left), assertionTerms(right)) < .34 {
+	leftTerms, rightTerms := relationTerms(left), relationTerms(right)
+	if sharedTermCount(leftTerms, rightTerms) < 2 || semanticOverlap(leftTerms, rightTerms) < .34 {
 		return assertionRelation{}, false
 	}
 	return assertionRelation{from: left.ID, to: right.ID, kind: "fulfills", explain: "The later state change satisfies the earlier promise or obligation.", evidence: appendUnique(clone(left.EvidenceIDs), right.EvidenceIDs...), confidence: .84}, true
 }
 
-func enablingRelation(left, right types.StoryAssertion, records map[string]types.EvidenceRecord) (assertionRelation, bool) {
-	if left.StateChange == nil || left.StateChange.StateKind != "possession" || left.StateChange.Operation != "acquire" {
-		if !explicitDependencyLanguage(right.Statement) {
-			return assertionRelation{}, false
-		}
+func enablingRelation(left, right types.StoryAssertion) (assertionRelation, bool) {
+	isAcquiredObject := left.StateChange != nil && left.StateChange.StateKind == "possession" && left.StateChange.Operation == "acquire"
+	isScopedInformation := left.Scope.Kind == "dream" || left.Scope.Kind == "vision" || left.Scope.Kind == "remembered"
+	isExplicitCause := explicitDependencyLanguage(right.Statement) && (left.Persistence == "persistent" || left.Persistence == "conditional")
+	if !isAcquiredObject && !isScopedInformation && !isExplicitCause {
+		return assertionRelation{}, false
 	}
 	if !useCueRe.MatchString(right.Statement) && !explicitDependencyLanguage(right.Statement) {
 		return assertionRelation{}, false
 	}
-	if semanticOverlap(assertionTerms(left), assertionTerms(right)) < .34 {
+	leftTerms, rightTerms := relationTerms(left), relationTerms(right)
+	if sharedTermCount(leftTerms, rightTerms) < 2 || semanticOverlap(leftTerms, rightTerms) < .5 {
 		return assertionRelation{}, false
 	}
 	return assertionRelation{from: left.ID, to: right.ID, kind: "enables", explain: "A retained earlier state or object is explicitly used by the later occurrence.", evidence: appendUnique(clone(left.EvidenceIDs), right.EvidenceIDs...), confidence: .86}, true
@@ -254,7 +310,8 @@ func corroborationRelation(left, right types.StoryAssertion) (assertionRelation,
 	if left.EpistemicStatus != "attributed_claim" && left.EpistemicStatus != "character_belief" && left.EpistemicStatus != "character_inference" {
 		return assertionRelation{}, false
 	}
-	if right.EpistemicStatus != "externally_corroborated_fact" || semanticOverlap(assertionTerms(left), assertionTerms(right)) < .5 {
+	leftTerms, rightTerms := relationTerms(left), relationTerms(right)
+	if right.EpistemicStatus != "externally_corroborated_fact" || sharedTermCount(leftTerms, rightTerms) < 2 || semanticOverlap(leftTerms, rightTerms) < .5 {
 		return assertionRelation{}, false
 	}
 	return assertionRelation{from: left.ID, to: right.ID, kind: "corroborates", explain: "Later external evidence supports an earlier attributed or uncertain proposition.", evidence: appendUnique(clone(left.EvidenceIDs), right.EvidenceIDs...), confidence: .9}, true
@@ -343,8 +400,8 @@ func semanticTerms(value string) map[string]bool {
 	return result
 }
 
-func assertionTerms(assertion types.StoryAssertion) map[string]bool {
-	return semanticTerms(assertion.Subject + " " + assertion.Object + " " + stateValue(assertion))
+func relationTerms(assertion types.StoryAssertion) map[string]bool {
+	return semanticTerms(assertion.Object + " " + stateValue(assertion))
 }
 
 func semanticOverlap(left, right map[string]bool) float64 {
@@ -359,6 +416,16 @@ func semanticOverlap(left, right map[string]bool) float64 {
 	}
 	denominator := min(len(left), len(right))
 	return float64(common) / float64(denominator)
+}
+
+func sharedTermCount(left, right map[string]bool) int {
+	common := 0
+	for value := range left {
+		if right[value] {
+			common++
+		}
+	}
+	return common
 }
 
 func sameAssertionSubject(left, right types.StoryAssertion) bool {
@@ -376,6 +443,51 @@ func stateComparisonKey(assertion types.StoryAssertion) string {
 		return normalizeSemantic(assertion.Predicate)
 	}
 	return ""
+}
+
+func comparableStateKey(assertion types.StoryAssertion) string {
+	subject := assertion.SubjectID
+	if subject == "" {
+		subject = normalizeSemantic(assertion.Subject)
+	}
+	if subject == "" {
+		return ""
+	}
+	if !stableAssertionSubject(assertion) {
+		return ""
+	}
+	if assertion.StateChange != nil && assertion.Persistence == "persistent" {
+		switch assertion.StateChange.StateKind {
+		case "attribute", "hair", "eye", "eyes", "name", "rank", "title", "life_status", "physical_condition", "world_object_condition":
+			return assertion.Scope.ID + "\x00" + subject + "\x00" + assertion.StateChange.StateKind
+		}
+	}
+	if assertion.Predicate == "is" {
+		switch assertion.EpistemicStatus {
+		case "attributed_claim", "character_belief", "character_inference", "uncertain_interpretation":
+			return assertion.Scope.ID + "\x00" + subject + "\x00is"
+		case "world_state_fact", "externally_corroborated_fact":
+			if correctiveLanguage(assertion.Statement) {
+				return assertion.Scope.ID + "\x00" + subject + "\x00is"
+			}
+		}
+	}
+	return ""
+}
+
+func stableAssertionSubject(assertion types.StoryAssertion) bool {
+	if assertion.SubjectID != "" {
+		return true
+	}
+	words := strings.Fields(normalizeSemantic(assertion.Subject))
+	if len(words) == 0 || len(words) > 8 {
+		return false
+	}
+	switch words[0] {
+	case "this", "that", "these", "those", "here", "there", "it", "he", "she", "they", "we", "you", "i", "something", "anything", "everything", "nothing", "someone", "anyone":
+		return false
+	}
+	return true
 }
 
 func assertionValue(assertion types.StoryAssertion) string {
@@ -406,12 +518,46 @@ func correctiveLanguage(value string) bool {
 
 func explicitDependencyLanguage(value string) bool {
 	lower := strings.ToLower(value)
-	for _, cue := range []string{"because of", "thanks to", "enabled", "allowed", "depended on", "using", "used", "with the"} {
+	for _, cue := range []string{"because of", "thanks to", "enabled", "allowed", "depended on", "therefore", "as a result"} {
 		if strings.Contains(lower, cue) {
 			return true
 		}
 	}
 	return false
+}
+
+func isPotentialSetup(assertion types.StoryAssertion) bool {
+	if len(relationTerms(assertion)) == 0 {
+		return false
+	}
+	if assertion.StateChange != nil && assertion.StateChange.StateKind == "possession" && assertion.StateChange.Operation == "acquire" {
+		return true
+	}
+	if assertion.Scope.Kind == "dream" || assertion.Scope.Kind == "vision" || assertion.Scope.Kind == "remembered" {
+		return true
+	}
+	return assertion.Persistence == "persistent" || assertion.Persistence == "conditional"
+}
+
+func indexAssertionTerms(index map[string][]int, position int, assertion types.StoryAssertion) {
+	for term := range relationTerms(assertion) {
+		index[term] = append(index[term], position)
+	}
+}
+
+func indexedCandidates(index map[string][]int, terms map[string]bool) []int {
+	seen := map[int]bool{}
+	result := []int{}
+	for term := range terms {
+		for _, position := range index[term] {
+			if !seen[position] {
+				seen[position] = true
+				result = append(result, position)
+			}
+		}
+	}
+	sort.Ints(result)
+	return result
 }
 
 func containsStructuralRelation(value string) bool {
