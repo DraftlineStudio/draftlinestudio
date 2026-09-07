@@ -12,6 +12,7 @@ Draftline is a desktop writing application for novelists, built with Go (Wails) 
 | [Data Model](data-model/DATA-MODEL.md) | File format and data structures |
 | [AI Rewriting](ai/AI-REWRITING.md) | AI rewriting system and providers |
 | [AI Prompt Engineering](ai/AI-PROMPT-ENGINEERING.md) | Prompt design for the rewrite modes |
+| [Releasing](RELEASING.md) | Release workflow, installer packaging, and signing secrets |
 | [Changelog](../CHANGELOG.md) | Version history and changes |
 
 ## Mental Model
