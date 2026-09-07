@@ -228,6 +228,21 @@ func detailSlice(text string, from int) (string, bool) {
 	return slice, truncated
 }
 
+var itemStopRe = regexp.MustCompile(`(?i)\s+(from|on|in|at|off|under|behind|beside|into|onto|out of|with|before|after|and then)\s`)
+
+// itemDetail slices an item noun phrase: like detailSlice, but also stops at
+// the first preposition so "the brass key from the desk" yields "brass key".
+func itemDetail(text string, from int) string {
+	detail, _ := detailSlice(text, from)
+	if detail == "" {
+		return ""
+	}
+	if stop := itemStopRe.FindStringIndex(detail); stop != nil {
+		detail = strings.TrimSpace(detail[:stop[0]])
+	}
+	return detail
+}
+
 var negationRe = regexp.MustCompile(`(?i)\b(never|not|no longer|didn't|did not|wasn't|was not|couldn't|could not|refused to)\b`)
 var speculationRe = regexp.MustCompile(`(?i)\b(might|may have|perhaps|possibly|seemed to|appeared to)\b`)
 
@@ -370,14 +385,14 @@ func subjectFrames(fc *frameContext, text, subject, rest string) []types.Narrati
 			frames = append(frames, frame)
 		}
 	} else if match := possessionGetRe.FindStringSubmatchIndex(rest); match != nil {
-		if detail, _ := detailSlice(rest, match[1]); detail != "" {
+		if detail := itemDetail(rest, match[1]); detail != "" {
 			frame := fc.newFrame(types.FramePossession, detail, .85)
 			frame.Value = "holds"
 			frame.Participants = []types.NarrativeParticipant{participant("subject", subject), participant("item", detail)}
 			frames = append(frames, frame)
 		}
 	} else if match := possessionLoseRe.FindStringSubmatchIndex(rest); match != nil {
-		if detail, _ := detailSlice(rest, match[1]); detail != "" {
+		if detail := itemDetail(rest, match[1]); detail != "" {
 			frame := fc.newFrame(types.FramePossession, detail, .8)
 			frame.Value = "relinquished"
 			frame.Participants = []types.NarrativeParticipant{participant("subject", subject), participant("item", detail)}
@@ -508,7 +523,7 @@ func transferFrame(fc *frameContext, subject, rest string, from int) (types.Narr
 	if toIndex < 0 {
 		return types.NarrativeFrame{}, false
 	}
-	item, _ := detailSlice(rest[:from+toIndex], from)
+	item := itemDetail(rest[:from+toIndex], from)
 	if item == "" {
 		return types.NarrativeFrame{}, false
 	}
