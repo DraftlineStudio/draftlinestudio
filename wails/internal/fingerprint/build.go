@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	engine  = "draftline-narrative-fingerprint-v4"
-	version = 4
+	engine  = "draftline-manuscript-memory-v5"
+	version = 5
 )
 
 // Build reconstructs all derived fingerprint data while preserving explicit
@@ -21,6 +21,8 @@ func Build(book *types.BookData, progress func(types.StoryAnalysisProgress)) *ty
 		Engine: engine, Version: version, LastAnalyzed: time.Now().UTC().Format(time.RFC3339),
 		Contexts: []types.StoryContext{}, TemporalConstraints: []types.TemporalConstraint{},
 		Assertions: []types.StoryAssertion{}, NarrativeFingerprints: []types.NarrativeFingerprint{}, NarrativeRelations: []types.NarrativeFingerprintRelation{},
+		Fingerprints: []types.ManuscriptFingerprint{}, FingerprintRelations: []types.ManuscriptFingerprintRelation{}, EventIdentities: []types.ManuscriptEventIdentity{},
+		StateHistories: []types.FingerprintStateHistory{}, NarrativeDevelopments: []types.NarrativeDevelopment{}, Inspections: []types.FingerprintInspection{},
 		Events: []types.FingerprintEvent{}, States: []types.StoryStateInterval{},
 		Threads: []types.StoryThread{}, Diagnostics: []types.FingerprintDiagnostic{},
 	}
@@ -44,6 +46,7 @@ func Build(book *types.BookData, progress func(types.StoryAnalysisProgress)) *ty
 	result.Diagnostics = append(result.Diagnostics, diagnostics...)
 	result.Assertions = buildAssertions(records, result.Contexts, contextByEvidence, points)
 	applyAssertionCorrections(result.Assertions, result.AuthorModel.Corrections)
+	result.Fingerprints, result.FingerprintRelations, result.EventIdentities = buildFingerprintCorpus(result.Assertions, records)
 	result.NarrativeFingerprints, result.NarrativeRelations = promoteNarrativeFingerprints(result.Assertions, records)
 	applyNarrativeFingerprintCorrections(result.NarrativeFingerprints, result.AuthorModel.Corrections)
 	result.Events = legacyEventsFromNarrative(book, result.NarrativeFingerprints, records)
@@ -75,6 +78,11 @@ func Build(book *types.BookData, progress func(types.StoryAnalysisProgress)) *ty
 		EvidenceAtoms: len(records), Assertions: len(result.Assertions), PromotedFingerprints: len(result.NarrativeFingerprints),
 		RetainedAsEvidence: len(records) - len(promotedEvidence),
 	}
+	result.CorpusStats = types.FingerprintCorpusStats{
+		EvidenceAtoms: len(records), Assertions: len(result.Assertions), Fingerprints: len(result.Fingerprints),
+		Relations: len(result.FingerprintRelations), EventIdentities: len(result.EventIdentities),
+	}
+	result.CorpusDiagnostic = buildCorpusDiagnosticReport(result)
 	result.DiagnosticReport = buildNarrativeDiagnosticReport(result)
 	if progress != nil {
 		progress(types.StoryAnalysisProgress{Phase: "chronology", Message: "Chronology model current", Current: len(records), Total: len(records), Percent: 82})
