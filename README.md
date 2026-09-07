@@ -42,6 +42,10 @@ AI debug logging is opt-in because its logs can contain prompts and manuscript t
 - prose/v3 local natural-language processing
 - Vitest and Go test suites
 
+## Downloads
+
+Prebuilt packages are attached to each [GitHub release](https://github.com/DraftlineStudio/draftlinestudio/releases): a Windows installer and portable exe, a universal macOS disk image, and a Linux AppImage. See [docs/RELEASING.md](docs/RELEASING.md) for platform requirements and signing status.
+
 ## Building from source
 
 ### Requirements

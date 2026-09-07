@@ -86,3 +86,9 @@ fingerprints-v5.txt
 narrative-developments-v5.txt
 inspections-v5.txt
 fingerprint-report.txt
+
+# Wails regenerates these on every Windows build (icon/version resource object
+# and the rendered NSIS helper); build/windows/installer/project.nsi is the
+# only installer file that belongs in the repository.
+*.syso
+wails/build/windows/installer/wails_tools.nsh

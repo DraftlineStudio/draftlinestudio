@@ -12,8 +12,8 @@
 	<key>CFBundleExecutable</key><string>draftline</string>
 	<key>CFBundleIdentifier</key><string>com.draftline.app</string>
 	<key>CFBundleIconFile</key><string>iconfile</string>
-	<key>CFBundleShortVersionString</key><string>0.16.0</string>
-	<key>CFBundleVersion</key><string>0.16.0</string>
+	<key>CFBundleShortVersionString</key><string>0.17.02561</string>
+	<key>CFBundleVersion</key><string>0.17.02561</string>
 	<key>NSHighResolutionCapable</key><true/>
 	<key>LSMinimumSystemVersion</key><string>10.15.0</string>
 	<key>CFBundleDocumentTypes</key>
