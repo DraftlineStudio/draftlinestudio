@@ -99,9 +99,9 @@ func inferTemporalConstraints(records []types.EvidenceRecord, contexts map[strin
 	return result
 }
 
-func solveTemporal(records []types.EvidenceRecord, contexts map[string]string, constraints []types.TemporalConstraint) (map[string]types.StoryTime, []types.FingerprintDiagnostic) {
+func solveTemporal(records []types.EvidenceRecord, contexts map[string]string, constraints []types.TemporalConstraint) (map[string]types.StoryTime, []string) {
 	points := map[string]types.StoryTime{}
-	diagnostics := []types.FingerprintDiagnostic{}
+	diagnostics := []string{}
 	anchors := map[string]float64{}
 	var lastNarrativeAnchor *float64
 	for _, record := range records {

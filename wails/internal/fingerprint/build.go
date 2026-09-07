@@ -1,4 +1,9 @@
-// Package fingerprint builds Draftline's deterministic semantic story model.
+// Package fingerprint builds Draftline's deterministic manuscript-memory
+// model (v5): typed frames → canonical state ledgers → event identities →
+// narrative developments → continuity inspections. Extraction never
+// generates propositions — every free-text payload is a verbatim slice of a
+// source sentence, and a frame abstains when a slot cannot be filled
+// confidently.
 package fingerprint
 
 import (
@@ -9,22 +14,20 @@ import (
 )
 
 const (
-	engine  = "draftline-manuscript-memory-v5"
-	version = 5
+	engine = "draftline-manuscript-memory-v5"
+	// Schema 6 is the typed-frame corpus; schema 5 (the scrapped SPO corpus)
+	// is silently discarded on the next analysis pass.
+	version = 6
 )
 
-// Build reconstructs all derived fingerprint data while preserving explicit
-// author intent. Later passes enrich assertions, events, states and threads.
+// Build reconstructs all derived manuscript-memory data while preserving
+// explicit author intent (contexts, corrections, voice notes).
 func Build(book *types.BookData, progress func(types.StoryAnalysisProgress)) *types.StoryFingerprint {
 	prior := book.Analysis.Fingerprint
 	result := &types.StoryFingerprint{
 		Engine: engine, Version: version, LastAnalyzed: time.Now().UTC().Format(time.RFC3339),
 		Contexts: []types.StoryContext{}, TemporalConstraints: []types.TemporalConstraint{},
-		Assertions:   []types.StoryAssertion{},
-		Fingerprints: []types.ManuscriptFingerprint{}, FingerprintRelations: []types.ManuscriptFingerprintRelation{}, EventIdentities: []types.ManuscriptEventIdentity{},
-		StateHistories: []types.FingerprintStateHistory{}, NarrativeDevelopments: []types.NarrativeDevelopment{}, Inspections: []types.FingerprintInspection{},
-		Events: []types.FingerprintEvent{}, States: []types.StoryStateInterval{},
-		Threads: []types.StoryThread{}, Diagnostics: []types.FingerprintDiagnostic{},
+		Frames: []types.NarrativeFrame{},
 	}
 	if book.Analysis.Evidence == nil {
 		return result
@@ -34,52 +37,71 @@ func Build(book *types.BookData, progress func(types.StoryAnalysisProgress)) *ty
 		result.AuthorModel = prior.AuthorModel
 	}
 	if progress != nil {
-		progress(types.StoryAnalysisProgress{Phase: "chronology", Message: "Resolving story time and reality contexts", Current: 0, Total: len(book.Analysis.Evidence.Records), Percent: 78})
+		progress(types.StoryAnalysisProgress{Phase: "memory", Message: "Building manuscript memory", Current: 0, Total: len(book.Analysis.Evidence.Records), Percent: 78})
 	}
 	records := eligibleEvidence(book.Analysis.Evidence.Records)
-	reconcileStructureDecisions(result, records)
 	contexts, contextByEvidence := inferContexts(records, result.AuthorModel.Contexts)
 	result.Contexts = contexts
 	applyEvidenceContextCorrections(result.AuthorModel.Corrections, contextByEvidence)
 	result.TemporalConstraints = inferTemporalConstraints(records, contextByEvidence)
-	points, diagnostics := solveTemporal(records, contextByEvidence, result.TemporalConstraints)
-	result.Diagnostics = append(result.Diagnostics, diagnostics...)
-	result.Assertions = buildAssertions(records, result.Contexts, contextByEvidence, points)
-	applyAssertionCorrections(result.Assertions, result.AuthorModel.Corrections)
-	result.Fingerprints, result.FingerprintRelations, result.EventIdentities = buildFingerprintCorpus(result.Assertions, records)
-	applyManuscriptFingerprintCorrections(result.Fingerprints, result.AuthorModel.Corrections)
-	result.StateHistories = buildFingerprintStateHistories(result.Fingerprints, records)
-	result.NarrativeDevelopments = synthesizeNarrativeDevelopments(result.Fingerprints, result.FingerprintRelations, result.StateHistories, records)
-	// Events, threads and Story Structure intentionally remain empty. They are
-	// future projections of NarrativeDevelopment, never of raw fingerprints.
-	result.Events = []types.FingerprintEvent{}
-	// Continuity state remains evidence-complete even when a detail is not
-	// selected for narrative display. These support events are internal joins;
-	// they are never exposed as narrative fingerprints or timeline nodes.
-	supportEvents := consolidateEvents(seedEvents(book, records, contextByEvidence, points), records, result.Assertions, prior)
-	result.States = buildStates(supportEvents, records, result.Assertions)
+	points, _ := solveTemporal(records, contextByEvidence, result.TemporalConstraints)
+
+	scopes := scopesFromContexts(result.Contexts)
+	result.Frames = extractFrames(book, records, contextByEvidence, points, scopes)
+	result.Ledgers = buildLedgers(result.Frames)
+	result.EventIdentities = resolveEventIdentities(result.Frames)
+	result.Developments = synthesizeDevelopments(result.Frames, result.Ledgers, result.EventIdentities)
+	result.Inspections = buildInspections(result.Frames, result.Ledgers, result.EventIdentities, scopes)
+
 	result.Profiles = deriveProfiles(records, result.AuthorModel.Profiles)
 	result.Voices = buildVoiceProfiles(book, result.AuthorModel.VoiceNotes)
-	// Thread, structure and arc inference intentionally do not run in schema 5.
-	result.Threads = []types.StoryThread{}
-	result.Diagnostics = append(result.Diagnostics, buildDiagnostics(book, result, records, supportEvents)...)
-	reconcileCorrections(result)
-	result.Diagnostics = append(result.Diagnostics, correctionDiagnostics(result.AuthorModel.Corrections)...)
-	result.Diagnostics = append(result.Diagnostics, structureDecisionDiagnostics(result.AuthorModel.StructureDecisions)...)
-	result.Structure = nil
-	result.Inspections = buildFingerprintInspections(result, records)
+
 	result.CorpusStats = types.FingerprintCorpusStats{
-		EvidenceAtoms: len(records), Assertions: len(result.Assertions), Fingerprints: len(result.Fingerprints),
-		Relations: len(result.FingerprintRelations), EventIdentities: len(result.EventIdentities), StateHistories: len(result.StateHistories),
-		Developments: len(result.NarrativeDevelopments), Inspections: len(result.Inspections),
+		EvidenceAtoms: len(records), Frames: len(result.Frames), Abstained: abstainedCount(result.Frames),
+		Ledgers: len(result.Ledgers), EventIdentities: len(result.EventIdentities),
+		Developments: len(result.Developments), Inspections: len(result.Inspections),
 	}
-	result.CorpusDiagnostic = buildCorpusDiagnosticReport(result)
-	result.DevelopmentDiagnostic = buildNarrativeDevelopmentDiagnosticReport(result)
-	result.InspectionDiagnostic = buildInspectionDiagnosticReport(result)
+	result.FrameDiagnostic = buildFrameReport(result)
+	result.DevelopmentDiagnostic = buildDevelopmentReport(result)
+	result.InspectionDiagnostic = buildInspectionReport(result)
 	if progress != nil {
-		progress(types.StoryAnalysisProgress{Phase: "chronology", Message: "Chronology model current", Current: len(records), Total: len(records), Percent: 82})
+		progress(types.StoryAnalysisProgress{Phase: "memory", Message: "Manuscript memory current", Current: len(records), Total: len(records), Percent: 82})
 	}
 	return result
+}
+
+func abstainedCount(frames []types.NarrativeFrame) int {
+	count := 0
+	for _, frame := range frames {
+		if len(frame.Abstentions) > 0 {
+			count++
+		}
+	}
+	return count
+}
+
+// scopesFromContexts projects story contexts into reality scopes so frames
+// can carry a scope without re-deriving context inference.
+func scopesFromContexts(contexts []types.StoryContext) map[string]types.NarrativeRealityScope {
+	scopes := map[string]types.NarrativeRealityScope{}
+	for _, context := range contexts {
+		kind := context.Kind
+		switch kind {
+		case "primary":
+			kind = "current"
+		case "memory":
+			kind = "remembered"
+		case "past":
+			kind = "flashback"
+		case "":
+			kind = "uncertain"
+		}
+		scopes[context.ID] = types.NarrativeRealityScope{
+			ID: context.ID, Kind: kind, Label: context.Label,
+			ParentID: context.ParentID, Confidence: context.Confidence,
+		}
+	}
+	return scopes
 }
 
 func eligibleEvidence(records []types.EvidenceRecord) []types.EvidenceRecord {
@@ -99,44 +121,6 @@ func eligibleEvidence(records []types.EvidenceRecord) []types.EvidenceRecord {
 		return result[i].StartOffset < result[j].StartOffset
 	})
 	return result
-}
-
-func seedEvents(book *types.BookData, records []types.EvidenceRecord, contexts map[string]string, points map[string]types.StoryTime) []types.FingerprintEvent {
-	result := make([]types.FingerprintEvent, 0, len(records))
-	for order, record := range records {
-		result = append(result, types.FingerprintEvent{
-			ID: stableID("event", record.ID), Summary: mechanicalSummary(record), EvidenceIDs: []string{record.ID},
-			CharacterIDs: clone(record.CharacterIDs), CharacterNames: clone(record.CharacterNames), Kinds: []string{record.EvidenceType},
-			ContextID: contexts[record.ID], StoryTime: points[record.ID], ChapterID: record.ChapterID,
-			ChapterIndex: record.ChapterIndex, ChapterTitle: chapterTitle(book, record), ParagraphIndex: record.ParagraphIndex,
-			StartOffset: record.StartOffset, NarrativeOrder: order, Importance: seedImportance(record), Confidence: record.Confidence, Status: record.Status,
-		})
-	}
-	return result
-}
-
-func seedImportance(record types.EvidenceRecord) float64 {
-	weight := map[string]float64{"discovery": .82, "introduction": .72, "transition": .68, "interaction": .62, "time_reference": .58, "state": .35}[record.EvidenceType]
-	if weight == 0 {
-		weight = .45
-	}
-	if record.Pinned || record.Source == "author" {
-		return 1
-	}
-	if len(record.TimeExpressions) > 0 {
-		weight += .08
-	}
-	if weight > 1 {
-		weight = 1
-	}
-	return weight
-}
-
-func mechanicalSummary(record types.EvidenceRecord) string {
-	if record.AuthorText != "" {
-		return record.AuthorText
-	}
-	return record.Text
 }
 
 func chapterTitle(book *types.BookData, record types.EvidenceRecord) string {

@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02554] - 2026-09-06
+
+### Changed
+- Replaced the narrative-fingerprint engine with the v5 manuscript-memory architecture (stage 1: the reset). The freeform subject/predicate/object assertion generator, lexical same-event resolver, verb-driven state transitions, promoted-fingerprint corpus, and the dead structure/thread/arc builders are deleted along with their types; the engine now carries typed frames (constrained vocabulary, verbatim payloads, explicit abstention), state ledgers, structured event identities, developments, and scope-aware inspections as its model, with extraction landing in the next builds. Story timeline now always builds from source evidence; continuity projects the new inspections. The Story Graph, Threads, and Worth Reviewing panels are disconnected with clear rebuilding notices; Continuity, Ask Draftline, and the Evidence index are unaffected. The fingerprintdiag tool now writes fingerprints-v5.txt, narrative-developments-v5.txt, and inspections-v5.txt in UTF-8.
+
+---
+
 ## [0.17.02553] - 2026-09-06
 
 ### Changed

@@ -5,12 +5,6 @@ import (
 	"draftline/internal/types"
 )
 
-// QueryStoryFingerprint answers local, deterministic story questions without
-// AI, filesystem access, or manuscript mutation.
-func (a *App) QueryStoryFingerprint(book types.BookData, request types.FingerprintQueryRequest) types.FingerprintQueryAnswer {
-	return fingerprint.Query(book, request)
-}
-
 // GetFingerprintTextDiagnostics returns the three independent, selectable
 // manuscript-memory quality reports. It performs no I/O and never sends
 // manuscript content to an external service.

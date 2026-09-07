@@ -57,6 +57,10 @@ func Build(book types.BookData) types.ContinuityReport {
 	return report
 }
 
+// fingerprintSignals projects manuscript-memory inspections (v5) into
+// continuity signals. Cross-scope divergences are reported as informational
+// so deliberate flashbacks, dreams, and simulations are not flagged as
+// errors.
 func fingerprintSignals(book types.BookData) []types.ContinuitySignal {
 	if book.Analysis.Fingerprint == nil {
 		return nil
@@ -66,14 +70,20 @@ func fingerprintSignals(book types.BookData) []types.ContinuitySignal {
 	for _, record := range book.Analysis.Evidence.Records {
 		records[record.ID] = record
 	}
-	for _, item := range book.Analysis.Fingerprint.Diagnostics {
+	for _, item := range book.Analysis.Fingerprint.Inspections {
 		sources := []types.ContinuitySource{}
-		for _, evidenceID := range item.EvidenceIDs {
-			if record, ok := records[evidenceID]; ok {
-				sources = append(sources, sourceFromRecord(book, record))
+		for _, side := range item.Sides {
+			for _, span := range side.EvidenceSpans {
+				if record, ok := records[span.EvidenceID]; ok {
+					sources = append(sources, sourceFromRecord(book, record))
+				}
 			}
 		}
-		result = append(result, signal("fingerprint-"+item.Kind, "story", item.Severity, item.Title, item.Detail, nil, nil, sources, item.Confidence))
+		severity := item.Severity
+		if item.ScopeAssessment == "cross_scope_divergence" {
+			severity = "info"
+		}
+		result = append(result, signal("memory-"+item.Kind, "story", severity, item.Title, item.Detail, nil, nil, sources, item.Confidence))
 	}
 	return result
 }

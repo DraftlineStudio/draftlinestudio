@@ -170,10 +170,6 @@ export function OpenRecentProject(arg1) {
   return window['go']['main']['App']['OpenRecentProject'](arg1);
 }
 
-export function QueryStoryFingerprint(arg1, arg2) {
-  return window['go']['main']['App']['QueryStoryFingerprint'](arg1, arg2);
-}
-
 export function ReadAloudServerURL() {
   return window['go']['main']['App']['ReadAloudServerURL']();
 }

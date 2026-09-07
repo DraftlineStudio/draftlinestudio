@@ -87,8 +87,6 @@ export function OpenCodexAuth():Promise<void>;
 
 export function OpenRecentProject(arg1:string):Promise<types.BookData>;
 
-export function QueryStoryFingerprint(arg1:types.BookData,arg2:types.FingerprintQueryRequest):Promise<types.FingerprintQueryAnswer>;
-
 export function ReadAloudServerURL():Promise<string>;
 
 export function ReadAloudStatus():Promise<readaloud.Status>;

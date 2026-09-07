@@ -1,82 +1,59 @@
-// Command fingerprintdiag prints Draftline's three textual manuscript-memory
-// quality reports for one or more .draftline archives. It reads archives and
-// their persisted evidence only; it never edits or saves a manuscript.
+// Command fingerprintdiag writes Draftline's three textual manuscript-memory
+// diagnostics for a .draftline archive:
+//
+//	fingerprints-v5.txt            — the typed frame corpus, ledgers, identities
+//	narrative-developments-v5.txt  — the synthesized story account
+//	inspections-v5.txt             — continuity findings with scope assessment
+//
+// It reads archives and their persisted evidence only; it never edits or
+// saves a manuscript. Files are written UTF-8.
 package main
 
 import (
 	"flag"
 	"fmt"
 	"os"
-	"strings"
+	"path/filepath"
 
 	"draftline/internal/book"
 	"draftline/internal/fingerprint"
-	"draftline/internal/types"
 )
 
 func main() {
-	summary := flag.Bool("summary", false, "print report headings and counts without details")
-	reportKind := flag.String("report", "all", "report to print: corpus, developments, inspections, or all")
+	outDir := flag.String("out", ".", "directory to write the three diagnostic files into")
+	stdout := flag.Bool("stdout", false, "print the reports to stdout instead of writing files")
 	flag.Parse()
-	if flag.NArg() == 0 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./cmd/fingerprintdiag [-summary] [-report corpus|developments|inspections|all] manuscript.draftline [...]")
+	if flag.NArg() != 1 {
+		fmt.Fprintln(os.Stderr, "usage: go run ./cmd/fingerprintdiag [-out dir | -stdout] manuscript.draftline")
 		os.Exit(2)
 	}
-	failed := false
-	for _, path := range flag.Args() {
-		manuscript, err := book.Open(path)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s: %v\n", path, err)
-			failed = true
-			continue
-		}
-		reports := fingerprint.TextDiagnostics(&manuscript)
-		fmt.Printf("=== %s ===\n", path)
-		selected, ok := selectReports(reports, *reportKind)
-		if !ok {
-			fmt.Fprintf(os.Stderr, "unknown report %q; use corpus, developments, inspections, or all\n", *reportKind)
-			failed = true
-			continue
-		}
-		for _, report := range selected {
-			if *summary {
-				fmt.Println(reportSummary(report))
-			} else {
-				fmt.Print(report)
-			}
-		}
-	}
-	if failed {
+	path := flag.Arg(0)
+	manuscript, err := book.Open(path)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s: %v\n", path, err)
 		os.Exit(1)
 	}
-}
-
-func selectReports(reports types.FingerprintTextDiagnostics, kind string) ([]string, bool) {
-	switch strings.ToLower(strings.TrimSpace(kind)) {
-	case "corpus":
-		return []string{reports.Corpus}, true
-	case "developments", "development":
-		return []string{reports.Developments}, true
-	case "inspections", "inspection":
-		return []string{reports.Inspections}, true
-	case "all", "":
-		return []string{reports.Corpus, reports.Developments, reports.Inspections}, true
-	default:
-		return nil, false
+	reports := fingerprint.TextDiagnostics(&manuscript)
+	files := []struct {
+		name    string
+		content string
+	}{
+		{"fingerprints-v5.txt", reports.Frames},
+		{"narrative-developments-v5.txt", reports.Developments},
+		{"inspections-v5.txt", reports.Inspections},
 	}
-}
-
-func reportSummary(report string) string {
-	trimmed := strings.TrimSpace(report)
-	lines := strings.Split(report, "\n")
-	result := make([]string, 0, 12)
-	for _, line := range lines {
-		if strings.Contains(line, "DIAGNOSTIC") || strings.HasPrefix(line, "Engine:") || strings.HasPrefix(line, "Evidence atoms:") || strings.HasPrefix(line, "Assertions:") || strings.HasPrefix(line, "Fingerprints:") || strings.HasPrefix(line, "Relations:") || strings.HasPrefix(line, "Same-event identities:") || strings.HasPrefix(line, "State histories:") || strings.HasPrefix(line, "Developments:") || strings.HasPrefix(line, "Inspections:") {
-			result = append(result, line)
+	if *stdout {
+		for _, file := range files {
+			fmt.Printf("=== %s ===\n%s\n", file.name, file.content)
 		}
+		return
 	}
-	if len(result) == 0 {
-		return trimmed
+	for _, file := range files {
+		target := filepath.Join(*outDir, file.name)
+		if err := os.WriteFile(target, []byte(file.content), 0o644); err != nil {
+			fmt.Fprintf(os.Stderr, "write %s: %v\n", target, err)
+			os.Exit(1)
+		}
+		fmt.Printf("wrote %s (%d bytes)\n", target, len(file.content))
 	}
-	return strings.Join(result, "\n")
 }

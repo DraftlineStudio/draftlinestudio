@@ -37,34 +37,18 @@ export default function StorySearchToolWindow() {
   const reportReviewCount = useCallback((undecided: number) => setReviewUndecided(undecided), [])
   const openThreadsTab = useCallback(() => setActiveView('threads'), [])
 
-  const fingerprint = book?.analysis?.fingerprint
-
-  // Tab badge before the Review panel has ever mounted: raw detection count
-  // minus recorded decisions.
-  const reviewBadge = useMemo(() => {
-    if (reviewUndecided !== null) return reviewUndecided
-    const diagnostics = fingerprint?.diagnostics ?? []
-    const decided = new Set((book?.analysis?.continuity?.decisions ?? []).map(d => d.signal_id))
-    return diagnostics.filter(d => !decided.has(d.id)).length
-  }, [reviewUndecided, fingerprint, book?.analysis?.continuity?.decisions])
+  // The Story Graph, Threads, and Review surfaces are disconnected while the
+  // manuscript-memory engine (v5) is rebuilt; their badges stay quiet.
+  const reviewBadge = reviewUndecided ?? 0
 
   const subtitle = useMemo(() => {
     switch (activeView) {
-      case 'map': {
-        const events = fingerprint?.events?.length ?? 0
-        return events > 0
-          ? `story time · ${events} events · the manuscript path weaves through it`
-          : 'story time · builds after analysis runs'
-      }
-      case 'threads': {
-        const threads = fingerprint?.threads ?? []
-        if (threads.length === 0) return 'obligations the story has opened'
-        const open = threads.filter(t => !['resolved', 'abandoned'].includes(t.state)).length
-        const dormant = threads.filter(t => t.state === 'dormant').length
-        return `${threads.length} threads · ${open} open${dormant ? ` · ${dormant} dormant` : ''}`
-      }
+      case 'map':
+        return 'story time · rebuilding on the v5 narrative engine'
+      case 'threads':
+        return 'obligations the story has opened · rebuilding'
       case 'review':
-        return `${reviewBadge} detection${reviewBadge === 1 ? '' : 's'} · deterministic · sorted by severity`
+        return 'detections · rebuilding on the v5 narrative engine'
       case 'continuity':
         return 'review questions · paired sources'
       case 'search':
@@ -72,7 +56,7 @@ export default function StorySearchToolWindow() {
       case 'evidence':
         return 'everything Draftline has indexed'
     }
-  }, [activeView, fingerprint, reviewBadge])
+  }, [activeView])
 
   function beginResize(event: React.PointerEvent<HTMLDivElement>) {
     event.preventDefault()
