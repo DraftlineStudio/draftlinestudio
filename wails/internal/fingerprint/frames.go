@@ -270,6 +270,43 @@ func itemDetail(text string, from int) string {
 	return detail
 }
 
+// lastWordsBefore returns up to n lowercased words immediately preceding
+// position in text, for local grammatical context checks.
+func lastWordsBefore(text string, position, n int) []string {
+	words := strings.Fields(strings.ToLower(text[:position]))
+	if len(words) > n {
+		words = words[len(words)-n:]
+	}
+	return words
+}
+
+// determinerBefore reports a determiner or qualifier directly before the
+// match — the cue that a matched word is a noun phrase head, not a verb.
+func determinerBefore(text string, position int) bool {
+	words := lastWordsBefore(text, position, 1)
+	if len(words) == 0 {
+		return false
+	}
+	switch words[0] {
+	case "a", "an", "the", "clear", "warning", "one", "single", "each", "every", "his", "her", "their":
+		return true
+	}
+	return false
+}
+
+// relativePronounBefore reports a relative pronoun within the two words
+// before the match ("what he was supposed to…") — the phrase sits inside a
+// relative clause and describes no state of the sentence subject.
+func relativePronounBefore(text string, position int) bool {
+	for _, word := range lastWordsBefore(text, position, 2) {
+		switch word {
+		case "what", "who", "whom", "where", "how", "why", "whatever", "whoever":
+			return true
+		}
+	}
+	return false
+}
+
 var negationRe = regexp.MustCompile(`(?i)\b(never|not|no longer|didn't|did not|wasn't|was not|couldn't|could not|refused to)\b`)
 var speculationRe = regexp.MustCompile(`(?i)\b(might|may have|perhaps|possibly|seemed to|appeared to)\b`)
 
@@ -284,7 +321,7 @@ type extractor struct {
 }
 
 var (
-	lifeStatusRe     = regexp.MustCompile(`(?i)\b(was killed|had died|died|was dead|is dead|passed away|survived|was alive|still alive)\b`)
+	lifeStatusRe     = regexp.MustCompile(`(?i)\b(was killed|shot and killed|had died|died|was dead|is dead|passed away|survived|was alive|still alive)\b`)
 	locationSetRe    = regexp.MustCompile(`(?i)\b(?:was|were|stood|sat|waited|lay|remained|lived)\s+(?:back\s+)?(in|at|inside|outside|near)\s+`)
 	locationMoveRe   = regexp.MustCompile(`(?i)\b(entered|arrived at|reached|walked into|stepped into|returned to|went to|drove to|headed to|climbed to|crossed into|(?:drove|headed|walked|rode)\s+(?:north|south|east|west)(?:\s+to)?)\s+`)
 	locationLeaveRe  = regexp.MustCompile(`(?i)\b(left|departed|exited|fled|abandoned)\s+(the\s+|his\s+|her\s+)?`)
@@ -428,9 +465,14 @@ func subjectFrames(fc *frameContext, text, subject, rest string) []types.Narrati
 	}
 
 	if match := injuryRe.FindStringIndex(rest); match != nil {
-		frame := fc.newFrame(types.FrameInjury, strings.TrimSpace(rest[match[0]:match[1]]), .85)
-		frame.Participants = []types.NarrativeParticipant{participant("subject", subject)}
-		frames = append(frames, frame)
+		term := strings.TrimSpace(rest[match[0]:match[1]])
+		// "a clear shot", "the shot" — determiner-led "shot" is the noun
+		// (an opportunity to fire), not a wound. Abstain.
+		if !(strings.EqualFold(term, "shot") && determinerBefore(rest, match[0])) {
+			frame := fc.newFrame(types.FrameInjury, term, .85)
+			frame.Participants = []types.NarrativeParticipant{participant("subject", subject)}
+			frames = append(frames, frame)
+		}
 	}
 
 	if match := knowledgeRe.FindStringSubmatchIndex(rest); match != nil {
@@ -470,11 +512,14 @@ func subjectFrames(fc *frameContext, text, subject, rest string) []types.Narrati
 			frames = append(frames, frame)
 		}
 	} else if match := obligationRe.FindStringSubmatchIndex(rest); match != nil {
-		// "must have <verb>" is epistemic modality (an inference about the
-		// past), not an obligation — abstain rather than invent a duty.
+		// "must have/be/mean <…>" is epistemic modality (an inference), not an
+		// obligation, and an obligation phrase inside a relative clause
+		// ("what he was supposed to look like") describes no duty — abstain
+		// rather than invent one.
 		modal := strings.ToLower(strings.TrimSpace(rest[match[2]:match[3]]))
 		following := strings.ToLower(firstWords(rest[match[1]:], 1))
-		if !(modal == "must" && following == "have") {
+		epistemicModal := modal == "must" && (following == "have" || following == "be" || following == "mean")
+		if !epistemicModal && !relativePronounBefore(rest, match[0]) {
 			if detail, _ := detailSlice(rest, match[1]); detail != "" {
 				frame := fc.newFrame(types.FrameObligation, detail, .8)
 				frame.Value = "open"

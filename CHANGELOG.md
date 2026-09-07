@@ -4,6 +4,16 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02561] - 2026-09-07
+
+### Added
+- Scene-scoped narrative development synthesis for the v5 engine. The synthesizer now walks scene/chapter units (scene breaks detected in the evidence coordinate space) carrying forward what is true or unresolved — open questions, goals, obstacles, firmly known facts — and emits a development whenever a unit's frames change that state: mysteries introduced/narrowed/reframed/resolved, investigation progress (several small frames aggregating into one scene-level change; acquisitions, events, and claims tied to open goals and questions by content-word overlap), obstacles introduced/overcome, goal establishment and changes of course, decisions causally linked to same-scene discoveries, threat escalation (active-character deaths, shrinking countdowns), corroboration/disconfirmation/cross-reality revelation from event identities, and setup/payoff. Every development records its supporting frames, exact evidence spans, before→after state, the goal or question it advances, causal predecessor/successor, and confidence; the narrative-developments diagnostic renders all of it grouped by chapter and scene.
+
+### Fixed
+- Content-word overlap ignores auxiliaries, interrogatives, discourse connectives, contraction remnants, epistemic verbs, and the subject's own name, so "But X didn't know that yet" can no longer open or narrow anything; anaphoric non-questions ("X didn't know.") never open mysteries; recurring-discovery developments require a real acquisition, not a recalled attempt. Extraction: "must be/mean" reads as epistemic modality like "must have"; obligation phrases inside relative clauses ("what he was supposed to look like") abstain; determiner-led "shot" (the noun) is no longer an injury; "shot and killed" now registers as a death.
+
+---
+
 ## [0.17.02560] - 2026-09-07
 
 ### Fixed
