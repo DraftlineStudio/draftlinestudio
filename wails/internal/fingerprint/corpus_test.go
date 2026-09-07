@@ -17,6 +17,9 @@ func TestFingerprintCorpusRetainsRoutineContinuityMemory(t *testing.T) {
 	if fingerprint.Statement == "" || !containsString(fingerprint.EvidenceIDs, "movement") || len(fingerprint.EvidenceSpans) != 1 {
 		t.Fatalf("fingerprint lost semantic detail or provenance: %#v", fingerprint)
 	}
+	if !containsString(fingerprint.EvidenceTypes, "transition") || !containsString(fingerprint.Actions, "walked") || len(fingerprint.NamedEntities) != 2 {
+		t.Fatalf("fingerprint lost normalized source semantics: %#v", fingerprint)
+	}
 }
 
 func TestFingerprintCorpusPreservesEpistemicAndRealityScope(t *testing.T) {
