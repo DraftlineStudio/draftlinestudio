@@ -13,6 +13,45 @@ import (
 	"draftline/internal/types"
 )
 
+var anchorStopWords = map[string]bool{
+	"the": true, "a": true, "an": true, "to": true, "at": true, "in": true,
+	"on": true, "of": true, "and": true, "then": true, "his": true,
+	"her": true, "their": true, "its": true, "into": true, "onto": true,
+	"back": true, "up": true, "down": true, "out": true, "over": true,
+	"toward": true, "towards": true, "forward": true, "away": true,
+}
+
+// Routine motion and posture verbs describe actions a character performs
+// constantly; they can never anchor a same-event identity, no matter what
+// follows them. Retellable events anchor on consequential verbs (found,
+// killed, opened, broke…).
+var routineActionVerbs = map[string]bool{
+	"walked": true, "turned": true, "looked": true, "stood": true,
+	"sat": true, "moved": true, "stepped": true, "ran": true,
+	"nodded": true, "smiled": true, "stopped": true, "leaned": true,
+	"waited": true, "watched": true, "listened": true, "breathed": true,
+}
+
+// contentHead returns the first n content words of a normalized phrase, or
+// "" when fewer than n exist — an event without enough identifying content
+// abstains from identity resolution entirely.
+func contentHead(text string, n int) string {
+	words := []string{}
+	for _, word := range strings.Fields(qualifierKey(text)) {
+		if anchorStopWords[word] {
+			continue
+		}
+		words = append(words, word)
+		if len(words) == n {
+			break
+		}
+	}
+	if len(words) < n {
+		return ""
+	}
+	return strings.Join(words, " ")
+}
+
 type identityKey struct {
 	class   string
 	subject string
@@ -38,11 +77,19 @@ func identityAnchor(frame types.NarrativeFrame) (identityKey, bool) {
 		item := qualifierKey(participantNamed(frame, "item"))
 		return identityKey{class: frame.Type, subject: subject, anchor: item + "→" + recipient}, true
 	case types.FrameEvent:
-		// Same actor + same action/object head. The head comes from the
-		// typed, subject-anchored detail — not from bag-of-words overlap.
-		head := firstWords(qualifierKey(frame.Detail), 3)
-		if strings.TrimSpace(head) == "" {
+		// Same actor + same action/object head. The head is the first two
+		// CONTENT words of the typed detail — function words like "to" and
+		// "the" identify nothing and must never cause a merge, and routine
+		// motion verbs (wherever they sit in the head, "walked" or "started
+		// walking") abstain from identity entirely.
+		head := contentHead(frame.Detail, 2)
+		if head == "" {
 			return identityKey{}, false
+		}
+		for _, word := range strings.Fields(head) {
+			if routineActionVerbs[word] || routineActionVerbs[strings.TrimSuffix(word, "ing")+"ed"] {
+				return identityKey{}, false
+			}
 		}
 		return identityKey{class: frame.Type, subject: subject, anchor: head}, true
 	}
@@ -70,8 +117,8 @@ func resolveEventIdentities(frames []types.NarrativeFrame) []types.NarrativeEven
 			continue // an identity needs at least two accounts
 		}
 		identity := types.NarrativeEventIdentity{
-			ID:         stableID("identity", key.class, key.subject, key.anchor),
-			EventClass: key.class,
+			ID:           stableID("identity", key.class, key.subject, key.anchor),
+			EventClass:   key.class,
 			Participants: []types.NarrativeParticipant{participant("subject", key.subject)},
 			Temporal:     members[0].Temporal,
 			Status:       "consistent",

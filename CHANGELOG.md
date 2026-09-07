@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02560] - 2026-09-07
+
+### Fixed
+- Precision fixes from running the v5 engine against a full manuscript: bare knowledge-state cues now carry the whole sentence instead of a lone verb; "must have" reads as epistemic modality, never an obligation; possession and transfer items require a real determiner-led noun phrase and reject idioms ("lost his mind") and pronoun objects ("gave me just enough autonomy"); routine motion verbs ("walked", "started walking") can never anchor a same-event identity; backward-story-time findings are limited to nearby chapters; and one open question per character per chapter. Diagnostic outputs are gitignored so manuscript-quoting reports never land in the repository.
+
+---
+
 ## [0.17.02559] - 2026-09-06
 
 ### Added

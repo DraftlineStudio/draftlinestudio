@@ -79,3 +79,10 @@ ai_debug.log
 # ─────────────────────────────────────────────────────────────────────────────
 *.sarif
 *.sarif.json
+
+# Manuscript-memory diagnostic output (local only; may quote manuscripts)
+.diag/
+fingerprints-v5.txt
+narrative-developments-v5.txt
+inspections-v5.txt
+fingerprint-report.txt

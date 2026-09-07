@@ -165,15 +165,15 @@ func (fc *frameContext) newFrame(frameType, detail string, confidence float64) t
 		polarity = "negated"
 	}
 	return types.NarrativeFrame{
-		ID:          stableID("frame", fc.record.ID, frameType, detail),
-		Type:        frameType,
-		Detail:      detail,
-		Polarity:    polarity,
-		Epistemic:   "narration",
-		Attribution: types.NarrativeAttribution{Kind: "narrator", Confidence: .9},
-		Scope:       fc.scope,
-		Temporal:    fc.point,
-		ContextID:   fc.point.ContextID,
+		ID:           stableID("frame", fc.record.ID, frameType, detail),
+		Type:         frameType,
+		Detail:       detail,
+		Polarity:     polarity,
+		Epistemic:    "narration",
+		Attribution:  types.NarrativeAttribution{Kind: "narrator", Confidence: .9},
+		Scope:        fc.scope,
+		Temporal:     fc.point,
+		ContextID:    fc.point.ContextID,
 		ChapterIndex: fc.record.ChapterIndex, ParagraphIndex: fc.record.ParagraphIndex,
 		SentenceIndex: fc.record.SentenceIndex, NarrativeOrder: fc.order,
 		EvidenceIDs:   []string{fc.record.ID},
@@ -230,6 +230,33 @@ func detailSlice(text string, from int) (string, bool) {
 
 var itemStopRe = regexp.MustCompile(`(?i)\s+(from|on|in|at|off|under|behind|beside|into|onto|out of|with|before|after|and then)\s`)
 
+// Idiomatic "possessions" that are figures of speech, never inventory, and
+// pronoun-led objects that mark an abstract construction, not an item.
+var idiomPossessions = map[string]bool{
+	"mind": true, "temper": true, "patience": true, "balance": true,
+	"nerve": true, "way": true, "composure": true, "consciousness": true,
+	"track": true, "breath": true, "footing": true, "grip": true,
+	"interest": true, "hope": true, "voice": true, "thought": true,
+}
+var pronounLeadRe = regexp.MustCompile(`(?i)^(me|him|her|them|us|it|himself|herself|themselves|myself)\b`)
+
+// plausibleItem rejects payloads that cannot be inventory: idioms and
+// pronoun-led abstract constructions. Abstaining beats inventing.
+func plausibleItem(item string) bool {
+	if item == "" || pronounLeadRe.MatchString(item) {
+		return false
+	}
+	return !idiomPossessions[strings.ToLower(qualifierFirstWord(item))]
+}
+
+func qualifierFirstWord(text string) string {
+	words := strings.Fields(text)
+	if len(words) == 0 {
+		return ""
+	}
+	return words[0]
+}
+
 // itemDetail slices an item noun phrase: like detailSlice, but also stops at
 // the first preposition so "the brass key from the desk" yields "brass key".
 func itemDetail(text string, from int) string {
@@ -257,23 +284,23 @@ type extractor struct {
 }
 
 var (
-	lifeStatusRe  = regexp.MustCompile(`(?i)\b(was killed|had died|died|was dead|is dead|passed away|survived|was alive|still alive)\b`)
-	locationSetRe = regexp.MustCompile(`(?i)\b(?:was|were|stood|sat|waited|lay|remained|lived)\s+(?:back\s+)?(in|at|inside|outside|near)\s+`)
-	locationMoveRe = regexp.MustCompile(`(?i)\b(entered|arrived at|reached|walked into|stepped into|returned to|went to|drove to|headed to|climbed to|crossed into|(?:drove|headed|walked|rode)\s+(?:north|south|east|west)(?:\s+to)?)\s+`)
-	locationLeaveRe = regexp.MustCompile(`(?i)\b(left|departed|exited|fled|abandoned)\s+(the\s+|his\s+|her\s+)?`)
-	possessionGetRe = regexp.MustCompile(`(?i)\b(picked up|took|grabbed|pocketed|carried|held|clutched|drew|retrieved|kept)\s+(?:up\s+)?(the|a|an|his|her|their|its)\s+`)
-	possessionLoseRe = regexp.MustCompile(`(?i)\b(dropped|lost|surrendered|discarded|tossed away|left behind)\s+(the|a|an|his|her|their)\s+`)
-	transferRe    = regexp.MustCompile(`(?i)\b(handed|gave|passed|tossed|slid|returned)\s+(the|a|an|his|her|their)?\s*`)
-	injuryRe      = regexp.MustCompile(`(?i)\b(wounded|bleeding|broken (?:arm|leg|rib|nose|wrist|ankle|hand)|bruised|shot|stabbed|burned|limping|concussion|sprained|fractured|injured)\b`)
-	knowledgeRe   = regexp.MustCompile(`(?i)\b(knew|learned|realized|discovered|remembered|noticed|recognized|understood)\s+(that\s+)?`)
-	beliefRe      = regexp.MustCompile(`(?i)\b(believed|suspected|assumed|thought|feared|hoped|doubted)\s+(that\s+)?`)
-	goalRe        = regexp.MustCompile(`(?i)\b(wanted|needed|planned|intended|hoped|aimed)\s+to\s+`)
-	decisionRe    = regexp.MustCompile(`(?i)\b(decided|chose|agreed|resolved|refused)\s+(?:to\s+|not\s+to\s+|that\s+)?`)
-	obligationRe  = regexp.MustCompile(`(?i)\b(had to|promised to|was supposed to|owed|was ordered to|swore to|must)\s+`)
-	relationshipRe = regexp.MustCompile(`(?i)^,?\s*(?:'s|\x{2019}s)?\s*(partner|wife|husband|brother|sister|mother|father|son|daughter|boss|friend|mentor|ex-wife|ex-husband)\b`)
-	accessGainRe  = regexp.MustCompile(`(?i)\b(had|knew|got|received|memorized|copied)\s+(?:the|a|an|his|her)?\s*(key(?:card)?|code|password|combination|badge|passcode|access)\b`)
-	claimTagRe    = regexp.MustCompile(`(?i)[,”"]\s*([A-Z][\p{L}'\x{2019}.-]*(?:\s+[A-Z][\p{L}'\x{2019}.-]*)?)\s+(said|says|told|insisted|claimed|replied|answered|explained|admitted|warned|whispered|shouted|muttered|announced)\b`)
-	quotedRe      = regexp.MustCompile(`[“"]([^”"]{2,400})[”"]`)
+	lifeStatusRe     = regexp.MustCompile(`(?i)\b(was killed|had died|died|was dead|is dead|passed away|survived|was alive|still alive)\b`)
+	locationSetRe    = regexp.MustCompile(`(?i)\b(?:was|were|stood|sat|waited|lay|remained|lived)\s+(?:back\s+)?(in|at|inside|outside|near)\s+`)
+	locationMoveRe   = regexp.MustCompile(`(?i)\b(entered|arrived at|reached|walked into|stepped into|returned to|went to|drove to|headed to|climbed to|crossed into|(?:drove|headed|walked|rode)\s+(?:north|south|east|west)(?:\s+to)?)\s+`)
+	locationLeaveRe  = regexp.MustCompile(`(?i)\b(left|departed|exited|fled|abandoned)\s+(the\s+|his\s+|her\s+)?`)
+	possessionGetRe  = regexp.MustCompile(`(?i)\b(picked up|took|grabbed|pocketed|carried|held|clutched|drew|retrieved|kept)\s+(?:up\s+)?(the|a|an|his|her|their|its)\s+`)
+	possessionLoseRe = regexp.MustCompile(`(?i)\b(dropped|lost|surrendered|discarded|tossed away|left behind)\s+(?:(?:the|a|an|his|her|their)\b)\s+`)
+	transferRe       = regexp.MustCompile(`(?i)\b(handed|gave|passed|tossed|slid|returned)\s+(?:the|a|an|his|her|their|them|it|both)\b\s*`)
+	injuryRe         = regexp.MustCompile(`(?i)\b(wounded|bleeding|broken (?:arm|leg|rib|nose|wrist|ankle|hand)|bruised|shot|stabbed|burned|limping|concussion|sprained|fractured|injured)\b`)
+	knowledgeRe      = regexp.MustCompile(`(?i)\b(knew|learned|realized|discovered|remembered|noticed|recognized|understood)\s+(that\s+)?`)
+	beliefRe         = regexp.MustCompile(`(?i)\b(believed|suspected|assumed|thought|feared|hoped|doubted)\s+(that\s+)?`)
+	goalRe           = regexp.MustCompile(`(?i)\b(wanted|needed|planned|intended|hoped|aimed)\s+to\s+`)
+	decisionRe       = regexp.MustCompile(`(?i)\b(decided|chose|agreed|resolved|refused)\s+(?:to\s+|not\s+to\s+|that\s+)?`)
+	obligationRe     = regexp.MustCompile(`(?i)\b(had to|promised to|was supposed to|owed|was ordered to|swore to|must)\s+`)
+	relationshipRe   = regexp.MustCompile(`(?i)^,?\s*(?:'s|\x{2019}s)?\s*(partner|wife|husband|brother|sister|mother|father|son|daughter|boss|friend|mentor|ex-wife|ex-husband)\b`)
+	accessGainRe     = regexp.MustCompile(`(?i)\b(had|knew|got|received|memorized|copied)\s+(?:the|a|an|his|her)?\s*(key(?:card)?|code|password|combination|badge|passcode|access)\b`)
+	claimTagRe       = regexp.MustCompile(`(?i)[,”"]\s*([A-Z][\p{L}'\x{2019}.-]*(?:\s+[A-Z][\p{L}'\x{2019}.-]*)?)\s+(said|says|told|insisted|claimed|replied|answered|explained|admitted|warned|whispered|shouted|muttered|announced)\b`)
+	quotedRe         = regexp.MustCompile(`[“"]([^”"]{2,400})[”"]`)
 )
 
 // extractFrames turns evidence records into typed frames.
@@ -385,14 +412,14 @@ func subjectFrames(fc *frameContext, text, subject, rest string) []types.Narrati
 			frames = append(frames, frame)
 		}
 	} else if match := possessionGetRe.FindStringSubmatchIndex(rest); match != nil {
-		if detail := itemDetail(rest, match[1]); detail != "" {
+		if detail := itemDetail(rest, match[1]); plausibleItem(detail) {
 			frame := fc.newFrame(types.FramePossession, detail, .85)
 			frame.Value = "holds"
 			frame.Participants = []types.NarrativeParticipant{participant("subject", subject), participant("item", detail)}
 			frames = append(frames, frame)
 		}
 	} else if match := possessionLoseRe.FindStringSubmatchIndex(rest); match != nil {
-		if detail := itemDetail(rest, match[1]); detail != "" {
+		if detail := itemDetail(rest, match[1]); plausibleItem(detail) {
 			frame := fc.newFrame(types.FramePossession, detail, .8)
 			frame.Value = "relinquished"
 			frame.Participants = []types.NarrativeParticipant{participant("subject", subject), participant("item", detail)}
@@ -443,11 +470,17 @@ func subjectFrames(fc *frameContext, text, subject, rest string) []types.Narrati
 			frames = append(frames, frame)
 		}
 	} else if match := obligationRe.FindStringSubmatchIndex(rest); match != nil {
-		if detail, _ := detailSlice(rest, match[1]); detail != "" {
-			frame := fc.newFrame(types.FrameObligation, detail, .8)
-			frame.Value = "open"
-			frame.Participants = []types.NarrativeParticipant{participant("subject", subject)}
-			frames = append(frames, frame)
+		// "must have <verb>" is epistemic modality (an inference about the
+		// past), not an obligation — abstain rather than invent a duty.
+		modal := strings.ToLower(strings.TrimSpace(rest[match[2]:match[3]]))
+		following := strings.ToLower(firstWords(rest[match[1]:], 1))
+		if !(modal == "must" && following == "have") {
+			if detail, _ := detailSlice(rest, match[1]); detail != "" {
+				frame := fc.newFrame(types.FrameObligation, detail, .8)
+				frame.Value = "open"
+				frame.Participants = []types.NarrativeParticipant{participant("subject", subject)}
+				frames = append(frames, frame)
+			}
 		}
 	}
 
@@ -532,7 +565,7 @@ func transferFrame(fc *frameContext, subject, rest string, from int) (types.Narr
 		return types.NarrativeFrame{}, false
 	}
 	item := itemDetail(rest[:from+toIndex], from)
-	if item == "" {
+	if !plausibleItem(item) {
 		return types.NarrativeFrame{}, false
 	}
 	afterTo := rest[from+toIndex+4:]
@@ -603,8 +636,10 @@ func knowledgeStateFrames(fc *frameContext) []types.NarrativeFrame {
 			continue
 		}
 		detail := strings.TrimSpace(state.Cue)
-		if detail == "" || !strings.Contains(fc.record.Text, detail) {
-			// The cue must be verbatim; otherwise carry the whole sentence.
+		if detail == "" || len(strings.Fields(detail)) < 3 || !strings.Contains(fc.record.Text, detail) {
+			// A bare cue verb ("noticed") is not manuscript memory — carry
+			// the whole sentence so the payload stays substantive and
+			// verbatim.
 			detail = fc.record.Text
 		}
 		frame := fc.newFrame(frameType, detail, minFloat(.9, state.Confidence+.1))

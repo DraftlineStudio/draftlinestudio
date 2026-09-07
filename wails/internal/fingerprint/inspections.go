@@ -391,7 +391,8 @@ func backwardStoryTime(ledgers []types.StateLedger, frameByID map[string]types.N
 			if previous.Temporal.DayOffset == nil || current.Temporal.DayOffset == nil {
 				continue
 			}
-			if *current.Temporal.DayOffset < *previous.Temporal.DayOffset && current.Scope.ID == previous.Scope.ID && current.Scope.Kind == "current" {
+			if *current.Temporal.DayOffset < *previous.Temporal.DayOffset && current.Scope.ID == previous.Scope.ID && current.Scope.Kind == "current" &&
+				current.ChapterIndex-previous.ChapterIndex <= 2 {
 				inspections = append(inspections, types.NarrativeInspection{
 					ID: stableID("inspection", "backward_time", previous.ID, current.ID), Kind: "timeline_conflict",
 					Severity: "warning", ScopeAssessment: "same_scope_likely_error",
