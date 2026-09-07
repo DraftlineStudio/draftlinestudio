@@ -6,15 +6,6 @@ import (
 	"draftline/internal/types"
 )
 
-func hasNarrativeRelation(values []types.NarrativeFingerprintRelation, kind string) bool {
-	for _, value := range values {
-		if value.Kind == kind {
-			return true
-		}
-	}
-	return false
-}
-
 func TestCommitmentAndFulfillmentBecomeRelatedFingerprints(t *testing.T) {
 	open := record("open", 0, 0, "Gary promised he would find the IBM building maps for Hanlon.")
 	open.CharacterIDs = []string{"gary", "hanlon"}
@@ -29,8 +20,8 @@ func TestCommitmentAndFulfillmentBecomeRelatedFingerprints(t *testing.T) {
 	if len(model.Threads) != 0 {
 		t.Fatalf("thread inference is intentionally disabled in the semantic reset: %#v", model.Threads)
 	}
-	if !hasNarrativeRelation(model.NarrativeRelations, "fulfills") {
-		t.Fatalf("expected source-backed fulfillment relation, got %#v", model.NarrativeRelations)
+	if !hasCorpusRelation(model.FingerprintRelations, "fulfills") {
+		t.Fatalf("expected source-backed fulfillment relation, got %#v", model.FingerprintRelations)
 	}
 }
 

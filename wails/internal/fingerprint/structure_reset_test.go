@@ -6,7 +6,7 @@ import (
 	"draftline/internal/types"
 )
 
-func TestHigherLevelStructureWaitsForValidatedNarrativeFingerprints(t *testing.T) {
+func TestHigherLevelStructureWaitsForNarrativeDevelopments(t *testing.T) {
 	wake := record("wake", 0, 0, "Avery opened their eyes beneath the clinic ceiling.")
 	wake.CharacterIDs, wake.CharacterNames = []string{"avery"}, []string{"Avery"}
 	wake.Action = "opened"

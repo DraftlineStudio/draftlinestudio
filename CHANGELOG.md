@@ -4,6 +4,22 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02550] - 2026-09-06
+
+### Added
+- Added corpus-derived state histories for possession/custody, location, knowledge, belief, relationships, identity, attributes, conditions, goals, and commitments. State entries preserve operation, value, attribution, epistemic status, reality scope, story time, manuscript position, and source evidence without becoming roadmap events.
+- Added fingerprint inspections as a separate corpus query layer. Conflicting assertions, incompatible properties on a shared event, stable-state conflicts, open obligations, and the existing source-backed continuity checks now produce inspectable findings with evidence from every side and an explicit reality/epistemic assessment.
+- Added separate plain-text state-history and inspection diagnostics plus generic fixtures for custody transitions, location and knowledge memory, conflicting attributes, competing event accounts, cross-reality state separation, and unresolved obligations.
+
+### Changed
+- Removed promoted narrative fingerprints from the build path. Story events, threads, and structure remain empty until they can be derived from contextual NarrativeDevelopments; local story questions now query an ephemeral projection of the complete fingerprint corpus instead of roadmap importance.
+- Distinguished carrying an object from acquiring it, preserving custody progression instead of collapsing both statements into one state.
+
+### Fixed
+- Prevented legacy attribute inspection from comparing persistent details across incompatible reality scopes.
+
+---
+
 ## [0.17.02549] - 2026-09-06
 
 ### Added

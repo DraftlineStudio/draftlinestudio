@@ -64,6 +64,20 @@ func buildCorpusDiagnosticReport(model *types.StoryFingerprint) string {
 			}
 		}
 	}
+	if len(model.StateHistories) > 0 {
+		fmt.Fprintln(&b, "STATE HISTORIES")
+		for _, history := range model.StateHistories {
+			fmt.Fprintf(&b, "- %s / %s", history.EntityName, history.Property)
+			if history.Qualifier != "" {
+				fmt.Fprintf(&b, " (%s)", history.Qualifier)
+			}
+			fmt.Fprintln(&b)
+			for _, entry := range history.Entries {
+				fmt.Fprintf(&b, "  chapter %d paragraph %d: %s → %q [%s; evidence %s]\n",
+					entry.ChapterIndex+1, entry.ParagraphIndex+1, entry.Operation, entry.Value, entry.EpistemicStatus, strings.Join(entry.EvidenceIDs, ", "))
+			}
+		}
+	}
 	return b.String()
 }
 

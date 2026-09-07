@@ -38,7 +38,7 @@ func attributeDiagnostics(states []types.StoryStateInterval, events []types.Fing
 	byKey := map[string][]types.StoryStateInterval{}
 	for _, state := range states {
 		if state.Kind == "attribute" {
-			byKey[state.EntityID+"\x00"+state.Kind] = append(byKey[state.EntityID+"\x00"+state.Kind], state)
+			byKey[state.EntityID+"\x00"+state.Kind+"\x00"+state.ContextID] = append(byKey[state.EntityID+"\x00"+state.Kind+"\x00"+state.ContextID], state)
 		}
 	}
 	result := []types.FingerprintDiagnostic{}
