@@ -36,6 +36,7 @@ func synthesizeDevelopments(
 
 	// Ledger-driven rules.
 	goalsSeen := map[string]int{}
+	mysterySeen := map[string]bool{}
 	for _, ledger := range ledgers {
 		switch ledger.Aspect {
 		case "knowledge":
@@ -58,6 +59,11 @@ func synthesizeDevelopments(
 				entryFrame := frameByID[entry.FrameID]
 				if mysteryOpened == nil && (entry.Operation == "clear" || entryFrame.Epistemic == "belief") {
 					mysteryOpened = entry
+					dedupeKey := fmt.Sprintf("%s\u0000%d", ledger.EntityName, entry.ChapterIndex)
+					if mysterySeen[dedupeKey] {
+						continue
+					}
+					mysterySeen[dedupeKey] = true
 					add("mystery_created",
 						fmt.Sprintf("Open question for %s: “%s”", ledger.EntityName, entry.Value),
 						"unknown or merely suspected fact", entryFrame, .75)
