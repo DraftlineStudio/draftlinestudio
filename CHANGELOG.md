@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02553] - 2026-09-06
+
+### Changed
+- The file-size guardrail asks for raise rationale in the commit message or PR description instead of pointing at a maintainers-only ledger, and two code comments no longer cite untracked design-asset paths. (Restores changes lost in a branch reset, together with the private-to-public sync tooling.)
+
+---
+
 ## [0.17.02552] - 2026-09-06
 
 ### Added
