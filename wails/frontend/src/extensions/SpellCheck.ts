@@ -59,7 +59,9 @@ export const SpellCheck = Extension.create({
 
 function buildDecorations(doc: ProseMirrorNode): DecorationSet {
   const decorations: Decoration[] = []
-  const wordPattern = /[A-Za-z]+(?:['’‘ʼ＇][A-Za-z]+)*/g
+  // Keep in sync with spellWordPattern in services/spellCheck.ts: Latin
+  // script so accented words stay whole.
+  const wordPattern = /\p{Script=Latin}+(?:['’‘ʼ＇]\p{Script=Latin}+)*/gu
 
   doc.descendants((node, pos) => {
     if (!node.isText) return

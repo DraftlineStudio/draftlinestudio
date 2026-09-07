@@ -1,3 +1,6 @@
+import affData from '../../public/dictionaries/en_US.aff?raw'
+import dicData from '../../public/dictionaries/en_US.dic?raw'
+import Typo from 'typo-js'
 import { describe, expect, it, vi } from 'vitest'
 import {
   checkWord,
@@ -22,6 +25,12 @@ describe('spell-check word normalization', () => {
     expect(getDictionaryRoot('FleetCom’s')).toBe('FleetCom')
     expect(getDictionaryRoot("FleetCom's")).toBe('FleetCom')
     expect(normalizeCustomDictionary(['FleetCom’s', "FleetCom's"])).toEqual(['FleetCom'])
+  })
+
+  it('treats accented Latin words as whole words, not split at the diacritic', () => {
+    expect(getDictionaryRoot('café’s')).toBe('café')
+    expect(getDictionaryRoot('"naïve,"')).toBe('naïve')
+    expect(normalizeIgnoredWords(['Señora Peña'])).toEqual(['Peña', 'Señora'])
   })
 
   it('expands confirmed multi-word names and aliases into transient words', () => {
@@ -52,6 +61,26 @@ describe('spell-check word normalization', () => {
     } finally {
       globalThis.fetch = originalFetch
       setIgnoredWords([])
+    }
+  })
+})
+
+describe('bundled dictionary vocabulary', () => {
+  const dictionary = new Typo('en_US', affData, dicData)
+
+  it('accepts professional and common-variant vocabulary (SCOWL size 70, variant 2)', () => {
+    for (const word of [
+      'responder', 'responders', 'lockdown', 'takedown', 'bystanders',
+      'grey', 'whisky', 'cancelled', 'towards',
+      'café', 'naïve', 'fiancée',
+    ]) {
+      expect(dictionary.check(word), word).toBe(true)
+    }
+  })
+
+  it('still flags real misspellings', () => {
+    for (const word of ['recieve', 'teh', 'definately', 'xyzzt']) {
+      expect(dictionary.check(word), word).toBe(false)
     }
   })
 })

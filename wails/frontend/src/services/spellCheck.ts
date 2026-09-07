@@ -19,14 +19,16 @@ const commonCorrections: Record<string, string[]> = {
 }
 
 const apostrophePattern = /[’‘ʼ＇]/g
-const spellWordPattern = /[A-Za-z]+(?:['’‘ʼ＇][A-Za-z]+)*/g
+// Latin script (not bare ASCII) so accented prose — café, naïve, fiancée —
+// is checked as whole words instead of being split at the diacritic.
+const spellWordPattern = /\p{Script=Latin}+(?:['’‘ʼ＇]\p{Script=Latin}+)*/gu
 
 export function normalizeSpellWord(word: string): string {
   return word.replace(apostrophePattern, "'")
 }
 
 function cleanWord(word: string): string {
-  return normalizeSpellWord(word).replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, '')
+  return normalizeSpellWord(word).replace(/^[^\p{Script=Latin}0-9]+|[^\p{Script=Latin}0-9]+$/gu, '')
 }
 
 export function getDictionaryRoot(word: string): string {
@@ -275,12 +277,12 @@ export function getWordAtCursor(): { word: string; range: Range } | null {
   let end = offset
 
   // Move start back to beginning of word
-  while (start > 0 && /[A-Za-z0-9'’‘ʼ＇]/.test(text[start - 1])) {
+  while (start > 0 && /[\p{Script=Latin}0-9'’‘ʼ＇]/u.test(text[start - 1])) {
     start--
   }
 
   // Move end forward to end of word
-  while (end < text.length && /[A-Za-z0-9'’‘ʼ＇]/.test(text[end])) {
+  while (end < text.length && /[\p{Script=Latin}0-9'’‘ʼ＇]/u.test(text[end])) {
     end++
   }
 

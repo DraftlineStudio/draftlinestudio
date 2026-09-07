@@ -447,9 +447,17 @@ export namespace types {
 	    entities?: NarrativeParticipant[];
 	    frame_ids: string[];
 	    evidence_ids: string[];
+	    evidence_spans?: NarrativeEvidenceSpan[];
 	    scope_id: string;
 	    chapter_index: number;
+	    scene_index: number;
 	    narrative_order: number;
+	    before?: string;
+	    after?: string;
+	    advances?: string;
+	    advances_frame_ids?: string[];
+	    predecessor_id?: string;
+	    successor_id?: string;
 	    confidence: number;
 	
 	    static createFrom(source: any = {}) {
@@ -465,9 +473,17 @@ export namespace types {
 	        this.entities = this.convertValues(source["entities"], NarrativeParticipant);
 	        this.frame_ids = source["frame_ids"];
 	        this.evidence_ids = source["evidence_ids"];
+	        this.evidence_spans = this.convertValues(source["evidence_spans"], NarrativeEvidenceSpan);
 	        this.scope_id = source["scope_id"];
 	        this.chapter_index = source["chapter_index"];
+	        this.scene_index = source["scene_index"];
 	        this.narrative_order = source["narrative_order"];
+	        this.before = source["before"];
+	        this.after = source["after"];
+	        this.advances = source["advances"];
+	        this.advances_frame_ids = source["advances_frame_ids"];
+	        this.predecessor_id = source["predecessor_id"];
+	        this.successor_id = source["successor_id"];
 	        this.confidence = source["confidence"];
 	    }
 	

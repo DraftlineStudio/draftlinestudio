@@ -43,7 +43,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.17.02561"
+const AppVersion = "0.17.02562"
 
 type aiRequestProfile struct {
 	lightweight bool
