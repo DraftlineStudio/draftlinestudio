@@ -1,3 +1,52 @@
+export namespace main {
+	
+	export class UpdateCheckResult {
+	    current_version: string;
+	    latest_version?: string;
+	    latest_label?: string;
+	    update_available: boolean;
+	    release_url?: string;
+	    release_notes?: string;
+	    asset_name?: string;
+	    asset_size?: number;
+	    error?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateCheckResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.current_version = source["current_version"];
+	        this.latest_version = source["latest_version"];
+	        this.latest_label = source["latest_label"];
+	        this.update_available = source["update_available"];
+	        this.release_url = source["release_url"];
+	        this.release_notes = source["release_notes"];
+	        this.asset_name = source["asset_name"];
+	        this.asset_size = source["asset_size"];
+	        this.error = source["error"];
+	    }
+	}
+	export class UpdateDownloadResult {
+	    path?: string;
+	    launched: boolean;
+	    error?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateDownloadResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.launched = source["launched"];
+	        this.error = source["error"];
+	    }
+	}
+
+}
+
 export namespace readaloud {
 	
 	export class Status {

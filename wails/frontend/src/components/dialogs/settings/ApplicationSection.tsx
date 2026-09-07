@@ -1,5 +1,9 @@
-// Application Settings Section - Identity, Theme, Save Location
+// Application Settings Section - Identity, Theme, Save Location, Updates
 
+import { useState } from 'react'
+import { CheckForUpdates, DownloadUpdate } from '../../../../wailsjs/go/main/App'
+import { BrowserOpenURL } from '../../../../wailsjs/runtime/runtime'
+import type { main } from '../../../../wailsjs/go/models'
 import type { ApplicationSectionProps } from './types'
 
 export default function ApplicationSection({
@@ -15,6 +19,44 @@ export default function ApplicationSection({
   analysisCPUProfile, setAnalysisCPUProfile,
   onBrowse,
 }: ApplicationSectionProps) {
+  const [updateState, setUpdateState] = useState<'idle' | 'checking' | 'checked' | 'downloading' | 'downloaded'>('idle')
+  const [updateResult, setUpdateResult] = useState<main.UpdateCheckResult | null>(null)
+  const [updateError, setUpdateError] = useState('')
+  const [downloadPath, setDownloadPath] = useState('')
+
+  const runUpdateCheck = async () => {
+    setUpdateState('checking')
+    setUpdateError('')
+    setDownloadPath('')
+    try {
+      const result = await CheckForUpdates()
+      setUpdateResult(result)
+      setUpdateError(result.error || '')
+      setUpdateState('checked')
+    } catch {
+      setUpdateError('Could not check for updates.')
+      setUpdateState('checked')
+    }
+  }
+
+  const runUpdateDownload = async () => {
+    setUpdateState('downloading')
+    setUpdateError('')
+    try {
+      const result = await DownloadUpdate()
+      if (result.error) {
+        setUpdateError(result.error)
+        setUpdateState('checked')
+        return
+      }
+      setDownloadPath(result.path || '')
+      setUpdateState('downloaded')
+    } catch {
+      setUpdateError('The download failed.')
+      setUpdateState('checked')
+    }
+  }
+
   return (
     <>
       <div className="settings-section-label" style={{ marginTop: 0 }}>Identity</div>
@@ -152,6 +194,56 @@ export default function ApplicationSection({
         <div className="settings-hint">
           These limits apply only to linguistic and evidence-analysis workers. They never constrain Draftline's scheduler, bindings, files, asset server, or Read Aloud. Adaptive uses Balanced workers and adds a bounded-memory queue for large manuscripts.
         </div>
+      </div>
+
+      <div className="settings-section-label">Updates</div>
+      <div className="dialog-field">
+        <div className="settings-path-row">
+          <button
+            className="dialog-btn settings-browse-btn"
+            onClick={() => void runUpdateCheck()}
+            disabled={updateState === 'checking' || updateState === 'downloading'}
+          >
+            {updateState === 'checking' ? 'Checking…' : 'Check for Updates'}
+          </button>
+          {updateState !== 'idle' && updateState !== 'checking' && updateResult?.update_available && !updateError && (
+            <button
+              className="dialog-btn settings-browse-btn"
+              onClick={() => void runUpdateDownload()}
+              disabled={updateState === 'downloading' || updateState === 'downloaded'}
+            >
+              {updateState === 'downloading' ? 'Downloading…' : `Download ${updateResult.latest_label ?? ''}`}
+            </button>
+          )}
+        </div>
+        {updateError && <div className="settings-hint">{updateError}</div>}
+        {!updateError && updateState === 'checked' && updateResult && !updateResult.update_available && (
+          <div className="settings-hint">You're up to date ({updateResult.current_version}).</div>
+        )}
+        {!updateError && (updateState === 'checked' || updateState === 'downloading') && updateResult?.update_available && (
+          <div className="settings-hint">
+            Version {updateResult.latest_label} is available (you have {updateResult.current_version}).{' '}
+            {updateResult.release_url && (
+              <a
+                href="#"
+                onClick={event => { event.preventDefault(); BrowserOpenURL(updateResult.release_url!) }}
+              >
+                Release notes
+              </a>
+            )}
+            {!updateResult.asset_name && ' No package is published for this platform yet — use the release page.'}
+          </div>
+        )}
+        {updateState === 'downloaded' && (
+          <div className="settings-hint">
+            Downloaded and verified{downloadPath ? `: ${downloadPath}` : '.'} Quit Draftline before installing the new version.
+          </div>
+        )}
+        {updateState === 'idle' && (
+          <div className="settings-hint">
+            Checks the Draftline releases page on GitHub. Nothing is checked or downloaded unless you ask.
+          </div>
+        )}
       </div>
     </>
   )
