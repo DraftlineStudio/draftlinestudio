@@ -17,12 +17,12 @@ var (
 	htmlTagRe   = regexp.MustCompile(`<[^>]+>`)
 )
 
-func buildDiagnostics(book *types.BookData, model *types.StoryFingerprint, records []types.EvidenceRecord) []types.FingerprintDiagnostic {
+func buildDiagnostics(book *types.BookData, model *types.StoryFingerprint, records []types.EvidenceRecord, supportEvents []types.FingerprintEvent) []types.FingerprintDiagnostic {
 	result := []types.FingerprintDiagnostic{}
-	result = append(result, attributeDiagnostics(model.States, model.Events)...)
-	result = append(result, canonDiagnostics(model.AuthorModel.Canon, model.States, model.Events)...)
-	result = append(result, presenceDiagnostics(model.Events, records)...)
-	result = append(result, orphanCharacterDiagnostics(records, model.Events)...)
+	result = append(result, attributeDiagnostics(model.States, supportEvents)...)
+	result = append(result, canonDiagnostics(model.AuthorModel.Canon, model.States, supportEvents)...)
+	result = append(result, presenceDiagnostics(supportEvents, records)...)
+	result = append(result, orphanCharacterDiagnostics(records, supportEvents)...)
 	result = append(result, directionDiagnostics(records)...)
 	result = append(result, identityDiagnostics(records)...)
 	result = append(result, duplicateChapterDiagnostics(book)...)

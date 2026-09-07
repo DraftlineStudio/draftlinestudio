@@ -75,8 +75,8 @@ func TestAuthorCorrectionOverridesTimeAndSurvivesByEvidence(t *testing.T) {
 	book := testBook([]types.EvidenceRecord{discovery})
 	book.Analysis.Fingerprint = &types.StoryFingerprint{AuthorModel: types.StoryAuthorModel{Corrections: []types.FingerprintCorrection{{ID: "time-fix", Kind: "story_day", Value: "-90", EvidenceIDs: []string{"tunnel"}}}}}
 	model := Build(&book, nil)
-	if model.Events[0].StoryTime.DayOffset == nil || *model.Events[0].StoryTime.DayOffset != -90 {
-		t.Fatalf("author chronology correction was not applied: %#v", model.Events[0].StoryTime)
+	if len(model.Assertions) == 0 || model.Assertions[0].Temporal.DayOffset == nil || *model.Assertions[0].Temporal.DayOffset != -90 {
+		t.Fatalf("author chronology correction was not applied to the assertion: %#v", model.Assertions)
 	}
 	if model.AuthorModel.Corrections[0].Status != "active" {
 		t.Fatalf("evidence-backed correction should remain active: %#v", model.AuthorModel.Corrections[0])
