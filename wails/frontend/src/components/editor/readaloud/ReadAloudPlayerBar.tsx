@@ -1,6 +1,6 @@
 // Read Aloud player bar — docked at the bottom of the editor column (the
-// bottom counterpart of the chapter find bar), redesigned after the design
-// mock in reference-assets/"TTS implementation feedback". All state lives in
+// bottom counterpart of the chapter find bar), redesigned after the Read
+// Aloud player design mock. All state lives in
 // readAloudStore; the bar renders only while the plugin is enabled and the
 // player is open. When the voice model is missing it offers setup instead of
 // transport controls (mirroring the AI Studio "set up" flow).

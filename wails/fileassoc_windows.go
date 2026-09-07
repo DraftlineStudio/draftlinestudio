@@ -29,9 +29,9 @@ const (
 )
 
 // Document icon: the dl-icon mark on the brand-blue rounded square
-// (generated from reference-assets/imgs/dl-icon.png; PNG-compressed
-// multi-size ICO). Extracted to %LOCALAPPDATA%\Draftline at registration
-// because DefaultIcon needs a stable on-disk path.
+// (generated from the Draftline icon artwork; PNG-compressed multi-size
+// ICO). Extracted to %LOCALAPPDATA%\Draftline at registration because
+// DefaultIcon needs a stable on-disk path.
 //
 //go:embed build/windows/draftline-doc.ico
 var docIconData []byte
