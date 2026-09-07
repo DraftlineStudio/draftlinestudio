@@ -4,6 +4,14 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02559] - 2026-09-06
+
+### Added
+- Continuity inspections for the v5 engine, with narrative-scope judgment: characters acting after a narrated death, one entity in two places at the same story time, contradictory route directions to the same destination, items changing hands without a hand-off, knowledge referenced before its acquisition, conflicting retellings of one event, countdown reversals and backward story time, unresolved obligations, and items relinquished before ever being held. Same-scope conflicts read as likely errors; divergence across dreams, simulations, and flashbacks is reported as informational scope divergence — deliberate devices are never flattened into continuity errors.
+- A hard acceptance suite: a synthetic manuscript with planted contradictions (route direction, inventory hand-off, countdown reversal, knowledge-before-acquisition, differing retellings, simulation divergence) runs the full pipeline and must catch every plant, keep every frame verbatim and well-formed, and keep the simulation divergence out of the error column.
+
+---
+
 ## [0.17.02558] - 2026-09-06
 
 ### Added
