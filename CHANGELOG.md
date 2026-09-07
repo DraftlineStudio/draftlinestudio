@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02565] - 2026-09-07
+
+### Fixed
+- Claude Code edits no longer open a blank terminal window on Windows.
+
 ## [0.17.02564] - 2026-09-07
 
 ### Added
