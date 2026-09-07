@@ -32,11 +32,6 @@ func TestVoiceProfileAttributesDialogueAndRecordsVernacular(t *testing.T) {
 	if len(profile.AddressForms) == 0 || profile.AddressForms[0].Text != "captain" {
 		t.Fatalf("expected captain address form, got %#v", profile.AddressForms)
 	}
-	book.Analysis.Fingerprint = model
-	answer := Query(book, types.FingerprintQueryRequest{Query: "How does Mara speak?"})
-	if len(answer.Voices) != 1 || answer.Voices[0].CharacterID != "mara" {
-		t.Fatalf("voice query did not return Mara: %#v", answer)
-	}
 }
 
 func TestVoiceProfileDoesNotGuessSpeakerWithoutAttribution(t *testing.T) {

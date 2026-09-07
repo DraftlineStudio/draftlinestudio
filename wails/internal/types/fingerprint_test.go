@@ -7,7 +7,7 @@ import (
 )
 
 func TestStoryFingerprintDoesNotPersistFormattedDiagnostic(t *testing.T) {
-	encoded, err := json.Marshal(StoryFingerprint{CorpusDiagnostic: "corpus quotations", DevelopmentDiagnostic: "development quotations", InspectionDiagnostic: "inspection quotations"})
+	encoded, err := json.Marshal(StoryFingerprint{FrameDiagnostic: "corpus quotations", DevelopmentDiagnostic: "development quotations", InspectionDiagnostic: "inspection quotations"})
 	if err != nil {
 		t.Fatal(err)
 	}
