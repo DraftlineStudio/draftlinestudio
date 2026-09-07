@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02565] - 2026-09-07
+
+### Fixed
+- Claude Code editing requests now launch the pinned native CLI without creating a blank Windows Terminal window over Draftline. The request process retains its isolated temporary home and tool-free configuration, while Windows applies `CREATE_NO_WINDOW` for the full model call.
+
+---
+
 ## [0.17.02564] - 2026-09-07
 
 ### Added
