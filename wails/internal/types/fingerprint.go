@@ -11,6 +11,20 @@ type StoryFingerprint struct {
 	Contexts            []StoryContext       `json:"contexts"`
 	TemporalConstraints []TemporalConstraint `json:"temporal_constraints"`
 	Assertions          []StoryAssertion     `json:"assertions"`
+	// Fingerprints are the normalized manuscript-memory corpus. Unlike the
+	// retired promotion layer, an assertion does not need to be plot-important
+	// to belong here; continuity-useful location, possession, knowledge and
+	// transient-state details remain first-class manuscript knowledge.
+	Fingerprints          []ManuscriptFingerprint         `json:"fingerprints"`
+	FingerprintRelations  []ManuscriptFingerprintRelation `json:"fingerprint_relations,omitempty"`
+	EventIdentities       []ManuscriptEventIdentity       `json:"event_identities,omitempty"`
+	StateHistories        []FingerprintStateHistory       `json:"state_histories,omitempty"`
+	NarrativeDevelopments []NarrativeDevelopment          `json:"narrative_developments,omitempty"`
+	Inspections           []FingerprintInspection         `json:"inspections,omitempty"`
+	CorpusStats           FingerprintCorpusStats          `json:"corpus_stats"`
+	CorpusDiagnostic      string                          `json:"-"`
+	DevelopmentDiagnostic string                          `json:"-"`
+	InspectionDiagnostic  string                          `json:"-"`
 	// NarrativeFingerprints are the precision-first, story-meaningful
 	// assertions promoted from the lossless evidence and assertion layers.
 	// Evidence records are never promoted merely because they contain a verb.
@@ -201,6 +215,156 @@ type NarrativeEvidenceSpan struct {
 	EndOffset      int     `json:"end_offset"`
 	Quote          string  `json:"quote"`
 	Confidence     float64 `json:"confidence"`
+}
+
+// ManuscriptFingerprint is one normalized, source-backed unit of manuscript
+// memory. It may be narratively mundane and still matter to later continuity,
+// state-history, question answering or development synthesis.
+type ManuscriptFingerprint struct {
+	ID              string                  `json:"id"`
+	Kind            string                  `json:"kind"`
+	Statement       string                  `json:"statement"`
+	SemanticKey     string                  `json:"semantic_key"`
+	SubjectID       string                  `json:"subject_id,omitempty"`
+	Subject         string                  `json:"subject,omitempty"`
+	Predicate       string                  `json:"predicate"`
+	ObjectID        string                  `json:"object_id,omitempty"`
+	Object          string                  `json:"object,omitempty"`
+	Polarity        string                  `json:"polarity"`
+	AssertionIDs    []string                `json:"assertion_ids"`
+	EvidenceIDs     []string                `json:"evidence_ids"`
+	EvidenceSpans   []NarrativeEvidenceSpan `json:"evidence_spans"`
+	Participants    []NarrativeParticipant  `json:"participants,omitempty"`
+	StateChange     *NarrativeStateChange   `json:"state_change,omitempty"`
+	EpistemicStatus string                  `json:"epistemic_status"`
+	Attribution     NarrativeAttribution    `json:"attribution"`
+	Scope           NarrativeRealityScope   `json:"scope"`
+	Persistence     string                  `json:"persistence"`
+	Temporal        StoryTime               `json:"temporal"`
+	EventIdentityID string                  `json:"event_identity_id,omitempty"`
+	Confidence      float64                 `json:"confidence"`
+	Status          string                  `json:"status"`
+}
+
+type ManuscriptFingerprintRelation struct {
+	ID          string   `json:"id"`
+	FromID      string   `json:"from_id"`
+	ToID        string   `json:"to_id"`
+	Kind        string   `json:"kind"` // enables | fulfills | contradicts | supersedes | corroborates | same_event
+	Explanation string   `json:"explanation"`
+	EvidenceIDs []string `json:"evidence_ids,omitempty"`
+	Confidence  float64  `json:"confidence"`
+}
+
+type ManuscriptEventProperty struct {
+	Name            string               `json:"name"`
+	Value           string               `json:"value"`
+	FingerprintIDs  []string             `json:"fingerprint_ids"`
+	EvidenceIDs     []string             `json:"evidence_ids"`
+	EpistemicStatus string               `json:"epistemic_status"`
+	Attribution     NarrativeAttribution `json:"attribution"`
+	Confidence      float64              `json:"confidence"`
+}
+
+// ManuscriptEventIdentity links passages that likely describe the same
+// underlying event while retaining every account and conflicting property.
+type ManuscriptEventIdentity struct {
+	ID             string                    `json:"id"`
+	EventType      string                    `json:"event_type"`
+	FingerprintIDs []string                  `json:"fingerprint_ids"`
+	EvidenceIDs    []string                  `json:"evidence_ids"`
+	Participants   []NarrativeParticipant    `json:"participants,omitempty"`
+	ScopeIDs       []string                  `json:"scope_ids"`
+	Temporal       StoryTime                 `json:"temporal"`
+	CausalRole     string                    `json:"causal_role,omitempty"`
+	Properties     []ManuscriptEventProperty `json:"properties,omitempty"`
+	Status         string                    `json:"status"` // resolved | provisional | conflicted
+	Confidence     float64                   `json:"confidence"`
+}
+
+type FingerprintStateEntry struct {
+	ID              string                `json:"id"`
+	FingerprintID   string                `json:"fingerprint_id"`
+	Value           string                `json:"value"`
+	Operation       string                `json:"operation"`
+	EpistemicStatus string                `json:"epistemic_status"`
+	Attribution     NarrativeAttribution  `json:"attribution"`
+	Scope           NarrativeRealityScope `json:"scope"`
+	Temporal        StoryTime             `json:"temporal"`
+	EvidenceIDs     []string              `json:"evidence_ids"`
+	ChapterIndex    int                   `json:"chapter_index"`
+	ParagraphIndex  int                   `json:"paragraph_index"`
+	Confidence      float64               `json:"confidence"`
+}
+
+type FingerprintStateHistory struct {
+	ID         string                  `json:"id"`
+	EntityID   string                  `json:"entity_id,omitempty"`
+	EntityName string                  `json:"entity_name"`
+	Property   string                  `json:"property"`
+	Qualifier  string                  `json:"qualifier,omitempty"`
+	ScopeID    string                  `json:"scope_id"`
+	Entries    []FingerprintStateEntry `json:"entries"`
+}
+
+type NarrativeDevelopmentReason struct {
+	Code           string   `json:"code"`
+	Explanation    string   `json:"explanation"`
+	FingerprintIDs []string `json:"fingerprint_ids,omitempty"`
+	EvidenceIDs    []string `json:"evidence_ids,omitempty"`
+	Confidence     float64  `json:"confidence"`
+}
+
+// NarrativeDevelopment is a contextual change in the course of the story.
+// It is synthesized from one or more fingerprints and is the future input to
+// roadmaps, threads and graphs; fingerprints themselves are not graph nodes.
+type NarrativeDevelopment struct {
+	ID               string                       `json:"id"`
+	Kind             string                       `json:"kind"`
+	Summary          string                       `json:"summary"`
+	Before           string                       `json:"before,omitempty"`
+	After            string                       `json:"after"`
+	AffectedEntities []NarrativeParticipant       `json:"affected_entities,omitempty"`
+	AdvancedConcern  string                       `json:"advanced_concern,omitempty"`
+	FingerprintIDs   []string                     `json:"fingerprint_ids"`
+	EvidenceIDs      []string                     `json:"evidence_ids"`
+	DependencyIDs    []string                     `json:"dependency_ids,omitempty"`
+	Scope            NarrativeRealityScope        `json:"scope"`
+	Temporal         StoryTime                    `json:"temporal"`
+	ChapterStart     int                          `json:"chapter_start"`
+	ChapterEnd       int                          `json:"chapter_end"`
+	Reasons          []NarrativeDevelopmentReason `json:"reasons"`
+	Confidence       float64                      `json:"confidence"`
+	Status           string                       `json:"status"`
+}
+
+type FingerprintInspectionSide struct {
+	Label          string                  `json:"label"`
+	FingerprintIDs []string                `json:"fingerprint_ids,omitempty"`
+	EvidenceSpans  []NarrativeEvidenceSpan `json:"evidence_spans"`
+}
+
+type FingerprintInspection struct {
+	ID              string                      `json:"id"`
+	Kind            string                      `json:"kind"`
+	Severity        string                      `json:"severity"`
+	Title           string                      `json:"title"`
+	Detail          string                      `json:"detail"`
+	ScopeAssessment string                      `json:"scope_assessment"`
+	Sides           []FingerprintInspectionSide `json:"sides"`
+	Confidence      float64                     `json:"confidence"`
+	Status          string                      `json:"status"`
+}
+
+type FingerprintCorpusStats struct {
+	EvidenceAtoms   int `json:"evidence_atoms"`
+	Assertions      int `json:"assertions"`
+	Fingerprints    int `json:"fingerprints"`
+	Relations       int `json:"relations"`
+	EventIdentities int `json:"event_identities"`
+	StateHistories  int `json:"state_histories"`
+	Developments    int `json:"developments"`
+	Inspections     int `json:"inspections"`
 }
 
 type NarrativePromotionReason struct {

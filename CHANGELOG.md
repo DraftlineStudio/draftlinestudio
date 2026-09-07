@@ -4,6 +4,16 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02549] - 2026-09-06
+
+### Added
+- Added schema-5 manuscript-memory fingerprints as a comprehensive normalized corpus rather than a story-importance filter. Every retained assertion now carries semantic subject/predicate/object detail, entities, attribution, epistemic status, reality scope, temporal placement, persistence, state changes, confidence, stable identity, and complete source spans.
+- Added conservative same-event identity resolution using event type, semantic detail, participants, reality scope, temporal compatibility, and nearby narrative context. Multiple accounts retain separate properties and evidence; incompatible properties mark the shared event identity as conflicted instead of being averaged away.
+- Added an in-memory fingerprint-corpus diagnostic that enumerates all retained manuscript knowledge, relationships, evidence, and same-event identities without persisting duplicate quotations in the archive.
+- Added manuscript-independent fixtures proving that routine continuity details remain fingerprints, epistemic and dream scopes survive normalization, repeated assertions accumulate evidence, and conflicting accounts remain attached to one probable underlying event.
+
+---
+
 ## [0.17.02548] - 2026-09-06
 
 ### Added
