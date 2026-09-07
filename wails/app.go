@@ -43,7 +43,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.17.02564"
+const AppVersion = "0.17.02565"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -1315,27 +1315,7 @@ func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string, pro
 	claudeArgs := providers.ClaudeCodeExecArgs(model, profile.lightweight)
 	cmd := claudeExec(ctx, path, claudeArgs...)
 	cmd.Stdin = strings.NewReader(fullPrompt)
-	cmd.Dir = tempHome
-
-	nodeDir := nodeInstallBinDir()
-	baseEnv := os.Environ()
-	filteredEnv := make([]string, 0, len(baseEnv)+4)
-	for _, e := range baseEnv {
-		key, _, _ := strings.Cut(e, "=")
-		switch strings.ToUpper(key) {
-		case "PATH", "HOME", "USERPROFILE", "HOMEDRIVE", "HOMEPATH":
-			continue
-		}
-		filteredEnv = append(filteredEnv, e)
-	}
-	vol := filepath.VolumeName(tempHome)
-	cmd.Env = append(filteredEnv,
-		"PATH="+nodeDir+string(os.PathListSeparator)+os.Getenv("PATH"),
-		"HOME="+tempHome,
-		"USERPROFILE="+tempHome,
-		"HOMEDRIVE="+vol,
-		"HOMEPATH="+strings.TrimPrefix(tempHome, vol),
-	)
+	prepareClaudeRequestCommand(cmd, tempHome)
 
 	stdoutPipe, stdoutPipeErr := cmd.StdoutPipe()
 	stderrPipe, stderrPipeErr := cmd.StderrPipe()
