@@ -85,7 +85,7 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
 
   // Icon set matches the theme buttons in Settings → Application.
   const themeIcon = themeMode === 'light' ? (
-    <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <svg width="15" height="15" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
       <circle cx="7" cy="7" r="2.8"/>
       <line x1="7" y1="1" x2="7" y2="2.4"/><line x1="7" y1="11.6" x2="7" y2="13"/>
       <line x1="1" y1="7" x2="2.4" y2="7"/><line x1="11.6" y1="7" x2="13" y2="7"/>
@@ -93,11 +93,11 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
       <line x1="11.1" y1="2.9" x2="10.1" y2="3.9"/><line x1="3.9" y1="10.1" x2="2.9" y2="11.1"/>
     </svg>
   ) : themeMode === 'dark' ? (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
     </svg>
   ) : (
-    <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
+    <svg width="15" height="15" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
       <circle cx="7" cy="7" r="5.5"/>
       <path d="M7 1.5V7l3.5 2"/>
     </svg>
@@ -114,20 +114,21 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
     </button>
   )
 
-  // Subtle indicator only — clicking opens settings where the verified
+  // Notification-style chip — clicking opens settings where the verified
   // download lives; no dialogs ever interrupt writing.
   const updateButton = updateAvailable && (
     <button
-      className="titlebar-winbtn titlebar-update-available"
+      className="titlebar-update-chip"
       onClick={() => openSettings()}
       title={`Draftline ${updateAvailable.label} is available — open Settings to download`}
       style={{ '--wails-draggable': 'no-drag' } as React.CSSProperties}
     >
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg className="titlebar-update-chip-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="10"/>
-        <path d="M12 16V8"/>
-        <path d="M8 12l4-4 4 4"/>
+        <path d="M12 8v8"/>
+        <path d="M8 12l4 4 4-4"/>
       </svg>
+      <span>Update available</span>
     </button>
   )
 
@@ -140,7 +141,7 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
         title="Author identity"
         style={{ '--wails-draggable': 'no-drag' } as React.CSSProperties}
       >
-        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
+        <svg width="15" height="15" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
           <circle cx="7" cy="7" r="5.5"/>
           <circle cx="7" cy="5.5" r="1.8"/>
           <path d="M3 11.5c0-2.2 1.8-3.5 4-3.5s4 1.3 4 3.5" strokeLinecap="round"/>

@@ -21,6 +21,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 const (
@@ -308,7 +310,25 @@ func (a *App) DownloadUpdate() UpdateDownloadResult {
 	}
 
 	launched := openDownloadedUpdate(targetPath)
+	if launched && runtime.GOOS != "linux" {
+		// The installer (or the mounted disk image's drag-to-replace) needs
+		// the running app out of the way. Give the frontend a moment to show
+		// the result, then close through the normal quit path — unsaved-work
+		// protection applies exactly as it does for the window close button.
+		go func() {
+			time.Sleep(2 * time.Second)
+			a.quit()
+		}()
+	}
 	return UpdateDownloadResult{Path: targetPath, Launched: launched}
+}
+
+// quit closes the app through the normal Wails quit path, so the same
+// close-time protections apply as for the window's close button.
+func (a *App) quit() {
+	if a.ctx != nil {
+		wailsruntime.Quit(a.ctx)
+	}
 }
 
 func openDownloadedUpdate(path string) bool {
