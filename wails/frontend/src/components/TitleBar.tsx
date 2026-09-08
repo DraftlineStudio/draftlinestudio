@@ -11,7 +11,7 @@ interface TitleBarProps {
 
 export default function TitleBar({ minimal = false }: TitleBarProps) {
   const { book, currentSection, newBook, openBook, saveBook, saveBookAs, closeProject, setViewMode } = useBookStore()
-  const { settings, saveSettings, openSettings, openMetadataDialog, openExportWizard, openChapterHistory, openStorySearch } = useAppStore()
+  const { settings, saveSettings, openSettings, openMetadataDialog, openExportWizard, openChapterHistory, openStorySearch, updateAvailable } = useAppStore()
   const [dropOpen, setDropOpen] = useState(false)
   const [dropPos, setDropPos] = useState({ top: 0, left: 0 })
   const btnRef = useRef<HTMLButtonElement>(null)
@@ -111,6 +111,23 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
       style={{ '--wails-draggable': 'no-drag' } as React.CSSProperties}
     >
       {themeIcon}
+    </button>
+  )
+
+  // Subtle indicator only — clicking opens settings where the verified
+  // download lives; no dialogs ever interrupt writing.
+  const updateButton = updateAvailable && (
+    <button
+      className="titlebar-winbtn titlebar-update-available"
+      onClick={() => openSettings()}
+      title={`Draftline ${updateAvailable.label} is available — open Settings to download`}
+      style={{ '--wails-draggable': 'no-drag' } as React.CSSProperties}
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 16V8"/>
+        <path d="M8 12l4-4 4 4"/>
+      </svg>
     </button>
   )
 
@@ -235,6 +252,7 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
         <div className="titlebar-spacer" />
 
         <div className="titlebar-actions">
+          {updateButton}
           {themeButton}
           {settingsButton}
           <button className="titlebar-winbtn" onClick={WindowMinimise} title="Minimize">
@@ -284,6 +302,7 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
       <div className="titlebar-spacer" />
 
       <div className="titlebar-actions">
+        {updateButton}
         {themeButton}
         {settingsButton}
         <button

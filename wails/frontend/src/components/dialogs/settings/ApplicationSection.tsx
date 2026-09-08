@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { CheckForUpdates, DownloadUpdate } from '../../../../wailsjs/go/main/App'
 import { BrowserOpenURL } from '../../../../wailsjs/runtime/runtime'
 import type { main } from '../../../../wailsjs/go/models'
+import { useAppStore } from '../../../store/appStore'
+import { checkNow } from '../../../services/updateNag'
 import type { ApplicationSectionProps } from './types'
 
 export default function ApplicationSection({
@@ -19,6 +21,9 @@ export default function ApplicationSection({
   analysisCPUProfile, setAnalysisCPUProfile,
   onBrowse,
 }: ApplicationSectionProps) {
+  const updateCheckEnabled = useAppStore(s => s.settings.update_check_enabled)
+  const saveAppSettings = useAppStore(s => s.saveSettings)
+  const setUpdateAvailable = useAppStore(s => s.setUpdateAvailable)
   const [updateState, setUpdateState] = useState<'idle' | 'checking' | 'checked' | 'downloading' | 'downloaded'>('idle')
   const [updateResult, setUpdateResult] = useState<main.UpdateCheckResult | null>(null)
   const [updateError, setUpdateError] = useState('')
@@ -197,6 +202,25 @@ export default function ApplicationSection({
       </div>
 
       <div className="settings-section-label">Updates</div>
+      <div className="dialog-field">
+        <label className="settings-toggle">
+          <input
+            type="checkbox"
+            checked={updateCheckEnabled}
+            onChange={e => {
+              const enabled = e.target.checked
+              void saveAppSettings({ update_check_enabled: enabled })
+              if (enabled) checkNow()
+              else setUpdateAvailable(null)
+            }}
+          />
+          <span className="settings-toggle-track"><span className="settings-toggle-thumb" /></span>
+          <span className="settings-toggle-label">Check for updates automatically</span>
+        </label>
+        <div className="settings-hint">
+          Checks the GitHub releases page on launch and once an hour, and shows a small arrow in the title bar when a newer version exists. Nothing downloads without you asking.
+        </div>
+      </div>
       <div className="dialog-field">
         <div className="settings-path-row">
           <button

@@ -8933,3 +8933,16 @@ html, body, #root {
 .metadata-isbn-add {
   margin-top: 2px;
 }
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   TITLEBAR UPDATE-AVAILABLE INDICATOR
+   Subtle accent arrow shown only when the hourly release check finds a
+   newer version; clicking opens Settings where the verified download lives.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.titlebar-update-available {
+  color: var(--accent);
+}
+.titlebar-update-available:hover {
+  color: var(--accent);
+  background: var(--bg-hover);
+}

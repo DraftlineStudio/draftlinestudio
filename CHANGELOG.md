@@ -4,6 +4,16 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02569] - 2026-09-07
+
+### Added
+- A quiet update indicator: Draftline checks the releases page shortly after launch and once an hour, and when a newer version exists a small accent arrow appears in the title bar — clicking it opens Settings, where the verified download lives. No dialogs, no interruptions. A new Settings → Application toggle ("Check for updates automatically") turns the background check off entirely; the manual Check for Updates button always works either way.
+
+### Fixed
+- The right sidebar's default width was set in two places and the larger won, so the narrow default from the previous build never applied; fresh installs now really do start at the minimum width.
+
+---
+
 ## [0.17.02568] - 2026-09-07
 
 ### Added

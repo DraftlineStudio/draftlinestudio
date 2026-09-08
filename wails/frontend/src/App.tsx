@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useCallback, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useBookStore } from './store/bookStore'
 import { useAppStore } from './store/appStore'
+import { startUpdateNag } from './services/updateNag'
 import { useReadAloudStore } from './store/readAloudStore'
 import { TakePendingOpenPath } from '../wailsjs/go/main/App'
 import { EventsOn } from '../wailsjs/runtime/runtime'
@@ -50,7 +51,7 @@ export default function App() {
 
   // Initialise on first load + load persisted settings and recent projects
   useEffect(() => {
-    void loadSettings()
+    void loadSettings().then(() => startUpdateNag())
     void loadRecentProjects()
   }, [])
 
