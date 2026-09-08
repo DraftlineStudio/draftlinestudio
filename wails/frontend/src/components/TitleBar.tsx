@@ -64,8 +64,8 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
       <line x1="11.1" y1="2.9" x2="10.1" y2="3.9"/><line x1="3.9" y1="10.1" x2="2.9" y2="11.1"/>
     </svg>
   ) : themeMode === 'dark' ? (
-    <svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor">
-      <path d="M7 1a6 6 0 1 0 0 12A6 6 0 0 0 7 1zm0 1.5A4.5 4.5 0 1 1 7 11.5V2.5z"/>
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
     </svg>
   ) : (
     <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
@@ -92,8 +92,9 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
       title="Settings"
       style={{ '--wails-draggable': 'no-drag' } as React.CSSProperties}
     >
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
-        <path d="M7 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm4.2-1.1.9-.5a5 5 0 0 0-.5-1.2l-1 .1a3 3 0 0 0-.7-.7l.1-1a5 5 0 0 0-1.2-.5l-.5.9a3 3 0 0 0-1 0l-.5-.9a5 5 0 0 0-1.2.5l.1 1a3 3 0 0 0-.7.7l-1-.1a5 5 0 0 0-.5 1.2l.9.5a3 3 0 0 0 0 1l-.9.5a5 5 0 0 0 .5 1.2l1-.1c.2.3.4.5.7.7l-.1 1a5 5 0 0 0 1.2.5l.5-.9a3 3 0 0 0 1 0l.5.9a5 5 0 0 0 1.2-.5l-.1-1c.3-.2.5-.4.7-.7l1 .1a5 5 0 0 0 .5-1.2l-.9-.5a3 3 0 0 0 0-1z"/>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
       </svg>
     </button>
   )
@@ -174,8 +175,9 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
       </button>
 
       <button className="titlebar-dropdown-item" onClick={() => run(openSettings)}>
-        <svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor">
-          <path d="M7 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm4.2-1.1.9-.5a5 5 0 0 0-.5-1.2l-1 .1a3 3 0 0 0-.7-.7l.1-1a5 5 0 0 0-1.2-.5l-.5.9a3 3 0 0 0-1 0l-.5-.9a5 5 0 0 0-1.2.5l.1 1a3 3 0 0 0-.7.7l-1-.1a5 5 0 0 0-.5 1.2l.9.5a3 3 0 0 0 0 1l-.9.5a5 5 0 0 0 .5 1.2l1-.1c.2.3.4.5.7.7l-.1 1a5 5 0 0 0 1.2.5l.5-.9a3 3 0 0 0 1 0l.5.9a5 5 0 0 0 1.2-.5l-.1-1c.3-.2.5-.4.7-.7l1 .1a5 5 0 0 0 .5-1.2l-.9-.5a3 3 0 0 0 0-1z"/>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
         <span>Settings…</span>
       </button>
@@ -269,8 +271,9 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
                 <path d="M3 11.5c0-2.2 1.8-3.5 4-3.5s4 1.3 4 3.5" strokeLinecap="round"/>
               </svg>
           }
-          <svg className="titlebar-author-gear" width="10" height="10" viewBox="0 0 14 14" fill="currentColor">
-            <path d="M7 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm4.2-1.1.9-.5a5 5 0 0 0-.5-1.2l-1 .1a3 3 0 0 0-.7-.7l.1-1a5 5 0 0 0-1.2-.5l-.5.9a3 3 0 0 0-1 0l-.5-.9a5 5 0 0 0-1.2.5l.1 1a3 3 0 0 0-.7.7l-1-.1a5 5 0 0 0-.5 1.2l.9.5a3 3 0 0 0 0 1l-.9.5a5 5 0 0 0 .5 1.2l1-.1c.2.3.4.5.7.7l-.1 1a5 5 0 0 0 1.2.5l.5-.9a3 3 0 0 0 1 0l.5.9a5 5 0 0 0 1.2-.5l-.1-1c.3-.2.5-.4.7-.7l1 .1a5 5 0 0 0 .5-1.2l-.9-.5a3 3 0 0 0 0-1z"/>
+          <svg className="titlebar-author-gear" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
           </svg>
         </button>
         <button className="titlebar-winbtn" onClick={WindowMinimise} title="Minimize">

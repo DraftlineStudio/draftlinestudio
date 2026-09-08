@@ -98,8 +98,8 @@ export default function ApplicationSection({
             Light
           </button>
           <button className={`settings-theme-btn${themeMode === 'dark' ? ' active' : ''}`} onClick={() => setThemeMode('dark')}>
-            <svg width="11" height="11" viewBox="0 0 14 14" fill="currentColor">
-              <path d="M7 1a6 6 0 1 0 0 12A6 6 0 0 0 7 1zm0 1.5A4.5 4.5 0 1 1 7 11.5V2.5z"/>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
             </svg>
             Dark
           </button>
