@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02568] - 2026-09-07
+
+### Added
+- Books now carry one ISBN per format — hardcover, paperback, eBook, audiobook, large print — instead of a single field. The Book Metadata dialog manages the list, EPUB export uses the eBook ISBN as the publication identifier (urn:isbn) when one is registered, and the legacy single-ISBN field is kept mirroring the first entry so older readers of the .draftline format, including the Python implementation, still see an ISBN. Legacy books seed the list from their existing field on open.
+
+---
+
 ## [0.17.02567] - 2026-09-07
 
 ### Changed

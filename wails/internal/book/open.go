@@ -142,6 +142,8 @@ func Open(path string) (types.BookData, error) {
 		IsIndexed:    raw.IsIndexed,
 		LastIndexed:  raw.LastIndexed,
 	}
+	// A legacy single-ISBN file seeds the per-format list on open.
+	book.Metadata.NormalizeISBNs()
 
 	// v1.0 migration: chapters/ -> body/
 	if raw.Version == "1.0" {
