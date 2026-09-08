@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02567] - 2026-09-07
+
+### Changed
+- The author chip now opens an identity card with a link to Settings.
+- The right sidebar opens at its minimum width by default.
+
 ## [0.17.02566] - 2026-09-07
 
 ### Added
