@@ -131,6 +131,52 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
     </button>
   )
 
+  const authorChip = (
+    <>
+      <button
+        ref={authorBtnRef}
+        className="titlebar-author-btn"
+        onClick={toggleAuthorPop}
+        title="Author identity"
+        style={{ '--wails-draggable': 'no-drag' } as React.CSSProperties}
+      >
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
+          <circle cx="7" cy="7" r="5.5"/>
+          <circle cx="7" cy="5.5" r="1.8"/>
+          <path d="M3 11.5c0-2.2 1.8-3.5 4-3.5s4 1.3 4 3.5" strokeLinecap="round"/>
+        </svg>
+        {settings.default_author && <span className="titlebar-author-name">{settings.default_author}</span>}
+      </button>
+      {authorOpen && createPortal(
+        <div
+          ref={authorPopRef}
+          className="titlebar-author-pop"
+          style={{ top: authorPos.top, right: authorPos.right } as React.CSSProperties}
+        >
+          <div className="titlebar-author-pop-name">
+            {settings.default_author || 'No author set'}
+          </div>
+          {settings.default_publisher && (
+            <div className="titlebar-author-pop-imprint">{settings.default_publisher}</div>
+          )}
+          {settings.default_copyright && (
+            <div className="titlebar-author-pop-copyright">{settings.default_copyright}</div>
+          )}
+          {!settings.default_author && !settings.default_publisher && !settings.default_copyright && (
+            <div className="titlebar-author-pop-imprint">Set your name, imprint, and copyright template so new books start prefilled.</div>
+          )}
+          <button
+            className="dialog-btn titlebar-author-pop-edit"
+            onClick={() => { setAuthorOpen(false); openSettings() }}
+          >
+            Edit…
+          </button>
+        </div>,
+        document.body
+      )}
+    </>
+  )
+
   const settingsButton = (
     <button
       className="titlebar-winbtn"
@@ -254,6 +300,7 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
         <div className="titlebar-actions">
           {updateButton}
           {themeButton}
+          {authorChip}
           {settingsButton}
           <button className="titlebar-winbtn" onClick={WindowMinimise} title="Minimize">
             <svg width="10" height="1" viewBox="0 0 10 1"><line x1="0" y1="0.5" x2="10" y2="0.5" stroke="currentColor" strokeWidth="1.5"/></svg>
@@ -304,48 +351,8 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
       <div className="titlebar-actions">
         {updateButton}
         {themeButton}
+        {authorChip}
         {settingsButton}
-        <button
-          ref={authorBtnRef}
-          className="titlebar-author-btn"
-          onClick={toggleAuthorPop}
-          title="Author identity"
-          style={{ '--wails-draggable': 'no-drag' } as React.CSSProperties}
-        >
-          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
-            <circle cx="7" cy="7" r="5.5"/>
-            <circle cx="7" cy="5.5" r="1.8"/>
-            <path d="M3 11.5c0-2.2 1.8-3.5 4-3.5s4 1.3 4 3.5" strokeLinecap="round"/>
-          </svg>
-          {settings.default_author && <span className="titlebar-author-name">{settings.default_author}</span>}
-        </button>
-        {authorOpen && createPortal(
-          <div
-            ref={authorPopRef}
-            className="titlebar-author-pop"
-            style={{ top: authorPos.top, right: authorPos.right } as React.CSSProperties}
-          >
-            <div className="titlebar-author-pop-name">
-              {settings.default_author || 'No author set'}
-            </div>
-            {settings.default_publisher && (
-              <div className="titlebar-author-pop-imprint">{settings.default_publisher}</div>
-            )}
-            {settings.default_copyright && (
-              <div className="titlebar-author-pop-copyright">{settings.default_copyright}</div>
-            )}
-            {!settings.default_author && !settings.default_publisher && !settings.default_copyright && (
-              <div className="titlebar-author-pop-imprint">Set your name, imprint, and copyright template so new books start prefilled.</div>
-            )}
-            <button
-              className="dialog-btn titlebar-author-pop-edit"
-              onClick={() => { setAuthorOpen(false); openSettings() }}
-            >
-              Edit…
-            </button>
-          </div>,
-          document.body
-        )}
         <button className="titlebar-winbtn" onClick={WindowMinimise} title="Minimize">
           <svg width="10" height="1" viewBox="0 0 10 1"><line x1="0" y1="0.5" x2="10" y2="0.5" stroke="currentColor" strokeWidth="1.5"/></svg>
         </button>
