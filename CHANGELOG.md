@@ -4,6 +4,16 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02566] - 2026-09-07
+
+### Added
+- A theme toggle in the title bar: one click cycles Light → Dark → Auto, showing the sun, moon, or clock icon for the active mode (the same icons as Settings → Application). The choice persists like any other setting.
+
+### Changed
+- Settings is now discoverable: a dedicated gear button sits in the title bar on both the welcome screen and the main window (previously the only entry point in the main window was the author-name chip, and the welcome screen had none), and the book menu gained a "Settings…" item.
+
+---
+
 ## [0.17.02565] - 2026-09-07
 
 ### Fixed

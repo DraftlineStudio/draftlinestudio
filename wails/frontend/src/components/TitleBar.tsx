@@ -11,7 +11,7 @@ interface TitleBarProps {
 
 export default function TitleBar({ minimal = false }: TitleBarProps) {
   const { book, currentSection, newBook, openBook, saveBook, saveBookAs, closeProject, setViewMode } = useBookStore()
-  const { settings, openSettings, openMetadataDialog, openExportWizard, openChapterHistory, openStorySearch } = useAppStore()
+  const { settings, saveSettings, openSettings, openMetadataDialog, openExportWizard, openChapterHistory, openStorySearch } = useAppStore()
   const [dropOpen, setDropOpen] = useState(false)
   const [dropPos, setDropPos] = useState({ top: 0, left: 0 })
   const btnRef = useRef<HTMLButtonElement>(null)
@@ -47,6 +47,56 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
 
   function run(fn: () => void) { setDropOpen(false); fn() }
   function showStorySearch() { setViewMode('editor'); openStorySearch() }
+
+  const themeOrder = ['light', 'dark', 'auto'] as const
+  const themeMode = settings.theme_mode
+  const nextTheme = themeOrder[(themeOrder.indexOf(themeMode) + 1) % themeOrder.length]
+  const themeTitles = { light: 'Light theme', dark: 'Dark theme', auto: 'Auto theme (follows time of day)' } as const
+  const cycleTheme = () => void saveSettings({ theme_mode: nextTheme })
+
+  // Icon set matches the theme buttons in Settings → Application.
+  const themeIcon = themeMode === 'light' ? (
+    <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <circle cx="7" cy="7" r="2.8"/>
+      <line x1="7" y1="1" x2="7" y2="2.4"/><line x1="7" y1="11.6" x2="7" y2="13"/>
+      <line x1="1" y1="7" x2="2.4" y2="7"/><line x1="11.6" y1="7" x2="13" y2="7"/>
+      <line x1="2.9" y1="2.9" x2="3.9" y2="3.9"/><line x1="10.1" y1="10.1" x2="11.1" y2="11.1"/>
+      <line x1="11.1" y1="2.9" x2="10.1" y2="3.9"/><line x1="3.9" y1="10.1" x2="2.9" y2="11.1"/>
+    </svg>
+  ) : themeMode === 'dark' ? (
+    <svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor">
+      <path d="M7 1a6 6 0 1 0 0 12A6 6 0 0 0 7 1zm0 1.5A4.5 4.5 0 1 1 7 11.5V2.5z"/>
+    </svg>
+  ) : (
+    <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
+      <circle cx="7" cy="7" r="5.5"/>
+      <path d="M7 1.5V7l3.5 2"/>
+    </svg>
+  )
+
+  const themeButton = (
+    <button
+      className="titlebar-winbtn"
+      onClick={cycleTheme}
+      title={`${themeTitles[themeMode]} — click for ${themeTitles[nextTheme].toLowerCase()}`}
+      style={{ '--wails-draggable': 'no-drag' } as React.CSSProperties}
+    >
+      {themeIcon}
+    </button>
+  )
+
+  const settingsButton = (
+    <button
+      className="titlebar-winbtn"
+      onClick={() => openSettings()}
+      title="Settings"
+      style={{ '--wails-draggable': 'no-drag' } as React.CSSProperties}
+    >
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+        <path d="M7 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm4.2-1.1.9-.5a5 5 0 0 0-.5-1.2l-1 .1a3 3 0 0 0-.7-.7l.1-1a5 5 0 0 0-1.2-.5l-.5.9a3 3 0 0 0-1 0l-.5-.9a5 5 0 0 0-1.2.5l.1 1a3 3 0 0 0-.7.7l-1-.1a5 5 0 0 0-.5 1.2l.9.5a3 3 0 0 0 0 1l-.9.5a5 5 0 0 0 .5 1.2l1-.1c.2.3.4.5.7.7l-.1 1a5 5 0 0 0 1.2.5l.5-.9a3 3 0 0 0 1 0l.5.9a5 5 0 0 0 1.2-.5l-.1-1c.3-.2.5-.4.7-.7l1 .1a5 5 0 0 0 .5-1.2l-.9-.5a3 3 0 0 0 0-1z"/>
+      </svg>
+    </button>
+  )
 
   const dropdown = dropOpen && createPortal(
     <div
@@ -123,6 +173,13 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
         <span>Export…</span>
       </button>
 
+      <button className="titlebar-dropdown-item" onClick={() => run(openSettings)}>
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor">
+          <path d="M7 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm4.2-1.1.9-.5a5 5 0 0 0-.5-1.2l-1 .1a3 3 0 0 0-.7-.7l.1-1a5 5 0 0 0-1.2-.5l-.5.9a3 3 0 0 0-1 0l-.5-.9a5 5 0 0 0-1.2.5l.1 1a3 3 0 0 0-.7.7l-1-.1a5 5 0 0 0-.5 1.2l.9.5a3 3 0 0 0 0 1l-.9.5a5 5 0 0 0 .5 1.2l1-.1c.2.3.4.5.7.7l-.1 1a5 5 0 0 0 1.2.5l.5-.9a3 3 0 0 0 1 0l.5.9a5 5 0 0 0 1.2-.5l-.1-1c.3-.2.5-.4.7-.7l1 .1a5 5 0 0 0 .5-1.2l-.9-.5a3 3 0 0 0 0-1z"/>
+        </svg>
+        <span>Settings…</span>
+      </button>
+
       <div className="titlebar-dropdown-sep" />
 
       <button className="titlebar-dropdown-item" onClick={() => run(closeProject)} disabled={!book}>
@@ -147,6 +204,8 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
         <div className="titlebar-spacer" />
 
         <div className="titlebar-actions">
+          {themeButton}
+          {settingsButton}
           <button className="titlebar-winbtn" onClick={WindowMinimise} title="Minimize">
             <svg width="10" height="1" viewBox="0 0 10 1"><line x1="0" y1="0.5" x2="10" y2="0.5" stroke="currentColor" strokeWidth="1.5"/></svg>
           </button>
@@ -194,6 +253,8 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
       <div className="titlebar-spacer" />
 
       <div className="titlebar-actions">
+        {themeButton}
+        {settingsButton}
         <button
           className="titlebar-author-btn"
           onClick={() => openSettings()}
