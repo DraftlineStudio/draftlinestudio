@@ -2,7 +2,7 @@
 
 The project version (`MAJOR.MINOR.BUILD`, e.g. `0.15.02374`) is not generated from a single source — it is hand-maintained in the locations below. **When bumping the version, update every one of them.** (See `CHANGELOG.md` for the versioning scheme: BUILD increments by 1 per change; one fix = one number.)
 
-Current version as of this writing: **0.17.02568**
+Current version as of this writing: **0.17.02569**
 
 ## Locations to update
 
