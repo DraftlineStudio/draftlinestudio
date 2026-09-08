@@ -56,6 +56,8 @@ export interface AppSettings {
   // Sidebar
   sidebar_panel_width: number
   sidebar_active_section: string // glyph section id, or '' when closed
+  // Updates
+  update_check_enabled: boolean
 }
 
 interface AppStore {
@@ -106,6 +108,9 @@ interface AppStore {
   clearRecentProjects: () => Promise<void>
   setShowWelcome: (show: boolean) => void
   setShowNewUniverse: (show: boolean) => void
+  // Set by the background update check when a newer release exists.
+  updateAvailable: { label: string } | null
+  setUpdateAvailable: (update: { label: string } | null) => void
 }
 
 // saveChain serializes all backend SaveSettings writes so two rapid
@@ -157,8 +162,9 @@ const DEFAULT_SETTINGS: AppSettings = {
   book_line_spacing: '1.5',
   book_drop_caps: false,
   book_trim_size: '6x9',
-  sidebar_panel_width: 350,
+  sidebar_panel_width: 280,
   sidebar_active_section: 'dashboard',
+  update_check_enabled: true,
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({
@@ -171,6 +177,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   statusMessage: 'Ready',
   setStatusMessage: (msg) => set({ statusMessage: msg }),
+  updateAvailable: null,
+  setUpdateAvailable: (update) => set({ updateAvailable: update }),
   leftPanelOpen: true,
   toggleLeftPanel: () => set(s => ({ leftPanelOpen: !s.leftPanelOpen })),
   showMetadata: false,

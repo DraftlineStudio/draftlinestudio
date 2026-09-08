@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02569] - 2026-09-07
+
+### Added
+- Draftline now checks for updates hourly and shows an indicator in the title bar.
+
+### Fixed
+- Fresh installs now open the right sidebar at its minimum width.
+
 ## [0.17.02568] - 2026-09-07
 
 ### Added

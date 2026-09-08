@@ -74,6 +74,9 @@ type AppSettings struct {
 	// SidebarActiveSection remembers which tools-sidebar pane is open
 	// ("dashboard", "characters", "ai", …); "" means the sidebar is closed.
 	SidebarActiveSection string `json:"sidebar_active_section"`
+	// UpdateCheckEnabled lets the app query GitHub releases on launch and
+	// hourly to show the subtle title-bar update indicator.
+	UpdateCheckEnabled bool `json:"update_check_enabled"`
 }
 
 // ClaudeCodeStatus contains the status of the Claude Code CLI installation.
