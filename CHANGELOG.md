@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02570] - 2026-09-07
+
+### Changed
+- Reordered the title bar controls and added the author chip to the welcome screen.
+- The recent projects list now scrolls inside its card.
+
 ## [0.17.02569] - 2026-09-07
 
 ### Added
