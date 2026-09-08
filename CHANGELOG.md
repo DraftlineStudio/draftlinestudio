@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02568] - 2026-09-07
+
+### Added
+- Books can now store one ISBN per format.
+
 ## [0.17.02567] - 2026-09-07
 
 ### Changed

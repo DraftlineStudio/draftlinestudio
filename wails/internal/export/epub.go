@@ -93,10 +93,17 @@ func EPUB(path string, book types.BookData, options types.ExportOptions) types.E
 `, id)
 	}
 
+	// The ebook's own ISBN is the proper EPUB identifier when one is
+	// registered; otherwise fall back to a generated UUID.
+	identifier := "urn:uuid:" + GenerateUUID()
+	if isbn := book.Metadata.ISBNFor("ebook"); isbn != "" {
+		identifier = "urn:isbn:" + EscapeXML(isbn)
+	}
+
 	opfContent := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
-    <dc:identifier id="uid">urn:uuid:%s</dc:identifier>
+    <dc:identifier id="uid">%s</dc:identifier>
     <dc:title>%s</dc:title>
     <dc:creator>%s</dc:creator>
     <dc:publisher>%s</dc:publisher>
@@ -109,7 +116,7 @@ func EPUB(path string, book types.BookData, options types.ExportOptions) types.E
   <spine>
 %s  </spine>
 </package>`,
-		GenerateUUID(),
+		identifier,
 		EscapeXML(book.Metadata.Title),
 		EscapeXML(book.Metadata.Author),
 		EscapeXML(book.Metadata.Publisher),

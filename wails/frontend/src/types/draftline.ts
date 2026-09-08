@@ -545,10 +545,17 @@ export const DEFAULT_STYLE_OPTIONS: WritingStyleOptions = {
   pacing: 2,
 }
 
+export interface ISBNEntry {
+  format: string // hardcover | paperback | ebook | audiobook | large_print | other | ''
+  value: string
+}
+
 export interface Metadata {
   title: string
   author: string
+  // Legacy single ISBN; mirrors isbns[0] and is kept for format compatibility.
   isbn: string
+  isbns?: ISBNEntry[]
   publisher: string
   created: string
   modified: string

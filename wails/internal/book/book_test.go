@@ -68,6 +68,55 @@ func TestWriteOpenRoundTrip(t *testing.T) {
 	}
 }
 
+func TestISBNListRoundTripAndLegacyMirror(t *testing.T) {
+	isolateConfigDir(t)
+	path := filepath.Join(t.TempDir(), "book.draftline")
+
+	book := testBook()
+	book.Metadata.ISBNs = []types.ISBNEntry{
+		{Format: "hardcover", Value: "978-1-0000-0001-1"},
+		{Format: "ebook", Value: "978-1-0000-0002-8"},
+		{Format: "paperback", Value: "  "}, // blank entries are dropped
+	}
+	if res := Write(path, book, "test-version"); !res.Success {
+		t.Fatalf("Write failed: %s", res.Error)
+	}
+	got, err := Open(path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if len(got.Metadata.ISBNs) != 2 {
+		t.Fatalf("ISBN list did not round-trip: %#v", got.Metadata.ISBNs)
+	}
+	if got.Metadata.ISBN != "978-1-0000-0001-1" {
+		t.Fatalf("legacy field must mirror the first entry, got %q", got.Metadata.ISBN)
+	}
+	if got.Metadata.ISBNFor("ebook") != "978-1-0000-0002-8" {
+		t.Fatalf("format lookup: %#v", got.Metadata.ISBNs)
+	}
+}
+
+func TestLegacySingleISBNSeedsTheList(t *testing.T) {
+	isolateConfigDir(t)
+	path := filepath.Join(t.TempDir(), "book.draftline")
+
+	book := testBook()
+	book.Metadata.ISBN = "978-1-9999-9999-9" // legacy-only book
+	if res := Write(path, book, "test-version"); !res.Success {
+		t.Fatalf("Write failed: %s", res.Error)
+	}
+	got, err := Open(path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if len(got.Metadata.ISBNs) != 1 || got.Metadata.ISBNs[0].Value != "978-1-9999-9999-9" {
+		t.Fatalf("legacy ISBN must seed the list: %#v", got.Metadata.ISBNs)
+	}
+	if got.Metadata.ISBN != "978-1-9999-9999-9" {
+		t.Fatalf("legacy field must survive: %q", got.Metadata.ISBN)
+	}
+}
+
 func TestReadAloudCastRoundTrip(t *testing.T) {
 	isolateConfigDir(t)
 	path := filepath.Join(t.TempDir(), "book.draftline")
