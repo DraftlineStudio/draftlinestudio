@@ -4,6 +4,14 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02571] - 2026-09-07
+
+### Changed
+- The update indicator grew into a proper notification chip: success-green with an "Update available" label, a gentle glow pulse, and a bobbing download arrow (all animation respects reduced-motion preferences). Title bar icons — sun, moon, clock, author — were also enlarged to match the settings gear.
+- After a verified update download launches the installer (or opens the disk image on macOS), Draftline now closes itself so the new version can take its place. The close goes through the normal quit path, so unsaved work still prompts first.
+
+---
+
 ## [0.17.02570] - 2026-09-07
 
 ### Changed

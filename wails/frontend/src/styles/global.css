@@ -8942,14 +8942,48 @@ html, body, #root {
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════
-   TITLEBAR UPDATE-AVAILABLE INDICATOR
-   Subtle accent arrow shown only when the hourly release check finds a
-   newer version; clicking opens Settings where the verified download lives.
+   TITLEBAR UPDATE-AVAILABLE CHIP
+   Notification-style chip shown only when the hourly release check finds a
+   newer version: success green, gentle glow pulse, bobbing download arrow.
+   Clicking opens Settings where the verified download lives.
    ═══════════════════════════════════════════════════════════════════════════ */
-.titlebar-update-available {
-  color: var(--accent);
+.titlebar-update-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  margin-right: 4px;
+  align-self: center;
+  background: transparent;
+  border: 1px solid var(--status-success);
+  border-radius: 13px;
+  color: var(--status-success);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  white-space: nowrap;
+  animation: update-chip-pulse 2.4s ease-in-out infinite;
+  transition: background 0.15s;
 }
-.titlebar-update-available:hover {
-  color: var(--accent);
+.titlebar-update-chip:hover {
   background: var(--bg-hover);
+  animation-play-state: paused;
+}
+.titlebar-update-chip-arrow {
+  flex-shrink: 0;
+  animation: update-chip-bob 1.6s ease-in-out infinite;
+}
+@keyframes update-chip-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(87, 168, 116, 0); }
+  50% { box-shadow: 0 0 8px 1px rgba(87, 168, 116, 0.45); }
+}
+@keyframes update-chip-bob {
+  0%, 100% { transform: translateY(-1px); }
+  50% { transform: translateY(1.5px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .titlebar-update-chip,
+  .titlebar-update-chip-arrow { animation: none; }
 }
