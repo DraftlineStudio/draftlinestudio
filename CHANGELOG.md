@@ -4,6 +4,14 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02567] - 2026-09-07
+
+### Changed
+- The title bar author chip is now a pure identity control: a profile icon and the author's name that open a small card showing the name, imprint, and copyright template, with an Edit… button into settings. The gear beside it is the single settings entry — no more two settings buttons side by side.
+- The right tools sidebar opens at its minimum width (280px) by default so unmaximised windows keep editor room; a previously saved width is still respected.
+
+---
+
 ## [0.17.02566] - 2026-09-07
 
 ### Added

@@ -31,7 +31,9 @@ function isSectionEnabled(section: Exclude<GlyphSection, null>, settings: AppSet
 
 export default function ToolsPanel() {
   const [activeSection, setActiveSection] = useState<GlyphSection>(null)
-  const [panelWidth, setPanelWidth] = useState(350)
+  // Default to the panel's minimum width so the editor keeps room on
+  // unmaximised windows; a saved sidebar_panel_width still wins below.
+  const [panelWidth, setPanelWidth] = useState(280)
   const [isResizing, setIsResizing] = useState(false)
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null)
   const restoredRef = useRef(false)
