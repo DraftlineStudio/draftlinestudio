@@ -4,6 +4,15 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02572] - 2026-09-07
+
+### Changed
+- Rebuilt Export Book as a four-stage edition builder: authors now choose the file's purpose, select book sections, make format-specific design decisions, and review the complete edition before the system save dialog opens. The persistent progress rail and book summary replace the former quick-format-style wall of controls.
+- Print design is separated into focused Page, Typography, and Book furniture workspaces. The new screen explicitly identifies itself as the design contract for the forthcoming renderer wherever the legacy PDF backend cannot yet honor an option.
+- Print interiors now default to exact trim with bleed and crop marks off, matching the 5x8, 5.5x8.5, and 6x9 production references in `reference-assets/pdf-references`; both remain deliberate production-page choices.
+
+---
+
 ## [0.17.02571] - 2026-09-07
 
 ### Changed
