@@ -2,6 +2,13 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02572] - 2026-09-07
+
+### Changed
+- Rebuilt Export Book as a four-step edition builder.
+- Split print design into Page, Typography, and Book Furniture sections.
+- Print interiors now default to exact trim with bleed and crop marks off.
+
 ## [0.17.02571] - 2026-09-07
 
 ### Changed
