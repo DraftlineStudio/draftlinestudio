@@ -8909,3 +8909,27 @@ html, body, #root {
   width: 100%;
   justify-content: center;
 }
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   METADATA DIALOG · PER-FORMAT ISBN LIST
+   ═══════════════════════════════════════════════════════════════════════════ */
+.metadata-isbn-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+  align-items: center;
+}
+.metadata-isbn-format {
+  flex: 0 0 118px;
+}
+.metadata-isbn-row .dialog-input {
+  flex: 1;
+  min-width: 0;
+}
+.metadata-isbn-remove {
+  flex-shrink: 0;
+  padding: 0 9px;
+}
+.metadata-isbn-add {
+  margin-top: 2px;
+}

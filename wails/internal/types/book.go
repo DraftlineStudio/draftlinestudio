@@ -1,14 +1,59 @@
 // Package types contains shared data structures for the Draftline application.
 package types
 
+import "strings"
+
+// ISBNEntry is one format-specific ISBN. A hardcover, paperback, ebook, and
+// audiobook each carry their own ISBN, so a book holds a list; the legacy
+// single ISBN field stays populated for older readers of the .draftline
+// format and always mirrors the first entry.
+type ISBNEntry struct {
+	Format string `json:"format"` // hardcover | paperback | ebook | audiobook | large_print | other | ""
+	Value  string `json:"value"`
+}
+
 // Metadata contains book metadata information.
 type Metadata struct {
-	Title     string `json:"title"`
-	Author    string `json:"author"`
-	ISBN      string `json:"isbn"`
-	Publisher string `json:"publisher"`
-	Created   string `json:"created"`
-	Modified  string `json:"modified"`
+	Title     string      `json:"title"`
+	Author    string      `json:"author"`
+	ISBN      string      `json:"isbn"`
+	ISBNs     []ISBNEntry `json:"isbns,omitempty"`
+	Publisher string      `json:"publisher"`
+	Created   string      `json:"created"`
+	Modified  string      `json:"modified"`
+}
+
+// NormalizeISBNs reconciles the per-format ISBN list with the legacy single
+// field: blank entries are dropped, a legacy-only book seeds the list, and
+// the legacy field mirrors the first listed ISBN so older readers keep
+// seeing one.
+func (m *Metadata) NormalizeISBNs() {
+	cleaned := make([]ISBNEntry, 0, len(m.ISBNs))
+	for _, entry := range m.ISBNs {
+		entry.Value = strings.TrimSpace(entry.Value)
+		if entry.Value != "" {
+			cleaned = append(cleaned, entry)
+		}
+	}
+	m.ISBNs = cleaned
+	if len(m.ISBNs) == 0 {
+		if legacy := strings.TrimSpace(m.ISBN); legacy != "" {
+			m.ISBNs = []ISBNEntry{{Value: legacy}}
+		}
+	}
+	if len(m.ISBNs) > 0 {
+		m.ISBN = m.ISBNs[0].Value
+	}
+}
+
+// ISBNFor returns the ISBN registered for the given format, or "".
+func (m *Metadata) ISBNFor(format string) string {
+	for _, entry := range m.ISBNs {
+		if entry.Format == format {
+			return entry.Value
+		}
+	}
+	return ""
 }
 
 // ChapterItem represents a single chapter or section in a book.
