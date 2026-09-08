@@ -28,7 +28,7 @@
 }
 
 .export-wizard-header > div { display: flex; align-items: center; gap: 10px; color: var(--text-primary); font-size: 13px; }
-.export-wizard-mark { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 6px; background: var(--app-accent); color: white; font: 700 14px Georgia, serif; }
+.export-wizard-mark { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 6px; background: var(--app-accent); color: white; font-size: 14px; font-weight: 700; }
 .export-close { width: 30px; height: 30px; border: 0; border-radius: 6px; background: transparent; color: var(--text-secondary); font-size: 23px; line-height: 1; cursor: pointer; }
 .export-close:hover { background: var(--bg-surface-alt); color: var(--text-primary); }
 
@@ -55,7 +55,7 @@
 .export-wizard-body { min-height: 0; flex: 1; display: flex; }
 .export-edition-summary { width: 224px; flex: 0 0 224px; min-height: 0; padding: 28px 22px 22px; display: flex; flex-direction: column; border-right: 1px solid var(--border); background: var(--bg-main); }
 .export-summary-kicker, .export-eyebrow { color: var(--app-accent); font-size: 10px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; }
-.export-edition-summary h3 { margin: 9px 0 3px; color: var(--text-primary); font: 600 18px/1.25 Georgia, 'Times New Roman', serif; }
+.export-edition-summary h3 { margin: 9px 0 3px; color: var(--text-primary); font-size: 18px; font-weight: 600; line-height: 1.25; }
 .export-edition-summary > p { margin: 0; color: var(--text-secondary); font-size: 12px; }
 .export-summary-stats { display: flex; gap: 18px; margin: 20px 0; padding: 14px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
 .export-summary-stats span { display: flex; flex-direction: column; gap: 3px; color: var(--text-secondary); font-size: 10px; }
@@ -78,7 +78,7 @@
 .export-create-button { min-width: 190px !important; }
 
 .export-step-heading { margin-bottom: 24px; }
-.export-step-heading h2, .export-result-state h2 { margin: 7px 0 6px; color: var(--text-primary); font: 550 24px Georgia, 'Times New Roman', serif; letter-spacing: -.015em; }
+.export-step-heading h2, .export-result-state h2 { margin: 7px 0 6px; color: var(--text-primary); font-size: 24px; font-weight: 550; letter-spacing: -.015em; }
 .export-step-heading p, .export-result-state p { max-width: 610px; margin: 0; color: var(--text-secondary); font-size: 12px; line-height: 1.55; }
 .export-step-heading-row { display: flex; justify-content: space-between; gap: 20px; }
 .export-heading-format { height: 32px; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 7px; padding: 0 10px; border: 1px solid var(--border); border-radius: 7px; color: var(--text-secondary); font-size: 10px; font-weight: 650; }
@@ -101,10 +101,9 @@
 .export-destination-card.selected .export-card-check { display: grid; }
 
 .export-content-grid { display: grid; gap: 9px; }
-.export-content-card { min-height: 69px; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 15px; border: 1px solid var(--border); border-radius: 9px; background: var(--bg-main); cursor: pointer; }
+.export-content-card { width: 100%; min-height: 69px; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 15px; border: 1px solid var(--border); border-radius: 9px; background: var(--bg-main); color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .export-content-card.selected { border-color: color-mix(in srgb, var(--app-accent) 55%, var(--border)); background: color-mix(in srgb, var(--app-accent-soft) 35%, var(--bg-main)); }
-.export-content-card.unavailable { opacity: .55; cursor: default; }
-.export-content-card > input { position: absolute; opacity: 0; pointer-events: none; }
+.export-content-card:disabled { opacity: 1; cursor: default; }
 .export-content-check { width: 21px; height: 21px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 6px; color: transparent; }
 .export-content-card.selected .export-content-check { border-color: var(--app-accent); background: var(--app-accent); color: white; }
 .export-content-check svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.2; }
@@ -121,7 +120,7 @@
 .export-design-panel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
 .export-setting-block { min-width: 0; padding: 14px; border: 1px solid var(--border); border-radius: 9px; background: var(--bg-main); }
 .export-setting-block-wide { grid-column: 1 / -1; }
-.export-setting-block h3, .export-simple-design h3 { margin: 0 0 4px; color: var(--text-primary); font: 550 15px Georgia, 'Times New Roman', serif; }
+.export-setting-block h3, .export-simple-design h3 { margin: 0 0 4px; color: var(--text-primary); font-size: 15px; font-weight: 550; }
 .export-setting-block > p, .export-simple-design p { margin: 0 0 12px; color: var(--text-secondary); font-size: 10px; line-height: 1.45; }
 .export-choice-strip { display: flex; gap: 7px; flex-wrap: wrap; }
 .export-choice-strip button { min-width: 66px; padding: 8px 11px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg-panel); color: var(--text-secondary); font-size: 10px; cursor: pointer; }
@@ -191,7 +190,7 @@
 .export-review-hero { min-height: 80px; display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center; gap: 13px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-main); }
 .export-review-hero > div { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .export-review-hero small, .export-review-hero span, .export-review-hero em { color: var(--text-secondary); font-size: 9px; font-style: normal; }
-.export-review-hero strong { overflow: hidden; color: var(--text-primary); font: 550 16px Georgia, 'Times New Roman', serif; text-overflow: ellipsis; white-space: nowrap; }
+.export-review-hero strong { overflow: hidden; color: var(--text-primary); font-size: 16px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; }
 .export-review-hero em { padding: 4px 7px; border-radius: 5px; background: var(--app-accent-soft); color: var(--app-accent); font-weight: 700; text-transform: uppercase; }
 .export-review-card { min-height: 66px; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 9px; }
 .export-review-section { min-width: 0; display: grid; grid-template-columns: 85px minmax(0, 1fr); gap: 3px 12px; }

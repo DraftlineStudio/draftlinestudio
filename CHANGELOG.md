@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02573] - 2026-09-08
+
+### Fixed
+- Copyright, front matter, and back matter can be selected for export even when empty.
+- PDFs now render curly quotes, dashes, ellipses, and accented letters correctly.
+
 ## [0.17.02572] - 2026-09-07
 
 ### Changed
