@@ -4,6 +4,17 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02573] - 2026-09-08
+
+### Changed
+- The edition builder now uses Draftline's application typeface throughout its interface; serif faces are confined to the book-design samples where they communicate an actual output choice.
+
+### Fixed
+- Copyright, front matter, and back matter are explicit controlled selections and remain selectable even when currently empty, instead of becoming disabled cards that appeared to refuse the author's choice.
+- Standard and print PDFs now encode curly quotation marks, apostrophes, em/en dashes, ellipses, accented Latin text, and other publishing punctuation into the WinAnsi encoding declared by their built-in fonts. Unsupported glyphs degrade visibly to `?` instead of becoming multi-character wingding-like garbage, and wrapping/centering counts Unicode characters rather than UTF-8 bytes. Full-script Unicode remains part of the replacement embedded-font renderer.
+
+---
+
 ## [0.17.02572] - 2026-09-07
 
 ### Changed

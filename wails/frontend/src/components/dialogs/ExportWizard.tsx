@@ -197,19 +197,18 @@ export default function ExportWizard() {
 
   function renderContents() {
     const sectionCards = [
-      { id: 'copyright', title: 'Copyright page', description: book?.copyright ? 'Rights, edition, and publication notice.' : 'No copyright content has been written.', count: stats.copyrightWords ? `${stats.copyrightWords.toLocaleString()} words` : 'Empty', checked: currentOptions.includeCopyright, disabled: !book?.copyright, change: (value: boolean) => updateSharedOption('includeCopyright', value) },
-      { id: 'front', title: 'Front matter', description: 'Dedication, acknowledgements, preface, and other opening material.', count: `${stats.frontCount} ${stats.frontCount === 1 ? 'item' : 'items'}`, checked: currentOptions.includeFrontMatter, disabled: stats.frontCount === 0, change: (value: boolean) => updateSharedOption('includeFrontMatter', value) },
-      { id: 'body', title: 'Manuscript', description: 'The complete body of the book in manuscript order.', count: `${stats.bodyCount} ${stats.bodyCount === 1 ? 'chapter' : 'chapters'}`, checked: true, disabled: true, change: () => undefined },
-      { id: 'back', title: 'Back matter', description: 'Afterword, notes, bibliography, and other closing material.', count: `${stats.backCount} ${stats.backCount === 1 ? 'item' : 'items'}`, checked: currentOptions.includeBackMatter, disabled: stats.backCount === 0, change: (value: boolean) => updateSharedOption('includeBackMatter', value) },
+      { id: 'copyright', title: 'Copyright page', description: book?.copyright ? 'Rights, edition, and publication notice.' : 'No copyright content has been written.', count: stats.copyrightWords ? `${stats.copyrightWords.toLocaleString()} words` : 'Empty', checked: currentOptions.includeCopyright, locked: false, change: (value: boolean) => updateSharedOption('includeCopyright', value) },
+      { id: 'front', title: 'Front matter', description: 'Dedication, acknowledgements, preface, and other opening material.', count: `${stats.frontCount} ${stats.frontCount === 1 ? 'item' : 'items'}`, checked: currentOptions.includeFrontMatter, locked: false, change: (value: boolean) => updateSharedOption('includeFrontMatter', value) },
+      { id: 'body', title: 'Manuscript', description: 'The complete body of the book in manuscript order.', count: `${stats.bodyCount} ${stats.bodyCount === 1 ? 'chapter' : 'chapters'}`, checked: true, locked: true, change: () => undefined },
+      { id: 'back', title: 'Back matter', description: 'Afterword, notes, bibliography, and other closing material.', count: `${stats.backCount} ${stats.backCount === 1 ? 'item' : 'items'}`, checked: currentOptions.includeBackMatter, locked: false, change: (value: boolean) => updateSharedOption('includeBackMatter', value) },
     ]
     return <>
       <div className="export-step-heading"><span className="export-eyebrow">Step 2 of 4</span><h2>What belongs in this edition?</h2><p>The manuscript always travels with the export. Choose which surrounding book sections belong with it.</p></div>
       <div className="export-content-grid">
         {sectionCards.map(section => (
-          <label key={section.id} className={`export-content-card${section.checked && (section.id === 'body' || !section.disabled) ? ' selected' : ''}${section.disabled && section.id !== 'body' ? ' unavailable' : ''}`}>
-            <input type="checkbox" checked={section.checked && (section.id === 'body' || !section.disabled)} disabled={section.disabled} onChange={event => section.change(event.target.checked)} />
+          <button type="button" key={section.id} className={`export-content-card${section.checked ? ' selected' : ''}`} disabled={section.locked} onClick={() => section.change(!section.checked)} aria-pressed={section.checked}>
             <span className="export-content-check"><CheckIcon /></span><span><strong>{section.title}</strong><small>{section.description}</small></span><em>{section.count}</em>
-          </label>
+          </button>
         ))}
       </div>
       <div className="export-selection-total"><span>{selectedWords.toLocaleString()} words selected</span><span>{FORMAT_INFO[format!].label} edition</span></div>

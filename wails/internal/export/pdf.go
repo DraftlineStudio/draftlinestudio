@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"unicode/utf8"
 
 	"draftline/internal/types"
 )
@@ -113,7 +114,7 @@ func (p *pdfWriter) writeParagraph(text string) {
 	for _, word := range words {
 		if line.Len() == 0 {
 			line.WriteString(word)
-		} else if line.Len()+1+len(word) <= charsPerLine {
+		} else if utf8.RuneCountInString(line.String())+1+utf8.RuneCountInString(word) <= charsPerLine {
 			line.WriteString(" ")
 			line.WriteString(word)
 		} else {
