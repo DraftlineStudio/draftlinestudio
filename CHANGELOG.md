@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02566] - 2026-09-07
+
+### Added
+- Added a theme toggle to the title bar.
+
+### Changed
+- Added a Settings button to the title bar on every screen.
+
 ## [0.17.02565] - 2026-09-07
 
 ### Fixed
