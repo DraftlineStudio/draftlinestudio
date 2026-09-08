@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02571] - 2026-09-07
+
+### Changed
+- The update indicator is now a green Update Available chip.
+- Draftline now closes after launching a downloaded installer.
+
 ## [0.17.02570] - 2026-09-07
 
 ### Changed

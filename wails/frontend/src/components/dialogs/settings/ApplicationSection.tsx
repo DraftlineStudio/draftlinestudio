@@ -260,7 +260,7 @@ export default function ApplicationSection({
         )}
         {updateState === 'downloaded' && (
           <div className="settings-hint">
-            Downloaded and verified{downloadPath ? `: ${downloadPath}` : '.'} Quit Draftline before installing the new version.
+            Downloaded and verified{downloadPath ? `: ${downloadPath}` : '.'} Draftline will close in a moment so the installer can replace it — you'll be prompted first if you have unsaved changes.
           </div>
         )}
         {updateState === 'idle' && (
