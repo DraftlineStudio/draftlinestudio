@@ -70,3 +70,20 @@ func TestDocxPathNoDoubleEscaping(t *testing.T) {
 		t.Errorf("double-escaped ampersand in %q", got)
 	}
 }
+
+func TestEscapePDFStringEncodesPublishingPunctuationAsWinAnsi(t *testing.T) {
+	got := []byte(EscapePDFString("\u201cIt\u2019s\u2014fine\u2026\u201d (caf\u00e9) \\"))
+	want := []byte{0x93, 'I', 't', 0x92, 's', 0x97, 'f', 'i', 'n', 'e', 0x85, 0x94, ' ', '\\', '(', 'c', 'a', 'f', 0xe9, '\\', ')', ' ', '\\', '\\'}
+	if string(got) != string(want) {
+		t.Fatalf("EscapePDFString bytes = % x, want % x", got, want)
+	}
+	if strings.Contains(string(got), "\u2019") || strings.Contains(string(got), "\u2014") {
+		t.Fatal("PDF literal still contains raw UTF-8 publishing punctuation")
+	}
+}
+
+func TestEscapePDFStringReplacesUnsupportedGlyphs(t *testing.T) {
+	if got := EscapePDFString("Latin \u03a9 CJK \u6f22"); got != "Latin ? CJK ?" {
+		t.Fatalf("unsupported glyph fallback = %q", got)
+	}
+}

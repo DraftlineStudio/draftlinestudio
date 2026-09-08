@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"draftline/internal/types"
 )
@@ -220,7 +221,7 @@ func (p *printPDFWriter) writeLineCentered(text string, fontSize float64, bold b
 	}
 
 	// Estimate text width and center it
-	textWidthPts := float64(len(text)) * fontSize * 0.52
+	textWidthPts := float64(utf8.RuneCountInString(text)) * fontSize * 0.52
 	left, right := p.getMargins()
 	availWidth := p.pageWidth - left - right
 	xPos := left + (availWidth-textWidthPts)/2
@@ -267,7 +268,7 @@ func (p *printPDFWriter) writeParagraph(text string, isFirst bool) {
 	for _, word := range words {
 		if line.Len() == 0 {
 			line.WriteString(word)
-		} else if line.Len()+1+len(word) <= charsPerLine {
+		} else if utf8.RuneCountInString(line.String())+1+utf8.RuneCountInString(word) <= charsPerLine {
 			line.WriteString(" ")
 			line.WriteString(word)
 		} else {
@@ -376,7 +377,7 @@ func (p *printPDFWriter) writeTOCPage() {
 
 		// Write page number on right
 		pageStr := fmt.Sprintf("%d", entry.pageNum)
-		pageWidth := float64(len(pageStr)) * p.fontSize * 0.52
+		pageWidth := float64(utf8.RuneCountInString(pageStr)) * p.fontSize * 0.52
 		xPos := left + availWidth - pageWidth
 		escapedPage := EscapePDFString(pageStr)
 		p.currentPage.WriteString(fmt.Sprintf("BT\n/F1 %.1f Tf\n%.2f %.2f Td\n(%s) Tj\nET\n",
@@ -470,10 +471,10 @@ func (p *printPDFWriter) build() []byte {
 	objects = append(objects, pagesObj.String())
 
 	// Object 3: Font (Helvetica)
-	objects = append(objects, "3 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n")
+	objects = append(objects, "3 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>\nendobj\n")
 
 	// Object 4: Bold Font (Helvetica-Bold)
-	objects = append(objects, "4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>\nendobj\n")
+	objects = append(objects, "4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>\nendobj\n")
 
 	// Pages and content streams
 	for i, content := range p.pageContents {
@@ -542,7 +543,7 @@ func (p *printPDFWriter) build() []byte {
 			}
 
 			headerEscaped := EscapePDFString(headerText)
-			headerWidth := float64(len(headerText)) * headerFontSize * 0.52
+			headerWidth := float64(utf8.RuneCountInString(headerText)) * headerFontSize * 0.52
 			headerX := (p.pageWidth - headerWidth) / 2
 
 			fontName := "/F1"
