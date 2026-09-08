@@ -16,6 +16,10 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
   const [dropPos, setDropPos] = useState({ top: 0, left: 0 })
   const btnRef = useRef<HTMLButtonElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
+  const [authorOpen, setAuthorOpen] = useState(false)
+  const [authorPos, setAuthorPos] = useState({ top: 0, right: 0 })
+  const authorBtnRef = useRef<HTMLButtonElement>(null)
+  const authorPopRef = useRef<HTMLDivElement>(null)
   const title = book?.metadata.title || 'Untitled'
   const color = avatarColor(title)
 
@@ -47,6 +51,31 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
 
   function run(fn: () => void) { setDropOpen(false); fn() }
   function showStorySearch() { setViewMode('editor'); openStorySearch() }
+
+  function toggleAuthorPop() {
+    if (authorBtnRef.current) {
+      const r = authorBtnRef.current.getBoundingClientRect()
+      setAuthorPos({ top: r.bottom + 6, right: window.innerWidth - r.right })
+    }
+    setAuthorOpen(v => !v)
+  }
+
+  useEffect(() => {
+    if (!authorOpen) return
+    function onDown(e: MouseEvent) {
+      const t = e.target as Node
+      if (authorBtnRef.current?.contains(t)) return
+      if (authorPopRef.current?.contains(t)) return
+      setAuthorOpen(false)
+    }
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setAuthorOpen(false) }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [authorOpen])
 
   const themeOrder = ['light', 'dark', 'auto'] as const
   const themeMode = settings.theme_mode
@@ -258,24 +287,46 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
         {themeButton}
         {settingsButton}
         <button
+          ref={authorBtnRef}
           className="titlebar-author-btn"
-          onClick={() => openSettings()}
-          title="App Settings"
+          onClick={toggleAuthorPop}
+          title="Author identity"
           style={{ '--wails-draggable': 'no-drag' } as React.CSSProperties}
         >
-          {settings.default_author
-            ? <span className="titlebar-author-name">{settings.default_author}</span>
-            : <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
-                <circle cx="7" cy="7" r="5.5"/>
-                <circle cx="7" cy="5.5" r="1.8"/>
-                <path d="M3 11.5c0-2.2 1.8-3.5 4-3.5s4 1.3 4 3.5" strokeLinecap="round"/>
-              </svg>
-          }
-          <svg className="titlebar-author-gear" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
+            <circle cx="7" cy="7" r="5.5"/>
+            <circle cx="7" cy="5.5" r="1.8"/>
+            <path d="M3 11.5c0-2.2 1.8-3.5 4-3.5s4 1.3 4 3.5" strokeLinecap="round"/>
           </svg>
+          {settings.default_author && <span className="titlebar-author-name">{settings.default_author}</span>}
         </button>
+        {authorOpen && createPortal(
+          <div
+            ref={authorPopRef}
+            className="titlebar-author-pop"
+            style={{ top: authorPos.top, right: authorPos.right } as React.CSSProperties}
+          >
+            <div className="titlebar-author-pop-name">
+              {settings.default_author || 'No author set'}
+            </div>
+            {settings.default_publisher && (
+              <div className="titlebar-author-pop-imprint">{settings.default_publisher}</div>
+            )}
+            {settings.default_copyright && (
+              <div className="titlebar-author-pop-copyright">{settings.default_copyright}</div>
+            )}
+            {!settings.default_author && !settings.default_publisher && !settings.default_copyright && (
+              <div className="titlebar-author-pop-imprint">Set your name, imprint, and copyright template so new books start prefilled.</div>
+            )}
+            <button
+              className="dialog-btn titlebar-author-pop-edit"
+              onClick={() => { setAuthorOpen(false); openSettings() }}
+            >
+              Edit…
+            </button>
+          </div>,
+          document.body
+        )}
         <button className="titlebar-winbtn" onClick={WindowMinimise} title="Minimize">
           <svg width="10" height="1" viewBox="0 0 10 1"><line x1="0" y1="0.5" x2="10" y2="0.5" stroke="currentColor" strokeWidth="1.5"/></svg>
         </button>
