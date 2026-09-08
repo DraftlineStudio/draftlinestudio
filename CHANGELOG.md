@@ -4,6 +4,14 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02570] - 2026-09-07
+
+### Changed
+- Title bar actions now read update indicator → theme toggle → author chip → settings gear, and the author chip (with its identity card) appears on the welcome screen too.
+- A long recent-projects history scrolls inside its card instead of growing the welcome screen taller than the window, and short windows keep the top of the welcome layout reachable.
+
+---
+
 ## [0.17.02569] - 2026-09-07
 
 ### Added
