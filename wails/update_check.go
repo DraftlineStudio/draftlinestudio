@@ -301,12 +301,10 @@ func (a *App) DownloadUpdate() UpdateDownloadResult {
 	_, copyErr := io.Copy(io.MultiWriter(file, hasher), io.LimitReader(response.Body, maxUpdateDownloadBytes+1))
 	closeErr := file.Close()
 	if copyErr != nil || closeErr != nil {
-		os.Remove(targetPath)
-		return UpdateDownloadResult{Error: "Download failed before completing."}
+		return UpdateDownloadResult{Error: "Download failed before completing." + discardNote(targetPath)}
 	}
 	if actual := hex.EncodeToString(hasher.Sum(nil)); actual != expected {
-		os.Remove(targetPath)
-		return UpdateDownloadResult{Error: "The downloaded file did not match the release checksum and was discarded."}
+		return UpdateDownloadResult{Error: "The downloaded file did not match the release checksum." + discardNote(targetPath)}
 	}
 
 	launched := openDownloadedUpdate(targetPath)
@@ -321,6 +319,17 @@ func (a *App) DownloadUpdate() UpdateDownloadResult {
 		}()
 	}
 	return UpdateDownloadResult{Path: targetPath, Launched: launched}
+}
+
+// discardNote deletes a rejected download and reports what actually
+// happened. On Windows a just-written installer is often held open by
+// antivirus scanning, so removal can genuinely fail — the message must
+// never claim a file was discarded when it is still on disk.
+func discardNote(path string) string {
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return " Draftline could not delete the rejected file — remove it manually: " + path
+	}
+	return " The file was discarded."
 }
 
 // quit closes the app through the normal Wails quit path, so the same
