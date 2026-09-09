@@ -4,6 +4,18 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.18.02577] - 2026-09-08
+
+### Changed
+- Moved DOCX onto the shared export document model, completing the common manuscript interpretation path across DOCX, EPUB, comfortable-reading PDF, and print-ready PDF. Word editions retain headings, subtitles, paragraphs, alignment, inline emphasis, superscript and subscript, block quotes, code, scene breaks, nested list depth, and safe external links as editable OOXML rather than flattening every chapter to plain text.
+- DOCX packages now include document metadata, named Word styles, real list numbering, and deterministic hyperlink relationships, and are fully assembled before atomically replacing the destination.
+
+### Fixed
+- PDF hyperlinks are now emitted as clickable annotations while unsafe URI schemes remain plain text, matching EPUB and DOCX link sanitization.
+- Removed the last exporter that wrote directly to its final path while still constructing the archive; failed DOCX generation can no longer leave a truncated file behind.
+
+---
+
 ## [0.18.02576] - 2026-09-08
 
 ### Added

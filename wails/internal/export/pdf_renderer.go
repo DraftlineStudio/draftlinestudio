@@ -652,14 +652,18 @@ func (r *publicationPDFRenderer) renderLine(line pdfLine, left, width float64, a
 			}
 		}
 		r.pdf.SetFont(r.spec.Font.ID, runStyle(token.Run), size)
-		if token.Run.Href != "" {
+		href := safeExportHref(token.Run.Href)
+		if href != "" {
 			r.pdf.SetTextColor(35, 78, 120)
 		}
 		r.pdf.Text(x, tokenBaseline, token.Text)
-		if token.Run.Href != "" {
+		tokenWidth := r.pdf.GetStringWidth(token.Text)
+		if href != "" {
+			r.pdf.LinkString(x, r.y, tokenWidth, r.spec.LineHeight, href)
+		}
+		if href != "" {
 			r.pdf.SetTextColor(0, 0, 0)
 		}
-		tokenWidth := r.pdf.GetStringWidth(token.Text)
 		x += tokenWidth
 		if token.Text == " " {
 			x += extraSpace

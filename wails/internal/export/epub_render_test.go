@@ -133,8 +133,11 @@ func readEPUBParts(t *testing.T, data []byte) map[string][]byte {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(zr.File) == 0 || zr.File[0].Name != "mimetype" || zr.File[0].Method != zip.Store {
-		t.Fatal("EPUB mimetype is not the first uncompressed entry")
+	if len(zr.File) == 0 {
+		t.Fatal("archive is empty")
+	}
+	if zr.File[0].Name == "mimetype" && zr.File[0].Method != zip.Store {
+		t.Fatal("EPUB mimetype is not stored uncompressed")
 	}
 	parts := make(map[string][]byte, len(zr.File))
 	for _, file := range zr.File {

@@ -112,7 +112,8 @@ func TestPublicationPDFEmbedsUnicodeFontsAndPrintBoxes(t *testing.T) {
 			Title: "Chapter One", Role: SectionBody,
 			Blocks: []DocumentBlock{{Kind: BlockParagraph, Runs: []DocumentRun{
 				{Text: "It\u2019s emphasized ", Italic: true},
-				{Text: "and bold.", Bold: true},
+				{Text: "and bold. ", Bold: true},
+				{Text: "Reference", Href: "https://example.com"},
 			}}},
 		}},
 	}
@@ -132,6 +133,9 @@ func TestPublicationPDFEmbedsUnicodeFontsAndPrintBoxes(t *testing.T) {
 	}
 	if bytes.Contains(pdf, []byte("/Helvetica")) || bytes.Contains(pdf, []byte("/WinAnsiEncoding")) {
 		t.Fatal("legacy built-in PDF font path is still present")
+	}
+	if !bytes.Contains(pdf, []byte("/URI (https://example.com)")) {
+		t.Fatal("PDF did not preserve a safe authored hyperlink as an annotation")
 	}
 	for _, box := range []string{"/TrimBox", "/BleedBox", "/CropBox"} {
 		if !bytes.Contains(pdf, []byte(box)) {
