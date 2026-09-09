@@ -3,6 +3,7 @@ module draftline
 go 1.25.0
 
 require (
+	codeberg.org/go-pdf/fpdf v0.12.0
 	github.com/ebitengine/purego v0.11.0
 	github.com/jdkato/prose/v3 v3.0.0
 	github.com/wailsapp/wails/v2 v2.15.0

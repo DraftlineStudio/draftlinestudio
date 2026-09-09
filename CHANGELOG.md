@@ -2,6 +2,19 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02575] - 2026-09-08
+
+### Added
+- Added a new Unicode PDF renderer with bundled Merriweather and Lato fonts.
+- Reading PDFs now have page size, typeface, spacing, alignment, and indent options.
+
+### Changed
+- Print-ready PDF options now all apply to the exported file, including bleed, crop marks, mirrored margins, drop caps, and running heads.
+
+### Fixed
+- Fixed wrong fonts, broken punctuation, bad wrapping, and blank pages in PDF exports.
+- A failed PDF export no longer leaves a partial file behind.
+
 ## [0.17.02574] - 2026-09-08
 
 ### Added
