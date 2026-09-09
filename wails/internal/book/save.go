@@ -43,6 +43,7 @@ func WriteWithSnapshots(path string, book types.BookData, appVersion string, sna
 	// Keep the legacy single-ISBN field mirroring the list so Python-era
 	// readers of the format still see an ISBN.
 	book.Metadata.NormalizeISBNs()
+	RefreshWordCount(&book)
 
 	var buf bytes.Buffer
 	w := zip.NewWriter(&buf)

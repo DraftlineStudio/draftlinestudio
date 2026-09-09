@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.18.02585] - 2026-09-09
+
+### Changed
+- The manuscript word count is now saved in the book's metadata.
+
 ## [0.18.02584] - 2026-09-09
 
 ### Added
