@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.18.02582] - 2026-09-09
+
+### Fixed
+- The recent projects list is up to date after closing a book.
+
 ## [0.18.02581] - 2026-09-09
 
 ### Fixed
