@@ -9022,8 +9022,7 @@ html, body, #root {
   align-items: center;
   justify-content: center;
   gap: 14px;
-  background: color-mix(in srgb, var(--bg-editor) 82%, transparent);
-  backdrop-filter: blur(2px);
+  background: color-mix(in srgb, var(--bg-editor) 85%, transparent);
   animation: opening-overlay-in 0.2s ease 0.12s backwards;
   transition: opacity 0.5s ease;
 }

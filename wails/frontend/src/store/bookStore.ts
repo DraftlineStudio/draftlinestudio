@@ -24,20 +24,28 @@ const setStatus = (msg: string) => useAppStore.getState().setStatusMessage(msg)
 // a moment and the UI stays live while Go parses them.
 async function loadBookFromPath(path: string): Promise<void> {
   useBookStore.setState({ isOpening: true })
+  const t0 = performance.now()
   try {
     const book: BookData = await OpenRecentProject(path)
+    const tLoaded = performance.now()
     if (!book?.version) return
     const section: Section = book.body.length > 0 ? 'body' : 'front_matter'
     beginBookSession()
     useBookStore.setState({ book, currentSection: section, currentIndex: 0, isDirty: false, analysisRevision: 0 })
     setStatus(`Opened: ${book.metadata.title}`)
     useEditorStore.getState().clearPendingDiff()
-    const wordCount = countBookWords(book)
-    const chapterCount = book.front_matter.length + book.body.length + book.back_matter.length
-    await useAppStore.getState().addRecentProject(types.RecentProject.createFrom({
-      type: 'book', path: book.file_path || path, name: book.metadata.title || 'Untitled',
-      lastOpened: new Date().toISOString(), stats: { chapters: chapterCount, words: wordCount }
-    }))
+    console.debug(`[open] parse+bridge ${(tLoaded - t0).toFixed(0)}ms, state set +${(performance.now() - tLoaded).toFixed(0)}ms — ${path}`)
+    // Recents bookkeeping (word count walks the whole book) runs AFTER the
+    // book is on screen, off the critical path — it must never extend the
+    // loading overlay.
+    setTimeout(() => {
+      const wordCount = countBookWords(book)
+      const chapterCount = book.front_matter.length + book.body.length + book.back_matter.length
+      void useAppStore.getState().addRecentProject(types.RecentProject.createFrom({
+        type: 'book', path: book.file_path || path, name: book.metadata.title || 'Untitled',
+        lastOpened: new Date().toISOString(), stats: { chapters: chapterCount, words: wordCount }
+      }))
+    }, 0)
   } catch (e) {
     setStatus(`Error opening file: ${e}`)
   } finally {
