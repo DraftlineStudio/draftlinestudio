@@ -124,7 +124,7 @@ func renderEPUBRuns(runs []DocumentRun) string {
 		if run.Bold {
 			text = "<strong>" + text + "</strong>"
 		}
-		if href := safeEPUBHref(run.Href); href != "" {
+		if href := safeExportHref(run.Href); href != "" {
 			text = "<a href=\"" + EscapeXML(href) + "\">" + text + "</a>"
 		}
 		out.WriteString(text)
@@ -132,7 +132,7 @@ func renderEPUBRuns(runs []DocumentRun) string {
 	return out.String()
 }
 
-func safeEPUBHref(raw string) string {
+func safeExportHref(raw string) string {
 	raw = strings.TrimSpace(raw)
 	if raw == "" || strings.HasPrefix(raw, "#") {
 		return raw

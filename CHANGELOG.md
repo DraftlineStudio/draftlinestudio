@@ -2,6 +2,16 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.18.02577] - 2026-09-08
+
+### Changed
+- DOCX export now uses the shared export document model.
+- DOCX files now include metadata, named Word styles, real list numbering, and hyperlinks.
+
+### Fixed
+- PDF hyperlinks are now clickable.
+- A failed DOCX export no longer leaves a partial file behind.
+
 ## [0.18.02576] - 2026-09-08
 
 ### Added
