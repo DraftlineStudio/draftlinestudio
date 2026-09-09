@@ -151,15 +151,15 @@
 .export-compact-field > span { display: flex; align-items: center; gap: 4px; }
 .export-compact-field select { min-width: 112px; padding: 0 7px; }
 
-.export-font-choices { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.export-font-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .export-font-choices button { min-width: 0; height: 63px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg-panel); color: var(--text-primary); cursor: pointer; }
 .export-font-choices button.selected { border-color: var(--app-accent); box-shadow: inset 0 0 0 1px var(--app-accent); }
 .export-font-choices span { font-size: 22px; }
 .export-font-choices small { color: var(--text-secondary); font-size: 8px; }
-.export-font-choices .garamond { font-family: Garamond, Georgia, serif; }
-.export-font-choices .palatino { font-family: Palatino, 'Palatino Linotype', serif; }
-.export-font-choices .times { font-family: 'Times New Roman', serif; }
-.export-font-choices .georgia { font-family: Georgia, serif; }
+.export-font-choices .merriweather, .export-document-preview .merriweather { font-family: Merriweather, Georgia, serif; }
+.export-font-choices .lato, .export-document-preview .lato { font-family: 'IBM Plex Sans', Arial, sans-serif; }
+.export-reading-controls { min-width: 0; }
+.export-reading-controls .export-select-grid { margin-top: 14px; }
 .export-select-grid { display: grid; gap: 8px; }
 .export-select-grid select { min-width: 118px; padding: 0 7px; }
 

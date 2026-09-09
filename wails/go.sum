@@ -1,3 +1,5 @@
+codeberg.org/go-pdf/fpdf v0.12.0 h1:g8E/1VqGqB2lZUUaqQrrTnA0IEJLPTTX1DZ0qS/ZmhU=
+codeberg.org/go-pdf/fpdf v0.12.0/go.mod h1:WJNJ2bvCj81rZBdhOf7lKOGoSl+OKMXcIcXqDcP8r5Y=
 git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 h1:N3IGoHHp9pb6mj1cbXbuaSXV/UMKwmbKLf53nQmtqMA=
 git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3/go.mod h1:QtOLZGz8olr4qH2vWK0QH0w0O4T9fEIjMuWpKUsH7nc=
 github.com/bep/debounce v1.2.1 h1:v67fRdBA9UQu2NhLFXrSg0Brw7CexQekrBwDMM8bzeY=

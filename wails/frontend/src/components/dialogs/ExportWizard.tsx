@@ -15,8 +15,12 @@ interface ExportOptions {
 }
 
 interface PDFOptions extends ExportOptions {
-  pageSize: 'letter' | 'a4' | '6x9' | '5x8' | '5.25x8' | '5.5x8.5'
-  fontSize: 11 | 12 | 14
+  pageSize: 'letter' | 'a4' | '6x9' | '5x8' | '5.5x8.5'
+  fontFamily: 'merriweather' | 'lato'
+  fontSize: 10 | 11 | 12 | 14
+  lineHeight: 1.3 | 1.4 | 1.5 | 1.6
+  paragraphIndent: string
+  textAlign: 'justify' | 'left'
 }
 
 interface PrintPDFOptions extends PDFOptions {
@@ -29,10 +33,6 @@ interface PrintPDFOptions extends PDFOptions {
   topMargin: string
   bottomMargin: string
   includeCropMarks: boolean
-  fontFamily: 'garamond' | 'palatino' | 'times' | 'georgia'
-  lineHeight: 1.3 | 1.4 | 1.5 | 1.6
-  paragraphIndent: string
-  textAlign: 'justify' | 'left'
   chapterStartsRecto: boolean
   dropCap: boolean
   dropCapLines: 2 | 3 | 4
@@ -104,11 +104,11 @@ export default function ExportWizard() {
   const [exportSuccess, setExportSuccess] = useState(false)
   const [exportedPath, setExportedPath] = useState('')
   const [options, setOptions] = useState<ExportOptions>({ includeCopyright: true, includeFrontMatter: true, includeBackMatter: true })
-  const [pdfOptions, setPdfOptions] = useState<PDFOptions>({ ...options, pageSize: 'letter', fontSize: 12 })
+  const [pdfOptions, setPdfOptions] = useState<PDFOptions>({ ...options, pageSize: 'letter', fontFamily: 'merriweather', fontSize: 12, lineHeight: 1.5, paragraphIndent: '0.25', textAlign: 'left' })
   const [printOptions, setPrintOptions] = useState<PrintPDFOptions>({
     ...pdfOptions, pageSize: '5.5x8.5', trimSize: '5.5x8.5', customWidth: '5.5', customHeight: '8.5', bleed: '0',
     gutterMargin: '0.875', outerMargin: '0.625', topMargin: '0.75', bottomMargin: '0.625', includeCropMarks: false,
-    fontFamily: 'garamond', fontSize: 11, lineHeight: 1.4, paragraphIndent: '0.25', textAlign: 'justify', chapterStartsRecto: true,
+    fontFamily: 'merriweather', fontSize: 11, lineHeight: 1.4, paragraphIndent: '0.25', textAlign: 'justify', chapterStartsRecto: true,
     dropCap: true, dropCapLines: 3, runningHeaders: true, headerStyle: 'smallcaps', pageNumberPosition: 'bottom-center',
     generateHalfTitle: true, generateTOC: true, mirroredMargins: true,
   })
@@ -233,10 +233,10 @@ export default function ExportWizard() {
   function renderPrintTypographyPanel() {
     return <div className="export-design-panel">
       <div className="export-setting-block export-setting-block-wide"><h3>Body typeface</h3><p>Choose the reading character of the printed page.</p><div className="export-font-choices">
-        {(['garamond', 'palatino', 'times', 'georgia'] as const).map(font => <button type="button" key={font} className={`${font}${printOptions.fontFamily === font ? ' selected' : ''}`} onClick={() => setPrintOptions(current => ({ ...current, fontFamily: font }))}><span>Aa</span><small>{font === 'times' ? 'Times New Roman' : font[0].toUpperCase() + font.slice(1)}</small></button>)}
+        {(['merriweather', 'lato'] as const).map(font => <button type="button" key={font} className={`${font}${printOptions.fontFamily === font ? ' selected' : ''}`} onClick={() => setPrintOptions(current => ({ ...current, fontFamily: font }))}><span>Aa</span><small>{font === 'merriweather' ? 'Merriweather' : 'Lato'}</small></button>)}
       </div></div>
       <div className="export-setting-block"><h3>Composition</h3><div className="export-select-grid">
-        <label>Type size<select value={printOptions.fontSize} onChange={event => setPrintOptions(current => ({ ...current, fontSize: Number(event.target.value) as 11 | 12 | 14 }))}><option value={10}>10 pt</option><option value={11}>11 pt</option><option value={12}>12 pt</option></select></label>
+        <label>Type size<select value={printOptions.fontSize} onChange={event => setPrintOptions(current => ({ ...current, fontSize: Number(event.target.value) as PDFOptions['fontSize'] }))}><option value={10}>10 pt</option><option value={11}>11 pt</option><option value={12}>12 pt</option></select></label>
         <label>Line spacing<select value={printOptions.lineHeight} onChange={event => setPrintOptions(current => ({ ...current, lineHeight: Number(event.target.value) as PrintPDFOptions['lineHeight'] }))}><option value={1.3}>Tight · 1.3</option><option value={1.4}>Book · 1.4</option><option value={1.5}>Relaxed · 1.5</option><option value={1.6}>Open · 1.6</option></select></label>
         <label>Alignment<select value={printOptions.textAlign} onChange={event => setPrintOptions(current => ({ ...current, textAlign: event.target.value as PrintPDFOptions['textAlign'] }))}><option value="justify">Justified</option><option value="left">Left aligned</option></select></label>
         <label>First-line indent<span className="export-field-with-unit"><input value={printOptions.paragraphIndent} onChange={event => setPrintOptions(current => ({ ...current, paragraphIndent: event.target.value }))} inputMode="decimal" /> in</span></label>
@@ -258,10 +258,9 @@ export default function ExportWizard() {
     const info = FORMAT_INFO[format]
     return <>
       <div className="export-step-heading export-step-heading-row"><div><span className="export-eyebrow">Step 3 of 4</span><h2>Shape the {info.label} edition</h2><p>{format === 'print-pdf' ? 'Make a few deliberate book-design decisions; everything else receives sensible defaults.' : 'Choose how this edition should behave after it leaves Draftline.'}</p></div><span className="export-heading-format"><FormatIcon format={format} />{info.label}</span></div>
-      {format === 'print-pdf' && <div className="export-engine-notice"><strong>Design contract preview</strong><span>This guided layout defines the new print renderer. Some details are not honored by the legacy exporter yet.</span></div>}
       {format === 'epub' && <div className="export-simple-design"><div className="export-reader-preview" aria-hidden="true"><div><span>Chapter One</span><i /><i /><i /><i /><i /></div></div><div><h3>Responsive reader edition</h3><p>Text will reflow to the reader’s screen and accessibility preferences. Type size, font, theme, and line spacing remain under the reader’s control.</p><ul><li><CheckIcon />Linked table of contents</li><li><CheckIcon />Chapter-by-chapter navigation</li><li><CheckIcon />Storefront metadata from Book Details</li></ul></div></div>}
       {format === 'docx' && <div className="export-simple-design"><div className="export-document-preview" aria-hidden="true"><div><i /><i /><i /><i /><i /><i /><i /></div></div><div><h3>Clean editable manuscript</h3><p>Draftline will favor familiar Word styles and editable structure over a locked visual design.</p><ul><li><CheckIcon />One heading per chapter</li><li><CheckIcon />Explicit page breaks</li><li><CheckIcon />Readable body-text defaults</li></ul></div></div>}
-      {format === 'pdf' && <div className="export-simple-design export-pdf-design"><div className="export-document-preview pdf" aria-hidden="true"><div><span>{book?.metadata.title || 'Untitled'}</span><i /><i /><i /><i /><i /></div></div><div><h3>Comfortable reading copy</h3><p>A fixed Letter-size edition intended for screens, reviewers, and home printers.</p><label className="export-option-label">Body text size</label><div className="export-choice-strip">{([11, 12, 14] as const).map(size => <button type="button" key={size} className={pdfOptions.fontSize === size ? 'selected' : ''} onClick={() => setPdfOptions(current => ({ ...current, fontSize: size }))}>{size} pt</button>)}</div></div></div>}
+      {format === 'pdf' && <div className="export-simple-design export-pdf-design"><div className="export-document-preview pdf" aria-hidden="true"><div className={pdfOptions.fontFamily}><span>{book?.metadata.title || 'Untitled'}</span><i /><i /><i /><i /><i /></div></div><div className="export-reading-controls"><h3>Comfortable reading copy</h3><p>A fixed-layout edition for screens, reviewers, home printers, or archiving.</p><div className="export-select-grid"><label>Page size<select value={pdfOptions.pageSize} onChange={event => setPdfOptions(current => ({ ...current, pageSize: event.target.value as PDFOptions['pageSize'] }))}><option value="letter">US Letter</option><option value="a4">A4</option><option value="6x9">6 x 9 in</option><option value="5.5x8.5">5.5 x 8.5 in</option><option value="5x8">5 x 8 in</option></select></label><label>Typeface<select value={pdfOptions.fontFamily} onChange={event => setPdfOptions(current => ({ ...current, fontFamily: event.target.value as PDFOptions['fontFamily'] }))}><option value="merriweather">Merriweather</option><option value="lato">Lato</option></select></label><label>Type size<select value={pdfOptions.fontSize} onChange={event => setPdfOptions(current => ({ ...current, fontSize: Number(event.target.value) as PDFOptions['fontSize'] }))}><option value={11}>11 pt</option><option value={12}>12 pt</option><option value={14}>14 pt</option></select></label><label>Line spacing<select value={pdfOptions.lineHeight} onChange={event => setPdfOptions(current => ({ ...current, lineHeight: Number(event.target.value) as PDFOptions['lineHeight'] }))}><option value={1.3}>Tight / 1.3</option><option value={1.4}>Book / 1.4</option><option value={1.5}>Relaxed / 1.5</option><option value={1.6}>Open / 1.6</option></select></label><label>Alignment<select value={pdfOptions.textAlign} onChange={event => setPdfOptions(current => ({ ...current, textAlign: event.target.value as PDFOptions['textAlign'] }))}><option value="left">Left aligned</option><option value="justify">Justified</option></select></label><label>First-line indent<span className="export-field-with-unit"><input value={pdfOptions.paragraphIndent} onChange={event => setPdfOptions(current => ({ ...current, paragraphIndent: event.target.value }))} inputMode="decimal" /> in</span></label></div></div></div>}
       {format === 'print-pdf' && <><div className="export-design-tabs" role="tablist">{([['page', 'Page'], ['typography', 'Typography'], ['furniture', 'Book furniture']] as Array<[PrintPanel, string]>).map(([id, label]) => <button type="button" key={id} role="tab" aria-selected={printPanel === id} className={printPanel === id ? 'selected' : ''} onClick={() => setPrintPanel(id)}>{label}</button>)}</div>{printPanel === 'page' && renderPrintPagePanel()}{printPanel === 'typography' && renderPrintTypographyPanel()}{printPanel === 'furniture' && renderPrintFurniturePanel()}</>}
     </>
   }
@@ -274,7 +273,7 @@ export default function ExportWizard() {
       <div className="export-review-layout">
         <div className="export-review-hero"><span className="export-format-icon"><FormatIcon format={format} /></span><div><small>{FORMAT_INFO[format].intent}</small><strong>{book?.metadata.title || 'Untitled'}</strong><span>{book?.metadata.author ? `by ${book.metadata.author}` : 'Author not set'}</span></div><em>{FORMAT_INFO[format].extension}</em></div>
         <div className="export-review-card"><div className="export-review-section"><span>Contents</span><strong>{selectedWords.toLocaleString()} words</strong><p>{included.join(' · ')}</p></div><button type="button" onClick={() => setStep('contents')}>Edit contents</button></div>
-        <div className="export-review-card"><div className="export-review-section"><span>Design</span><strong>{format === 'print-pdf' ? `${TRIM_SIZES[printOptions.trimSize].label}${printOptions.trimSize === 'custom' ? ` (${printOptions.customWidth} × ${printOptions.customHeight})` : ''} · ${printOptions.fontFamily} ${printOptions.fontSize} pt` : format === 'pdf' ? `Letter · ${pdfOptions.fontSize} pt` : format === 'epub' ? 'Responsive reader layout' : 'Editable manuscript layout'}</strong><p>{format === 'print-pdf' ? `${printOptions.textAlign === 'justify' ? 'Justified' : 'Left aligned'} · ${printOptions.runningHeaders ? 'Running headers' : 'No running headers'} · ${printOptions.generateTOC ? 'Contents page' : 'No contents page'}` : FORMAT_INFO[format].detail}</p></div><button type="button" onClick={() => setStep('design')}>Edit design</button></div>
+        <div className="export-review-card"><div className="export-review-section"><span>Design</span><strong>{format === 'print-pdf' ? `${TRIM_SIZES[printOptions.trimSize].label}${printOptions.trimSize === 'custom' ? ` (${printOptions.customWidth} x ${printOptions.customHeight})` : ''} / ${printOptions.fontFamily} ${printOptions.fontSize} pt` : format === 'pdf' ? `${pdfOptions.pageSize.toUpperCase()} / ${pdfOptions.fontFamily} ${pdfOptions.fontSize} pt` : format === 'epub' ? 'Responsive reader layout' : 'Editable manuscript layout'}</strong><p>{format === 'print-pdf' ? `${printOptions.textAlign === 'justify' ? 'Justified' : 'Left aligned'} / ${printOptions.runningHeaders ? 'Running headers' : 'No running headers'} / ${printOptions.generateTOC ? 'Contents page' : 'No contents page'}` : FORMAT_INFO[format].detail}</p></div><button type="button" onClick={() => setStep('design')}>Edit design</button></div>
       </div>
       <div className="export-save-note"><CheckIcon /><span>Draftline will open your system’s save dialog next. Your project file will not be changed.</span></div>
     </>

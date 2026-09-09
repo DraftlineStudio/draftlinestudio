@@ -4,6 +4,22 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02575] - 2026-09-08
+
+### Added
+- Added a shared Unicode publication renderer for comfortable-reading and print-ready PDFs, with bundled Merriweather and Lato families under their OFL licenses. PDF typography is now deterministic across Windows, macOS, and Linux instead of depending on machine-local or legacy built-in fonts.
+- Comfortable-reading PDFs now expose page size, typeface, type size, line spacing, alignment, and first-line indent in the edition wizard.
+
+### Changed
+- Print-ready PDF controls now drive the generated file: exact trim and custom sizes, bleed and crop boxes, crop marks, mirrored margins, chapter recto starts, drop caps, running headers, folio positions, half-title pages, contents pages, and composition settings are all handled by the replacement renderer.
+- Both PDF editions consume the shared export document model, preserving selected copyright/front/back matter, headings, scene breaks, lists, block quotes, inline emphasis, links, and publishing punctuation through one layout path.
+
+### Fixed
+- Replaced the byte-counting, WinAnsi-era PDF builders that caused wrong fonts, corrupted punctuation, unreliable wrapping, fake blank pages, and wizard controls that changed the interface without changing the exported document.
+- PDF output is assembled completely before replacing the destination file, so a failed render cannot leave a partially written edition behind.
+
+---
+
 ## [0.17.02574] - 2026-09-08
 
 ### Added

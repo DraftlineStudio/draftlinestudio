@@ -2783,7 +2783,11 @@ export namespace types {
 	    includeFrontMatter: boolean;
 	    includeBackMatter: boolean;
 	    pageSize: string;
+	    fontFamily: string;
 	    fontSize: number;
+	    lineHeight: number;
+	    paragraphIndent: string;
+	    textAlign: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new PDFOptions(source);
@@ -2795,7 +2799,11 @@ export namespace types {
 	        this.includeFrontMatter = source["includeFrontMatter"];
 	        this.includeBackMatter = source["includeBackMatter"];
 	        this.pageSize = source["pageSize"];
+	        this.fontFamily = source["fontFamily"];
 	        this.fontSize = source["fontSize"];
+	        this.lineHeight = source["lineHeight"];
+	        this.paragraphIndent = source["paragraphIndent"];
+	        this.textAlign = source["textAlign"];
 	    }
 	}
 	export class PrintPDFOptions {
@@ -2803,7 +2811,11 @@ export namespace types {
 	    includeFrontMatter: boolean;
 	    includeBackMatter: boolean;
 	    pageSize: string;
+	    fontFamily: string;
 	    fontSize: number;
+	    lineHeight: number;
+	    paragraphIndent: string;
+	    textAlign: string;
 	    trimSize: string;
 	    customWidth: string;
 	    customHeight: string;
@@ -2813,10 +2825,6 @@ export namespace types {
 	    topMargin: string;
 	    bottomMargin: string;
 	    includeCropMarks: boolean;
-	    fontFamily: string;
-	    lineHeight: number;
-	    paragraphIndent: string;
-	    textAlign: string;
 	    chapterStartsRecto: boolean;
 	    dropCap: boolean;
 	    dropCapLines: number;
@@ -2837,7 +2845,11 @@ export namespace types {
 	        this.includeFrontMatter = source["includeFrontMatter"];
 	        this.includeBackMatter = source["includeBackMatter"];
 	        this.pageSize = source["pageSize"];
+	        this.fontFamily = source["fontFamily"];
 	        this.fontSize = source["fontSize"];
+	        this.lineHeight = source["lineHeight"];
+	        this.paragraphIndent = source["paragraphIndent"];
+	        this.textAlign = source["textAlign"];
 	        this.trimSize = source["trimSize"];
 	        this.customWidth = source["customWidth"];
 	        this.customHeight = source["customHeight"];
@@ -2847,10 +2859,6 @@ export namespace types {
 	        this.topMargin = source["topMargin"];
 	        this.bottomMargin = source["bottomMargin"];
 	        this.includeCropMarks = source["includeCropMarks"];
-	        this.fontFamily = source["fontFamily"];
-	        this.lineHeight = source["lineHeight"];
-	        this.paragraphIndent = source["paragraphIndent"];
-	        this.textAlign = source["textAlign"];
 	        this.chapterStartsRecto = source["chapterStartsRecto"];
 	        this.dropCap = source["dropCap"];
 	        this.dropCapLines = source["dropCapLines"];
