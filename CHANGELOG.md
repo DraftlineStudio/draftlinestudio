@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.19.02586] - 2026-09-09
+
+### Changed
+- Crossed the v0.19 milestone: the Studio Glow launch screen, the rebuilt book-opening flow (loading overlay, race protection, live recents), and backend-persisted word counts ship together as the 0.19 line.
+
+---
+
 ## [0.18.02585] - 2026-09-09
 
 ### Changed
