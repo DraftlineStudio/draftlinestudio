@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.18.02581] - 2026-09-09
+
+### Fixed
+- The updater no longer claims a rejected download "was discarded" without checking: when a failed or checksum-mismatched file cannot be deleted (on Windows, antivirus commonly holds a just-written installer open), the message now says so and names the file to remove manually. A rejected installer silently left on disk while the app reported it gone was the one substantive finding in a full IDE inspection sweep of the backend.
+
+---
+
 ## [0.18.02580] - 2026-09-09
 
 ### Added
