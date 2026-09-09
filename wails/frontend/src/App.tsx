@@ -44,7 +44,7 @@ export default function App() {
     viewMode: s.viewMode,
     setViewMode: s.setViewMode,
   })))
-  const { loadSettings, settings, showSettings, showWelcome, setShowWelcome, loadRecentProjects, showNewUniverse, setShowNewUniverse, toggleLeftPanel, showMetadata, showNewChapter, newChapterSection, showExportWizard, showChapterHistory, bottomToolOpen, openStorySearch, closeBottomTool } = useAppStore()
+  const { loadSettings, settings, showSettings, showWelcome, setShowWelcome, loadRecentProjects, recentProjects, showNewUniverse, setShowNewUniverse, toggleLeftPanel, showMetadata, showNewChapter, newChapterSection, showExportWizard, showChapterHistory, bottomToolOpen, openStorySearch, closeBottomTool } = useAppStore()
   const prevThemeRef = useRef<'light' | 'dark' | null>(null)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [targetTheme, setTargetTheme] = useState<'light' | 'dark'>('dark')
@@ -134,11 +134,14 @@ export default function App() {
     prevThemeRef.current = computedTheme
   }, [computedTheme])
 
-  // Drive accent color from book title's avatar color
+  // Drive accent color from the open book's title — or, on the welcome
+  // screen, from the last-opened book so the titlebar strip and Studio Glow
+  // set the scene (falls back to the brand accent with no recents).
+  const accentTitle = bookTitle ?? recentProjects[0]?.name ?? null
   useEffect(() => {
-    if (bookTitle) applyAccent(bookTitle)
+    if (accentTitle) applyAccent(accentTitle)
     else clearAccent()
-  }, [bookTitle])
+  }, [accentTitle])
 
   // Global keyboard shortcuts
   useEffect(() => {

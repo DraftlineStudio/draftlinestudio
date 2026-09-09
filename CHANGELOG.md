@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.18.02583] - 2026-09-09
+
+### Changed
+- Redesigned the launch screen around the last opened book.
+
 ## [0.18.02582] - 2026-09-09
 
 ### Fixed
