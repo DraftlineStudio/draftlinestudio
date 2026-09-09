@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.18.02582] - 2026-09-09
+
+### Fixed
+- Closing a book now returns to a launch screen whose recent-projects list is current. Opening a book persisted the recents entry to disk through the raw backend binding without refreshing the in-memory list, which was loaded once at launch — so the welcome screen showed a stale list (or none) until Draftline was fully restarted.
+
+---
+
 ## [0.18.02581] - 2026-09-09
 
 ### Fixed

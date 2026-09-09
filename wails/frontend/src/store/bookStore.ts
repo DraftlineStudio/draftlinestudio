@@ -7,7 +7,7 @@ import { DEFAULT_STYLE_OPTIONS } from '../types/draftline'
 import type { ParagraphDiff, DiffChange } from '../utils/diff'
 import { countBookWords } from '../utils/textUtils'
 
-import { NewBook, OpenBookDialog, SaveBook, SaveBookAs, SaveBookSnapshots, OpenRecentProject, AddRecentProject, IndexBook, MergeEntities, SplitEntity, ImportEPUB, ImportDOCX, ShowInfoDialog } from '../../wailsjs/go/main/App'
+import { NewBook, OpenBookDialog, SaveBook, SaveBookAs, SaveBookSnapshots, OpenRecentProject, IndexBook, MergeEntities, SplitEntity, ImportEPUB, ImportDOCX, ShowInfoDialog } from '../../wailsjs/go/main/App'
 import { types } from '../../wailsjs/go/models'
 import { useAppStore } from './appStore'
 import { useEditorStore, type DiffTarget, type EditorInstance, type EditorSelection } from './editorStore'
@@ -422,7 +422,10 @@ export const useBookStore = create<BookStore>((set, get) => ({
       if (book.file_path) {
         const wordCount = countBookWords(book)
         const chapterCount = book.front_matter.length + book.body.length + book.back_matter.length
-        await AddRecentProject(types.RecentProject.createFrom({
+        // Through the appStore action (not the raw binding) so the in-memory
+        // recents refresh too — the welcome screen reads that list when the
+        // book is closed, without an app relaunch.
+        await useAppStore.getState().addRecentProject(types.RecentProject.createFrom({
           type: 'book', path: book.file_path, name: book.metadata.title || 'Untitled',
           lastOpened: new Date().toISOString(), stats: { chapters: chapterCount, words: wordCount }
         }))
@@ -470,7 +473,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
       useEditorStore.getState().clearPendingDiff()
       const wordCount = countBookWords(book)
       const chapterCount = book.front_matter.length + book.body.length + book.back_matter.length
-      await AddRecentProject(types.RecentProject.createFrom({
+      await useAppStore.getState().addRecentProject(types.RecentProject.createFrom({
         type: 'book', path: book.file_path || path, name: book.metadata.title || 'Untitled',
         lastOpened: new Date().toISOString(), stats: { chapters: chapterCount, words: wordCount }
       }))
