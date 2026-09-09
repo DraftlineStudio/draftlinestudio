@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.18.02581] - 2026-09-09
+
+### Fixed
+- The updater now reports correctly when a rejected download could not be deleted.
+
 ## [0.18.02580] - 2026-09-09
 
 ### Added

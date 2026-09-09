@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 func TestParseReleaseTag(t *testing.T) {
 	cases := []struct {
@@ -70,6 +74,33 @@ func TestPickReleaseAsset(t *testing.T) {
 	// The portable zip must never shadow the installer.
 	if asset := pickReleaseAsset(release, "windows", "amd64"); asset.Name != cases[0].want {
 		t.Fatalf("windows picked %q", asset.Name)
+	}
+}
+
+func TestDiscardNoteReportsWhatHappened(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "rejected-download.exe")
+	if err := os.WriteFile(path, []byte("bad bytes"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if note := discardNote(path); note != " The file was discarded." {
+		t.Fatalf("removable file: %q", note)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatal("the rejected file must actually be deleted")
+	}
+	// Already-gone files still count as discarded, not as a failure.
+	if note := discardNote(path); note != " The file was discarded." {
+		t.Fatalf("missing file: %q", note)
+	}
+	// A path that cannot be removed (its parent does not permit it — use a
+	// directory with contents, which os.Remove refuses) must tell the user
+	// the file is still there.
+	dir := filepath.Join(t.TempDir(), "held")
+	if err := os.MkdirAll(filepath.Join(dir, "inner"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if note := discardNote(dir); note == " The file was discarded." {
+		t.Fatal("an undeletable path must not be reported as discarded")
 	}
 }
 
