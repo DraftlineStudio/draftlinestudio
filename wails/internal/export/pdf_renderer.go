@@ -63,6 +63,9 @@ func newPublicationPDFRenderer(doc Document, spec publicationPDFSpec) *publicati
 	if spec.TitlePageFont.ID == "" {
 		spec.TitlePageFont = spec.Font
 	}
+	if spec.CodeFont.ID == "" {
+		spec.CodeFont = embeddedPDFFonts["ibmplexmono"]
+	}
 	markMargin := 0.0
 	if spec.CropMarks {
 		markMargin = 18
@@ -75,7 +78,11 @@ func newPublicationPDFRenderer(doc Document, spec publicationPDFSpec) *publicati
 		UnitStr:        "pt",
 		Size:           fpdf.SizeType{Wd: pageWidth, Ht: pageHeight},
 	})
-	registerPDFFonts(pdf, spec.Font, spec.HeadingFont, spec.FurnitureFont, spec.TitlePageFont)
+	fonts := []embeddedFontFamily{spec.Font, spec.HeadingFont, spec.FurnitureFont, spec.TitlePageFont}
+	if documentUsesCode(doc) {
+		fonts = append(fonts, spec.CodeFont)
+	}
+	registerPDFFonts(pdf, fonts...)
 	pdf.SetTitle(doc.Title, true)
 	pdf.SetAuthor(doc.Author, true)
 	pdf.SetCreator("Draftline", true)
@@ -242,7 +249,7 @@ func (r *publicationPDFRenderer) renderSection(section DocumentSection, includeI
 		case BlockListItem:
 			r.renderListItem(block)
 		case BlockCode:
-			r.renderTextBlock(block, 0.25*pointsPerInch, false)
+			r.renderCodeBlock(block)
 		}
 	}
 }
@@ -276,7 +283,10 @@ func (r *publicationPDFRenderer) renderHeadingText(text string, size float64, st
 func (r *publicationPDFRenderer) renderSceneBreak() {
 	r.ensureSpace(r.spec.LineHeight * 2)
 	r.y += r.spec.LineHeight * 0.35
-	r.centeredText("\u2042", r.spec.FontSize*1.05, "", r.y+r.spec.FontSize)
+	// ASCII asterisks are intentionally used rather than U+2042. Not every
+	// author-selected body face contains the asterism glyph, which produced a
+	// visible .notdef box in otherwise valid PDFs.
+	r.centeredText("*  *  *", r.spec.FontSize, "", r.y+r.spec.FontSize)
 	r.y += r.spec.LineHeight * 1.45
 }
 
@@ -317,16 +327,19 @@ func (r *publicationPDFRenderer) renderTextBlock(block DocumentBlock, inset floa
 	}
 
 	runs := append([]DocumentRun(nil), block.Runs...)
+	dropPrefix := ""
 	dropText := ""
 	dropWidth := 0.0
 	dropLines := 0
 	if dropCap {
-		dropText, runs = takeFirstRune(runs)
+		dropPrefix, dropText, runs = takeDropCap(runs)
 		if strings.TrimSpace(dropText) != "" {
 			dropLines = r.spec.DropCapLines
 			dropSize := r.spec.FontSize * float64(dropLines) * 0.82
+			r.pdf.SetFont(r.spec.Font.ID, "", r.spec.FontSize*1.05)
+			prefixWidth := r.pdf.GetStringWidth(dropPrefix)
 			r.pdf.SetFont(r.spec.Font.ID, "", dropSize)
-			dropWidth = r.pdf.GetStringWidth(dropText) + r.spec.FontSize*0.35
+			dropWidth = prefixWidth + r.pdf.GetStringWidth(dropText) + r.spec.FontSize*0.35
 			indent = 0
 		}
 	}
@@ -338,9 +351,15 @@ func (r *publicationPDFRenderer) renderTextBlock(block DocumentBlock, inset floa
 	r.ensureSpace(r.spec.LineHeight)
 	if dropText != "" {
 		left, _, _ := r.bodyBounds()
+		x := left + inset
+		if dropPrefix != "" {
+			r.pdf.SetFont(r.spec.Font.ID, "", r.spec.FontSize*1.05)
+			r.pdf.Text(x, r.y+r.spec.FontSize*0.88, dropPrefix)
+			x += r.pdf.GetStringWidth(dropPrefix)
+		}
 		dropSize := r.spec.FontSize * float64(dropLines) * 0.82
 		r.pdf.SetFont(r.spec.Font.ID, "", dropSize)
-		r.pdf.Text(left+inset, r.y+dropSize*0.78, dropText)
+		r.pdf.Text(x, r.y+dropSize*0.78, dropText)
 	}
 
 	for i, line := range lines {
@@ -470,8 +489,15 @@ func (r *publicationPDFRenderer) tokenWidth(token pdfToken) float64 {
 	if token.Run.Superscript || token.Run.Subscript {
 		size *= 0.7
 	}
-	r.pdf.SetFont(r.spec.Font.ID, runStyle(token.Run), size)
+	r.pdf.SetFont(r.fontForRun(token.Run).ID, runStyle(token.Run), size)
 	return r.pdf.GetStringWidth(token.Text)
+}
+
+func (r *publicationPDFRenderer) fontForRun(run DocumentRun) embeddedFontFamily {
+	if run.Code {
+		return r.spec.CodeFont
+	}
+	return r.spec.Font
 }
 
 func (r *publicationPDFRenderer) splitToken(token pdfToken, limit float64) (pdfToken, string) {
@@ -491,12 +517,7 @@ func (r *publicationPDFRenderer) splitToken(token pdfToken, limit float64) (pdfT
 }
 
 func (r *publicationPDFRenderer) renderLine(line pdfLine, left, width float64, align string, last bool) {
-	x := left
-	if align == "center" {
-		x += math.Max(0, (width-line.Width)/2)
-	} else if align == "right" {
-		x += math.Max(0, width-line.Width)
-	}
+	x := alignedLineStart(left, width, line.Width, align)
 	extraSpace := 0.0
 	if align == "justify" && !last {
 		spaces := 0
@@ -521,7 +542,7 @@ func (r *publicationPDFRenderer) renderLine(line pdfLine, left, width float64, a
 				tokenBaseline += r.spec.FontSize * 0.18
 			}
 		}
-		r.pdf.SetFont(r.spec.Font.ID, runStyle(token.Run), size)
+		r.pdf.SetFont(r.fontForRun(token.Run).ID, runStyle(token.Run), size)
 		href := safeExportHref(token.Run.Href)
 		if href != "" {
 			r.pdf.SetTextColor(35, 78, 120)
@@ -541,6 +562,16 @@ func (r *publicationPDFRenderer) renderLine(line pdfLine, left, width float64, a
 	}
 }
 
+func alignedLineStart(left, width, lineWidth float64, align string) float64 {
+	if align == "center" {
+		return left + math.Max(0, (width-lineWidth)/2)
+	}
+	if align == "right" {
+		return left + math.Max(0, width-lineWidth)
+	}
+	return left
+}
+
 func runStyle(run DocumentRun) string {
 	style := ""
 	if run.Bold {
@@ -558,18 +589,29 @@ func runStyle(run DocumentRun) string {
 	return style
 }
 
-func takeFirstRune(runs []DocumentRun) (string, []DocumentRun) {
+func takeDropCap(runs []DocumentRun) (string, string, []DocumentRun) {
+	copyRuns := append([]DocumentRun(nil), runs...)
+	var prefix strings.Builder
 	for i := range runs {
+		if runs[i].LineBreak {
+			return "", "", runs
+		}
 		trimmed := strings.TrimLeftFunc(runs[i].Text, unicode.IsSpace)
 		if trimmed == "" {
 			continue
 		}
-		first, size := utf8.DecodeRuneInString(trimmed)
-		copyRuns := append([]DocumentRun(nil), runs...)
-		copyRuns[i].Text = trimmed[size:]
-		return string(first), copyRuns
+		for offset, char := range trimmed {
+			if !unicode.IsLetter(char) && !unicode.IsNumber(char) {
+				prefix.WriteRune(char)
+				continue
+			}
+			_, size := utf8.DecodeRuneInString(trimmed[offset:])
+			copyRuns[i].Text = trimmed[offset+size:]
+			return prefix.String(), string(char), copyRuns
+		}
+		copyRuns[i].Text = ""
 	}
-	return "", runs
+	return "", "", runs
 }
 
 func (r *publicationPDFRenderer) drawFurniture() {

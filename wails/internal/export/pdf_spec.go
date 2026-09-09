@@ -24,6 +24,7 @@ type publicationPDFSpec struct {
 	HeadingFont            embeddedFontFamily
 	FurnitureFont          embeddedFontFamily
 	TitlePageFont          embeddedFontFamily
+	CodeFont               embeddedFontFamily
 	FontSize               float64
 	LineHeight             float64
 	ParagraphIndent        float64
@@ -52,6 +53,7 @@ func readingPDFSpec(options types.PDFOptions) publicationPDFSpec {
 		lineHeight = 1.5
 	}
 	bodyFont := resolvePDFFont(options.FontFamily)
+	codeFont := embeddedPDFFonts["ibmplexmono"]
 	return publicationPDFSpec{
 		TrimWidth:              w,
 		TrimHeight:             h,
@@ -63,6 +65,7 @@ func readingPDFSpec(options types.PDFOptions) publicationPDFSpec {
 		HeadingFont:            bodyFont,
 		FurnitureFont:          bodyFont,
 		TitlePageFont:          bodyFont,
+		CodeFont:               codeFont,
 		FontSize:               fontSize,
 		LineHeight:             fontSize * lineHeight,
 		ParagraphIndent:        parseInches(options.ParagraphIndent, 0.25),
@@ -77,7 +80,7 @@ func printPDFSpec(options types.PrintPDFOptions) publicationPDFSpec {
 	w, h := trimPageSize(options.TrimSize, options.CustomWidth, options.CustomHeight)
 	fontSize := float64(options.FontSize)
 	if fontSize <= 0 {
-		fontSize = 10
+		fontSize = 9
 	}
 	lineHeight := options.LineHeight
 	if lineHeight <= 0 {
@@ -88,6 +91,7 @@ func printPDFSpec(options types.PrintPDFOptions) publicationPDFSpec {
 		dropLines = 3
 	}
 	bodyFont := resolvePDFFont(options.FontFamily)
+	codeFont := embeddedPDFFonts["ibmplexmono"]
 	headingChoice := options.HeadingFont
 	titleChoice := options.TitlePageFont
 	if strings.TrimSpace(headingChoice) == "" {
@@ -117,6 +121,7 @@ func printPDFSpec(options types.PrintPDFOptions) publicationPDFSpec {
 		HeadingFont:            resolveDisplayFont(headingChoice, bodyFont),
 		FurnitureFont:          resolveDisplayFont(options.FurnitureFont, bodyFont),
 		TitlePageFont:          resolveDisplayFont(titleChoice, bodyFont),
+		CodeFont:               codeFont,
 		FontSize:               fontSize,
 		LineHeight:             fontSize * lineHeight,
 		ParagraphIndent:        parseInches(options.ParagraphIndent, 0.25),

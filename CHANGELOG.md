@@ -2,6 +2,19 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.18.02580] - 2026-09-09
+
+### Added
+- Added a monospace print font for code blocks.
+
+### Changed
+- Print-ready body text now defaults to about 9 points.
+
+### Fixed
+- Print scene breaks no longer render as missing glyph boxes.
+- Drop caps now enlarge the first letter instead of an opening quotation mark.
+- Paragraph, heading, and code block alignment now overrides the edition default.
+
 ## [0.18.02579] - 2026-09-09
 
 ### Added

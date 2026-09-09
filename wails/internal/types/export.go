@@ -25,7 +25,7 @@ type PDFOptions struct {
 	ExportOptions
 	PageSize        string  `json:"pageSize"`        // letter, a4, 6x9, 5.5x8.5, 5x8
 	FontFamily      string  `json:"fontFamily"`      // merriweather, lato
-	FontSize        int     `json:"fontSize"`        // 10, 11, 12, 14
+	FontSize        int     `json:"fontSize"`        // 9, 10, 11, 12, 14
 	LineHeight      float64 `json:"lineHeight"`      // 1.3, 1.4, 1.5, 1.6
 	ParagraphIndent string  `json:"paragraphIndent"` // inches
 	TextAlign       string  `json:"textAlign"`       // justify, left

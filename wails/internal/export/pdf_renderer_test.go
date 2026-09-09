@@ -80,13 +80,13 @@ func TestPDFSpecsHonorReadingAndPrintControls(t *testing.T) {
 	}
 }
 
-func TestPrintPDFSpecDefaultsToLeftAlignedTenPointBody(t *testing.T) {
+func TestPrintPDFSpecDefaultsToLeftAlignedNinePointBody(t *testing.T) {
 	spec := printPDFSpec(types.PrintPDFOptions{})
 	if spec.TextAlign != "left" {
 		t.Fatalf("print alignment defaulted to %q, want left", spec.TextAlign)
 	}
-	if spec.FontSize != 10 {
-		t.Fatalf("print type size defaulted to %g, want 10", spec.FontSize)
+	if spec.FontSize != 9 {
+		t.Fatalf("print type size defaulted to %g, want 9", spec.FontSize)
 	}
 	if spec.HeadingFont.ID != "EBGaramond" {
 		t.Fatalf("default heading face = %q, want EBGaramond", spec.HeadingFont.ID)
