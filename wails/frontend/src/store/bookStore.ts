@@ -7,7 +7,7 @@ import { DEFAULT_STYLE_OPTIONS } from '../types/draftline'
 import type { ParagraphDiff, DiffChange } from '../utils/diff'
 import { countBookWords } from '../utils/textUtils'
 
-import { NewBook, OpenBookDialog, SaveBook, SaveBookAs, SaveBookSnapshots, OpenRecentProject, IndexBook, MergeEntities, SplitEntity, ImportEPUB, ImportDOCX, ShowInfoDialog } from '../../wailsjs/go/main/App'
+import { NewBook, PickBookPath, SaveBook, SaveBookAs, SaveBookSnapshots, OpenRecentProject, IndexBook, MergeEntities, SplitEntity, ImportEPUB, ImportDOCX, ShowInfoDialog } from '../../wailsjs/go/main/App'
 import { types } from '../../wailsjs/go/models'
 import { useAppStore } from './appStore'
 import { useEditorStore, type DiffTarget, type EditorInstance, type EditorSelection } from './editorStore'
@@ -17,6 +17,33 @@ import { resetChapterHistorySession, saveAIChapterHistory, scheduleChapterHistor
 // Status-bar text lives in appStore (app-level UI state); this is the funnel
 // bookStore's save/index flows report through.
 const setStatus = (msg: string) => useAppStore.getState().setStatusMessage(msg)
+
+// Opens a book archive by path with loading feedback. isOpening drives the
+// full-screen overlay (feedback + input shield); the entry guard in each
+// open action prevents a second open racing the first — large archives take
+// a moment and the UI stays live while Go parses them.
+async function loadBookFromPath(path: string): Promise<void> {
+  useBookStore.setState({ isOpening: true })
+  try {
+    const book: BookData = await OpenRecentProject(path)
+    if (!book?.version) return
+    const section: Section = book.body.length > 0 ? 'body' : 'front_matter'
+    beginBookSession()
+    useBookStore.setState({ book, currentSection: section, currentIndex: 0, isDirty: false, analysisRevision: 0 })
+    setStatus(`Opened: ${book.metadata.title}`)
+    useEditorStore.getState().clearPendingDiff()
+    const wordCount = countBookWords(book)
+    const chapterCount = book.front_matter.length + book.body.length + book.back_matter.length
+    await useAppStore.getState().addRecentProject(types.RecentProject.createFrom({
+      type: 'book', path: book.file_path || path, name: book.metadata.title || 'Untitled',
+      lastOpened: new Date().toISOString(), stats: { chapters: chapterCount, words: wordCount }
+    }))
+  } catch (e) {
+    setStatus(`Error opening file: ${e}`)
+  } finally {
+    useBookStore.setState({ isOpening: false })
+  }
+}
 
 // Auto-save debounce timer
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
@@ -171,6 +198,9 @@ interface BookStore {
   currentIndex: number
   isDirty: boolean
   isAutoSaving: boolean
+  // True while a book archive is being opened and parsed; drives the
+  // full-screen opening overlay and guards against concurrent opens.
+  isOpening: boolean
   isIndexing: boolean
   analysisRevision: number
 
@@ -306,12 +336,9 @@ async function proceedWithAction(action: DialogState['pendingAction']) {
   }
   if (action === 'open') {
     try {
-      const opened: BookData = await OpenBookDialog()
-      if (!opened?.version) return
-      const section: Section = opened.body.length > 0 ? 'body' : 'front_matter'
-      beginBookSession()
-      useBookStore.setState({ book: opened, currentSection: section, currentIndex: 0, isDirty: false, analysisRevision: 0 })
-      setStatus(`Opened: ${opened.metadata.title}`)
+      const path = await PickBookPath()
+      if (!path) return
+      await loadBookFromPath(path)
     } catch (e) {
       setStatus(`Error opening file: ${e}`)
     }
@@ -351,6 +378,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
   currentIndex: 0,
   isDirty: false,
   isAutoSaving: false,
+  isOpening: false,
   isIndexing: false,
   analysisRevision: 0,
 
@@ -406,30 +434,16 @@ export const useBookStore = create<BookStore>((set, get) => ({
   },
 
   openBook: async () => {
-    const { isDirty } = get()
+    const { isDirty, isOpening } = get()
+    if (isOpening) return
     if (isDirty) {
       set(s => ({ dialogs: { ...s.dialogs, showUnsavedWarning: true, pendingAction: 'open' } }))
       return
     }
     try {
-      const book: BookData = await OpenBookDialog()
-      if (!book?.version) return
-      const section: Section = book.body.length > 0 ? 'body' : 'front_matter'
-      beginBookSession()
-      set({ book, currentSection: section, currentIndex: 0, isDirty: false, analysisRevision: 0 })
-      setStatus(`Opened: ${book.metadata.title}`)
-      useEditorStore.getState().clearPendingDiff()
-      if (book.file_path) {
-        const wordCount = countBookWords(book)
-        const chapterCount = book.front_matter.length + book.body.length + book.back_matter.length
-        // Through the appStore action (not the raw binding) so the in-memory
-        // recents refresh too — the welcome screen reads that list when the
-        // book is closed, without an app relaunch.
-        await useAppStore.getState().addRecentProject(types.RecentProject.createFrom({
-          type: 'book', path: book.file_path, name: book.metadata.title || 'Untitled',
-          lastOpened: new Date().toISOString(), stats: { chapters: chapterCount, words: wordCount }
-        }))
-      }
+      const path = await PickBookPath()
+      if (!path) return
+      await loadBookFromPath(path)
     } catch (e) {
       setStatus(`Error opening file: ${e}`)
     }
@@ -458,28 +472,13 @@ export const useBookStore = create<BookStore>((set, get) => ({
   },
 
   openRecentBook: async (path: string) => {
-    const { isDirty } = get()
+    const { isDirty, isOpening } = get()
+    if (isOpening) return
     if (isDirty) {
       set(s => ({ dialogs: { ...s.dialogs, showUnsavedWarning: true, pendingAction: { openPath: path } } }))
       return
     }
-    try {
-      const book: BookData = await OpenRecentProject(path)
-      if (!book?.version) return
-      const section: Section = book.body.length > 0 ? 'body' : 'front_matter'
-      beginBookSession()
-      set({ book, currentSection: section, currentIndex: 0, isDirty: false, analysisRevision: 0 })
-      setStatus(`Opened: ${book.metadata.title}`)
-      useEditorStore.getState().clearPendingDiff()
-      const wordCount = countBookWords(book)
-      const chapterCount = book.front_matter.length + book.body.length + book.back_matter.length
-      await useAppStore.getState().addRecentProject(types.RecentProject.createFrom({
-        type: 'book', path: book.file_path || path, name: book.metadata.title || 'Untitled',
-        lastOpened: new Date().toISOString(), stats: { chapters: chapterCount, words: wordCount }
-      }))
-    } catch (e) {
-      setStatus(`Error opening file: ${e}`)
-    }
+    await loadBookFromPath(path)
   },
 
   saveBook: async () => {

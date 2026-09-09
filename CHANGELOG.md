@@ -4,6 +4,16 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.18.02584] - 2026-09-09
+
+### Changed
+- Opening a book now shows a soft loading overlay with a spinner while the archive is parsed — large books previously loaded in silent dead time — and crossfades away over half a second when the book appears. Instant opens never flash it. The Open dialog was split so the picker returns immediately and the load itself gets the same feedback.
+
+### Fixed
+- While a book is loading, further open clicks are ignored and input is shielded; previously a second open could be started mid-load and the two results raced, with the slower book silently replacing the one selected last.
+
+---
+
 ## [0.18.02583] - 2026-09-09
 
 ### Changed

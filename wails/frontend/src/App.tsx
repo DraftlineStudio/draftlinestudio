@@ -30,8 +30,9 @@ import ExportWizard from './components/dialogs/ExportWizard'
 const ChapterHistoryDialog = lazy(() => import('./components/dialogs/ChapterHistoryDialog'))
 
 export default function App() {
-  const { hasBook, bookTitle, bookFilePath, newBook, openBook, openRecentBook, saveBook, saveBookAs, dialogs, initBook, viewMode, setViewMode } = useBookStore(useShallow(s => ({
+  const { hasBook, bookTitle, bookFilePath, newBook, openBook, openRecentBook, saveBook, saveBookAs, dialogs, initBook, viewMode, setViewMode, isOpening } = useBookStore(useShallow(s => ({
     hasBook: s.book !== null,
+    isOpening: s.isOpening,
     bookTitle: s.book?.metadata.title,
     bookFilePath: s.book?.file_path,
     newBook: s.newBook,
@@ -220,6 +221,28 @@ export default function App() {
     if (!hasBook && bottomToolOpen) closeBottomTool()
   }, [bottomToolOpen, closeBottomTool, hasBook])
 
+  // Full-screen overlay while a book archive loads: feedback for large
+  // books, and an input shield so a second open cannot race the first.
+  // It appears after a short delay (instant opens never flash it) and, on
+  // completion, releases input at once but crossfades out over ~500ms so
+  // the book surfaces through it.
+  const [overlayPhase, setOverlayPhase] = useState<'hidden' | 'open' | 'closing'>('hidden')
+  useEffect(() => {
+    if (isOpening) {
+      setOverlayPhase('open')
+      return
+    }
+    setOverlayPhase(phase => (phase === 'open' ? 'closing' : phase))
+    const timer = setTimeout(() => setOverlayPhase('hidden'), 550)
+    return () => clearTimeout(timer)
+  }, [isOpening])
+  const openingOverlay = overlayPhase !== 'hidden' && (
+    <div className={`opening-overlay${overlayPhase === 'closing' ? ' closing' : ''}`}>
+      <div className="opening-spinner" />
+      <div className="opening-label">Opening book…</div>
+    </div>
+  )
+
   // Show welcome screen
   if (showWelcome) {
     return (
@@ -235,6 +258,7 @@ export default function App() {
         {dialogs.showNewBookWizard && <NewBookWizard onCreated={() => setShowWelcome(false)} />}
         {showNewUniverse && <NewUniverseWizard />}
         {showSettings && <AppSettingsDialog />}
+        {openingOverlay}
       </div>
     )
   }
@@ -267,6 +291,7 @@ export default function App() {
       {showExportWizard && <ExportWizard />}
       {showChapterHistory && <Suspense fallback={null}><ChapterHistoryDialog /></Suspense>}
       {showSettings && <AppSettingsDialog />}
+      {openingOverlay}
     </div>
   )
 }

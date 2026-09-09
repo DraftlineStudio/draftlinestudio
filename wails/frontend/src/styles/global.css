@@ -9003,3 +9003,54 @@ html, body, #root {
   .titlebar-update-chip,
   .titlebar-update-chip-arrow { animation: none; }
 }
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   BOOK OPENING OVERLAY
+   Shown while a .draftline archive is parsed: progress feedback for large
+   books and an input shield against concurrent opens. Eases in after a
+   short delay (instant opens never flash it) and crossfades out ~500ms on
+   completion; the closing phase releases pointer events immediately. The
+   spinner animates on transform so it keeps turning even if the main
+   thread briefly blocks while the parsed book crosses the bridge.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.opening-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: color-mix(in srgb, var(--bg-editor) 82%, transparent);
+  backdrop-filter: blur(2px);
+  animation: opening-overlay-in 0.2s ease 0.12s backwards;
+  transition: opacity 0.5s ease;
+}
+.opening-overlay.closing {
+  opacity: 0;
+  pointer-events: none;
+}
+@keyframes opening-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.opening-spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2.5px solid var(--border-strong);
+  border-top-color: var(--accent, var(--app-accent));
+  animation: opening-spin 0.9s linear infinite;
+}
+@keyframes opening-spin {
+  to { transform: rotate(360deg); }
+}
+.opening-label {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+@media (prefers-reduced-motion: reduce) {
+  .opening-overlay { animation: none; transition: none; }
+  .opening-spinner { animation-duration: 1.6s; }
+}
