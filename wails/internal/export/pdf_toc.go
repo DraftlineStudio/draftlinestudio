@@ -41,7 +41,7 @@ func (r *publicationPDFRenderer) fillTOC() {
 		width := r.spec.TrimWidth - leftMargin - rightMargin
 		y := r.trimY + r.spec.TopMargin
 		if pageIndex == 0 {
-			r.pdf.SetFont(r.spec.Font.ID, "B", r.spec.FontSize*1.65)
+			r.pdf.SetFont(r.spec.HeadingFont.ID, "B", r.spec.FontSize*1.65)
 			title := "Contents"
 			r.pdf.Text(left+(width-r.pdf.GetStringWidth(title))/2, y+r.spec.FontSize*1.65, title)
 			y += r.spec.LineHeight * 3

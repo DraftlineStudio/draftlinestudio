@@ -9,7 +9,12 @@ the author's computer.
   `4481226b336843648b5b2ee64f75737f262ded15`.
 - Lato Regular, Bold, Italic, and Bold Italic are from `google/fonts` revision
   `baa2e5561af8a4873b058859dcfe158bdd033942`, directory `ofl/lato`.
+- EB Garamond variable regular, Great Vibes Regular, Orbitron variable regular,
+  and Cinzel Decorative Regular are from the same pinned `google/fonts`
+  revision, directories `ofl/ebgaramond`, `ofl/greatvibes`, `ofl/orbitron`,
+  and `ofl/cinzeldecorative`. These display faces are used for headings,
+  running furniture, and title pages rather than body composition.
 
-Both families are licensed under the SIL Open Font License 1.1. The exact
-license text supplied with each family is retained beside the font binaries as
-`Merriweather-OFL.txt` and `Lato-OFL.txt`.
+All bundled families are licensed under the SIL Open Font License 1.1. The
+license notice supplied with each family is retained beside its font binaries;
+the display families use individual `*-OFL.txt` files.

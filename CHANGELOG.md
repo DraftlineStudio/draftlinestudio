@@ -4,6 +4,18 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.18.02579] - 2026-09-09
+
+### Added
+- Added independently selectable print display typography for chapter and contents headings, running headers and page-number folios, and title pages. Presets include unified body type, classic EB Garamond, modern Lato, romance-oriented Great Vibes, science-fiction-oriented Orbitron, and fantasy-oriented Cinzel Decorative; every added face is bundled with its exact OFL notice for deterministic offline, cross-platform output.
+- Added classic, minimal, and dramatic title-page compositions, with separate controls for the title typeface and whether author and publisher or imprint lines appear.
+
+### Changed
+- Print PDF generation registers only the embedded font families used by the selected design, keeping the expanded design library from bloating every exported edition.
+- Made left alignment the print renderer's backend default as well as the wizard default, so older callers and missing option payloads cannot silently fall back to justified composition.
+
+---
+
 ## [0.18.02578] - 2026-09-09
 
 ### Changed
