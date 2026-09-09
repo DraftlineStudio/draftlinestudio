@@ -142,7 +142,7 @@ func pickReleaseAsset(release *githubRelease, goos, goarch string) *githubReleas
 // parseSHA256Sums reads sha256sum output ("<hex>  <name>") into a lookup.
 func parseSHA256Sums(content string) map[string]string {
 	sums := map[string]string{}
-	for _, line := range strings.Split(content, "\n") {
+	for line := range strings.SplitSeq(content, "\n") {
 		fields := strings.Fields(strings.TrimSpace(line))
 		if len(fields) != 2 || len(fields[0]) != 64 {
 			continue
@@ -168,7 +168,7 @@ func githubGet(ctx context.Context, client *http.Client, url string) (*http.Resp
 		return nil, err
 	}
 	if response.StatusCode != http.StatusOK {
-		response.Body.Close()
+		_ = response.Body.Close()
 		return nil, fmt.Errorf("GitHub responded with %s", response.Status)
 	}
 	return response, nil
@@ -179,7 +179,7 @@ func githubGet(ctx context.Context, client *http.Client, url string) (*http.Resp
 // pre-release builds are still offered.
 func latestRelease(ctx context.Context, client *http.Client) (*githubRelease, error) {
 	if response, err := githubGet(ctx, client, updateRepoAPI+"/latest"); err == nil {
-		defer response.Body.Close()
+		defer func() { _ = response.Body.Close() }()
 		release := &githubRelease{}
 		if decodeErr := json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(release); decodeErr == nil && release.TagName != "" {
 			return release, nil
@@ -189,7 +189,7 @@ func latestRelease(ctx context.Context, client *http.Client) (*githubRelease, er
 	if err != nil {
 		return nil, err
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	releases := []githubRelease{}
 	if err := json.NewDecoder(io.LimitReader(response.Body, 4<<20)).Decode(&releases); err != nil {
 		return nil, err
@@ -266,7 +266,7 @@ func (a *App) DownloadUpdate() UpdateDownloadResult {
 				return UpdateDownloadResult{Error: "Could not fetch the release checksums: " + sumsErr.Error()}
 			}
 			content, readErr := io.ReadAll(io.LimitReader(sumsResponse.Body, 1<<20))
-			sumsResponse.Body.Close()
+			_ = sumsResponse.Body.Close()
 			if readErr != nil {
 				return UpdateDownloadResult{Error: "Could not read the release checksums: " + readErr.Error()}
 			}
@@ -291,7 +291,7 @@ func (a *App) DownloadUpdate() UpdateDownloadResult {
 	if err != nil {
 		return UpdateDownloadResult{Error: "Download failed: " + err.Error()}
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 
 	file, err := os.Create(targetPath)
 	if err != nil {

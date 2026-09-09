@@ -1143,15 +1143,13 @@ func (a *App) callCodexCLIAtPath(ctx context.Context, path, system, userMsg stri
 		if p.err != nil {
 			continue
 		}
-		wg.Add(1)
-		go func(r io.ReadCloser, isErr bool) {
-			defer wg.Done()
-			providers.DrainLines(r, func(line string) {
-				if isErr {
+		wg.Go(func() {
+			providers.DrainLines(p.pipe, func(line string) {
+				if p.errs {
 					stderrBuf.WriteString(line + "\n")
 				}
 			})
-		}(p.pipe, p.errs)
+		})
 	}
 
 	runErr := cmd.Wait()
@@ -1334,9 +1332,7 @@ func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string, pro
 	var stderrBuf strings.Builder
 
 	if stdoutPipeErr == nil {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			streamed := false
 			providers.DrainLines(stdoutPipe, func(line string) {
 				// Raw stream-json lines contain prompt/manuscript-derived
@@ -1367,19 +1363,17 @@ func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string, pro
 					}
 				}
 			})
-		}()
+		})
 	}
 	if stderrPipeErr == nil {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			providers.DrainLines(stderrPipe, func(line string) {
 				stderrBuf.WriteString(line + "\n")
 				// stderr may echo prompt/manuscript-derived content; keep it in
 				// the opt-in debug log only, not the screenshot-visible ai:log.
 				logging.AIContent("CLAUDE_STDERR", line)
 			})
-		}()
+		})
 	}
 
 	runErr := cmd.Wait()
