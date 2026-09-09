@@ -9,158 +9,7 @@ import (
 	"unicode/utf8"
 
 	"codeberg.org/go-pdf/fpdf"
-	"draftline/internal/types"
 )
-
-const pointsPerInch = 72.0
-
-type publicationPDFSpec struct {
-	Print              bool
-	TrimWidth          float64
-	TrimHeight         float64
-	Bleed              float64
-	CropMarks          bool
-	GutterMargin       float64
-	OuterMargin        float64
-	TopMargin          float64
-	BottomMargin       float64
-	MirroredMargins    bool
-	Font               embeddedFontFamily
-	FontSize           float64
-	LineHeight         float64
-	ParagraphIndent    float64
-	TextAlign          string
-	ChapterStartsRecto bool
-	DropCap            bool
-	DropCapLines       int
-	RunningHeaders     bool
-	HeaderStyle        string
-	PageNumberPosition string
-	GenerateHalfTitle  bool
-	GenerateTOC        bool
-}
-
-func readingPDFSpec(options types.PDFOptions) publicationPDFSpec {
-	w, h := readingPageSize(options.PageSize)
-	fontSize := float64(options.FontSize)
-	if fontSize <= 0 {
-		fontSize = 12
-	}
-	lineHeight := options.LineHeight
-	if lineHeight <= 0 {
-		lineHeight = 1.5
-	}
-	return publicationPDFSpec{
-		TrimWidth:       w,
-		TrimHeight:      h,
-		GutterMargin:    pointsPerInch,
-		OuterMargin:     pointsPerInch,
-		TopMargin:       pointsPerInch,
-		BottomMargin:    pointsPerInch,
-		Font:            resolvePDFFont(options.FontFamily),
-		FontSize:        fontSize,
-		LineHeight:      fontSize * lineHeight,
-		ParagraphIndent: parseInches(options.ParagraphIndent, 0.25),
-		TextAlign:       normalizedAlignment(options.TextAlign, "left"),
-	}
-}
-
-func printPDFSpec(options types.PrintPDFOptions) publicationPDFSpec {
-	w, h := trimPageSize(options.TrimSize, options.CustomWidth, options.CustomHeight)
-	fontSize := float64(options.FontSize)
-	if fontSize <= 0 {
-		fontSize = 10
-	}
-	lineHeight := options.LineHeight
-	if lineHeight <= 0 {
-		lineHeight = 1.4
-	}
-	dropLines := options.DropCapLines
-	if dropLines < 2 || dropLines > 4 {
-		dropLines = 3
-	}
-	return publicationPDFSpec{
-		Print:              true,
-		TrimWidth:          w,
-		TrimHeight:         h,
-		Bleed:              parseInches(options.Bleed, 0),
-		CropMarks:          options.IncludeCropMarks,
-		GutterMargin:       parseInches(options.GutterMargin, 0.875),
-		OuterMargin:        parseInches(options.OuterMargin, 0.625),
-		TopMargin:          parseInches(options.TopMargin, 0.75),
-		BottomMargin:       parseInches(options.BottomMargin, 0.625),
-		MirroredMargins:    options.MirroredMargins,
-		Font:               resolvePDFFont(options.FontFamily),
-		FontSize:           fontSize,
-		LineHeight:         fontSize * lineHeight,
-		ParagraphIndent:    parseInches(options.ParagraphIndent, 0.25),
-		TextAlign:          normalizedAlignment(options.TextAlign, "justify"),
-		ChapterStartsRecto: options.ChapterStartsRecto,
-		DropCap:            options.DropCap,
-		DropCapLines:       dropLines,
-		RunningHeaders:     options.RunningHeaders,
-		HeaderStyle:        options.HeaderStyle,
-		PageNumberPosition: normalizedPageNumberPosition(options.PageNumberPosition),
-		GenerateHalfTitle:  options.GenerateHalfTitle,
-		GenerateTOC:        options.GenerateTOC,
-	}
-}
-
-func readingPageSize(name string) (float64, float64) {
-	switch strings.ToLower(strings.TrimSpace(name)) {
-	case "a4":
-		return 595.28, 841.89
-	case "5x8":
-		return 5 * pointsPerInch, 8 * pointsPerInch
-	case "5.5x8.5":
-		return 5.5 * pointsPerInch, 8.5 * pointsPerInch
-	case "6x9":
-		return 6 * pointsPerInch, 9 * pointsPerInch
-	default:
-		return 8.5 * pointsPerInch, 11 * pointsPerInch
-	}
-}
-
-func trimPageSize(name, customWidth, customHeight string) (float64, float64) {
-	switch strings.ToLower(strings.TrimSpace(name)) {
-	case "5x8":
-		return 5 * pointsPerInch, 8 * pointsPerInch
-	case "5.25x8":
-		return 5.25 * pointsPerInch, 8 * pointsPerInch
-	case "6x9":
-		return 6 * pointsPerInch, 9 * pointsPerInch
-	case "custom":
-		return parseInches(customWidth, 5.5), parseInches(customHeight, 8.5)
-	default:
-		return 5.5 * pointsPerInch, 8.5 * pointsPerInch
-	}
-}
-
-func parseInches(value string, fallback float64) float64 {
-	parsed, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
-	if err != nil || parsed < 0 {
-		parsed = fallback
-	}
-	return parsed * pointsPerInch
-}
-
-func normalizedAlignment(value, fallback string) string {
-	switch strings.ToLower(strings.TrimSpace(value)) {
-	case "left", "center", "right", "justify":
-		return strings.ToLower(strings.TrimSpace(value))
-	default:
-		return fallback
-	}
-}
-
-func normalizedPageNumberPosition(value string) string {
-	switch strings.ToLower(strings.TrimSpace(value)) {
-	case "bottom-outside", "top-outside":
-		return strings.ToLower(strings.TrimSpace(value))
-	default:
-		return "bottom-center"
-	}
-}
 
 type pdfPageKind string
 
@@ -205,6 +54,15 @@ func renderPublicationPDF(doc Document, spec publicationPDFSpec) ([]byte, error)
 }
 
 func newPublicationPDFRenderer(doc Document, spec publicationPDFSpec) *publicationPDFRenderer {
+	if spec.HeadingFont.ID == "" {
+		spec.HeadingFont = spec.Font
+	}
+	if spec.FurnitureFont.ID == "" {
+		spec.FurnitureFont = spec.Font
+	}
+	if spec.TitlePageFont.ID == "" {
+		spec.TitlePageFont = spec.Font
+	}
 	markMargin := 0.0
 	if spec.CropMarks {
 		markMargin = 18
@@ -217,7 +75,7 @@ func newPublicationPDFRenderer(doc Document, spec publicationPDFSpec) *publicati
 		UnitStr:        "pt",
 		Size:           fpdf.SizeType{Wd: pageWidth, Ht: pageHeight},
 	})
-	registerPDFFonts(pdf)
+	registerPDFFonts(pdf, spec.Font, spec.HeadingFont, spec.FurnitureFont, spec.TitlePageFont)
 	pdf.SetTitle(doc.Title, true)
 	pdf.SetAuthor(doc.Author, true)
 	pdf.SetCreator("Draftline", true)
@@ -243,7 +101,7 @@ func newPublicationPDFRenderer(doc Document, spec publicationPDFSpec) *publicati
 func (r *publicationPDFRenderer) render() error {
 	if r.spec.GenerateHalfTitle {
 		r.addPage(pageHalfTitle, "")
-		r.centeredText(r.doc.Title, r.spec.FontSize*1.7, "B", r.trimY+r.spec.TrimHeight*0.42)
+		r.centeredTextWithFont(r.doc.Title, r.spec.TitlePageFont, r.spec.FontSize*1.7, "B", r.trimY+r.spec.TrimHeight*0.42)
 	}
 	r.addPage(pageTitle, "")
 	r.renderTitlePage()
@@ -315,17 +173,29 @@ func (r *publicationPDFRenderer) ensureSpace(height float64) {
 
 func (r *publicationPDFRenderer) renderTitlePage() {
 	y := r.trimY + r.spec.TrimHeight*0.38
-	r.centeredText(r.doc.Title, r.spec.FontSize*2.35, "B", y)
-	if r.doc.Author != "" {
+	titleScale := 2.35
+	if r.spec.TitlePageStyle == "minimal" {
+		y = r.trimY + r.spec.TrimHeight*0.28
+		titleScale = 2.0
+	} else if r.spec.TitlePageStyle == "dramatic" {
+		y = r.trimY + r.spec.TrimHeight*0.48
+		titleScale = 3.0
+	}
+	r.centeredTextWithFont(r.doc.Title, r.spec.TitlePageFont, r.spec.FontSize*titleScale, "B", y)
+	if r.spec.TitlePageShowAuthor && r.doc.Author != "" {
 		r.centeredText("by "+r.doc.Author, r.spec.FontSize*1.2, "", y+r.spec.LineHeight*3)
 	}
-	if r.doc.Publisher != "" {
+	if r.spec.TitlePageShowPublisher && r.doc.Publisher != "" {
 		r.centeredText(r.doc.Publisher, r.spec.FontSize, "", r.trimY+r.spec.TrimHeight-r.spec.BottomMargin)
 	}
 }
 
 func (r *publicationPDFRenderer) centeredText(text string, size float64, style string, baseline float64) {
-	r.pdf.SetFont(r.spec.Font.ID, style, size)
+	r.centeredTextWithFont(text, r.spec.Font, size, style, baseline)
+}
+
+func (r *publicationPDFRenderer) centeredTextWithFont(text string, font embeddedFontFamily, size float64, style string, baseline float64) {
+	r.pdf.SetFont(font.ID, style, size)
 	w := r.pdf.GetStringWidth(text)
 	x := r.trimX + (r.spec.TrimWidth-w)/2
 	r.pdf.Text(math.Max(r.trimX, x), baseline, text)
@@ -391,7 +261,7 @@ func (r *publicationPDFRenderer) renderHeadingText(text string, size float64, st
 	}
 	r.ensureSpace(size + after)
 	left, width, _ := r.bodyBounds()
-	r.pdf.SetFont(r.spec.Font.ID, style, size)
+	r.pdf.SetFont(r.spec.HeadingFont.ID, style, size)
 	w := r.pdf.GetStringWidth(text)
 	x := left
 	if align == "center" {
@@ -719,7 +589,7 @@ func (r *publicationPDFRenderer) drawFurniture() {
 		if strings.EqualFold(r.spec.HeaderStyle, "smallcaps") {
 			header = strings.ToUpper(header)
 		}
-		r.pdf.SetFont(r.spec.Font.ID, style, r.spec.FontSize*0.72)
+		r.pdf.SetFont(r.spec.FurnitureFont.ID, style, r.spec.FontSize*0.72)
 		w := r.pdf.GetStringWidth(header)
 		x := left
 		if page%2 == 1 {
@@ -730,7 +600,7 @@ func (r *publicationPDFRenderer) drawFurniture() {
 	if r.spec.PageNumberPosition == "" {
 		return
 	}
-	r.pdf.SetFont(r.spec.Font.ID, "", r.spec.FontSize*0.72)
+	r.pdf.SetFont(r.spec.FurnitureFont.ID, "", r.spec.FontSize*0.72)
 	text := strconv.Itoa(page)
 	w := r.pdf.GetStringWidth(text)
 	x := left + (width-w)/2

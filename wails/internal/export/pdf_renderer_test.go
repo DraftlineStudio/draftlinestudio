@@ -38,24 +38,30 @@ func TestPDFSpecsHonorReadingAndPrintControls(t *testing.T) {
 			ParagraphIndent: "0.3",
 			TextAlign:       "left",
 		},
-		TrimSize:           "custom",
-		CustomWidth:        "5.75",
-		CustomHeight:       "8.25",
-		Bleed:              "0.125",
-		GutterMargin:       "0.9",
-		OuterMargin:        "0.6",
-		TopMargin:          "0.7",
-		BottomMargin:       "0.65",
-		IncludeCropMarks:   true,
-		ChapterStartsRecto: true,
-		DropCap:            true,
-		DropCapLines:       4,
-		RunningHeaders:     true,
-		HeaderStyle:        "italic",
-		PageNumberPosition: "top-outside",
-		GenerateHalfTitle:  true,
-		GenerateTOC:        true,
-		MirroredMargins:    true,
+		TrimSize:               "custom",
+		CustomWidth:            "5.75",
+		CustomHeight:           "8.25",
+		Bleed:                  "0.125",
+		GutterMargin:           "0.9",
+		OuterMargin:            "0.6",
+		TopMargin:              "0.7",
+		BottomMargin:           "0.65",
+		IncludeCropMarks:       true,
+		ChapterStartsRecto:     true,
+		DropCap:                true,
+		DropCapLines:           4,
+		RunningHeaders:         true,
+		HeaderStyle:            "italic",
+		PageNumberPosition:     "top-outside",
+		GenerateHalfTitle:      true,
+		GenerateTOC:            true,
+		MirroredMargins:        true,
+		HeadingFont:            "fantasy",
+		FurnitureFont:          "modern",
+		TitlePageFont:          "romance",
+		TitlePageStyle:         "dramatic",
+		TitlePageShowAuthor:    true,
+		TitlePageShowPublisher: true,
 	})
 	if printSpec.TrimWidth != 414 || printSpec.TrimHeight != 594 || printSpec.Bleed != 9 {
 		t.Fatalf("custom print page ignored: %#v", printSpec)
@@ -65,6 +71,48 @@ func TestPDFSpecsHonorReadingAndPrintControls(t *testing.T) {
 	}
 	if !printSpec.CropMarks || !printSpec.MirroredMargins || !printSpec.DropCap || printSpec.DropCapLines != 4 {
 		t.Fatalf("print toggles ignored: %#v", printSpec)
+	}
+	if printSpec.HeadingFont.ID != "CinzelDecorative" || printSpec.FurnitureFont.ID != "Lato" || printSpec.TitlePageFont.ID != "GreatVibes" {
+		t.Fatalf("display font controls ignored: heading=%s furniture=%s title=%s", printSpec.HeadingFont.ID, printSpec.FurnitureFont.ID, printSpec.TitlePageFont.ID)
+	}
+	if printSpec.TitlePageStyle != "dramatic" || !printSpec.TitlePageShowAuthor || !printSpec.TitlePageShowPublisher {
+		t.Fatalf("title page controls ignored: %#v", printSpec)
+	}
+}
+
+func TestPrintPDFSpecDefaultsToLeftAlignedTenPointBody(t *testing.T) {
+	spec := printPDFSpec(types.PrintPDFOptions{})
+	if spec.TextAlign != "left" {
+		t.Fatalf("print alignment defaulted to %q, want left", spec.TextAlign)
+	}
+	if spec.FontSize != 10 {
+		t.Fatalf("print type size defaulted to %g, want 10", spec.FontSize)
+	}
+	if spec.HeadingFont.ID != "EBGaramond" {
+		t.Fatalf("default heading face = %q, want EBGaramond", spec.HeadingFont.ID)
+	}
+}
+
+func TestDisplayFontPresetsResolveAndRender(t *testing.T) {
+	want := map[string]string{
+		"body": "Merriweather", "classic": "EBGaramond", "modern": "Lato",
+		"romance": "GreatVibes", "scifi": "Orbitron", "fantasy": "CinzelDecorative",
+	}
+	body := resolvePDFFont("merriweather")
+	for preset, familyID := range want {
+		family := resolveDisplayFont(preset, body)
+		if family.ID != familyID {
+			t.Errorf("%s resolved to %s, want %s", preset, family.ID, familyID)
+			continue
+		}
+		doc := Document{Title: "Display", Author: "Writer", Sections: []DocumentSection{{Title: "Chapter", Role: SectionBody, Blocks: []DocumentBlock{{Kind: BlockParagraph, Runs: []DocumentRun{{Text: "Body text."}}}}}}}
+		spec := publicationPDFSpec{Print: true, TrimWidth: 360, TrimHeight: 576, GutterMargin: 54, OuterMargin: 45, TopMargin: 54, BottomMargin: 45, Font: body, HeadingFont: family, FurnitureFont: family, TitlePageFont: family, FontSize: 10, LineHeight: 14, TextAlign: "left", TitlePageStyle: "classic", TitlePageShowAuthor: true}
+		data, err := renderPublicationPDF(doc, spec)
+		if err != nil {
+			t.Errorf("%s could not render: %v", preset, err)
+			continue
+		}
+		assertParseablePDF(t, data)
 	}
 }
 

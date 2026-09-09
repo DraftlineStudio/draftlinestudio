@@ -2,6 +2,15 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.18.02579] - 2026-09-09
+
+### Added
+- Added separate print typefaces for headings, running heads, page numbers, and title pages.
+- Added classic, minimal, and dramatic title page layouts.
+
+### Changed
+- Print PDFs now embed only the fonts the chosen design uses.
+
 ## [0.18.02578] - 2026-09-09
 
 ### Changed
