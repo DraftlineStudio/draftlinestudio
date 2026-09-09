@@ -69,7 +69,7 @@ func printPDFSpec(options types.PrintPDFOptions) publicationPDFSpec {
 	w, h := trimPageSize(options.TrimSize, options.CustomWidth, options.CustomHeight)
 	fontSize := float64(options.FontSize)
 	if fontSize <= 0 {
-		fontSize = 11
+		fontSize = 10
 	}
 	lineHeight := options.LineHeight
 	if lineHeight <= 0 {

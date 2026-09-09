@@ -117,7 +117,7 @@ export default function ExportWizard() {
   const [printOptions, setPrintOptions] = useState<PrintPDFOptions>({
     ...pdfOptions, pageSize: '5.5x8.5', trimSize: '5.5x8.5', customWidth: '5.5', customHeight: '8.5', bleed: '0',
     gutterMargin: '0.875', outerMargin: '0.625', topMargin: '0.75', bottomMargin: '0.625', includeCropMarks: false,
-    fontFamily: 'merriweather', fontSize: 11, lineHeight: 1.4, paragraphIndent: '0.25', textAlign: 'justify', chapterStartsRecto: true,
+    fontFamily: 'merriweather', fontSize: 10, lineHeight: 1.4, paragraphIndent: '0.25', textAlign: 'left', chapterStartsRecto: true,
     dropCap: true, dropCapLines: 3, runningHeaders: true, headerStyle: 'smallcaps', pageNumberPosition: 'bottom-center',
     generateHalfTitle: true, generateTOC: true, mirroredMargins: true,
   })

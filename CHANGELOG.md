@@ -4,6 +4,16 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.18.02578] - 2026-09-09
+
+### Changed
+- Print-ready editions now default to 10-point body type with left-aligned paragraphs. Justification remains available as an explicit composition choice.
+
+### Fixed
+- Restored the final manuscript page as the PDF renderer's active page after backfilling a generated table of contents. This ensures the PDF library finalizes the actual end of the book rather than the contents page, preventing some short or single-chapter editions from appearing to end immediately after their table of contents.
+
+---
+
 ## [0.18.02577] - 2026-09-08
 
 ### Changed
