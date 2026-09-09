@@ -28,6 +28,11 @@ func (r *publicationPDFRenderer) fillTOC() {
 	if len(r.tocPages) == 0 {
 		return
 	}
+	// SetPage changes fpdf's active page. Restore the final manuscript page
+	// after backfilling the reserved contents pages so Close() finalizes the
+	// actual end of the book rather than the last TOC page.
+	lastPage := r.pdf.PageCount()
+	defer r.pdf.SetPage(lastPage)
 	entryIndex := 0
 	for pageIndex, page := range r.tocPages {
 		r.pdf.SetPage(page)

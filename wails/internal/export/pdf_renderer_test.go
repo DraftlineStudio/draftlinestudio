@@ -88,6 +88,9 @@ func TestPrintRendererCreatesTrueRectoStartsAndTOCLinks(t *testing.T) {
 	if err := renderer.render(); err != nil {
 		t.Fatal(err)
 	}
+	if renderer.pdf.PageNo() != renderer.pdf.PageCount() {
+		t.Fatalf("active page %d, final page %d; TOC backfill did not restore the manuscript end", renderer.pdf.PageNo(), renderer.pdf.PageCount())
+	}
 	if len(renderer.tocPages) != 1 {
 		t.Fatalf("TOC pages = %v", renderer.tocPages)
 	}
