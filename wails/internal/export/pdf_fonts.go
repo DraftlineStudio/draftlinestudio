@@ -46,6 +46,9 @@ var orbitron []byte
 //go:embed fonts/CinzelDecorative-Regular.ttf
 var cinzelDecorative []byte
 
+//go:embed fonts/IBMPlexMono-Regular.ttf
+var ibmPlexMono []byte
+
 type embeddedFontFamily struct {
 	ID          string
 	DisplayName string
@@ -85,6 +88,11 @@ var embeddedPDFFonts = map[string]embeddedFontFamily{
 		ID: "CinzelDecorative", DisplayName: "Cinzel Decorative",
 		Regular: cinzelDecorative, Bold: cinzelDecorative,
 		Italic: cinzelDecorative, BoldItalic: cinzelDecorative,
+	},
+	"ibmplexmono": {
+		ID: "IBMPlexMono", DisplayName: "IBM Plex Mono",
+		Regular: ibmPlexMono, Bold: ibmPlexMono,
+		Italic: ibmPlexMono, BoldItalic: ibmPlexMono,
 	},
 }
 

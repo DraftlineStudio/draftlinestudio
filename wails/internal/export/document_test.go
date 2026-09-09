@@ -93,3 +93,19 @@ func TestParseDocumentHTMLRetainsTextInsideUnknownContainers(t *testing.T) {
 		t.Fatalf("unknown container lost content: %#v", blocks)
 	}
 }
+
+func TestParseDocumentHTMLPreservesParagraphAndCodeAlignment(t *testing.T) {
+	blocks, err := ParseDocumentHTML(`<p style="text-align: center">Centered notice</p><p align="right">Right note</p><pre style="text-align: left"><code>  exact code</code></pre>`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(blocks) != 3 {
+		t.Fatalf("blocks = %#v", blocks)
+	}
+	if blocks[0].Alignment != "center" || blocks[1].Alignment != "right" || blocks[2].Alignment != "left" {
+		t.Fatalf("authored alignments were not retained: %q, %q, %q", blocks[0].Alignment, blocks[1].Alignment, blocks[2].Alignment)
+	}
+	if blocks[2].Kind != BlockCode || blocks[2].PlainText() != "  exact code" {
+		t.Fatalf("code block semantics were not retained: %#v", blocks[2])
+	}
+}

@@ -4,6 +4,23 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.18.02580] - 2026-09-09
+
+### Added
+- Added an embedded IBM Plex Mono print face and a dedicated preformatted-code renderer. Terminal excerpts now retain authored spaces, indentation, tabs, line breaks, and block alignment inside a restrained print-safe treatment; inline code also uses the monospaced face.
+- Added semantic PDF regressions for punctuation-led drop caps, authored paragraph and code alignment, centered and right-aligned line placement, and preserved code whitespace.
+
+### Changed
+- Matched the default print-ready body size to the approximately 9-point body typography measured in the supplied Reedsy references. The wizard now defaults to 9 pt while retaining 10, 11, and 12 pt alternatives.
+- Clarified that recto chapter starts may insert an unnumbered physical page which remains part of the book's pagination.
+
+### Fixed
+- Replaced the unsupported Unicode asterism used for print scene breaks with a font-safe centered ornament, eliminating black missing-glyph boxes.
+- Drop caps now enlarge the first letter or number rather than an opening quotation mark, while preserving and correctly positioning leading punctuation.
+- Explicit paragraph, heading, and code-block alignment now remains authoritative over the edition-level body alignment.
+
+---
+
 ## [0.18.02579] - 2026-09-09
 
 ### Added

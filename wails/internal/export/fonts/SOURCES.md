@@ -14,6 +14,8 @@ the author's computer.
   revision, directories `ofl/ebgaramond`, `ofl/greatvibes`, `ofl/orbitron`,
   and `ofl/cinzeldecorative`. These display faces are used for headings,
   running furniture, and title pages rather than body composition.
+- IBM Plex Mono Regular is from the same pinned `google/fonts` revision,
+  directory `ofl/ibmplexmono`, and is used for code blocks and inline code.
 
 All bundled families are licensed under the SIL Open Font License 1.1. The
 license notice supplied with each family is retained beside its font binaries;
