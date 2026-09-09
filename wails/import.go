@@ -269,7 +269,7 @@ func isImportableSpineType(mediaType string) bool {
 // hasManifestProperty reports whether a space-separated OPF properties
 // attribute contains the given token (e.g. "nav", "cover-image").
 func hasManifestProperty(properties, token string) bool {
-	for _, p := range strings.Fields(properties) {
+	for p := range strings.FieldsSeq(properties) {
 		if strings.EqualFold(p, token) {
 			return true
 		}

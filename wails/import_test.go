@@ -19,7 +19,7 @@ func writeEPUB(t *testing.T, path string, entries map[string]string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	w := zip.NewWriter(f)
 	for name, content := range entries {
 		e, err := w.Create(name)
@@ -176,7 +176,7 @@ func TestImportSkipsOversizedSpineDoc(t *testing.T) {
 	// zip-bomb guard while still exceeding the per-document import cap.
 	var filler strings.Builder
 	for i := 0; filler.Len() <= maxSpineDocBytes; i++ {
-		fmt.Fprintf(&filler, "%d ", i*7919)
+		_, _ = fmt.Fprintf(&filler, "%d ", i*7919) // strings.Builder never errors
 	}
 	huge := "<html><body><h1>Huge</h1><p>" + filler.String() + "</p></body></html>"
 	writeEPUB(t, epub, map[string]string{

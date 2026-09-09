@@ -128,12 +128,12 @@ func registerFileAssociations() error {
 		// and so quiet launches stay quiet.
 		if existing, _, err := key.GetStringValue(e.name); err != nil || existing != e.value {
 			if err := key.SetStringValue(e.name, e.value); err != nil {
-				key.Close()
+				_ = key.Close()
 				return fmt.Errorf("set %s[%s]: %w", e.path, e.name, err)
 			}
 			changed = true
 		}
-		key.Close()
+		_ = key.Close()
 	}
 
 	if changed {
