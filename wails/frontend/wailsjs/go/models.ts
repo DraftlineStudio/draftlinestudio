@@ -2580,11 +2580,11 @@ export namespace types {
 	    textAlign: string;
 	    chapterStyle: string;
 	    sceneBreakStyle: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new EPUBOptions(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.includeCopyright = source["includeCopyright"];
@@ -3523,5 +3523,11 @@ export namespace types {
 		    return a;
 		}
 	}
+	
+	
+	
+	
+	
 
 }
+

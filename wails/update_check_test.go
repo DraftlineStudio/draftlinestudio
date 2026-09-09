@@ -72,8 +72,8 @@ func TestPickReleaseAsset(t *testing.T) {
 		t.Fatal("platforms without a published package must not match another platform's asset")
 	}
 	// The portable zip must never shadow the installer.
-	if asset := pickReleaseAsset(release, "windows", "amd64"); asset.Name != cases[0].want {
-		t.Fatalf("windows picked %q", asset.Name)
+	if asset := pickReleaseAsset(release, "windows", "amd64"); asset == nil || asset.Name != cases[0].want {
+		t.Fatalf("windows picked %v", asset)
 	}
 }
 

@@ -179,10 +179,7 @@ func (s *sanitizer) walkBlock(n *xhtml.Node) {
 			s.countDropped(n)
 		case tag == "h1" || tag == "h2" || tag == "h3" || tag == "h4" || tag == "h5" || tag == "h6":
 			s.flushPara()
-			level := int(tag[1] - '0')
-			if level > 3 {
-				level = 3
-			}
+			level := min(int(tag[1]-'0'), 3)
 			inner, text := s.renderInlineChildren(n)
 			if text != "" {
 				s.blocks = append(s.blocks, importedBlock{
@@ -259,6 +256,9 @@ func (s *sanitizer) walkBlock(n *xhtml.Node) {
 			// into the running paragraph.
 			s.renderInlineNode(n, &s.para, &s.paraText)
 		}
+	default:
+		// Comments, doctypes, and any future NodeType are dropped on
+		// purpose — a sanitizer keeps only text and known elements.
 	}
 }
 
@@ -335,6 +335,9 @@ func (s *sanitizer) renderInlineNode(n *xhtml.Node, sb, tb *strings.Builder) {
 		for child := n.FirstChild; child != nil; child = child.NextSibling {
 			s.renderInlineNode(child, sb, tb)
 		}
+	default:
+		// Comments, doctypes, and any future NodeType are dropped on
+		// purpose — a sanitizer keeps only text and known elements.
 	}
 }
 
