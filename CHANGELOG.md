@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.18.02578] - 2026-09-09
+
+### Changed
+- Print-ready editions now default to 10 point, left-aligned body text.
+
+### Fixed
+- Fixed the last manuscript page after generating a table of contents.
+
 ## [0.18.02577] - 2026-09-08
 
 ### Changed
