@@ -4,6 +4,23 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.18.02576] - 2026-09-08
+
+### Added
+- Added EPUB edition controls for reader-managed or embedded typography, indented or spaced paragraphs, alignment, chapter-opening treatment, and asterism, rule, or whitespace scene breaks. The default remains reader-controlled for the smallest and most accessible ebook.
+- EPUBs may embed Draftline's bundled Merriweather or Lato families, including bold and italic faces, with matching package-manifest declarations.
+
+### Changed
+- Rebuilt EPUB generation on the shared export document model. Chapters are emitted as normalized, reflowable XHTML with semantic headings, lists, block quotes, code, scene breaks, links, inline emphasis, section roles, a linked contents document, and publication metadata.
+- EPUB files are now assembled and finalized in memory before atomically replacing the destination, matching the failure-safe behavior of the replacement PDF pipeline.
+- Crossed the v0.18 milestone boundary now that the guided edition builder, shared document model, Unicode PDF layouts, print controls, and reflowable EPUB replacement operate as one export system.
+
+### Fixed
+- Removed direct injection of raw editor HTML into ebook chapters, preventing editor-only markup, unsafe link schemes, malformed XHTML, and format-specific parsing differences from leaking into exported EPUBs.
+- EPUB modification timestamps are now generated in UTC before receiving their `Z` suffix, and all selected copyright, front matter, manuscript, and back matter sections follow the same normalized selection path.
+
+---
+
 ## [0.17.02575] - 2026-09-08
 
 ### Added

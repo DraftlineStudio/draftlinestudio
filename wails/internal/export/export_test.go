@@ -156,7 +156,7 @@ func TestDOCXExportStructureAndEscaping(t *testing.T) {
 	// Chapter text must be present, decoded from source entities and re-escaped
 	// exactly once for XML.
 	wants := []string{
-		"Tom &amp; Jerry",       // &amp; decoded to & then re-escaped once
+		"Tom &amp; Jerry", // &amp; decoded to & then re-escaped once
 		"it’s a &lt;test&gt; of Smith &amp; Sons.", // &#8217; decoded to unicode, &lt;/&gt; re-escaped
 		"R&amp;D and math like 3 &lt; 5.",
 		"Chapter 1 &amp; Beginnings", // heading escaped once
@@ -199,7 +199,7 @@ func TestEPUBExportStructureAndEscaping(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "book.epub")
 
-	res := EPUB(path, sampleBook(), defaultExportOptions())
+	res := EPUB(path, sampleBook(), types.EPUBOptions{ExportOptions: defaultExportOptions()})
 	if !res.Success {
 		t.Fatalf("EPUB export failed: %s", res.Error)
 	}
@@ -246,20 +246,21 @@ func TestEPUBExportStructureAndEscaping(t *testing.T) {
 		t.Errorf("content.opf contains double-escaped ampersand")
 	}
 	// Chapter parts must be declared in manifest and spine.
-	for _, part := range []string{"chapter0.xhtml", "chapter1.xhtml", "copyright.xhtml"} {
+	for _, part := range []string{"section-0001.xhtml", "section-0002.xhtml", "section-0003.xhtml"} {
 		if !strings.Contains(opf, part) {
 			t.Errorf("content.opf manifest/spine missing %q", part)
 		}
 	}
 
 	// Chapter xhtml must contain the chapter body and an escaped heading.
-	ch0 := string(readZipPart(t, path, "OEBPS/chapter0.xhtml"))
+	ch0 := string(readZipPart(t, path, "OEBPS/text/section-0002.xhtml"))
 	if !strings.Contains(ch0, "<h1>Chapter 1 &amp; Beginnings</h1>") {
 		t.Errorf("chapter0.xhtml missing escaped heading, got:\n%s", ch0)
 	}
-	// Body HTML is embedded verbatim; its pre-escaped entities must survive
-	// unchanged (not double-escaped).
-	if !strings.Contains(ch0, "Tom &amp; Jerry &mdash; it&#8217;s a &lt;test&gt; of Smith &amp; Sons.") {
+	// Source HTML is normalized through the shared document model. Its text
+	// and Unicode punctuation survive without carrying HTML-only entities into
+	// the XHTML package.
+	if !strings.Contains(ch0, "Tom &amp; Jerry — it’s a &lt;test&gt; of Smith &amp; Sons.") {
 		t.Errorf("chapter0.xhtml body entities altered, got:\n%s", ch0)
 	}
 	if strings.Contains(ch0, "&amp;amp;") {

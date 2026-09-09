@@ -2571,6 +2571,32 @@ export namespace types {
 	
 	
 	
+	export class EPUBOptions {
+	    includeCopyright: boolean;
+	    includeFrontMatter: boolean;
+	    includeBackMatter: boolean;
+	    fontFamily: string;
+	    paragraphStyle: string;
+	    textAlign: string;
+	    chapterStyle: string;
+	    sceneBreakStyle: string;
+
+	    static createFrom(source: any = {}) {
+	        return new EPUBOptions(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.includeCopyright = source["includeCopyright"];
+	        this.includeFrontMatter = source["includeFrontMatter"];
+	        this.includeBackMatter = source["includeBackMatter"];
+	        this.fontFamily = source["fontFamily"];
+	        this.paragraphStyle = source["paragraphStyle"];
+	        this.textAlign = source["textAlign"];
+	        this.chapterStyle = source["chapterStyle"];
+	        this.sceneBreakStyle = source["sceneBreakStyle"];
+	    }
+	}
 	
 	
 	
@@ -3492,4 +3518,3 @@ export namespace types {
 	
 
 }
-

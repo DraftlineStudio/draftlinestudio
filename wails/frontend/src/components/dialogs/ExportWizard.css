@@ -178,11 +178,19 @@
 .export-simple-design ul { margin: 18px 0 0; padding: 0; list-style: none; display: grid; gap: 9px; color: var(--text-primary); font-size: 10px; }
 .export-simple-design li { display: flex; align-items: center; gap: 8px; }
 .export-simple-design li svg { width: 14px; height: 14px; fill: none; stroke: var(--app-accent); stroke-width: 2; }
+.export-epub-design { min-height: 360px; align-items: start; }
+.export-epub-design .export-reader-preview { margin-top: 24px; }
+.export-epub-design .export-reading-controls > ul { margin-top: 14px; }
 .export-reader-preview, .export-document-preview { height: 240px; display: grid; place-items: center; }
 .export-reader-preview { position: relative; }
 .export-reader-preview::before { content: ''; position: absolute; width: 136px; height: 234px; border: 5px solid #34383b; border-radius: 15px; background: #ece9df; box-shadow: 0 9px 24px rgba(0, 0, 0, .18); }
 .export-reader-preview > div { position: relative; z-index: 1; width: 104px; color: #37342f; }
 .export-reader-preview span, .export-document-preview span { margin-bottom: 13px; text-align: center; font: 12px Georgia, serif; }
+.export-reader-preview > div.merriweather { font-family: Merriweather, Georgia, serif; }
+.export-reader-preview > div.lato { font-family: 'IBM Plex Sans', Arial, sans-serif; }
+.export-reader-preview > div.minimal span { text-align: left; }
+.export-reader-preview > div.spaced { gap: 8px; }
+.export-reader-preview b { height: 8px; color: currentColor; font: 8px/8px Georgia, serif; text-align: center; }
 .export-document-preview > div { box-sizing: border-box; width: 168px; height: 224px; padding: 34px 25px; background: #fbfaf7; color: #332f2a; box-shadow: 0 7px 22px rgba(0, 0, 0, .15); }
 .export-option-label { display: block; margin: 20px 0 8px; color: var(--text-primary); font-size: 10px; font-weight: 650; }
 
