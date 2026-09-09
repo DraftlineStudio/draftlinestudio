@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.17.02574] - 2026-09-08
+
+### Added
+- Added a shared export document model used by every export format.
+
 ## [0.17.02573] - 2026-09-08
 
 ### Fixed
