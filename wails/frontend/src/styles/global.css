@@ -5999,7 +5999,7 @@ html, body, #root {
    accent strip (via the shared applyAccent machinery in App.tsx) and the
    soft radial glow behind the "Continue Writing" hero. Left rail carries the
    brand + actions; recents exclude the hero book; a slim status bar closes
-   the window. Reference: reference-assets/Draftline Launch Screen Redesign. */
+   the window. Built to the Studio Glow design handoff. */
 
 .sgw-screen {
   flex: 1;
