@@ -297,7 +297,7 @@ func TestImportExportRoundTripNoDoubleTitle(t *testing.T) {
 			{Title: "The Ledger", Type: "Chapter", Content: "<p>Hanlon counted twice.</p>"},
 		},
 	}
-	if res := export.EPUB(epub, book, types.ExportOptions{}); !res.Success {
+	if res := export.EPUB(epub, book, types.EPUBOptions{}); !res.Success {
 		t.Fatalf("export failed: %s", res.Error)
 	}
 

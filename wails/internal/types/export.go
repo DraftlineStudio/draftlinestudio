@@ -7,6 +7,19 @@ type ExportOptions struct {
 	IncludeBackMatter  bool `json:"includeBackMatter"`
 }
 
+// EPUBOptions controls semantic, reflowable ebook presentation. The reader
+// font setting leaves typography entirely to the reading app; named families are
+// embedded so the edition has a consistent publisher default while remaining
+// overridable by accessible EPUB readers.
+type EPUBOptions struct {
+	ExportOptions
+	FontFamily      string `json:"fontFamily"`      // reader, merriweather, lato
+	ParagraphStyle  string `json:"paragraphStyle"`  // indented, spaced
+	TextAlign       string `json:"textAlign"`       // reader, left, justify
+	ChapterStyle    string `json:"chapterStyle"`    // classic, minimal
+	SceneBreakStyle string `json:"sceneBreakStyle"` // asterism, rule, space
+}
+
 // PDFOptions extends ExportOptions with PDF-specific settings.
 type PDFOptions struct {
 	ExportOptions

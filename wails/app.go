@@ -43,7 +43,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.17.02575"
+const AppVersion = "0.18.02576"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -434,7 +434,7 @@ func (a *App) GetCurrentFile() string {
 // Thin wrappers around export package. See internal/export/ for implementation.
 
 // ExportEPUB exports the book to EPUB format.
-func (a *App) ExportEPUB(book types.BookData, options types.ExportOptions) types.ExportResult {
+func (a *App) ExportEPUB(book types.BookData, options types.EPUBOptions) types.ExportResult {
 	defaultName := book.Metadata.Title
 	if strings.TrimSpace(defaultName) == "" {
 		defaultName = "Untitled"

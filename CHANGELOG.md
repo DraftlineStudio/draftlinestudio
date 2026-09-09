@@ -2,6 +2,18 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.18.02576] - 2026-09-08
+
+### Added
+- Added EPUB options for embedded fonts, paragraph style, alignment, chapter openings, and scene breaks.
+
+### Changed
+- Rebuilt EPUB export on the shared export document model.
+- Moved to version 0.18 for the new export system.
+
+### Fixed
+- EPUBs no longer include editor-only markup or unsafe links.
+
 ## [0.17.02575] - 2026-09-08
 
 ### Added
