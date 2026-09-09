@@ -4,6 +4,16 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.17.02574] - 2026-09-08
+
+### Added
+- Added a renderer-neutral export document model between Draftline's TipTap manuscript HTML and every publication format. It preserves section provenance, headings, paragraphs, lists, block quotes, code, scene breaks, alignment, explicit line breaks, links, and inline emphasis instead of forcing each exporter to flatten the manuscript independently.
+
+### Changed
+- The export replacement is being landed in independently testable builds: the shared document contract comes first, followed by the Unicode PDF renderer and EPUB packaging. Existing exporters remain isolated until their replacement passes structural and behavioral tests.
+
+---
+
 ## [0.17.02573] - 2026-09-08
 
 ### Changed
