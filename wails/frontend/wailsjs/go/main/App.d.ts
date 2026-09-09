@@ -92,6 +92,8 @@ export function OpenCodexAuth():Promise<void>;
 
 export function OpenRecentProject(arg1:string):Promise<types.BookData>;
 
+export function PickBookPath():Promise<string>;
+
 export function ReadAloudServerURL():Promise<string>;
 
 export function ReadAloudStatus():Promise<readaloud.Status>;

@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.18.02584] - 2026-09-09
+
+### Added
+- Added a loading overlay while a book opens.
+
+### Fixed
+- Clicking open twice while a book is loading no longer opens the wrong book.
+
 ## [0.18.02583] - 2026-09-09
 
 ### Changed

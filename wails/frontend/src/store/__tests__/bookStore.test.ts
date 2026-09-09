@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   // bookStore.ts imports
   NewBook: vi.fn(),
   OpenBookDialog: vi.fn(),
+  PickBookPath: vi.fn(),
   SaveBook: vi.fn(),
   SaveBookAs: vi.fn(),
   SaveBookSnapshots: vi.fn(),
@@ -276,7 +277,7 @@ describe('finding 1 — failed or cancelled saves block transitions', () => {
     expect(appStoreMod.useAppStore.getState().statusMessage).toContain('Save failed: disk full')
     expect(store().dialogs.showUnsavedWarning).toBe(true)
     expect(store().dialogs.pendingAction).toBe('open')
-    expect(mocks.OpenBookDialog).not.toHaveBeenCalled()
+    expect(mocks.PickBookPath).not.toHaveBeenCalled()
     expect(store().isDirty).toBe(true)
   })
 
@@ -289,7 +290,7 @@ describe('finding 1 — failed or cancelled saves block transitions', () => {
 
     expect(store().dialogs.showUnsavedWarning).toBe(true)
     expect(store().dialogs.pendingAction).toBe('open')
-    expect(mocks.OpenBookDialog).not.toHaveBeenCalled()
+    expect(mocks.PickBookPath).not.toHaveBeenCalled()
     expect(store().isDirty).toBe(true)
     expect(appStoreMod.useAppStore.getState().statusMessage).not.toContain('Save failed')
   })
@@ -299,13 +300,15 @@ describe('finding 1 — failed or cancelled saves block transitions', () => {
     mocks.SaveBook.mockResolvedValue(okSave())
     const opened = makeBook({ file_path: 'C:/tmp/other.draftline' })
     opened.metadata.title = 'Opened Book'
-    mocks.OpenBookDialog.mockResolvedValue(opened)
+    mocks.PickBookPath.mockResolvedValue('C:/tmp/other.draftline')
+    mocks.OpenRecentProject.mockResolvedValue(opened)
 
     await store().saveAndProceed()
 
     expect(store().dialogs.showUnsavedWarning).toBe(false)
     expect(store().dialogs.pendingAction).toBe(null)
-    expect(mocks.OpenBookDialog).toHaveBeenCalledTimes(1)
+    expect(mocks.PickBookPath).toHaveBeenCalledTimes(1)
+    expect(mocks.OpenRecentProject).toHaveBeenCalledWith('C:/tmp/other.draftline')
     expect(store().book?.metadata.title).toBe('Opened Book')
     expect(store().isDirty).toBe(false)
   })
@@ -350,7 +353,7 @@ describe('finding 1 — failed or cancelled saves block transitions', () => {
     expect(store().isDirty).toBe(true)
     expect(store().dialogs.showUnsavedWarning).toBe(true)
     expect(store().dialogs.pendingAction).toBe('open')
-    expect(mocks.OpenBookDialog).not.toHaveBeenCalled()
+    expect(mocks.PickBookPath).not.toHaveBeenCalled()
     expect(appStoreMod.useAppStore.getState().statusMessage).toContain('Newer edits')
   })
 
@@ -359,7 +362,8 @@ describe('finding 1 — failed or cancelled saves block transitions', () => {
     mocks.SaveBook.mockImplementationOnce(() => inFlight.promise)
     const replacement = makeBook({ file_path: 'C:/tmp/replacement.draftline' })
     replacement.metadata.title = 'Replacement'
-    mocks.OpenBookDialog.mockResolvedValue(replacement)
+    mocks.PickBookPath.mockResolvedValue('C:/tmp/replacement.draftline')
+    mocks.OpenRecentProject.mockResolvedValue(replacement)
 
     bookStoreMod.useBookStore.setState({ book: makeBook(), isDirty: false })
     store().updateCurrentContent('<p>discard me</p>')
@@ -411,7 +415,7 @@ describe('external file opens', () => {
 
     await store().discardAndProceed()
     expect(mocks.OpenRecentProject).toHaveBeenCalledWith('C:/books/other.draftline')
-    expect(mocks.OpenBookDialog).not.toHaveBeenCalled() // no picker fallback
+    expect(mocks.PickBookPath).not.toHaveBeenCalled() // no picker fallback
     expect(store().book?.file_path).toBe('C:/books/other.draftline')
   })
 

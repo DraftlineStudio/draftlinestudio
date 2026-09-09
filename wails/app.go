@@ -43,7 +43,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.18.02583"
+const AppVersion = "0.18.02584"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -346,6 +346,17 @@ func (a *App) NewBook() types.BookData {
 
 // OpenBookDialog shows the native file picker and opens the selected file.
 func (a *App) OpenBookDialog() (types.BookData, error) {
+	path, err := a.PickBookPath()
+	if err != nil || path == "" {
+		return types.BookData{}, nil
+	}
+	return a.openBook(path)
+}
+
+// PickBookPath shows the open dialog and returns only the chosen path, so
+// the frontend can show loading feedback while the (separate) open call
+// parses a large archive.
+func (a *App) PickBookPath() (string, error) {
 	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title:            "Open Draftline Project",
 		DefaultDirectory: a.getSettings().DefaultSaveDir,
@@ -354,9 +365,9 @@ func (a *App) OpenBookDialog() (types.BookData, error) {
 		},
 	})
 	if err != nil || path == "" {
-		return types.BookData{}, nil
+		return "", nil
 	}
-	return a.openBook(path)
+	return path, nil
 }
 
 func (a *App) openBook(path string) (types.BookData, error) {
