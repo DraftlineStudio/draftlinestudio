@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.19.02586] - 2026-09-09
+
+### Changed
+- Moved to version 0.19 for the new launch screen and open flow.
+
 ## [0.18.02585] - 2026-09-09
 
 ### Changed
