@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.18.02585] - 2026-09-09
+
+### Changed
+- The manuscript word count is now computed by the backend on open and save and persisted in the book's metadata (an additive field older readers of the format ignore). The recents list reads it from metadata instead of re-counting the entire manuscript in the interface thread after every open — for long books that count was the largest single cost hiding in the open pipeline.
+
+---
+
 ## [0.18.02584] - 2026-09-09
 
 ### Changed

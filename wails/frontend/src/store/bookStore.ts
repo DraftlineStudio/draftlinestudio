@@ -35,11 +35,12 @@ async function loadBookFromPath(path: string): Promise<void> {
     setStatus(`Opened: ${book.metadata.title}`)
     useEditorStore.getState().clearPendingDiff()
     console.debug(`[open] parse+bridge ${(tLoaded - t0).toFixed(0)}ms, state set +${(performance.now() - tLoaded).toFixed(0)}ms — ${path}`)
-    // Recents bookkeeping (word count walks the whole book) runs AFTER the
-    // book is on screen, off the critical path — it must never extend the
-    // loading overlay.
+    // Recents bookkeeping runs AFTER the book is on screen, off the
+    // critical path. The word count comes from metadata (computed by Go on
+    // open/save); counting in JS is only a fallback for books that predate
+    // the field.
     setTimeout(() => {
-      const wordCount = countBookWords(book)
+      const wordCount = book.metadata.word_count || countBookWords(book)
       const chapterCount = book.front_matter.length + book.body.length + book.back_matter.length
       void useAppStore.getState().addRecentProject(types.RecentProject.createFrom({
         type: 'book', path: book.file_path || path, name: book.metadata.title || 'Untitled',

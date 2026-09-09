@@ -144,6 +144,8 @@ func Open(path string) (types.BookData, error) {
 	}
 	// A legacy single-ISBN file seeds the per-format list on open.
 	book.Metadata.NormalizeISBNs()
+	// Word count is refreshed after the chapter arrays are populated, at
+	// each return site below.
 
 	// v1.0 migration: chapters/ -> body/
 	if raw.Version == "1.0" {
@@ -159,6 +161,7 @@ func Open(path string) (types.BookData, error) {
 			})
 		}
 		EnsureBookChapterIDs(&book)
+		RefreshWordCount(&book)
 		return book, nil
 	}
 
@@ -262,5 +265,6 @@ func Open(path string) (types.BookData, error) {
 		}
 	}
 
+	RefreshWordCount(&book)
 	return book, nil
 }

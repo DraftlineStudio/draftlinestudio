@@ -2170,6 +2170,7 @@ export namespace types {
 	    publisher: string;
 	    created: string;
 	    modified: string;
+	    word_count?: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Metadata(source);
@@ -2184,6 +2185,7 @@ export namespace types {
 	        this.publisher = source["publisher"];
 	        this.created = source["created"];
 	        this.modified = source["modified"];
+	        this.word_count = source["word_count"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
