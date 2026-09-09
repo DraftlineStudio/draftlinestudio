@@ -178,6 +178,10 @@ export function OpenRecentProject(arg1) {
   return window['go']['main']['App']['OpenRecentProject'](arg1);
 }
 
+export function PickBookPath() {
+  return window['go']['main']['App']['PickBookPath']();
+}
+
 export function ReadAloudServerURL() {
   return window['go']['main']['App']['ReadAloudServerURL']();
 }
