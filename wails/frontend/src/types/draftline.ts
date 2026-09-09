@@ -559,6 +559,8 @@ export interface Metadata {
   publisher: string
   created: string
   modified: string
+  // Manuscript word count, computed by the Go backend on open and save.
+  word_count?: number
 }
 
 export interface ChapterItem {

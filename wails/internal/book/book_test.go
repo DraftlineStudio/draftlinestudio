@@ -68,6 +68,37 @@ func TestWriteOpenRoundTrip(t *testing.T) {
 	}
 }
 
+func TestWordCountComputedOnOpenAndPersistedOnSave(t *testing.T) {
+	isolateConfigDir(t)
+	path := filepath.Join(t.TempDir(), "book.draftline")
+
+	// strings.Fields over stripped text: "Hello — “world”." = 3 tokens (the
+	// em-dash stands alone) + "More text." (2) + front matter "For x." (2).
+	if res := Write(path, testBook(), "test-version"); !res.Success {
+		t.Fatalf("Write failed: %s", res.Error)
+	}
+	got, err := Open(path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if got.Metadata.WordCount != 7 {
+		t.Fatalf("word count = %d, want 7", got.Metadata.WordCount)
+	}
+	// The count must live in the persisted manifest, not just in memory.
+	r, err := zip.OpenReader(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest, err := ReadZipEntry(r, "manifest.json")
+	_ = r.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(manifest), `"word_count": 7`) {
+		t.Fatal("manifest must persist word_count")
+	}
+}
+
 func TestISBNListRoundTripAndLegacyMirror(t *testing.T) {
 	isolateConfigDir(t)
 	path := filepath.Join(t.TempDir(), "book.draftline")

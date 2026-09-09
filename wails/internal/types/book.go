@@ -21,6 +21,10 @@ type Metadata struct {
 	Publisher string      `json:"publisher"`
 	Created   string      `json:"created"`
 	Modified  string      `json:"modified"`
+	// WordCount is the manuscript word count, computed in Go on open and
+	// save so the frontend never re-counts a whole book on its main thread.
+	// Additive field; older readers of the format ignore it.
+	WordCount int `json:"word_count,omitempty"`
 }
 
 // NormalizeISBNs reconciles the per-format ISBN list with the legacy single
