@@ -1,3 +1,8 @@
+@font-face { font-family: 'Draftline EB Garamond'; src: url('../../../../internal/export/fonts/EBGaramond.ttf') format('truetype'); font-display: swap; }
+@font-face { font-family: 'Draftline Great Vibes'; src: url('../../../../internal/export/fonts/GreatVibes-Regular.ttf') format('truetype'); font-display: swap; }
+@font-face { font-family: 'Draftline Orbitron'; src: url('../../../../internal/export/fonts/Orbitron.ttf') format('truetype'); font-display: swap; }
+@font-face { font-family: 'Draftline Cinzel'; src: url('../../../../internal/export/fonts/CinzelDecorative-Regular.ttf') format('truetype'); font-display: swap; }
+
 .dialog.export-wizard {
   width: min(980px, calc(100vw - 48px));
   max-width: 980px;
@@ -158,6 +163,17 @@
 .export-font-choices small { color: var(--text-secondary); font-size: 8px; }
 .export-font-choices .merriweather, .export-document-preview .merriweather { font-family: Merriweather, Georgia, serif; }
 .export-font-choices .lato, .export-document-preview .lato { font-family: 'IBM Plex Sans', Arial, sans-serif; }
+.export-display-font-choices { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 7px; }
+.export-display-font-choices button { min-width: 0; height: 72px; padding: 6px 3px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg-panel); color: var(--text-primary); cursor: pointer; }
+.export-display-font-choices button.selected { border-color: var(--app-accent); box-shadow: inset 0 0 0 1px var(--app-accent); }
+.export-display-font-choices span { font-size: 20px; line-height: 1; }
+.export-display-font-choices strong { overflow: hidden; max-width: 100%; font-size: 8px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.export-display-font-choices small { color: var(--text-secondary); font: 7px 'IBM Plex Sans', sans-serif; }
+.export-display-font-choices .classic, .display-classic, .export-title-page-sample.classic { font-family: 'Draftline EB Garamond', Georgia, serif; }
+.export-display-font-choices .modern, .display-modern, .export-title-page-sample.modern { font-family: 'IBM Plex Sans', Arial, sans-serif; }
+.export-display-font-choices .romance, .display-romance, .export-title-page-sample.romance { font-family: 'Draftline Great Vibes', cursive; }
+.export-display-font-choices .scifi, .display-scifi, .export-title-page-sample.scifi { font-family: 'Draftline Orbitron', sans-serif; }
+.export-display-font-choices .fantasy, .display-fantasy, .export-title-page-sample.fantasy { font-family: 'Draftline Cinzel', Georgia, serif; }
 .export-reading-controls { min-width: 0; }
 .export-reading-controls .export-select-grid { margin-top: 14px; }
 .export-select-grid { display: grid; gap: 8px; }
@@ -171,6 +187,13 @@
 .export-page-sample-lines i:nth-child(3n), .export-document-preview i:nth-child(3n), .export-reader-preview i:nth-child(3n) { width: 88%; }
 .export-page-sample-lines i:nth-child(4n), .export-document-preview i:nth-child(4n), .export-reader-preview i:nth-child(4n) { width: 94%; }
 .export-page-sample-number { position: absolute; bottom: 10px; left: 50%; font: 7px Arial, sans-serif; }
+.export-title-page-sample { min-height: 300px; display: grid; place-items: center; padding: 22px; background: #f7f4ed; color: #3b3730; box-shadow: inset 0 0 0 1px rgba(72, 60, 43, .08), 0 5px 15px rgba(0, 0, 0, .09); }
+.export-title-page-sample > div { width: 100%; min-height: 238px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.export-title-page-sample strong { margin-top: 78px; font-size: 21px; line-height: 1.15; }
+.export-title-page-sample span { margin-top: 24px; font-family: Merriweather, Georgia, serif; font-size: 9px; }
+.export-title-page-sample small { margin-top: auto; font-family: Merriweather, Georgia, serif; font-size: 7px; }
+.export-title-page-sample.minimal strong { align-self: flex-start; margin-top: 34px; text-align: left; }
+.export-title-page-sample.dramatic strong { margin-top: 105px; font-size: 27px; }
 
 .export-simple-design { min-height: 294px; display: grid; grid-template-columns: 210px minmax(0, 1fr); align-items: center; gap: 42px; padding: 24px 38px; border: 1px solid var(--border); border-radius: 11px; background: var(--bg-main); }
 .export-simple-design h3 { font-size: 18px; }

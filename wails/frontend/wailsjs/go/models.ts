@@ -2860,6 +2860,12 @@ export namespace types {
 	    generateHalfTitle: boolean;
 	    generateTOC: boolean;
 	    mirroredMargins: boolean;
+	    headingFont: string;
+	    furnitureFont: string;
+	    titlePageFont: string;
+	    titlePageStyle: string;
+	    titlePageShowAuthor: boolean;
+	    titlePageShowPublisher: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new PrintPDFOptions(source);
@@ -2894,6 +2900,12 @@ export namespace types {
 	        this.generateHalfTitle = source["generateHalfTitle"];
 	        this.generateTOC = source["generateTOC"];
 	        this.mirroredMargins = source["mirroredMargins"];
+	        this.headingFont = source["headingFont"];
+	        this.furnitureFont = source["furnitureFont"];
+	        this.titlePageFont = source["titlePageFont"];
+	        this.titlePageStyle = source["titlePageStyle"];
+	        this.titlePageShowAuthor = source["titlePageShowAuthor"];
+	        this.titlePageShowPublisher = source["titlePageShowPublisher"];
 	    }
 	}
 	
@@ -3511,10 +3523,5 @@ export namespace types {
 		    return a;
 		}
 	}
-	
-	
-	
-	
-	
 
 }

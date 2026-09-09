@@ -56,4 +56,11 @@ type PrintPDFOptions struct {
 	GenerateHalfTitle bool `json:"generateHalfTitle"`
 	GenerateTOC       bool `json:"generateTOC"`
 	MirroredMargins   bool `json:"mirroredMargins"` // Critical: swap gutter/outer for odd/even pages
+	// Display typography
+	HeadingFont            string `json:"headingFont"` // body, classic, modern, romance, scifi, fantasy
+	FurnitureFont          string `json:"furnitureFont"`
+	TitlePageFont          string `json:"titlePageFont"`
+	TitlePageStyle         string `json:"titlePageStyle"` // classic, minimal, dramatic
+	TitlePageShowAuthor    bool   `json:"titlePageShowAuthor"`
+	TitlePageShowPublisher bool   `json:"titlePageShowPublisher"`
 }
