@@ -25,7 +25,7 @@ interface EPUBOptions extends ExportOptions {
 interface PDFOptions extends ExportOptions {
   pageSize: 'letter' | 'a4' | '6x9' | '5x8' | '5.5x8.5'
   fontFamily: 'merriweather' | 'lato'
-  fontSize: 10 | 11 | 12 | 14
+  fontSize: 9 | 10 | 11 | 12 | 14
   lineHeight: 1.3 | 1.4 | 1.5 | 1.6
   paragraphIndent: string
   textAlign: 'justify' | 'left'
@@ -132,7 +132,7 @@ export default function ExportWizard() {
   const [printOptions, setPrintOptions] = useState<PrintPDFOptions>({
     ...pdfOptions, pageSize: '5.5x8.5', trimSize: '5.5x8.5', customWidth: '5.5', customHeight: '8.5', bleed: '0',
     gutterMargin: '0.875', outerMargin: '0.625', topMargin: '0.75', bottomMargin: '0.625', includeCropMarks: false,
-    fontFamily: 'merriweather', fontSize: 10, lineHeight: 1.4, paragraphIndent: '0.25', textAlign: 'left', chapterStartsRecto: true,
+    fontFamily: 'merriweather', fontSize: 9, lineHeight: 1.4, paragraphIndent: '0.25', textAlign: 'left', chapterStartsRecto: true,
     dropCap: true, dropCapLines: 3, runningHeaders: true, headerStyle: 'smallcaps', pageNumberPosition: 'bottom-center',
     generateHalfTitle: true, generateTOC: true, mirroredMargins: true,
     headingFont: 'classic', furnitureFont: 'body', titlePageFont: 'classic', titlePageStyle: 'classic',
@@ -253,7 +253,7 @@ export default function ExportWizard() {
       <div className="export-setting-block"><h3>Page margins</h3><p>Interior breathing room and binding allowance.</p><div className="export-number-grid">
         {([['gutterMargin', 'Inside', printOptions.gutterMargin], ['outerMargin', 'Outside', printOptions.outerMargin], ['topMargin', 'Top', printOptions.topMargin], ['bottomMargin', 'Bottom', printOptions.bottomMargin]] as const).map(([key, label, value]) => <label key={key}>{label}<span><input value={value} onChange={event => setPrintOptions(current => ({ ...current, [key]: event.target.value }))} inputMode="decimal" /> in</span></label>)}
       </div></div>
-      <div className="export-setting-block"><h3>Production page</h3><p>Binding and printer setup.</p><Toggle checked={printOptions.mirroredMargins} onChange={value => setPrintOptions(current => ({ ...current, mirroredMargins: value }))} label="Mirror inside margins" /><Toggle checked={printOptions.chapterStartsRecto} onChange={value => setPrintOptions(current => ({ ...current, chapterStartsRecto: value }))} label="Chapters begin on recto" note="Start on a right-hand page" /><div className="export-compact-field"><label>Bleed</label><span><input value={printOptions.bleed} onChange={event => setPrintOptions(current => ({ ...current, bleed: event.target.value }))} inputMode="decimal" /> in</span></div><Toggle checked={printOptions.includeCropMarks} onChange={value => setPrintOptions(current => ({ ...current, includeCropMarks: value }))} label="Include crop marks" /></div>
+      <div className="export-setting-block"><h3>Production page</h3><p>Binding and printer setup.</p><Toggle checked={printOptions.mirroredMargins} onChange={value => setPrintOptions(current => ({ ...current, mirroredMargins: value }))} label="Mirror inside margins" /><Toggle checked={printOptions.chapterStartsRecto} onChange={value => setPrintOptions(current => ({ ...current, chapterStartsRecto: value }))} label="Chapters begin on recto" note="Right-hand starts may insert an unnumbered blank that still counts in pagination" /><div className="export-compact-field"><label>Bleed</label><span><input value={printOptions.bleed} onChange={event => setPrintOptions(current => ({ ...current, bleed: event.target.value }))} inputMode="decimal" /> in</span></div><Toggle checked={printOptions.includeCropMarks} onChange={value => setPrintOptions(current => ({ ...current, includeCropMarks: value }))} label="Include crop marks" /></div>
     </div>
   }
 
@@ -266,7 +266,7 @@ export default function ExportWizard() {
         {DISPLAY_FONTS.map(font => <button type="button" key={font.id} className={`${font.id}${printOptions.headingFont === font.id ? ' selected' : ''}`} onClick={() => setPrintOptions(current => ({ ...current, headingFont: font.id }))}><span>Aa</span><strong>{font.label}</strong><small>{font.use}</small></button>)}
       </div></div>
       <div className="export-setting-block"><h3>Composition</h3><div className="export-select-grid">
-        <label>Type size<select value={printOptions.fontSize} onChange={event => setPrintOptions(current => ({ ...current, fontSize: Number(event.target.value) as PDFOptions['fontSize'] }))}><option value={10}>10 pt</option><option value={11}>11 pt</option><option value={12}>12 pt</option></select></label>
+        <label>Type size<select value={printOptions.fontSize} onChange={event => setPrintOptions(current => ({ ...current, fontSize: Number(event.target.value) as PDFOptions['fontSize'] }))}><option value={9}>9 pt</option><option value={10}>10 pt</option><option value={11}>11 pt</option><option value={12}>12 pt</option></select></label>
         <label>Line spacing<select value={printOptions.lineHeight} onChange={event => setPrintOptions(current => ({ ...current, lineHeight: Number(event.target.value) as PrintPDFOptions['lineHeight'] }))}><option value={1.3}>Tight · 1.3</option><option value={1.4}>Book · 1.4</option><option value={1.5}>Relaxed · 1.5</option><option value={1.6}>Open · 1.6</option></select></label>
         <label>Alignment<select value={printOptions.textAlign} onChange={event => setPrintOptions(current => ({ ...current, textAlign: event.target.value as PrintPDFOptions['textAlign'] }))}><option value="left">Left aligned</option><option value="justify">Justified</option></select></label>
         <label>First-line indent<span className="export-field-with-unit"><input value={printOptions.paragraphIndent} onChange={event => setPrintOptions(current => ({ ...current, paragraphIndent: event.target.value }))} inputMode="decimal" /> in</span></label>
