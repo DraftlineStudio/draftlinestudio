@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.18.02583] - 2026-09-09
+
+### Changed
+- The launch screen is redesigned as "Studio Glow": the last-opened book sets the scene, with its avatar color driving the titlebar accent strip and a soft radial glow behind a "Continue Writing" hero card (generated book cover, stats, one-click open). Actions move to a compact left rail — New Book, New Universe, Open, Settings with their shortcuts — and the recent list becomes a compact card of mini covers that excludes the hero book. A slim status bar sums the library (books and words). With no recent projects, the screen becomes a quiet literary column: ghost wordmark, "Every book begins with a blank page.", and the keyboard hints. Right-click actions (Open, Show in Folder, Remove) are kept on the hero and every recent row.
+
+---
+
 ## [0.18.02582] - 2026-09-09
 
 ### Fixed
