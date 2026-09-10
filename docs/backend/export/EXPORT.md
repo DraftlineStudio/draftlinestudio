@@ -1,17 +1,21 @@
 # Export Package
 
-`internal/export/` handles multi-format book export (EPUB, DOCX, PDF, Print PDF).
+`internal/export/` handles multi-format book export (EPUB, DOCX, PDF, Print PDF). Rebuilt in 0.18 around a shared document model.
+
+## Shared Document Model
+
+All formats render from the same renderer-neutral document (`document.go`): `BuildDocument(book, options)` selects the requested archive sections and parses their HTML via `ParseDocumentHTML` into semantic blocks, which each format's renderer then lays out.
 
 ## Functions
 
-### EPUB(path string, book types.BookData, options types.ExportOptions) types.ExportResult
-Exports to EPUB 3.0 format. Creates a valid ZIP archive with XHTML content, CSS styling, and required metadata files.
+### EPUB(path string, book types.BookData, options types.EPUBOptions) types.ExportResult
+Exports a reflowable EPUB edition rendered from the shared document (`epub_render.go`), with optional font embedding (`epub_fonts.go`).
 
 ### DOCX(path string, book types.BookData, options types.ExportOptions) types.ExportResult
-Exports to Microsoft Word format. Creates a ZIP archive with Office Open XML content.
+Exports to Microsoft Word format from the shared document (`docx_render.go`). Creates a ZIP archive with Office Open XML content.
 
 ### PDF(path string, book types.BookData, options types.PDFOptions) types.ExportResult
-Exports to standard PDF format (Letter size, 8.5x11"). Generates raw PDF with Helvetica font, proper pagination, and chapter breaks.
+Exports a fixed-layout reading PDF with embedded Unicode fonts (`pdf_fonts.go`, subset per output — no machine-local font dependency).
 
 ### PrintPDF(path string, book types.BookData, options types.PrintPDFOptions) types.ExportResult
 Exports to print-ready PDF with professional formatting:
@@ -39,8 +43,5 @@ Generates a random UUID for EPUB identifiers.
 
 ## PDF Internals
 
-Both PDF functions use custom `pdfWriter` / `printPDFWriter` structs that handle:
-- Multi-page layout with automatic page breaks
-- Text wrapping and word-wrap
-- Font sizing and line height calculation
+`PDF` and `PrintPDF` share one pipeline: `BuildDocument(...)` → `renderPublicationPDF(doc, spec)`. The layout specs (page size, margins, furniture) live in `pdf_spec.go` (`readingPDFSpec` / `printPDFSpec`); the shared renderer in `pdf_renderer.go` handles pagination, the table of contents (`pdf_toc.go`), and code-block rendering (`pdf_code.go`). The print preset changes page construction only — it does not fork manuscript interpretation.
 - PDF object generation and cross-reference tables

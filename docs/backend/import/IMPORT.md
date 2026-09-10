@@ -4,8 +4,8 @@ Import logic lives in `wails/import.go` (pipeline + routing) and
 `wails/import_sanitize.go` (decoder, sanitizer, chaptering). Both bound entry
 points — `ImportEPUB`/`ImportEPUBDialog` and `ImportDOCX`/`ImportDOCXDialog` —
 run inside `safeImport`, a recover wrapper that turns any panic into a failed
-`ImportResult` instead of killing the Wails process (the app is bound with no
-other recovery). A successful import always clears the session's current file
+`ImportResult` instead of killing the Wails process (there is no other
+recovery on the Wails binding surface). A successful import always clears the session's current file
 so Ctrl+S routes through Save As.
 
 `ImportResult` (in `internal/types/results.go`) carries `warnings []string`

@@ -4,18 +4,21 @@
 
 ## Functions
 
-### Init() error
-Initializes the debug logger. Creates `ai_debug.log` in the user's home directory if AI debugging is enabled.
+### Init()
+Initializes the debug log file (no error return; failures silently disable file logging). Called lazily on first log write. Creates a timestamped `ai-*.log` under the OS config directory and rotates, keeping the last 5 log files.
+
+### SetEnabled(on bool)
+Turns AI debug logging on or off. Off by default; wired to the `ai_debug_logging` setting.
 
 ### AI(format string, args ...interface{})
-Logs a formatted message to the AI debug log.
+Logs a formatted message to the AI debug log. No-op unless enabled.
 
 ### AIContent(label string, content string)
-Logs large content blocks (prompts, responses) with a label prefix.
+Logs content blocks (prompts, responses) with a label prefix, truncated to 2,000 characters. No-op unless enabled.
 
 ## Log File
 
-- **Location:** `~/ai_debug.log` (user home directory)
+- **Location:** `os.UserConfigDir()/draftline/logs/ai-<timestamp>.log`, created user-only (0600/0700)
 - **Format:** Timestamped entries with operation labels
 - **Content:** AI prompts, responses, provider info, errors
 
@@ -30,4 +33,4 @@ logging.AIContent("OUTPUT_RESULT", result)
 
 ## Enabling
 
-Debug logging is enabled when the `AI_DEBUG` environment variable is set, or when running in development mode.
+Debug logging is opt-in via `SetEnabled(true)`, wired to the `ai_debug_logging` app setting. Nothing is written while disabled.

@@ -8,7 +8,7 @@ Current version as of this writing: **0.19.02587**
 
 | # | File | What to change |
 |---|------|----------------|
-| 1 | `wails/app.go` | `const AppVersion = "..."` (~line 47). This is what `GetAppVersion` returns — shown on the welcome screen and in the settings dialog footer. |
+| 1 | `wails/app.go` | `const AppVersion = "..."` (line 46). This is what `GetAppVersion` returns — shown on the welcome screen and in the settings dialog footer. |
 | 2 | `wails/frontend/package.json` | `"version"` field (line 4). |
 | 3 | `wails/frontend/package-lock.json` | `"version"` appears **twice** — top-level (~line 3) and under `packages[""]` (~line 9). Running any `npm install` after editing package.json also syncs these. |
 | 4 | `CHANGELOG.md` (repo root) | Add a new `## [x.y.0zzzz] - YYYY-MM-DD` entry at the top describing the change. |
