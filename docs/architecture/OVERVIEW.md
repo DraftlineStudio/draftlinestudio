@@ -35,6 +35,11 @@ Draftline is a **desktop application** built on [Wails](https://wails.io/), whic
         +------------------+              +------------------+
 ```
 
+The diagram is simplified: the root Go files are a thin facade over 17
+packages under `wails/internal/` (ai, ai/providers, backup, book, continuity,
+entityresolution, export, fingerprint, fsutil, indexing, logging, platform,
+readaloud, storysearch, storytimeline, types, ziputil).
+
 ## Component Communication
 
 ### Wails Bindings
@@ -59,6 +64,8 @@ Backend can push events to frontend:
 // Go
 runtime.EventsEmit(a.ctx, "ai:token", token)
 runtime.EventsEmit(a.ctx, "setup:progress", message)
+runtime.EventsEmit(a.ctx, "analysis:progress", update)
+runtime.EventsEmit(a.ctx, "file:open", path)
 ```
 
 ```typescript
@@ -103,6 +110,7 @@ Wails: RewriteText(html, mode, styleOpts)
 Go: buildPrompt() + callProvider()
        |
        +-- Claude Code CLI (subprocess)
+       +-- Codex CLI (subprocess)
        +-- Anthropic API (HTTP)
        +-- OpenAI API (HTTP)
        +-- etc.
@@ -119,7 +127,15 @@ Frontend shows diff for review
 ### Backend (Go)
 | File | Responsibility |
 |------|----------------|
-| `app.go` | Main application struct, all Wails bindings |
+| `app.go` | Main application struct, core Wails bindings |
+| `analysis.go` | Local-analysis pipeline orchestration + progress events |
+| `ai_dispatch.go` | Routes AI requests to the configured provider |
+| `claude_cli.go` / `codex_auth.go` | Claude Code and Codex CLI drivers/auth |
+| `continuity.go` / `fingerprint.go` | Thin Wails delegates for the analysis engines |
+| `story_search.go` / `story_timeline.go` | Thin Wails delegates for search/timeline |
+| `readaloud.go` | Read Aloud bindings (native TTS) |
+| `fileopen.go` | OS file-open plumbing |
+| `update_check.go` | GitHub release update checker |
 | `import.go` | EPUB and DOCX import logic |
 | `setup.go` | Claude Code CLI setup and portable Node.js |
 
@@ -129,9 +145,9 @@ Frontend shows diff for review
 | `App.tsx` | Main layout, routing |
 | `EditorPanel.tsx` | Rich text editor container |
 | `ChapterPanel.tsx` | Chapter list sidebar |
-| `ToolsPanel.tsx` | Dashboard, AI Studio, Story Bible |
-| `bookStore.ts` | Zustand store - all book state |
-| `appStore.ts` | App settings state |
+| `ToolsPanel.tsx` | Routes sidebar panes: Dashboard, Characters, the analysis panels (Signals/Prose/Pacing/Chapters/Review/AI Analysis), AI Studio |
+| `bookStore.ts` | Zustand store - book/domain data facade |
+| `appStore.ts` | App settings + app-level UI state |
 
 ## State Architecture
 
@@ -154,11 +170,14 @@ interface BookStore {
 }
 ```
 
-### Why Single Store?
-- Book data is deeply interconnected
-- Chapters, characters, beats all relate
-- Simpler than prop drilling or context
-- Easy persistence (save entire state)
+### Store Ownership
+State is split across 8 Zustand stores (`analysisStore`, `appStore`,
+`bookStore`, `chapterHistory`, `editorStore`, `readAloudStore`,
+`relationshipStore`, `storyBibleStore`):
+- `bookStore` is the book/domain data facade (file I/O, chapters, autosave)
+- `appStore` owns settings and app-level UI state (status bar, dialogs)
+- `editorStore` owns editor and diff/review state
+- The rest own their feature's state (analysis results, characters, Read Aloud, ...)
 
 ## The .draftline Format
 
@@ -176,6 +195,11 @@ book.draftline (ZIP)
 ├── back_matter/
 │   └── ...
 ├── story_bible.json      # Characters, plot notes
+├── analysis.json         # Rebuildable analysis (entities, evidence, metrics)
+├── history/
+│   ├── index.json        # Chapter snapshot metadata
+│   └── snapshots/        # Deduplicated chapter versions
+├── read_aloud_cast.json  # Per-book Read Aloud voice casting (optional)
 ├── beat_sheet.json       # Story structure
 ├── foreshadowing.json    # Plant/payoff tracking
 └── knowledge_matrix.json # Secrets tracking
@@ -198,5 +222,9 @@ Claude Code can authenticate two ways:
 2. **API Key** (stored in credentials) - direct HTTP calls
 
 The app checks credentials and chooses the faster path automatically.
+
+The Codex CLI is a similar subprocess driver (ai_mode `"codex"`, ChatGPT
+accounts): login flow in `wails/codex_auth.go`, execution via `callCodexCLI`
+in `app.go`.
 
 See [AI Features](../ai/AI-REWRITING.md) for prompt engineering details.

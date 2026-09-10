@@ -14,6 +14,7 @@
 - `beat_sheet.json` - Plot structure beats (optional)
 - `foreshadowing.json` - Setup/payoff tracking (optional)
 - `knowledge_matrix.json` - Character knowledge states (optional)
+- `read_aloud_cast.json` - Per-book Read Aloud voice casting (optional)
 - `front_matter/NNN.html` - Front matter chapter content
 - `body/NNN.html` - Main chapter content
 - `back_matter/NNN.html` - Back matter chapter content
@@ -41,6 +42,9 @@ Writes a BookData structure to a `.draftline` file.
 
 ### ReadZipEntry(r *zip.ReadCloser, name string) ([]byte, error)
 Helper to read a named entry from an open ZIP archive.
+
+### RefreshWordCount(b *types.BookData)
+(`wordcount.go`) Recomputes the manuscript word count into `metadata.word_count`. Runs on open and save so the frontend never re-counts the whole manuscript on its main thread.
 
 ### WriteWithSnapshots(path string, book types.BookData, appVersion string, snapshots []types.ChapterSnapshotRequest) types.SaveResult
 
