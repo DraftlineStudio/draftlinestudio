@@ -21,7 +21,7 @@ Prevents black console windows from flashing when spawning external processes li
 
 ### BatchCommand(ctx, path, args...)
 
-On Windows, `BatchCommand` constructs the required `cmd.exe /S /C` command line for the rare case where a `.cmd` or `.bat` shim must be used. Claude Code normally bypasses this path by launching its native executable or JavaScript entry point directly, which avoids command parsing failures when installation paths contain spaces.
+On Windows (`batch_windows.go`), `BatchCommand` constructs the required `cmd.exe /S /C` command line for the rare case where a `.cmd` or `.bat` shim must be used; `batch_other.go` provides the non-Windows implementation. Claude Code normally bypasses this path by launching its native executable or JavaScript entry point directly, which avoids command parsing failures when installation paths contain spaces.
 
 **macOS/Linux** (`hidewindow_other.go`):
 ```go

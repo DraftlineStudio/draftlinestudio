@@ -9,7 +9,7 @@ AI features are **fully implemented** but controlled via settings:
 | Setting | Location | Effect |
 |---------|----------|--------|
 | `ai_enabled` | Settings > Plugins | Master toggle for all AI features |
-| `ai_mode` | Settings > AI | Provider selection (claudecode/api/local) |
+| `ai_mode` | Settings > AI | Provider selection (claudecode/codex/api/local) |
 | `ai_provider` | Settings > AI | Which API to use (claude/openai/gemini/grok) |
 
 When AI is disabled, the AI Studio panel shows setup guidance instead of controls.
@@ -19,6 +19,7 @@ When AI is disabled, the AI Studio panel shows setup guidance instead of control
 | Provider | Mode | Notes |
 |----------|------|-------|
 | **Claude Code** | `claudecode` | Uses Claude Code CLI (OAuth or API key from creds) |
+| **Codex** | `codex` | ChatGPT accounts via the Codex CLI |
 | **Anthropic API** | `api` + `claude` | Direct API key |
 | **OpenAI** | `api` + `openai` | GPT-4 and variants |
 | **Google Gemini** | `api` + `gemini` | Gemini Pro |

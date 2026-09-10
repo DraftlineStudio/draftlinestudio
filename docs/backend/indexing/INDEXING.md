@@ -1,6 +1,6 @@
 # Indexing Package
 
-`internal/indexing/` provides character detection and content analysis for the Story Bible.
+`internal/indexing/` provides character detection and content analysis feeding the analysis sidebars and the character pipeline.
 
 ## Analysis concurrency
 
@@ -21,39 +21,22 @@ kept intact for stable offsets and runs alone.
 
 ## Functions
 
-### IndexBook(book types.BookData) types.IndexResult
-Scans all chapters and detects character names based on capitalization patterns, dialogue attribution, and frequency.
+### IndexBook(book *types.BookData) types.IndexResult
+Runs the two-phase character pipeline on the whole book: Phase 1 extracts mention spans from every chapter (`ExtractBookMentions`, with book-wide corroboration), Phase 2 resolves them into entities via `internal/entityresolution`, honoring prior manual merge/split decisions. Rebuilds the StoryBible character list (manual characters preserved) and `Analysis.EntityResolution`, and assigns attributes from a single full-text scan.
 
-**Returns:**
-- Detected character names
-- Per-chapter word counts
-- Character mention counts
+### IndexBookWithOptions(book *types.BookData, pool AnalysisPoolOptions) types.IndexResult
+Same pipeline with an explicit concurrency/memory budget for the model-backed stages.
 
-### IndexChapter(content string) ([]string, int)
-Indexes a single chapter's content, returning detected names and word count.
+### SplitCharacterEntity(book *types.BookData, entityID string, mentionIDs []string, newCanonical string) error
+Splits an entity into two when auto-merging incorrectly combined different people, moving the given mentions to a new entity.
 
-### DetectCharacterNames(content string) []string
-Extracts potential character names from text using pattern matching.
-
-**Detection rules:**
-- Capitalized words not at sentence start
-- Words following dialogue attribution ("said X", "X replied")
-- Excludes common words (the, and, but, etc.)
-- Excludes single letters and short words
-
-### ExtractAttributes(content string, name string) map[string]string
-Extracts character attributes mentioned near a name (physical descriptions, titles, relationships).
+### ExtractAllAttributes(text string) / LookupAttributes(attrsByName, name, aliases)
+Attribute extraction (`text.go`): one scan collects attributes near names across the full text; lookup resolves a character's attributes across its name and aliases. `text.go` also exposes `StripHTML` / `StripHTMLForAnalysis` and `ShouldAnalyzeChapter`.
 
 ## Patterns
 
-### commonWords
-Map of ~100 common English words to exclude from character detection.
-
-### Regex Patterns
-- Dialogue attribution: `(?:said|asked|replied|shouted|whispered|muttered)\s+([A-Z][a-z]+)`
-- Sentence boundaries: `[.!?]\s+`
-- Capitalized words: `\b[A-Z][a-z]{2,}\b`
+`patterns.go` (~340 lines) holds `commonWordsLower`, a lowercase map of common English words accessed via `IsCommonWord`, plus false-positive context checks (`IsFalsePositiveContext`, address/street detection). Character detection is no longer regex-driven: the mention pipeline (`mentions.go`) extracts candidate name spans over stripped text, and `classification.go` classifies the resolved entities.
 
 ## Usage
 
-Called when user clicks "Index Book" in the Story Bible panel. Results populate the character list with auto-detected names.
+`IndexBookWithOptions` runs as part of the consolidated local analysis pipeline (`wails/analysis.go`) and via the `IndexBook` Wails binding. Results populate the character list with auto-detected names.

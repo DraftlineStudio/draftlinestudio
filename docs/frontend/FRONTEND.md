@@ -11,16 +11,21 @@ frontend/src/
 ├── components/
 │   ├── EditorPanel.tsx         # Rich editor container + diff view
 │   ├── ChapterPanel.tsx        # Chapter list sidebar
-│   ├── ToolsPanel.tsx          # Slim router (~121 lines)
+│   ├── ToolsPanel.tsx          # Slim router (~185 lines)
 │   ├── TitleBar.tsx            # Custom window title bar
 │   ├── StatusBar.tsx           # Bottom status bar
 │   ├── WelcomeScreen.tsx       # Start screen
-│   ├── CodexPanel.tsx          # Full character codex view
 │   ├── ContextMenu.tsx         # Right-click menu
+│   ├── characters/
+│   │   ├── CharactersView.tsx  # Full character codex view (swimlanes)
+│   │   ├── CharacterInterweave.tsx
+│   │   └── shared.ts           # Cross-component character helpers
 │   ├── editor/
 │   │   ├── RichEditor.tsx      # TipTap editor wrapper
 │   │   ├── Toolbar.tsx         # Formatting toolbar
-│   │   └── InlinePrompt.tsx    # Ctrl+L prompt UI
+│   │   ├── InlinePrompt.tsx    # Ctrl+L prompt UI
+│   │   ├── ChapterFindReplaceBar.tsx # In-chapter find/replace
+│   │   └── readaloud/          # Read Aloud player bar + voice cast UI
 │   ├── tools/                  # ToolsPanel feature modules
 │   │   ├── constants.ts        # SECTION_CONFIG, AI_MODES
 │   │   ├── types.ts            # GlyphSection, AIMode, AIState
@@ -34,21 +39,38 @@ frontend/src/
 │   │       ├── shared.ts       # Cross-panel nav, deltas, dismissals
 │   │       └── *Panel.tsx      # One component per panel (styles in global.css)
 │   └── dialogs/
-│       ├── AppSettingsDialog.tsx
+│       ├── AppSettingsDialog.tsx  # 2-line re-export shim → settings/
+│       ├── settings/              # Settings dialog sections (Application, Book, AI Studio, Plugins, Read Aloud)
+│       ├── ChapterHistoryDialog.tsx
 │       ├── ExportWizard.tsx
 │       ├── MetadataDialog.tsx
 │       ├── NewBookWizard.tsx
-│       └── NewChapterDialog.tsx
+│       ├── NewChapterDialog.tsx
+│       ├── NewUniverseWizard.tsx
+│       └── UnsavedChangesDialog.tsx
 ├── store/
-│   ├── bookStore.ts            # Main book state (Zustand)
-│   └── appStore.ts             # App settings state
+│   ├── bookStore.ts            # Book/domain data facade (Zustand)
+│   ├── appStore.ts             # App settings + app-level UI state
+│   ├── analysisStore.ts        # Consolidated analysis run + results
+│   ├── chapterHistory.ts       # Chapter snapshot history
+│   ├── editorStore.ts          # Editor and diff/review state
+│   ├── readAloudStore.ts       # Read Aloud playback state
+│   ├── relationshipStore.ts    # Character relationship data
+│   └── storyBibleStore.ts      # Characters CRUD + highlighting
 ├── services/
 │   ├── spellCheck.ts           # Spell checking service
+│   ├── spellSuggestions.ts     # Bounded typo-suggestion search (worker)
 │   ├── grammarCheck.ts         # Local grammar and style rules
-│   └── aiDetection.ts          # AI content detection
+│   ├── aiDetection.ts          # AI content detection
+│   ├── aiRouting.ts            # Per-task AI provider routing
+│   ├── aiScan.ts               # Whole-manuscript AI scan
+│   ├── updateNag.ts            # Update-available indicator logic
+│   └── readaloud/              # Read Aloud pipeline (15 files: controller, tts, cast, ...)
 ├── extensions/
 │   ├── FontSize.ts             # TipTap font size extension
 │   ├── CharacterHighlight.ts   # Character name highlighting
+│   ├── ChapterSearch.ts        # In-chapter search decorations
+│   ├── ReadAloud.ts            # Per-sentence read-aloud highlighting
 │   ├── SpellCheck.ts           # Persistent spelling decorations
 │   └── GrammarCheck.ts         # Grammar/style decorations
 ├── features/
@@ -57,6 +79,8 @@ frontend/src/
 │   ├── diff.ts                 # Word-level diff algorithm
 │   ├── textUtils.ts            # HTML/text utilities
 │   ├── accentColor.ts          # Windows accent color
+│   ├── characterStatus.ts      # Character status derivation
+│   ├── characterVisuals.ts     # Character color/visual helpers
 │   └── sunTimes.ts             # Sunrise/sunset for auto-theme
 ├── hooks/
 │   └── useAutoTheme.ts         # Auto light/dark theme
@@ -103,8 +127,9 @@ Each feature is isolated in its own folder:
 
 The Story Bible (plot notes, timeline) and Plot Walker planning tools (beat sheet,
 foreshadowing ledger, knowledge matrix) were retired from the sidebar in 0.16.02449.
-Their data model, `plotStore.ts`/`storyBibleStore.ts` reducers, and `.draftline`
-file-format fields remain intact so existing project files round-trip unchanged;
+Their data model, the `storyBibleStore.ts` reducers, and `.draftline`
+file-format fields remain intact so existing project files round-trip unchanged
+(`plotStore.ts` itself was deleted in 0.16.02465 — see below);
 the Go settings keys `story_bible_enabled`/`plot_walker_enabled` are also retained
 for settings-file compatibility but no longer gate any UI.
 
@@ -122,7 +147,9 @@ The bundled feature catalog lives in `features/registry.ts`. Stable IDs, capabil
 
 The resizable bottom tool window is the Story Fingerprint UI — five tabs
 (Story Map, Threads, Review, Continuity, Ask Draftline) plus the Evidence
-index. See `docs/frontend/BOTTOM-BAR.md`.
+index. Continuity, Ask, and the Evidence Index are the live panels; the
+Story Map, Threads, and Review tabs are currently placeholder stubs while
+the analysis engine is rebuilt. See `docs/frontend/BOTTOM-BAR.md`.
 
 ## State Management
 
@@ -234,7 +261,7 @@ declare module '@tiptap/core' {
 **CharacterHighlight.ts**
 ```typescript
 // Highlights character names in editor
-// Triggered from Story Bible panel
+// Triggered from the Characters panel (codex data)
 ```
 
 ## Wails Integration

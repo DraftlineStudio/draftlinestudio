@@ -7,17 +7,25 @@ The Draftline backend is written in Go and uses [Wails v2](https://wails.io/) to
 ```
 wails/
 ├── main.go                    # Application entry point
-├── app.go                     # App struct facade (~1,470 lines; guarded against growth)
+├── app.go                     # App struct facade (~1,400 lines; guarded against growth)
 ├── analysis.go                # Full local-analysis pipeline orchestration + progress
+├── analysis_budget.go         # Analysis CPU/memory budget resolution
+├── ai_dispatch.go             # Routes AI requests to the configured provider
+├── claude_cli.go              # Claude Code CLI driver
+├── codex_auth.go              # Codex CLI login flow
+├── continuity.go              # Thin Continuity Wails delegate
+├── fingerprint.go             # Thin Story Fingerprint Wails delegate
 ├── story_search.go            # Thin Story Search Wails binding
+├── story_timeline.go          # Thin Story Timeline Wails delegate
+├── readaloud.go               # Read Aloud bindings (native TTS)
+├── update_check.go            # GitHub release update checker (~354 lines): launch/hourly check + download
 ├── fileopen.go                # OS file-open plumbing (see FILE-ASSOCIATIONS.md)
 ├── fileassoc_windows.go       # Per-user HKCU association self-registration
+├── fileassoc_other.go         # No-op for non-Windows
 ├── import.go                  # EPUB/DOCX import pipeline + routing (see import/IMPORT.md)
 ├── import_sanitize.go         # Import decoder, XHTML sanitizer, chaptering
 ├── debt_guardrail_test.go     # 800-line file-size ratchet (fails `go test` when a source file outgrows its allowance)
 ├── setup.go                   # Claude Code + Node.js setup
-├── hidewindow_windows.go      # Windows-specific process hiding
-├── hidewindow_other.go        # No-op for non-Windows
 │
 └── internal/
     ├── types/                 # Shared data structures
@@ -25,23 +33,42 @@ wails/
     │   ├── characters.go      # Character, StoryBible
     │   ├── structure.go       # Beat, Foreshadowing, KnowledgeMatrix
     │   ├── settings.go        # AppSettings, ClaudeCodeStatus
-    │   ├── export.go          # ExportOptions, PDFOptions, PrintPDFOptions
+    │   ├── export.go          # ExportOptions, PDFOptions, PrintPDFOptions, EPUBOptions
     │   ├── evidence.go        # Persistent source-located fact/event records
+    │   ├── entities.go        # Entity resolution records and decisions
+    │   ├── relationships.go   # Scene records, relationship graph
+    │   ├── fingerprint.go     # Story fingerprint (typed frames, ledgers)
+    │   ├── continuity.go      # Continuity signals and sources
+    │   ├── storyanalysis.go   # Rebuildable manuscript metrics
+    │   ├── storysearch.go     # Story/Detail Search requests and results
+    │   ├── storytimeline.go   # Timeline events and facets
     │   └── results.go         # SaveResult, ExportResult, AIRewriteResult
     │
     ├── book/                  # Book lifecycle operations
     │   ├── open.go            # Open .draftline files
-    │   └── save.go            # Write .draftline files
+    │   ├── save.go            # Write .draftline files
+    │   ├── history.go         # Embedded chapter snapshot history
+    │   └── wordcount.go       # Persisted manuscript word count
     │
     ├── backup/                # Automatic backup system
     │   └── backup.go          # Create, List, Restore backups
     │
-    ├── export/                # Multi-format export
+    ├── export/                # Multi-format export (rebuilt in 0.18)
+    │   ├── document.go        # Shared document model (BuildDocument)
     │   ├── helpers.go         # HTML parsing, escaping utilities
-    │   ├── epub.go            # EPUB 3.0 export
+    │   ├── epub.go            # EPUB export entry point
+    │   ├── epub_render.go     # EPUB rendering from the shared document
+    │   ├── epub_fonts.go      # EPUB font embedding
     │   ├── docx.go            # Microsoft Word export
+    │   ├── docx_render.go     # DOCX rendering from the shared document
     │   ├── pdf.go             # Standard PDF export
-    │   └── print.go           # Print-ready PDF (bleed, crop marks)
+    │   ├── print.go           # Print-ready PDF (bleed, crop marks)
+    │   ├── pdf_spec.go        # Reading/print PDF layout specs
+    │   ├── pdf_renderer.go    # Shared PDF renderer
+    │   ├── pdf_toc.go         # PDF table of contents
+    │   ├── pdf_code.go        # Code-block rendering support
+    │   ├── pdf_fonts.go       # Embedded Unicode fonts (subset per output)
+    │   └── export_file.go     # Atomic export file writing
     │
     ├── ai/                    # AI rewriting system
     │   ├── prompt.go          # System prompt building
@@ -50,14 +77,34 @@ wails/
     │                          # + pure CLI helpers); app.go injects an Emit closure
     │
     ├── indexing/              # Local manuscript analysis
-    │   ├── patterns.go        # Common words, regex patterns
-    │   ├── characters.go      # Name detection, attribute extraction
+    │   ├── indexer.go         # Two-phase book indexing entry point
+    │   ├── mentions.go        # Phase 1: mention span extraction
+    │   ├── classification.go  # Entity classification
+    │   ├── convert.go         # Entity/mention record conversion
+    │   ├── patterns.go        # Common words, false-positive context checks
+    │   ├── text.go            # HTML stripping, attribute extraction
     │   ├── evidence.go        # Persistent fact/event candidate extraction
-    │   └── indexer.go         # Book/chapter indexing
+    │   ├── scenes.go          # Scene boundary detection
+    │   ├── cooccurrence.go    # Character co-occurrence
+    │   ├── relationships.go   # Relationship analysis
+    │   ├── merge.go           # Entity merge rules
+    │   ├── nlp.go             # Linguistic (prose) stage
+    │   ├── story.go           # Story metrics pass
+    │   └── analysis_pool.go   # Stage-local worker pools + memory gate
+    │
+    ├── entityresolution/      # Mention → entity resolution engine
+    ├── fingerprint/           # Story fingerprint (frames, ledgers, developments)
+    ├── continuity/            # Read-only continuity comparison engine
+    ├── storytimeline/         # Evidence → manuscript-order timeline projection
+    ├── readaloud/             # Native TTS synthesis engine
     │
     ├── storysearch/           # Local detail trails + confirmed alias expansion
     │   ├── insight.go          # Query intent, fingerprint summaries, signals
     │   └── search.go           # Wails-independent source search engine
+    │
+    ├── fsutil/                # Atomic file writes
+    ├── ziputil/               # ZIP archive guards/helpers
+    ├── platform/              # Platform-specific process utilities
     │
     └── logging/               # Debug logging
         └── debug.go           # AI operation logging
@@ -107,7 +154,7 @@ All shared data structures used across packages. Zero dependencies.
 Reading and writing `.draftline` project files (ZIP archives).
 
 ### [backup/](backup/BACKUP.md)
-Automatic backup creation before saves. Keeps last 10 backups per file.
+Automatic backup creation before saves. Keeps last 5 backups per file.
 
 ### [export/](export/EXPORT.md)
 Multi-format export: EPUB, DOCX, PDF, and print-ready PDF.
@@ -202,6 +249,7 @@ Claude Code and Codex CLI drivers remain in `app.go` because they require:
 
 Supported providers:
 - **Claude Code CLI** - Uses installed `claude` command
+- **Codex CLI** - ChatGPT accounts via the Codex CLI (ai_mode `codex`)
 - **Anthropic API** - Direct Claude API calls
 - **OpenAI** - GPT-4 and GPT-3.5
 - **Gemini** - Google's Gemini Pro
