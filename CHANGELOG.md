@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.19.02587] - 2026-09-10
+
+### Changed
+- The export wizard's styles moved into the single application stylesheet, replacing the retired first-generation wizard's rules; no visual change.
+
+---
+
 ## [0.19.02586] - 2026-09-09
 
 ### Changed

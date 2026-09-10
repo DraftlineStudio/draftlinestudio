@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { useBookStore } from '../../store/bookStore'
 import { useAppStore } from '../../store/appStore'
 import { ExportEPUB, ExportDOCX, ExportPDF, ExportPrintPDF } from '../../../wailsjs/go/main/App'
-import './ExportWizard.css'
 
 type ExportFormat = 'epub' | 'docx' | 'pdf' | 'print-pdf'
 type WizardStep = 'destination' | 'contents' | 'design' | 'review' | 'exporting'
