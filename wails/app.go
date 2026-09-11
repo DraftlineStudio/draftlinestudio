@@ -43,7 +43,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.19.02587"
+const AppVersion = "0.19.02588"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -76,6 +76,10 @@ type App struct {
 	// analysis and manual character/relationship rebuilds. Frontend guards are
 	// insufficient because these are separate Wails entry points.
 	analysisMu sync.Mutex
+
+	// plugins is the plugin-platform host: discovered installs plus the
+	// sidecar supervisor (see plugins.go).
+	plugins *pluginHost
 
 	// API key state. The key lives in the OS keyring; legacyAPIKey holds a
 	// plaintext key only on machines where no keyring is available, so users
@@ -311,6 +315,8 @@ func (a *App) startup(ctx context.Context) {
 	raw.AIAPIKey = ""
 	a.setSettings(raw)
 	logging.SetEnabled(raw.AIDebugLogging)
+
+	a.initPlugins(pluginDevDir(os.Args[1:]))
 
 	// Best-effort per-user file associations (Windows HKCU; no-op elsewhere).
 	// Off the startup path — registry writes must never delay first paint.

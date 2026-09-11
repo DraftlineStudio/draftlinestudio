@@ -77,6 +77,12 @@ type AppSettings struct {
 	// UpdateCheckEnabled lets the app query GitHub releases on launch and
 	// hourly to show the subtle title-bar update indicator.
 	UpdateCheckEnabled bool `json:"update_check_enabled"`
+	// Plugin platform. Plugins are installed machine-wide (one copy per
+	// machine); these two maps are the entire per-user footprint: which
+	// installed plugins this user has switched on, and each plugin's own
+	// settings bag (opaque to the host, keyed by plugin id).
+	PluginsEnabled map[string]bool           `json:"plugins_enabled,omitempty"`
+	PluginSettings map[string]map[string]any `json:"plugin_settings,omitempty"`
 }
 
 // ClaudeCodeStatus contains the status of the Claude Code CLI installation.
