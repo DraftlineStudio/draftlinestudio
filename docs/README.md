@@ -9,6 +9,7 @@ Draftline is a desktop writing application for novelists, built with Go (Wails) 
 | [Architecture Overview](architecture/OVERVIEW.md) | High-level system design and data flow |
 | [Character Detection](architecture/CHARACTER-DETECTION.md) | Mention/entity pipeline architecture |
 | [Plugin System](architecture/PLUGIN-SYSTEM.md) | Feature registry and plugin gating |
+| [Plugin Development](plugins/README.md) | Building Draftline plugins: manifest, host API, sidecars |
 | [Backend Guide](backend/BACKEND.md) | Go backend structure and APIs |
 | [Book I/O](backend/book/BOOK.md) | Open/save/history for .draftline archives |
 | [Import](backend/import/IMPORT.md) | EPUB/DOCX import and sanitization |

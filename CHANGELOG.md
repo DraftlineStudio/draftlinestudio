@@ -4,6 +4,16 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.19.02588] - 2026-09-11
+
+### Added
+- The plugin platform's foundations: Draftline now discovers installed plugins (machine-wide under the shared data directory, per-user as a fallback, and a `--plugin-dev` directory for development), renders their declared settings sections, dock bars, and keyboard shortcuts from the manifest alone, dynamically loads enabled plugins' frontend bundles behind a versioned, permission-gated host API, and runs their backend logic in supervised sidecar processes (JSON-RPC over stdio) so a plugin crash can never take the app down. Plugins are off until switched on per user in Settings → Plugins. Developer documentation ships alongside in `docs/plugins/`.
+
+### Changed
+- The Read Aloud sentence highlight now rides a generalized editor spotlight primitive, shared with future plugins; behavior is unchanged.
+
+---
+
 ## [0.19.02587] - 2026-09-10
 
 ### Changed
