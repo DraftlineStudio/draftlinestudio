@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.19.02588] - 2026-09-11
+
+### Added
+- Added the plugin platform: plugin discovery, settings, sidecar processes, and a permission-gated frontend API.
+- Added plugin developer documentation.
+
 ## [0.19.02586] - 2026-09-09
 
 ### Changed

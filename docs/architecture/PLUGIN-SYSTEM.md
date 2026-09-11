@@ -1,5 +1,12 @@
 # Plugin System
 
+> **Update:** the installable plugin platform now exists — manifest-declared
+> plugins under a machine-wide root, frontend bundles loaded with a versioned
+> host API, and backend logic in supervised sidecar processes. Developer
+> documentation lives in [docs/plugins/](../plugins/README.md). The
+> data-only analysis-pack design below remains the plan for model-carrying
+> packages and the marketplace's verification requirements.
+
 Draftline treats built-in tools and future community extensions as plugins, but it does not yet execute third-party code. The first extensibility boundary is a **data-only analysis pack**: a signed manifest plus optional model weights consumed by a Draftline-owned analyzer runtime.
 
 This distinction is deliberate. A downloaded model does not need arbitrary filesystem, shell, network, editor, or process access. Native or JavaScript code plugins require a separate permission sandbox and will not be accepted by the model-pack installer.
