@@ -18,7 +18,7 @@ import { clampReadAloudSpeed, nextReadAloudSpeed } from '../services/readaloud/s
 import { attributeSpeakers, type AttributedSentence, type AttributionResult, type RosterEntry, type SpeakerKey } from '../services/readaloud/attribution'
 import { autoCast, buildChapterCast, buildRoster, castVoiceKey, type ChapterSpeaker } from '../services/readaloud/cast'
 import { useBookStore } from './bookStore'
-import { updateReadAloud, clearReadAloud, setReadAloudHandlers } from '../extensions/ReadAloud'
+import { updateSpotlight, clearSpotlight, setSpotlightHandlers } from '../extensions/RangeSpotlight'
 import { useAppStore } from './appStore'
 import { useEditorStore } from './editorStore'
 import type { Editor } from '@tiptap/react'
@@ -325,7 +325,7 @@ function withEditorView(fn: (view: Editor['view']) => void): void {
 
 function scrollHighlightIntoView(): void {
   window.requestAnimationFrame(() => {
-    document.querySelector('.read-aloud-current')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    document.querySelector('.range-spotlight-current')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
   })
 }
 
@@ -380,8 +380,8 @@ function stopProgressTicker(): void {
 
 // Click-to-jump and edit-stops-playback callbacks for the ReadAloud
 // extension. Module-level, like the extension's own handler slot.
-setReadAloudHandlers({
-  onSentenceClick: index => useReadAloudStore.getState().jumpTo(index),
+setSpotlightHandlers({
+  onRangeClick: index => useReadAloudStore.getState().jumpTo(index),
   onDocEdited: () => {
     const store = useReadAloudStore.getState()
     if (store.status !== 'idle') store.stop()
@@ -415,7 +415,7 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
     })
   }
 
-  const clearHighlight = () => withEditorView(clearReadAloud)
+  const clearHighlight = () => withEditorView(clearSpotlight)
 
   const ensureController = (): ReadAloudController => {
     if (controller) return controller
@@ -464,7 +464,7 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
         if (get().currentIndex !== sentenceIndex) {
           set({ currentIndex: sentenceIndex })
           refreshCurrentSpeaker()
-          withEditorView(view => updateReadAloud(view, { activeIndex: sentenceIndex }))
+          withEditorView(view => updateSpotlight(view, { activeIndex: sentenceIndex }))
           scrollHighlightIntoView()
         }
         set(s => ({ diagnostics: [...s.diagnostics.slice(-59), `[main t+${Math.round(performance.now())}ms] play-start unit ${unitIndex} (sentence ${sentenceIndex + 1})`] }))
@@ -619,9 +619,9 @@ export const useReadAloudStore = create<ReadAloudStore>((set, get) => {
         // built after attribution and cast state are current.
         const units = buildQueueUnits(sentences, get().castMode)
         const startUnit = Math.max(0, firstUnitOfSentence(units, start))
-        withEditorView(view => updateReadAloud(view, {
+        withEditorView(view => updateSpotlight(view, {
           active: true,
-          sentences: sentences.map(s => ({ from: s.from, to: s.to })),
+          ranges: sentences.map(s => ({ from: s.from, to: s.to })),
           activeIndex: -1,
         }))
         const ctrl = ensureController()

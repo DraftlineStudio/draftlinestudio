@@ -58,6 +58,10 @@ export interface AppSettings {
   sidebar_active_section: string // glyph section id, or '' when closed
   // Updates
   update_check_enabled: boolean
+  // Plugin platform: which installed plugins this user has switched on,
+  // and each plugin's own settings bag (opaque to the host).
+  plugins_enabled: Record<string, boolean>
+  plugin_settings: Record<string, Record<string, unknown>>
 }
 
 interface AppStore {
@@ -165,6 +169,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   sidebar_panel_width: 280,
   sidebar_active_section: 'dashboard',
   update_check_enabled: true,
+  plugins_enabled: {},
+  plugin_settings: {},
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({
@@ -223,6 +229,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
         read_aloud_device: 'native',
         read_aloud_threads: raw.read_aloud_threads === 'single' ? 'single' : 'auto',
         read_aloud_volume: Math.min(1, Math.max(0, Number.isFinite(Number(raw.read_aloud_volume)) ? Number(raw.read_aloud_volume) : 1)),
+        plugins_enabled: raw.plugins_enabled ?? {},
+        plugin_settings: (raw.plugin_settings as AppSettings['plugin_settings']) ?? {},
       }
       set({ settings, loaded: true })
     } catch {

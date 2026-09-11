@@ -13,7 +13,8 @@ import { CharacterHighlight } from '../../extensions/CharacterHighlight'
 import { SpellCheck } from '../../extensions/SpellCheck'
 import { GrammarCheck } from '../../extensions/GrammarCheck'
 import { ChapterSearch } from '../../extensions/ChapterSearch'
-import { ReadAloud } from '../../extensions/ReadAloud'
+import { RangeSpotlight } from '../../extensions/RangeSpotlight'
+import { PluginDockBars } from '../plugins/PluginMounts'
 import { useEffect, useCallback, useState, useRef, useMemo } from 'react'
 import Toolbar from './Toolbar'
 import ChapterFindReplaceBar from './ChapterFindReplaceBar'
@@ -108,7 +109,7 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
       SpellCheck,
       GrammarCheck,
       ChapterSearch,
-      ReadAloud,
+      RangeSpotlight,
       CharacterHighlight.configure({
         getNames: () => getHighlightedCharacterNames(),
         highlightClass: 'character-highlight',
@@ -565,6 +566,7 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
       </div>
       <ReadAloudBarGate />
       <ReopenButton />
+      <PluginDockBars />
       {contextMenu && (
         <ContextMenu
           x={contextMenu.x}
