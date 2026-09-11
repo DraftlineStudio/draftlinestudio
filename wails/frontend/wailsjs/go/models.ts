@@ -1,5 +1,65 @@
 export namespace main {
 	
+	export class PluginInfo {
+	    id: string;
+	    name: string;
+	    version: string;
+	    publisher: string;
+	    description: string;
+	    api_version: number;
+	    supported: boolean;
+	    permissions: string[];
+	    activation: string[];
+	    contributes: plugins.Contributions;
+	    has_frontend: boolean;
+	    frontend_url: string;
+	    has_sidecar: boolean;
+	    running: boolean;
+	    root: string;
+	    load_error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PluginInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.version = source["version"];
+	        this.publisher = source["publisher"];
+	        this.description = source["description"];
+	        this.api_version = source["api_version"];
+	        this.supported = source["supported"];
+	        this.permissions = source["permissions"];
+	        this.activation = source["activation"];
+	        this.contributes = this.convertValues(source["contributes"], plugins.Contributions);
+	        this.has_frontend = source["has_frontend"];
+	        this.frontend_url = source["frontend_url"];
+	        this.has_sidecar = source["has_sidecar"];
+	        this.running = source["running"];
+	        this.root = source["root"];
+	        this.load_error = source["load_error"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class UpdateCheckResult {
 	    current_version: string;
 	    latest_version?: string;
@@ -44,6 +104,86 @@ export namespace main {
 	        this.error = source["error"];
 	    }
 	}
+
+}
+
+export namespace plugins {
+	
+	export class CommandContribution {
+	    id: string;
+	    shortcut?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CommandContribution(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.shortcut = source["shortcut"];
+	    }
+	}
+	export class SettingsSectionContribution {
+	    id: string;
+	    title: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SettingsSectionContribution(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	    }
+	}
+	export class DockBarContribution {
+	    id: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DockBarContribution(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	    }
+	}
+	export class Contributions {
+	    editorDockBars?: DockBarContribution[];
+	    settingsSections?: SettingsSectionContribution[];
+	    commands?: CommandContribution[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Contributions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.editorDockBars = this.convertValues(source["editorDockBars"], DockBarContribution);
+	        this.settingsSections = this.convertValues(source["settingsSections"], SettingsSectionContribution);
+	        this.commands = this.convertValues(source["commands"], CommandContribution);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 
 }
 
@@ -1747,6 +1887,8 @@ export namespace types {
 	    sidebar_panel_width: number;
 	    sidebar_active_section: string;
 	    update_check_enabled: boolean;
+	    plugins_enabled?: Record<string, boolean>;
+	    plugin_settings?: Record<string, any>;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppSettings(source);
@@ -1800,6 +1942,8 @@ export namespace types {
 	        this.sidebar_panel_width = source["sidebar_panel_width"];
 	        this.sidebar_active_section = source["sidebar_active_section"];
 	        this.update_check_enabled = source["update_check_enabled"];
+	        this.plugins_enabled = source["plugins_enabled"];
+	        this.plugin_settings = source["plugin_settings"];
 	    }
 	}
 	export class BackupInfo {

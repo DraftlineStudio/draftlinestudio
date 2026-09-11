@@ -182,6 +182,18 @@ export function PickBookPath() {
   return window['go']['main']['App']['PickBookPath']();
 }
 
+export function PluginInvoke(arg1, arg2, arg3) {
+  return window['go']['main']['App']['PluginInvoke'](arg1, arg2, arg3);
+}
+
+export function PluginList() {
+  return window['go']['main']['App']['PluginList']();
+}
+
+export function PluginSetEnabled(arg1, arg2) {
+  return window['go']['main']['App']['PluginSetEnabled'](arg1, arg2);
+}
+
 export function ReadAloudServerURL() {
   return window['go']['main']['App']['ReadAloudServerURL']();
 }

@@ -33,9 +33,14 @@ func main() {
 		Frameless: true,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
+			// Serves installed plugin frontend bundles at /plugins/<id>/…
+			// so the webview can import them same-origin; everything else
+			// falls through to the embedded assets above.
+			Handler: app.pluginAssets(),
 		},
 		BackgroundColour: &options.RGBA{R: 43, G: 45, B: 48, A: 255},
 		OnStartup:        app.startup,
+		OnShutdown:       app.shutdownPlugins,
 		Bind: []any{
 			app,
 		},
