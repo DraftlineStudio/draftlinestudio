@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
 import { FEATURE_REGISTRY, type FeatureSettingKey } from '../../../features/registry'
+import { usePluginStore, isPluginEnabled } from '../../../store/pluginStore'
+import { useAppStore } from '../../../store/appStore'
 
 interface PluginsSectionProps {
   enabled: Record<FeatureSettingKey, boolean>
@@ -10,6 +12,16 @@ export default function PluginsSection({ enabled, onToggle }: PluginsSectionProp
   const [query, setQuery] = useState('')
   const [tab, setTab] = useState<'installed' | 'marketplace'>('installed')
   const normalizedQuery = query.trim().toLocaleLowerCase()
+  // Installed platform plugins (real plugin folders, distinct from the
+  // bundled core features below). Subscribing to settings keeps the toggles
+  // live after setEnabled round-trips.
+  useAppStore(s => s.settings.plugins_enabled)
+  const installedPlugins = usePluginStore(s => s.plugins)
+  const setPluginEnabled = usePluginStore(s => s.setEnabled)
+  const matchedPlugins = useMemo(() => installedPlugins.filter(p => {
+    if (!normalizedQuery) return true
+    return `${p.name} ${p.publisher} ${p.description}`.toLocaleLowerCase().includes(normalizedQuery)
+  }), [installedPlugins, normalizedQuery])
   const features = useMemo(() => FEATURE_REGISTRY.filter(feature => {
     if (!normalizedQuery) return true
     return `${feature.name} ${feature.vendor} ${feature.category} ${feature.description}`
@@ -61,7 +73,33 @@ export default function PluginsSection({ enabled, onToggle }: PluginsSectionProp
             </div>
           </article>
         ))}
-        {tab === 'installed' && features.length === 0 && <div className="plugins-empty">No installed plugins match “{query}”.</div>}
+        {tab === 'installed' && matchedPlugins.map(plugin => (
+          <article className={`plugin-card${isPluginEnabled(plugin.id) ? '' : ' disabled'}`} key={plugin.id}>
+            <div className="plugin-icon" style={{ '--plugin-accent': '#7c8697' } as React.CSSProperties}>
+              {plugin.name.slice(0, 2)}
+            </div>
+            <div className="plugin-card-body">
+              <div className="plugin-card-title-row">
+                <div><h3>{plugin.name}</h3><span>{plugin.publisher} · {plugin.version}</span></div>
+                {!plugin.load_error && plugin.supported && (
+                  <label className="settings-toggle" title={`${isPluginEnabled(plugin.id) ? 'Disable' : 'Enable'} ${plugin.name}`}>
+                    <input type="checkbox" checked={isPluginEnabled(plugin.id)} onChange={event => void setPluginEnabled(plugin.id, event.target.checked)} />
+                    <span className="settings-toggle-track"><span className="settings-toggle-thumb" /></span>
+                  </label>
+                )}
+              </div>
+              <p>{plugin.load_error ? `This plugin failed to load: ${plugin.load_error}` : plugin.description || 'No description provided.'}</p>
+              <div className="plugin-card-meta">
+                <span>Plugin</span>
+                <span>{plugin.root === 'dev' ? 'Development' : plugin.root === 'shared' ? 'This machine' : 'This user'}</span>
+                {!plugin.supported && !plugin.load_error && <span>Needs a newer Draftline (API v{plugin.api_version})</span>}
+                {plugin.has_sidecar && <span>{plugin.running ? 'Running' : 'Stopped'}</span>}
+                <span className={isPluginEnabled(plugin.id) ? 'enabled' : ''}>{isPluginEnabled(plugin.id) ? 'Enabled' : 'Disabled'}</span>
+              </div>
+            </div>
+          </article>
+        ))}
+        {tab === 'installed' && features.length === 0 && matchedPlugins.length === 0 && <div className="plugins-empty">No installed plugins match “{query}”.</div>}
         {tab === 'marketplace' && (
           <div className="plugins-marketplace-preview">
             <div className="plugin-icon" style={{ '--plugin-accent': '#4ba39a' } as React.CSSProperties}>Mx</div>

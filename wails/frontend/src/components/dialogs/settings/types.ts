@@ -3,7 +3,7 @@
 import type { types } from '../../../../wailsjs/go/models'
 import type { AIProviderMode, AITaskRoutes } from '../../../services/aiRouting'
 
-export type SettingsSection = 'application' | 'plugins' | 'ai' | 'readaloud' | 'book'
+export type SettingsSection = 'application' | 'plugins' | 'ai' | 'readaloud' | 'book' | 'plugin'
 
 export type AIMode = AIProviderMode
 export type AIProvider = 'claude' | 'openai' | 'gemini' | 'grok' | ''

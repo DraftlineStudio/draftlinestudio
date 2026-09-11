@@ -3928,7 +3928,7 @@ html, body, #root {
 /* Read Aloud current-sentence highlight (decoration, never document content).
    Deliberately strong — the reader must see at a glance which sentence is
    being spoken, in both themes. */
-.read-aloud-current {
+.range-spotlight-current {
   background: color-mix(in srgb, var(--app-accent) 34%, transparent);
   box-shadow: 0 2px 0 0 var(--app-accent);
   border-radius: 2px;

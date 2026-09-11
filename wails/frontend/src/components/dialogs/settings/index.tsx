@@ -12,6 +12,9 @@ import BookSection from './BookSection'
 import PluginsSection from './PluginsSection'
 import ReadAloudSection from './ReadAloudSection'
 import type { FeatureSettingKey } from '../../../features/registry'
+import { usePluginStore, isPluginEnabled } from '../../../store/pluginStore'
+import { PluginSettingsSection } from '../../plugins/PluginMounts'
+import { notifySettingsOpened } from '../../../services/plugins/loader'
 
 export default function AppSettingsDialog() {
   const { settings, saveSettings, closeSettings, browseForDirectory, loadSettings, settingsInitialSection } = useAppStore()
@@ -26,8 +29,20 @@ export default function AppSettingsDialog() {
   )
   const [appVersion, setAppVersion] = useState('')
 
+  // Plugin-contributed settings sections: nav entries come from installed
+  // manifests; the body mounts the plugin's own UI (see PluginMounts).
+  const installedPlugins = usePluginStore(s => s.plugins)
+  const [pluginSection, setPluginSection] = useState<{ pluginId: string; sectionId: string } | null>(null)
+  const pluginNavItems = installedPlugins.flatMap(p =>
+    !p.load_error && p.supported && isPluginEnabled(p.id)
+      ? (p.contributes?.settingsSections ?? []).map(s => ({ pluginId: p.id, sectionId: s.id, title: s.title }))
+      : [],
+  )
+
   useEffect(() => {
     GetAppVersion().then(setAppVersion).catch(() => {})
+    // Lets plugins with the onSettingsOpen activation event load lazily.
+    notifySettingsOpened()
   }, [])
 
   // Application state
@@ -343,6 +358,18 @@ export default function AppSettingsDialog() {
               </svg>
               Book Defaults
             </button>
+            {pluginNavItems.map(item => (
+              <button
+                key={item.pluginId + ' ' + item.sectionId}
+                className={`settings-nav-item${section === 'plugin' && pluginSection?.pluginId === item.pluginId && pluginSection?.sectionId === item.sectionId ? ' active' : ''}`}
+                onClick={() => { setSection('plugin'); setPluginSection({ pluginId: item.pluginId, sectionId: item.sectionId }) }}
+              >
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3">
+                  <path d="M5.5 1v3M8.5 1v3M4 4h6v2.5A3 3 0 0 1 7 9.5v2.75"/><path d="M5 12.25h4"/>
+                </svg>
+                {item.title}
+              </button>
+            ))}
           </nav>
 
           {/* Content pane */}
@@ -396,6 +423,10 @@ export default function AppSettingsDialog() {
                 speed={readAloudSpeed} setSpeed={setReadAloudSpeed}
                 threads={readAloudThreads} setThreads={setReadAloudThreads}
               />
+            )}
+
+            {section === 'plugin' && pluginSection && (
+              <PluginSettingsSection pluginId={pluginSection.pluginId} sectionId={pluginSection.sectionId} />
             )}
 
             {section === 'book' && (
