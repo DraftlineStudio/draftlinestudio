@@ -12,7 +12,7 @@ This distinction is deliberate. A downloaded model does not need arbitrary files
 - The shared analysis coordinator tracks `idle`, `stale`, `running`, `current`, and `error` states.
 - Manuscript edits mark every dependent analyzer stale. After 15 seconds without another edit, analysis runs outside the typing path.
 - Wails progress events identify the active analysis phase and chapter for the bottom status bar.
-- `draftline.read-aloud` is the first shipped `optional-model` plugin and exercises the download pipeline this document plans: a pinned-revision manifest with per-file SHA-256 and byte counts (`wails/internal/readaloud/manifest.go`), streaming verification with cancel/resume, install under the application cache directory, and a read-only asset handler serving the bundle to the webview. See `docs/frontend/READ-ALOUD.md`.
+- `draftline.read-aloud` is the first shipped `optional-model` plugin and exercises the download pipeline this document plans: a pinned-revision manifest with per-file SHA-256 and byte counts (`wails/internal/readaloud/manifest.go`), streaming verification with cancel/resume, install under the application cache directory, and a loopback synthesis service (capability-token URL path, streamed PCM) rather than serving model files to the webview. See `docs/frontend/READ-ALOUD.md`.
 
 ## Analysis-pack manifest
 
