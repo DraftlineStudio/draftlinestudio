@@ -1192,7 +1192,11 @@ html, body, #root {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  background: var(--bg-editor);
+  /* Deliberately transparent: the backdrop color is painted by the parent
+     .editor-panel. Painting it here — on a composited scroll container —
+     made the theme fade skip this area (the transition ran but the
+     scroller's layer didn't repaint until the end, then snapped). */
+  background: transparent;
 }
 
 /* Floating page card */
@@ -1304,6 +1308,12 @@ html, body, #root {
   line-height: 1.85;
   color: var(--text-primary);
   caret-color: var(--accent);
+  /* Explicit (visually identical to the page card behind it): Chromium
+     picks the I-beam pointer's light/dark variant from the computed
+     background of the element under the cursor; transparent here made it
+     fall back to the OS scheme — a white I-beam over the light canvas on
+     dark-mode Windows. */
+  background: var(--bg-page);
 }
 
 /* Character name highlighting (from sidebar) */
