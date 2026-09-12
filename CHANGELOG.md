@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.19.02589] - 2026-09-12
+
+### Fixed
+- Plugin bundles now load in development builds.
+
 ## [0.19.02588] - 2026-09-11
 
 ### Added
