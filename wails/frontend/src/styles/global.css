@@ -21,6 +21,11 @@
 
 /* ===== DESIGN TOKENS — Dark ===== */
 :root[data-theme='dark'] {
+  /* Chromium picks the I-beam text cursor's variant (and default control
+     rendering) from color-scheme, falling back to the OS setting when the
+     page declares none. Without these declarations a dark-mode Windows
+     showed a white I-beam over the LIGHT theme's white canvas. */
+  color-scheme: dark;
   /* Surface hierarchy (4 levels) */
   --bg-chrome:      #1A1B1E;  /* absolute background behind everything */
   --bg-editor:      #1E1F22;  /* editor canvas */
@@ -94,6 +99,7 @@
 
 /* ===== DESIGN TOKENS — Light ===== */
 :root[data-theme='light'] {
+  color-scheme: light;
   --bg-chrome:      #E0E2E8;
   --bg-editor:      #E8EAEF;
   --bg-panel:       #EFEFEF;

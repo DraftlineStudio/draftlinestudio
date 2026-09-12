@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.19.02591] - 2026-09-12
+
+### Fixed
+- Fixed the text cursor staying white over the light theme when Windows is in dark mode.
+
 ## [0.19.02590] - 2026-09-12
 
 ### Changed

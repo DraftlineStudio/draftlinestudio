@@ -35,6 +35,7 @@ const mocks = vi.hoisted(() => ({
   ImportEPUB: vi.fn(),
   ImportDOCX: vi.fn(),
   ShowInfoDialog: vi.fn(),
+  CloseBookFile: vi.fn().mockResolvedValue(undefined),
   AnalyzeBook: vi.fn(),
   // appStore.ts imports (bookStore imports appStore)
   LoadSettings: vi.fn(),
