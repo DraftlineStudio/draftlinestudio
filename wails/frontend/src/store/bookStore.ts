@@ -561,8 +561,9 @@ export const useBookStore = create<BookStore>((set, get) => ({
     set({ book: null, currentSection: 'body', currentIndex: 0, isDirty: false, analysisRevision: 0 })
     setStatus('')
     useEditorStore.getState().clearPendingDiff()
-    // Free this book's instance lock so another Draftline window can open it.
-    void CloseBookFile().catch(() => {})
+    // Free this book's instance lock so another Draftline window can open
+    // it. Best-effort fire-and-forget: closing must never block on it.
+    void Promise.resolve(CloseBookFile()).catch(() => {})
     useAppStore.getState().setShowWelcome(true)
   },
 
