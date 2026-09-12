@@ -50,6 +50,9 @@ export default function App() {
   const prevThemeRef = useRef<'light' | 'dark' | null>(null)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [targetTheme, setTargetTheme] = useState<'light' | 'dark'>('dark')
+  // Incremented per transition so the overlay restarts its phase timers
+  // even when a new transition begins while one is already showing.
+  const [transitionNonce, setTransitionNonce] = useState(0)
 
   // Initialise on first load + load persisted settings and recent projects
   useEffect(() => {
@@ -99,25 +102,36 @@ export default function App() {
     setShowWelcome(false)
   }, [openRecentBook, setShowWelcome])
 
-  // Handle theme transition with smooth fade animation and sky overlay
+  // Handle theme transition with smooth fade animation and sky overlay.
+  // Retriggering mid-flight (rapid theme toggling, or the auto-theme hook
+  // and the theme effect both firing) must RESTART the clocks: the previous
+  // implementation let a first transition's stale timers fire into a second
+  // transition's animation, snapping the sky away at seemingly random times.
+  const themeTimersRef = useRef<number[]>([])
   const handleThemeTransition = useCallback((newTheme: 'light' | 'dark') => {
-    // Trigger the sky animation overlay
+    themeTimersRef.current.forEach(clearTimeout)
+    themeTimersRef.current = []
+
+    // Trigger the sky animation overlay; the nonce restarts its phase
+    // timers even when a transition is already showing.
     setTargetTheme(newTheme)
     setIsTransitioning(true)
+    setTransitionNonce(n => n + 1)
 
     // Add transition class for smooth color animation
     document.documentElement.classList.add('theme-transitioning')
 
-    // Reset transition state after UI colors finish (0.8s)
-    setTimeout(() => {
-      document.documentElement.classList.remove('theme-transitioning')
-    }, 900)
-
-    // Keep sky animation going a bit longer for the eye candy
-    // Must be longer than 3200ms (hideTimer in ThemeTransitionOverlay)
-    setTimeout(() => {
-      setIsTransitioning(false)
-    }, 3500)
+    themeTimersRef.current.push(
+      // Reset transition state after UI colors finish (0.8s)
+      window.setTimeout(() => {
+        document.documentElement.classList.remove('theme-transitioning')
+      }, 900),
+      // Keep sky animation going a bit longer for the eye candy.
+      // Must be longer than 3200ms (hideTimer in ThemeTransitionOverlay)
+      window.setTimeout(() => {
+        setIsTransitioning(false)
+      }, 3500),
+    )
   }, [])
 
   // Use auto theme hook for automatic dawn/dusk transitions
@@ -252,7 +266,7 @@ export default function App() {
   if (showWelcome) {
     return (
       <div className="app">
-        <ThemeTransitionOverlay isTransitioning={isTransitioning} targetTheme={targetTheme} />
+        <ThemeTransitionOverlay isTransitioning={isTransitioning} targetTheme={targetTheme} nonce={transitionNonce} />
         <TitleBar minimal />
         <WelcomeScreen
           onNewBook={handleNewBook}
@@ -270,7 +284,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <ThemeTransitionOverlay isTransitioning={isTransitioning} targetTheme={targetTheme} />
+      <ThemeTransitionOverlay isTransitioning={isTransitioning} targetTheme={targetTheme} nonce={transitionNonce} />
       <TitleBar />
       <div className="main-layout">
         <ChapterPanel />

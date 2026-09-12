@@ -2,6 +2,13 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.19.02592] - 2026-09-12
+
+### Fixed
+- The text cursor now matches the writing canvas in the light theme.
+- The page backdrop now fades with the rest of the interface during theme changes.
+- Switching themes again mid-animation now restarts the sky animation cleanly.
+
 ## [0.19.02591] - 2026-09-12
 
 ### Fixed
