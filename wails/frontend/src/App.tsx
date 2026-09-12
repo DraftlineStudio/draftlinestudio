@@ -123,19 +123,14 @@ export default function App() {
 
     themeTimersRef.current.push(
       // Reset transition state after UI colors finish (0.8s)
+      // KNOWN ISSUE (2026-09-12, parked): after a live theme flip the
+      // I-beam can keep its previous light/dark bitmap over the canvas.
+      // It is a WebView2/compositor-level cursor cache — CSS color-scheme,
+      // explicit canvas backgrounds, and forcing cursor re-resolution here
+      // were all tried and don't reach it; a native window redraw does
+      // (minimise/restore fixes it, as does reopening the book).
       window.setTimeout(() => {
         document.documentElement.classList.remove('theme-transitioning')
-        // Chromium picks the I-beam's light/dark bitmap when an element's
-        // cursor RESOLVES, not when the background beneath it changes — so
-        // after a live theme flip the stale variant lingers (white I-beam
-        // over the now-light canvas) until something forces re-resolution.
-        // cursor is inherited: one frame of an explicit value on <body>
-        // changes every un-overridden descendant's computed cursor, and
-        // the revert re-picks fresh bitmaps against the new colors.
-        document.body.style.cursor = 'default'
-        requestAnimationFrame(() => {
-          document.body.style.cursor = ''
-        })
       }, 900),
       // Keep sky animation going a bit longer for the eye candy.
       // Must be longer than 3200ms (hideTimer in ThemeTransitionOverlay)
