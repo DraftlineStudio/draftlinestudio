@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.19.02593] - 2026-09-12
+
+### Fixed
+- Worked around a stale text cursor after switching themes.
+
 ## [0.19.02592] - 2026-09-12
 
 ### Fixed
