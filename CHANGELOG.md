@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.19.02593] - 2026-09-12
+
+### Fixed
+- Switching themes while a book is open no longer leaves the text cursor's old light/dark variant behind (a white I-beam lingering over the light canvas until the book was reopened). Cursor bitmaps are re-resolved once the theme fade completes.
+
+---
+
 ## [0.19.02592] - 2026-09-12
 
 ### Fixed
