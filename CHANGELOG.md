@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.19.02594] - 2026-09-12
+
+### Changed
+- Removed the cursor re-resolution attempt from the previous build; it did not reach the underlying webview cursor cache. Known issue while it awaits a native-side fix: after switching themes with a book open, the I-beam may keep its previous color over the canvas — minimising and restoring the window (or reopening the book) refreshes it.
+
+---
+
 ## [0.19.02593] - 2026-09-12
 
 ### Fixed
