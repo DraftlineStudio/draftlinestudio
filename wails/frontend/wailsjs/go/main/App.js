@@ -58,6 +58,10 @@ export function ClearRecentProjects() {
   return window['go']['main']['App']['ClearRecentProjects']();
 }
 
+export function CloseBookFile() {
+  return window['go']['main']['App']['CloseBookFile']();
+}
+
 export function DeleteCharacterEvent(arg1, arg2) {
   return window['go']['main']['App']['DeleteCharacterEvent'](arg1, arg2);
 }

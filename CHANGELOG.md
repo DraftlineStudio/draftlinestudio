@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.19.02590] - 2026-09-12
+
+### Changed
+- Draftline is no longer single-instance. Multiple windows can run side by side — two different books, or a development build next to the installed app. What stays exclusive is the **book**: opening a .draftline that is already open in another window brings that window to the front instead of starting a second, silently racing copy — whether the book arrives by double-click, the open dialog, or the recents list. Saving As onto a book that is open in another window is refused the same way. Locks are per book and crash-safe: a lock left behind by a crashed instance is reclaimed automatically, never shown to the author.
+
+---
+
 ## [0.19.02589] - 2026-09-12
 
 ### Fixed
