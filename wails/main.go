@@ -34,9 +34,9 @@ func main() {
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 			// Serves installed plugin frontend bundles at /plugins/<id>/…
-			// so the webview can import them same-origin; everything else
-			// falls through to the embedded assets above.
-			Handler: app.pluginAssets(),
+			// so the webview can import them same-origin. Middleware, not
+			// Handler: it must win before the dev server's SPA fallback.
+			Middleware: app.pluginAssetMiddleware(),
 		},
 		BackgroundColour: &options.RGBA{R: 43, G: 45, B: 48, A: 255},
 		OnStartup:        app.startup,

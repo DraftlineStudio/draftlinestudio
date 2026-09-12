@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.19.02589] - 2026-09-12
+
+### Fixed
+- Plugin frontend bundles are now served ahead of the development server's page fallback, so dynamically importing a plugin module works under `wails dev` exactly as it does in a packaged build. Found by running the plugin developer documentation's hello-world walkthrough end to end in the live app.
+
+---
+
 ## [0.19.02588] - 2026-09-11
 
 ### Added
