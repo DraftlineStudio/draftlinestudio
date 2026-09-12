@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.19.02591] - 2026-09-12
+
+### Fixed
+- On Windows machines set to system dark mode, the I-beam text cursor stayed white over Draftline's light theme — invisible against the writing canvas. The page now declares its color scheme per app theme, so the I-beam (and default control rendering) follows Draftline's theme instead of the operating system's.
+
+---
+
 ## [0.19.02590] - 2026-09-12
 
 ### Changed
