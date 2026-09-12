@@ -217,6 +217,23 @@ func (a *App) shutdownPlugins(_ context.Context) {
 
 // ── Frontend bundle serving ──────────────────────────────────────────────────
 
+// pluginAssetMiddleware intercepts /plugins/* ahead of the rest of the asset
+// chain. It must be assetserver Middleware, not the Handler fallback: in
+// `wails dev` the frontend dev server answers unknown paths with its SPA
+// index.html fallback, so a fallback Handler never sees plugin requests.
+func (a *App) pluginAssetMiddleware() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		serve := a.pluginAssets()
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasPrefix(r.URL.Path, "/plugins/") {
+				serve.ServeHTTP(w, r)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // pluginAssets serves plugin frontend files at /plugins/<id>/<path> so the
 // webview can dynamically import entry modules same-origin. Only files under
 // an installed plugin's directory are reachable, sidecar binaries are never
