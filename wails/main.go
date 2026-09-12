@@ -4,6 +4,9 @@ import (
 	"embed"
 	"os"
 
+	"draftline/internal/instancelock"
+	"draftline/internal/platform"
+
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -18,8 +21,15 @@ func main() {
 	app := NewApp()
 
 	// File passed by the OS (file association / "Open with") at launch.
+	// Draftline is multi-instance; only the same BOOK is exclusive. If the
+	// double-clicked book is already open in a living instance, hand focus
+	// to that window and exit before any UI appears (Word-style).
 	if wd, err := os.Getwd(); err == nil {
 		if path := launchFilePath(os.Args[1:], wd); path != "" {
+			if owner := instancelock.CurrentOwner(path); owner != nil {
+				platform.FocusProcessWindow(owner.PID)
+				return
+			}
 			setPendingOpenPath(path)
 		}
 	}
@@ -40,7 +50,7 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 43, G: 45, B: 48, A: 255},
 		OnStartup:        app.startup,
-		OnShutdown:       app.shutdownPlugins,
+		OnShutdown:       app.onShutdown,
 		Bind: []any{
 			app,
 		},
@@ -52,13 +62,10 @@ func main() {
 		Mac: &mac.Options{
 			OnFileOpen: app.onMacFileOpen,
 		},
-		// Double-clicking a document while Draftline is running focuses the
-		// existing window and forwards the file instead of starting a second
-		// process.
-		SingleInstanceLock: &options.SingleInstanceLock{
-			UniqueId:               "com.draftline.app.single-instance",
-			OnSecondInstanceLaunch: app.onSecondInstanceLaunch,
-		},
+		// No app-level SingleInstanceLock: Draftline allows multiple windows
+		// (different books side by side, dev builds next to the installed
+		// app). Exclusivity is per BOOK via internal/instancelock — opening
+		// a book that's already open foregrounds its window instead.
 	})
 
 	if err != nil {

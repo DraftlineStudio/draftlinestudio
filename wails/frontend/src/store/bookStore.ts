@@ -7,7 +7,7 @@ import { DEFAULT_STYLE_OPTIONS } from '../types/draftline'
 import type { ParagraphDiff, DiffChange } from '../utils/diff'
 import { countBookWords } from '../utils/textUtils'
 
-import { NewBook, PickBookPath, SaveBook, SaveBookAs, SaveBookSnapshots, OpenRecentProject, IndexBook, MergeEntities, SplitEntity, ImportEPUB, ImportDOCX, ShowInfoDialog } from '../../wailsjs/go/main/App'
+import { NewBook, PickBookPath, SaveBook, SaveBookAs, SaveBookSnapshots, OpenRecentProject, IndexBook, MergeEntities, SplitEntity, ImportEPUB, ImportDOCX, ShowInfoDialog, CloseBookFile } from '../../wailsjs/go/main/App'
 import { types } from '../../wailsjs/go/models'
 import { useAppStore } from './appStore'
 import { useEditorStore, type DiffTarget, type EditorInstance, type EditorSelection } from './editorStore'
@@ -561,6 +561,8 @@ export const useBookStore = create<BookStore>((set, get) => ({
     set({ book: null, currentSection: 'body', currentIndex: 0, isDirty: false, analysisRevision: 0 })
     setStatus('')
     useEditorStore.getState().clearPendingDiff()
+    // Free this book's instance lock so another Draftline window can open it.
+    void CloseBookFile().catch(() => {})
     useAppStore.getState().setShowWelcome(true)
   },
 

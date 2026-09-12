@@ -1,11 +1,13 @@
 package main
 
 // OS file-open plumbing: paths arrive either as a launch argument (Windows/
-// Linux file associations), via the single-instance handoff (double-clicking
-// a file while Draftline is already running), or through macOS's open-file
-// event. All three funnel into one pending slot + one frontend event; the
-// frontend routes by extension through the normal open/import flows so the
-// unsaved-changes dialog is always respected.
+// Linux file associations) or through macOS's open-file event, and funnel
+// into one pending slot + one frontend event; the frontend routes by
+// extension through the normal open/import flows so the unsaved-changes
+// dialog is always respected. Draftline is multi-instance: a double-clicked
+// book that is already open elsewhere is handled in main() by foregrounding
+// its owning window (see internal/instancelock), so by the time a path
+// reaches this file it belongs to this instance.
 
 import (
 	"os"
@@ -13,7 +15,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -86,24 +87,6 @@ func launchFilePath(args []string, workingDir string) string {
 		}
 	}
 	return ""
-}
-
-// onSecondInstanceLaunch runs in the FIRST instance when a second one starts
-// (e.g. the user double-clicked another book). Focus the window and forward
-// the file to the frontend.
-func (a *App) onSecondInstanceLaunch(data options.SecondInstanceData) {
-	if a.ctx == nil {
-		return
-	}
-	runtime.WindowUnminimise(a.ctx)
-	runtime.Show(a.ctx)
-	// Pass Args through unfiltered: Wails versions differ on whether the
-	// executable path is included, and stripping the first element blindly
-	// can discard the document path. launchFilePath's extension allowlist
-	// already ignores an exe path, so filtering is unnecessary.
-	if path := launchFilePath(data.Args, data.WorkingDirectory); path != "" {
-		runtime.EventsEmit(a.ctx, "file:open", path)
-	}
 }
 
 // onMacFileOpen handles macOS's open-file event, which can arrive before the
