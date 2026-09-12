@@ -10,9 +10,13 @@ All OS-initiated opens funnel into one path:
 - **Launch argument** — `main.go` scans `os.Args` via `launchFilePath()`
   (`fileopen.go`) and stashes the file; the frontend collects it once via the
   `TakePendingOpenPath` binding after init.
-- **Second instance** — `SingleInstanceLock` in `main.go`: double-clicking a
-  document while Draftline runs focuses the existing window and emits a
-  `file:open` event with the path (`onSecondInstanceLaunch`).
+- **Already open elsewhere** — Draftline is multi-instance; only the same
+  *book* is exclusive. Before any UI, `main.go` asks
+  `instancelock.CurrentOwner(path)` whether a living instance already holds
+  the double-clicked book; if so it foregrounds that window
+  (`platform.FocusProcessWindow`) and exits. Otherwise a new window opens
+  the file normally, taking the per-book lock (`internal/instancelock`,
+  wired through `locking.go`).
 - **macOS open-file events** — `mac.Options.OnFileOpen` → same pending slot /
   event (`onMacFileOpen`).
 
