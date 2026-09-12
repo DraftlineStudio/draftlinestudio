@@ -32,6 +32,8 @@ export function ClearAPIKey():Promise<void>;
 
 export function ClearRecentProjects():Promise<void>;
 
+export function CloseBookFile():Promise<void>;
+
 export function DeleteCharacterEvent(arg1:types.BookData,arg2:string):Promise<types.BookData>;
 
 export function DownloadReadAloudNative():Promise<void>;

@@ -43,7 +43,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.19.02589"
+const AppVersion = "0.19.02590"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -80,6 +80,9 @@ type App struct {
 	// plugins is the plugin-platform host: discovered installs plus the
 	// sidecar supervisor (see plugins.go).
 	plugins *pluginHost
+
+	// bookLock holds the per-book instance lock (see locking.go).
+	bookLock bookLockState
 
 	// API key state. The key lives in the OS keyring; legacyAPIKey holds a
 	// plaintext key only on machines where no keyring is available, so users
@@ -331,6 +334,7 @@ func (a *App) startup(ctx context.Context) {
 func (a *App) NewBook() types.BookData {
 	now := time.Now().Format(time.RFC3339)
 	a.setCurrentFile("")
+	a.releaseBookLock()
 	newBook := types.BookData{
 		Version: "2.2",
 		Metadata: types.Metadata{
@@ -377,6 +381,11 @@ func (a *App) PickBookPath() (string, error) {
 }
 
 func (a *App) openBook(path string) (types.BookData, error) {
+	// Lock before parsing: if another instance has this book, foreground it
+	// and refuse the second copy (Word-style same-file semantics).
+	if err := a.acquireBookLock(path); err != nil {
+		return types.BookData{}, err
+	}
 	b, err := book.Open(path)
 	if err != nil {
 		return types.BookData{}, err
@@ -1412,6 +1421,14 @@ func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string, pro
 }
 
 func (a *App) writeBook(b types.BookData, path string) types.SaveResult {
+	// Saving to a NEW path (Save As, first save) claims that path's lock, so
+	// two instances can't silently write over each other's book. Saving to
+	// the already-current path keeps the lock it holds.
+	if path != a.getCurrentFile() {
+		if err := a.acquireBookLock(path); err != nil {
+			return types.SaveResult{Success: false, Error: err.Error()}
+		}
+	}
 	result := book.Write(path, b, AppVersion)
 	if result.Success {
 		a.setCurrentFile(path)

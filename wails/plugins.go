@@ -208,11 +208,13 @@ func (a *App) pluginEnabled(pluginID string) bool {
 	return a.getSettings().PluginsEnabled[pluginID]
 }
 
-// shutdownPlugins stops every sidecar; called from the Wails OnShutdown hook.
-func (a *App) shutdownPlugins(_ context.Context) {
+// onShutdown is the Wails OnShutdown hook: stop every plugin sidecar and
+// free the current book's instance lock.
+func (a *App) onShutdown(_ context.Context) {
 	if a.plugins != nil && a.plugins.sup != nil {
 		a.plugins.sup.StopAll()
 	}
+	a.releaseBookLock()
 }
 
 // ── Frontend bundle serving ──────────────────────────────────────────────────

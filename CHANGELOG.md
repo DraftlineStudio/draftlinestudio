@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.19.02590] - 2026-09-12
+
+### Changed
+- Draftline can now run multiple windows, and each book can only be open in one window at a time.
+
 ## [0.19.02589] - 2026-09-12
 
 ### Fixed
