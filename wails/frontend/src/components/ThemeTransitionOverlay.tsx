@@ -3,6 +3,10 @@ import { useEffect, useState, useMemo } from 'react'
 interface ThemeTransitionOverlayProps {
   isTransitioning: boolean
   targetTheme: 'light' | 'dark'
+  // Incremented by App for every transition, so a retrigger while a sky is
+  // already showing restarts the phase timers instead of letting the first
+  // transition's stale timers snap the second one away mid-animation.
+  nonce: number
 }
 
 interface Star {
@@ -23,7 +27,7 @@ interface Cloud {
   speed: number
 }
 
-export default function ThemeTransitionOverlay({ isTransitioning, targetTheme }: ThemeTransitionOverlayProps) {
+export default function ThemeTransitionOverlay({ isTransitioning, targetTheme, nonce }: ThemeTransitionOverlayProps) {
   const [visible, setVisible] = useState(false)
   const [phase, setPhase] = useState<'enter' | 'hold' | 'exit'>('enter')
 
@@ -68,8 +72,9 @@ export default function ThemeTransitionOverlay({ isTransitioning, targetTheme }:
         setPhase('enter')
       }, 3200)
 
-      // Only clear timers if component unmounts, not when isTransitioning changes
-      // This prevents the race condition where isTransitioning=false clears hideTimer
+      // Cleanup runs on unmount AND whenever nonce/isTransitioning change —
+      // a retriggered transition must discard the previous run's timers so
+      // they can't fire into the new sky's animation.
       return () => {
         clearTimeout(holdTimer)
         clearTimeout(exitTimer)
@@ -84,7 +89,7 @@ export default function ThemeTransitionOverlay({ isTransitioning, targetTheme }:
       }, 300)
       return () => clearTimeout(cleanupTimer)
     }
-  }, [isTransitioning])
+  }, [isTransitioning, nonce])
 
   if (!visible) return null
 

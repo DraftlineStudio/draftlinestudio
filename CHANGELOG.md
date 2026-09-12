@@ -4,6 +4,15 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.19.02592] - 2026-09-12
+
+### Fixed
+- The writing canvas now declares its own background where the text cursor hovers, so the I-beam pointer picks its dark variant over the light theme instead of inheriting the operating system's dark-mode white.
+- The backdrop behind the page card now fades with the rest of the interface during theme transitions; previously it held its old color for the whole fade and then changed all at once.
+- Retriggering a theme change while the day/night sky animation is still playing now restarts the animation's clocks; previously the first transition's timers kept running and yanked the second sky away at a seemingly random moment.
+
+---
+
 ## [0.19.02591] - 2026-09-12
 
 ### Fixed
