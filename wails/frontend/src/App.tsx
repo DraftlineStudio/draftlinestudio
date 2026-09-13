@@ -99,7 +99,11 @@ export default function App() {
   // Handle open recent from welcome screen
   const handleOpenRecent = useCallback(async (path: string) => {
     await openRecentBook(path)
-    setShowWelcome(false)
+    // Leave the welcome screen only once a book is actually loaded. A failed
+    // open (the book is locked by another window, the archive is unreadable)
+    // reports through the status bar and must not strand the writer on an
+    // empty editor with no project to close.
+    if (useBookStore.getState().book) setShowWelcome(false)
   }, [openRecentBook, setShowWelcome])
 
   // Handle theme transition with smooth fade animation and sky overlay.
@@ -268,8 +272,10 @@ export default function App() {
     </div>
   )
 
-  // Show welcome screen
-  if (showWelcome) {
+  // Show welcome screen. Having no book is always the welcome screen: the
+  // editor layout has nothing to show without a project, and its project
+  // menu cannot close what is not open.
+  if (showWelcome || !hasBook) {
     return (
       <div className="app">
         <ThemeTransitionOverlay isTransitioning={isTransitioning} targetTheme={targetTheme} nonce={transitionNonce} />
