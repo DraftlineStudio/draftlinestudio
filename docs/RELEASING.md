@@ -96,7 +96,6 @@ service such as Azure Trusted Signing); when one is available, add a
   recommended replacement.
 - Linux and Windows are built for x86_64 only. Windows on ARM and Linux ARM64
   packages are not produced.
-- Windows builds are also tested locally before every release; macOS and
-  Linux packages are produced only in CI and have not been exercised on real
-  hardware yet, so the first published release should be smoke-tested on each
-  platform.
+- Windows builds are also tested locally before every release. The macOS
+  and Linux packages are produced in CI and have been run on real hardware
+  on both platforms.
