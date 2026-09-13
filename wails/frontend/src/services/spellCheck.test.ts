@@ -97,7 +97,7 @@ describe('bundled dictionary supplement', () => {
   const supplement = parseSupplement(supplementData)
 
   it('carries the contemporary vocabulary SCOWL lacks', () => {
-    for (const word of ['glock', 'lockpick', 'lockpicks', 'deco', 'flashbang', 'passcode', 'wi', 'fi']) {
+    for (const word of ['glock', 'lockpick', 'lockpicks', 'deco', 'flashbang', 'passcode', 'wi', 'fi', 'eotech', 'holosun', 'sightmark', 'primaryarms']) {
       expect(supplement, word).toContain(word)
     }
   })
