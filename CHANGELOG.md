@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.19.02596] - 2026-09-13
+
+### Added
+- Added manual chapter snapshots with a custom label.
+
+### Changed
+- Chapter history compare now shows scene breaks.
+
 ## [0.19.02595] - 2026-09-13
 
 ### Fixed

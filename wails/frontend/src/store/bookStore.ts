@@ -12,7 +12,7 @@ import { types } from '../../wailsjs/go/models'
 import { useAppStore } from './appStore'
 import { useEditorStore, type DiffTarget, type EditorInstance, type EditorSelection } from './editorStore'
 import { useStoryBibleStore } from './storyBibleStore'
-import { resetChapterHistorySession, saveAIChapterHistory, scheduleChapterHistory as queueChapterHistory, type ChapterHistoryDependencies } from './chapterHistory'
+import { resetChapterHistorySession, saveAIChapterHistory, saveManualChapterSnapshot, scheduleChapterHistory as queueChapterHistory, type ChapterHistoryDependencies } from './chapterHistory'
 
 // Status-bar text lives in appStore (app-level UI state); this is the funnel
 // bookStore's save/index flows report through.
@@ -230,6 +230,7 @@ interface BookStore {
   saveBook: () => Promise<void>
   saveBookAs: () => Promise<void>
   restoreChapterHistory: (content: string) => Promise<boolean>
+  snapshotCurrentChapter: (reason?: string) => Promise<boolean> // writer-initiated checkpoint; true once stored
   closeProject: () => Promise<void>
 
   // Direct book update (for analysis results, etc.)
@@ -539,6 +540,9 @@ export const useBookStore = create<BookStore>((set, get) => ({
     setStatus('Previous chapter version restored — save to keep it')
     return true
   },
+
+  snapshotCurrentChapter: (reason) =>
+    saveManualChapterSnapshot(reason, get, useEditorStore.getState().editorRef?.getHTML(), chapterHistoryDependencies()),
 
   closeProject: async () => {
     const { book, isDirty } = get()
