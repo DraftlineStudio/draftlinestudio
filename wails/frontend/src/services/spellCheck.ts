@@ -6,6 +6,9 @@ let enabled = true
 const changeListeners = new Set<() => void>()
 const customWords = new Set<string>()
 const ignoredWords = new Set<string>()
+// Bundled supplement (public/dictionaries/en_US-supplement.txt): vocabulary
+// the SCOWL dictionary lacks. Lower-case keys, checked like custom words.
+const bundledWords = new Set<string>()
 const checkCache = new Map<string, boolean>()
 const suggestionCache = new Map<string, Promise<string[]>>()
 const pendingSuggestionRequests = new Map<number, (suggestions: string[]) => void>()
@@ -33,6 +36,18 @@ function cleanWord(word: string): string {
 
 export function getDictionaryRoot(word: string): string {
   return cleanWord(word).replace(/'s$/i, '')
+}
+
+/** Parse the bundled supplement: one word per line, `#` comments, lower-case keys. */
+export function parseSupplement(text: string): string[] {
+  const words = new Set<string>()
+  for (const line of text.split(/\r?\n/)) {
+    const entry = line.trim()
+    if (!entry || entry.startsWith('#')) continue
+    const root = getDictionaryRoot(entry)
+    if (root) words.add(root.toLocaleLowerCase())
+  }
+  return [...words]
 }
 
 export function normalizeCustomDictionary(words: string[]): string[] {
@@ -78,9 +93,10 @@ export async function loadDictionary(): Promise<void> {
       // Parse and index the worker dictionary in parallel with the main checker
       // so the first context menu never pays the cold-start cost.
       prewarmSpellSuggestions()
-      const [affResponse, dicResponse] = await Promise.all([
+      const [affResponse, dicResponse, supplementResponse] = await Promise.all([
         fetch('/dictionaries/en_US.aff'),
         fetch('/dictionaries/en_US.dic'),
+        fetch('/dictionaries/en_US-supplement.txt').catch(() => null),
       ])
 
       if (!affResponse.ok || !dicResponse.ok) {
@@ -90,6 +106,11 @@ export async function loadDictionary(): Promise<void> {
 
       const affData = await affResponse.text()
       const dicData = await dicResponse.text()
+      // The supplement is optional: a missing file only loses its extra words.
+      if (supplementResponse?.ok) {
+        bundledWords.clear()
+        parseSupplement(await supplementResponse.text()).forEach(word => bundledWords.add(word))
+      }
 
       dictionary = new Typo('en_US', affData, dicData)
       checkCache.clear()
@@ -154,6 +175,7 @@ export function checkWord(word: string): boolean {
   const root = getDictionaryRoot(cleaned)
   const rootKey = root.toLocaleLowerCase()
   if (customWords.has(key) || customWords.has(rootKey) || ignoredWords.has(key) || ignoredWords.has(rootKey)) return true
+  if (bundledWords.has(key) || bundledWords.has(rootKey)) return true
   const cached = checkCache.get(key)
   if (cached !== undefined) return cached
 
