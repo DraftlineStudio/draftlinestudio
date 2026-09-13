@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.19.02597] - 2026-09-13
+
+### Added
+- Added block quote and code block buttons to the editor toolbar.
+
 ## [0.19.02596] - 2026-09-13
 
 ### Added
