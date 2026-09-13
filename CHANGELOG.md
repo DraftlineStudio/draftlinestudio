@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.19.02600] - 2026-09-13
+
+### Fixed
+- Added optics, weapon light, and accessory brands to the spelling supplement.
+
 ## [0.19.02599] - 2026-09-13
 
 ### Fixed
