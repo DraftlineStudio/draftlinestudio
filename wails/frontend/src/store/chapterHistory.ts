@@ -72,6 +72,77 @@ export function scheduleChapterHistory(chapterID: string | undefined, deps: Chap
   }, HISTORY_SNAPSHOT_DELAY)
 }
 
+// The slice of bookStore a manual snapshot needs: where the writer is, and
+// the setter that keeps the store's chapter text in step with the editor.
+export interface CurrentChapterAccess {
+  book: BookData | null
+  currentSection: Section
+  currentIndex: number
+  updateCurrentContent: (html: string) => void
+}
+
+// A writer-initiated checkpoint, taken before a rewrite or an AI pass. Saves
+// the manuscript in the same atomic archive rewrite so the snapshot and the
+// current text are committed together. `reason` is the label shown in the
+// version list ("Before rewrite"). `liveHtml` is the editor's current HTML
+// when an editor is mounted: the store copy trails it by a typing debounce,
+// so it is synced first and the snapshot carries what the writer sees.
+// Resolves true once the archive holds the snapshot (or an identical latest
+// version already did).
+export function saveManualChapterSnapshot(
+  reason: string | undefined,
+  get: () => CurrentChapterAccess,
+  liveHtml: string | null | undefined,
+  deps: ChapterHistoryDependencies,
+): Promise<boolean> {
+  const { book, currentSection: section, currentIndex } = get()
+  if (!book || section === 'copyright') return Promise.resolve(false)
+  const stored = book[section][currentIndex]
+  if (!stored?.id) return Promise.resolve(false)
+  if (liveHtml != null && liveHtml !== stored.content) get().updateCurrentContent(liveHtml)
+  const chapter = get().book?.[section][currentIndex]
+  if (!chapter?.id) return Promise.resolve(false)
+  const label = reason?.trim() || 'Manual snapshot'
+  return persistManualSnapshot(chapter, section, label, deps)
+}
+
+function persistManualSnapshot(
+  chapter: ChapterItem,
+  section: Exclude<Section, 'copyright'>,
+  reason: string,
+  deps: ChapterHistoryDependencies,
+): Promise<boolean> {
+  const session = deps.getSession()
+  let saved = false
+  return deps.enqueue(async () => {
+    if (deps.getSession() !== session) return
+    const book = deps.getBook()
+    if (!book?.file_path) {
+      deps.setStatus('Save the project before taking a chapter snapshot')
+      return
+    }
+    const revision = deps.getRevision()
+    try {
+      const result = await SaveBookSnapshots(book as any, [
+        {
+          chapter_id: chapter.id, section, chapter_title: chapter.title,
+          content: chapter.content, reason,
+        },
+      ] as any)
+      if (deps.getSession() !== session) return
+      if (!result.success) {
+        deps.setStatus(`Chapter snapshot failed: ${result.error || 'unknown error'}`)
+        return
+      }
+      deps.onSaved(result.file_path, revision)
+      deps.setStatus(`Snapshot saved: ${reason}`)
+      saved = true
+    } catch (error) {
+      if (deps.getSession() === session) deps.setStatus(`Chapter snapshot failed: ${String(error)}`)
+    }
+  }).then(() => saved)
+}
+
 // Persist both sides of an explicit AI edit in the same atomic archive rewrite.
 export function saveAIChapterHistory(boundary: AIHistoryBoundary, deps: ChapterHistoryDependencies): Promise<void> {
   const { chapter, section, beforeHtml, afterHtml, reason } = boundary

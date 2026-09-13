@@ -10,7 +10,7 @@ interface TitleBarProps {
 }
 
 export default function TitleBar({ minimal = false }: TitleBarProps) {
-  const { book, currentSection, newBook, openBook, saveBook, saveBookAs, closeProject, setViewMode } = useBookStore()
+  const { book, currentSection, newBook, openBook, saveBook, saveBookAs, closeProject, setViewMode, snapshotCurrentChapter } = useBookStore()
   const { settings, saveSettings, openSettings, openMetadataDialog, openExportWizard, openChapterHistory, openStorySearch, updateAvailable } = useAppStore()
   const [dropOpen, setDropOpen] = useState(false)
   const [dropPos, setDropPos] = useState({ top: 0, left: 0 })
@@ -238,6 +238,13 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
           <path d="M2.2 4.2A5 5 0 1 1 1.5 7"/><path d="M1 2v3.5h3.5"/><path d="M6.5 3.5V7l2.2 1.3"/>
         </svg>
         <span>Chapter History…</span>
+      </button>
+
+      <button className="titlebar-dropdown-item" onClick={() => run(() => { void snapshotCurrentChapter() })} disabled={!book?.file_path || currentSection === 'copyright'} title={book && !book.file_path ? 'Save the project first' : 'Store the current chapter as a version before a rewrite'}>
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3">
+          <circle cx="6.5" cy="6.5" r="5.2"/><path d="M6.5 3.6v5.8M3.6 6.5h5.8"/>
+        </svg>
+        <span>Snapshot Chapter Now</span>
       </button>
 
       <button className="titlebar-dropdown-item" onClick={() => run(showStorySearch)} disabled={!book}>
