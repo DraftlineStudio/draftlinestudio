@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.19.02598] - 2026-09-13
+
+### Fixed
+- Added about 190 common brand, gear, tech, and slang words to spell check.
+
 ## [0.19.02597] - 2026-09-13
 
 ### Added

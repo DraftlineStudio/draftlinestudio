@@ -1,5 +1,6 @@
 import affData from '../../public/dictionaries/en_US.aff?raw'
 import dicData from '../../public/dictionaries/en_US.dic?raw'
+import supplementData from '../../public/dictionaries/en_US-supplement.txt?raw'
 import Typo from 'typo-js'
 import { describe, expect, it, vi } from 'vitest'
 import {
@@ -10,6 +11,7 @@ import {
   normalizeCustomDictionary,
   normalizeIgnoredWords,
   normalizeSpellWord,
+  parseSupplement,
   setIgnoredWords,
 } from './spellCheck'
 
@@ -47,7 +49,9 @@ describe('spell-check word normalization', () => {
       ok: true,
       text: async () => String(input).endsWith('.aff')
         ? 'SET UTF-8\n'
-        : "2\ncouldn't\nwouldn't\n",
+        : String(input).endsWith('.txt')
+          ? '# supplement\nGlock\n'
+          : "2\ncouldn't\nwouldn't\n",
     })) as unknown as typeof fetch
 
     try {
@@ -57,6 +61,9 @@ describe('spell-check word normalization', () => {
       expect(checkWord('wouldn‘t')).toBe(true)
       expect(checkWord('Mara')).toBe(true)
       expect(checkWord('Ionescu’s')).toBe(true)
+      // Bundled supplement words are accepted in any case, possessives included.
+      expect(checkWord('Glock')).toBe(true)
+      expect(checkWord('glock’s')).toBe(true)
       expect(getImmediateSuggestions('couldn’t')).not.toContain("couldn't")
     } finally {
       globalThis.fetch = originalFetch
@@ -82,5 +89,21 @@ describe('bundled dictionary vocabulary', () => {
     for (const word of ['recieve', 'teh', 'definately', 'xyzzt']) {
       expect(dictionary.check(word), word).toBe(false)
     }
+  })
+})
+
+describe('bundled dictionary supplement', () => {
+  const dictionary = new Typo('en_US', affData, dicData)
+  const supplement = parseSupplement(supplementData)
+
+  it('carries the contemporary vocabulary SCOWL lacks', () => {
+    for (const word of ['glock', 'lockpick', 'lockpicks', 'deco', 'flashbang', 'passcode', 'wi', 'fi']) {
+      expect(supplement, word).toContain(word)
+    }
+  })
+
+  it('lists only words the base dictionary rejects, so upgrades prune it honestly', () => {
+    const redundant = supplement.filter(word => dictionary.check(word))
+    expect(redundant).toEqual([])
   })
 })
