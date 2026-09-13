@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.19.02601] - 2026-09-13
+
+### Fixed
+- Closing the settings dialog no longer flashes a console window on Windows. The AI Studio sidebar re-checks the Claude Code and Codex CLIs when settings close, and the Claude version check launched the CLI without the hide-window flag. Every CLI launch now goes through one funnel that applies the flag, so no future caller can forget it.
+
+---
+
 ## [0.19.02600] - 2026-09-13
 
 ### Fixed
