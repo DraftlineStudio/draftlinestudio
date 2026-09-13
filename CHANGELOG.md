@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.19.02599] - 2026-09-13
+
+### Fixed
+- Opening a recent book that another Draftline window already holds — or any open that fails for another reason — no longer strands the app on an empty editor with **Close Project** greyed out and no way back. The welcome screen now stays up until a book actually loads, and having no book always routes to the welcome screen rather than the editor.
+
+---
+
 ## [0.19.02598] - 2026-09-13
 
 ### Fixed
