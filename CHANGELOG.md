@@ -4,6 +4,16 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.19.02595] - 2026-09-13
+
+### Fixed
+- AI chapter passes (Copy Edit, Line Edit, Smooth, Expand, custom prompts, and pasted comparisons) no longer strip scene breaks. The review used to see only paragraphs, so a `⁂` break came back as blank lines after a full-chapter pass; now every top-level block — scene break, block quote, code block, heading, list — travels through the pass as its own kind and can never be flattened into a paragraph. A break the model drops is simply kept; a dropped block quote or heading shows as a deletion to accept or reject.
+- The `§N§` diff format numbers every block, and reconstruction refuses a replacement that changes a structural block's kind: a scene break is never replaced, a block quote returned as bare paragraphs is re-wrapped, and a code block or heading returned as a paragraph is ignored. Every mode's prompt now states the structure rule.
+- Partially accepted edits inside a block quote, code block, or heading are rebuilt inside their own wrapper instead of as a plain paragraph, and rebuilt text is HTML-escaped so a `<` in a code block survives.
+- Inline AI review draws scene breaks as `⁂` instead of an empty line.
+
+---
+
 ## [0.19.02594] - 2026-09-12
 
 ### Changed
