@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.19.02597] - 2026-09-13
+
+### Added
+- Block quote and code block buttons on the editor toolbar (Ctrl+Shift+B and Ctrl+Alt+C), plus **Code Block** in the paragraph-style menu, so both can be written in Draftline rather than pasted in from elsewhere. Pasted code blocks were already preserved in the file; they now render as a monospace panel on the writing canvas instead of falling back to body text.
+
+---
+
 ## [0.19.02596] - 2026-09-13
 
 ### Added
