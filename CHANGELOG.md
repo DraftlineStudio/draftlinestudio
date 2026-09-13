@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.19.02598] - 2026-09-13
+
+### Fixed
+- Spell check accepts common contemporary vocabulary the bundled SCOWL dictionary lacks — Glock, lockpick, deco (as in art-deco), flashbang, passcode, bodycam, Wi-Fi, Uber, and about 180 more brand, gear, tactical, tech, and slang words — through a bundled supplement list (`dictionaries/en_US-supplement.txt`). The test suite fails if a supplement entry is already accepted by the base dictionary, so a future dictionary upgrade prunes the list honestly.
+
+---
+
 ## [0.19.02597] - 2026-09-13
 
 ### Added
