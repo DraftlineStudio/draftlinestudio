@@ -165,6 +165,33 @@ describe('activity-based saving and chapter history', () => {
       expect.objectContaining({ chapter_id: 'ch-one', content: after, reason: 'After AI Line Edit' }),
     ])
   })
+
+  it('takes a manual snapshot of the live editor text under the writer’s label', async () => {
+    mocks.SaveBookSnapshots.mockResolvedValue(okSave())
+    const book = makeBook({ body: [{ id: 'ch-one', title: 'Chapter 1', type: 'chapter', content: '<p>stale store copy</p>' }] })
+    bookStoreMod.useBookStore.setState({ book, currentSection: 'body', currentIndex: 0, isDirty: false })
+    const editorStoreMod = await import('../editorStore')
+    editorStoreMod.useEditorStore.setState({ editorRef: { getHTML: () => '<p>what the writer sees</p>' } as any })
+
+    await expect(store().snapshotCurrentChapter('  Before rewrite ')).resolves.toBe(true)
+
+    // The debounced store copy is synced from the editor before the snapshot,
+    // so the archived version and the saved manuscript match the screen.
+    expect(store().book?.body[0].content).toBe('<p>what the writer sees</p>')
+    expect(mocks.SaveBookSnapshots).toHaveBeenCalledTimes(1)
+    expect(mocks.SaveBookSnapshots.mock.calls[0][0].body[0].content).toBe('<p>what the writer sees</p>')
+    expect(mocks.SaveBookSnapshots.mock.calls[0][1]).toEqual([
+      expect.objectContaining({ chapter_id: 'ch-one', section: 'body', content: '<p>what the writer sees</p>', reason: 'Before rewrite' }),
+    ])
+  })
+
+  it('refuses a manual snapshot until the project has a file to hold it', async () => {
+    const book = makeBook({ file_path: '', body: [{ id: 'ch-one', title: 'Chapter 1', type: 'chapter', content: '<p>x</p>' }] })
+    bookStoreMod.useBookStore.setState({ book, currentSection: 'body', currentIndex: 0 })
+
+    await expect(store().snapshotCurrentChapter()).resolves.toBe(false)
+    expect(mocks.SaveBookSnapshots).not.toHaveBeenCalled()
+  })
 })
 
 describe('background analysis revision safety', () => {

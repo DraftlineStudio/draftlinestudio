@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { GetChapterHistory, ListChapterHistory } from '../../../wailsjs/go/main/App'
 import type { ChapterHistoryEntry, ChapterHistorySnapshot, ChapterItem } from '../../types/draftline'
-import { diffContent } from '../../utils/diff'
+import { diffContent, type ParagraphDiff } from '../../utils/diff'
 import { useBookStore } from '../../store/bookStore'
 import { useAppStore } from '../../store/appStore'
 
@@ -12,12 +12,37 @@ function currentChapter(section: string, index: number, book: ReturnType<typeof 
   return items[index] ?? null
 }
 
+// One compare column. Scene breaks have no text on either side, so they are
+// drawn as the ⁂ glyph instead of an empty line.
+function ProseColumn({ diffs, side }: { diffs: ParagraphDiff[]; side: 'old' | 'current' }) {
+  const hide = side === 'old' ? 'insert' : 'delete'
+  const mark = side === 'old' ? 'delete' : 'insert'
+  const markClass = side === 'old' ? 'history-deleted' : 'history-inserted'
+  return (
+    <div className={`chapter-history-prose ${side}`}>
+      {diffs.map((row, i) => {
+        if (row.tag === 'hr' && (side === 'old' ? row.originalHtml : row.revisedHtml)) {
+          return <p key={i} className="history-break">⁂</p>
+        }
+        return (
+          <p key={i}>
+            {row.chunks.map((chunk, j) => chunk.type === hide
+              ? null
+              : <span key={j} className={chunk.type === mark ? markClass : ''}>{chunk.text}</span>)}
+          </p>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function ChapterHistoryDialog() {
-  const { book, currentSection, currentIndex, restoreChapterHistory } = useBookStore(useShallow(s => ({
+  const { book, currentSection, currentIndex, restoreChapterHistory, snapshotCurrentChapter } = useBookStore(useShallow(s => ({
     book: s.book,
     currentSection: s.currentSection,
     currentIndex: s.currentIndex,
     restoreChapterHistory: s.restoreChapterHistory,
+    snapshotCurrentChapter: s.snapshotCurrentChapter,
   })))
   const closeChapterHistory = useAppStore(s => s.closeChapterHistory)
   const chapter = currentChapter(currentSection, currentIndex, book)
@@ -25,6 +50,8 @@ export default function ChapterHistoryDialog() {
   const [selected, setSelected] = useState<ChapterHistorySnapshot | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [snapshotLabel, setSnapshotLabel] = useState('')
+  const [snapshotting, setSnapshotting] = useState(false)
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -34,30 +61,32 @@ export default function ChapterHistoryDialog() {
     return () => window.removeEventListener('keydown', onKey)
   }, [closeChapterHistory])
 
-  useEffect(() => {
-    let live = true
-    async function load() {
-      if (!chapter?.id || !book?.file_path) {
-        setLoading(false)
-        return
-      }
-      try {
-        const list = await ListChapterHistory(chapter.id) as unknown as ChapterHistoryEntry[]
-        if (!live) return
-        setEntries(list ?? [])
-        if (list?.length) {
-          const snapshot = await GetChapterHistory(list[0].id) as unknown as ChapterHistorySnapshot
-          if (live) setSelected(snapshot)
-        }
-      } catch (e) {
-        if (live) setError(String(e))
-      } finally {
-        if (live) setLoading(false)
-      }
+  const chapterID = chapter?.id
+  const filePath = book?.file_path
+  // Loads the version list; selectNewest picks the latest entry for compare.
+  const loadEntries = useCallback(async (selectNewest: boolean) => {
+    if (!chapterID || !filePath) {
+      setLoading(false)
+      return
     }
-    void load()
-    return () => { live = false }
-  }, [chapter?.id, book?.file_path])
+    try {
+      const list = (await ListChapterHistory(chapterID) as unknown as ChapterHistoryEntry[]) ?? []
+      setEntries(list)
+      if (selectNewest && list.length) {
+        setSelected(await GetChapterHistory(list[0].id) as unknown as ChapterHistorySnapshot)
+      }
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setLoading(false)
+    }
+  }, [chapterID, filePath])
+
+  // The dialog is modal, so the chapter cannot change underneath a load.
+  useEffect(() => {
+    setLoading(true)
+    void loadEntries(true)
+  }, [loadEntries])
 
   async function selectEntry(entry: ChapterHistoryEntry) {
     setError('')
@@ -65,6 +94,21 @@ export default function ChapterHistoryDialog() {
       setSelected(await GetChapterHistory(entry.id) as unknown as ChapterHistorySnapshot)
     } catch (e) {
       setError(String(e))
+    }
+  }
+
+  async function takeSnapshot() {
+    if (snapshotting) return
+    setError('')
+    setSnapshotting(true)
+    try {
+      const saved = await snapshotCurrentChapter(snapshotLabel)
+      if (saved) {
+        setSnapshotLabel('')
+        await loadEntries(true)
+      }
+    } finally {
+      setSnapshotting(false)
     }
   }
 
@@ -90,11 +134,31 @@ export default function ChapterHistoryDialog() {
 
         <div className="chapter-history-body">
           <aside className="chapter-history-list">
+            <div className="chapter-history-snapshot">
+              <input
+                className="dialog-input"
+                placeholder="Label, e.g. Before rewrite"
+                value={snapshotLabel}
+                maxLength={80}
+                onChange={e => setSnapshotLabel(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') void takeSnapshot() }}
+                disabled={!chapter?.id || !filePath}
+              />
+              <button
+                className="dialog-btn primary"
+                onClick={() => void takeSnapshot()}
+                disabled={!chapter?.id || !filePath || snapshotting}
+                title={filePath ? 'Store the chapter as it reads right now' : 'Save the project first'}
+              >
+                {snapshotting ? 'Saving…' : 'Snapshot now'}
+              </button>
+              {!filePath && <small>Save the project to enable snapshots.</small>}
+            </div>
             <div className="chapter-history-list-label">Versions</div>
             {loading && <div className="chapter-history-empty">Loading…</div>}
             {!loading && entries.length === 0 && (
               <div className="chapter-history-empty">
-                No versions yet. Draftline records a changed chapter after ten minutes of active writing.
+                No versions yet. Take a snapshot before a rewrite, or keep writing: Draftline records a changed chapter after ten minutes of activity and on every applied AI pass.
               </div>
             )}
             {entries.map(entry => (
@@ -119,12 +183,8 @@ export default function ChapterHistoryDialog() {
                   <span>Current · {changed} changed paragraph{changed === 1 ? '' : 's'}</span>
                 </div>
                 <div className="chapter-history-columns">
-                  <div className="chapter-history-prose old">
-                    {diffs.map((row, i) => <p key={i}>{row.chunks.map((chunk, j) => chunk.type === 'insert' ? null : <span key={j} className={chunk.type === 'delete' ? 'history-deleted' : ''}>{chunk.text}</span>)}</p>)}
-                  </div>
-                  <div className="chapter-history-prose current">
-                    {diffs.map((row, i) => <p key={i}>{row.chunks.map((chunk, j) => chunk.type === 'delete' ? null : <span key={j} className={chunk.type === 'insert' ? 'history-inserted' : ''}>{chunk.text}</span>)}</p>)}
-                  </div>
+                  <ProseColumn diffs={diffs} side="old" />
+                  <ProseColumn diffs={diffs} side="current" />
                 </div>
               </>
             )}

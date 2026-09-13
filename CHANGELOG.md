@@ -4,6 +4,16 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.19.02596] - 2026-09-13
+
+### Added
+- Manual chapter snapshots. The Chapter History dialog has a **Snapshot now** button with an optional label ("Before rewrite"), and the project menu gains **Snapshot Chapter Now**. A snapshot stores the chapter exactly as it reads on screen and saves the project in the same archive write, so a writer can checkpoint a chapter before rewriting it. The ten-minute writing-session snapshots and the before/after snapshots of an applied AI pass continue to fire on their own; an identical latest version is not stored twice.
+
+### Changed
+- History compare draws scene breaks as `⁂` instead of an empty line, and the empty state explains all three ways a version gets recorded.
+
+---
+
 ## [0.19.02595] - 2026-09-13
 
 ### Fixed
