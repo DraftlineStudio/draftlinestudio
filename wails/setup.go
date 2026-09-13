@@ -189,22 +189,36 @@ func managedCodexIsPinned() bool {
 // cmdExec wraps exec.CommandContext so that on Windows, .cmd and .bat files
 // are run through cmd.exe /S /C with a hand-built command line — both plain
 // exec and the naive /C form split the script path at spaces once other quoted
-// arguments are present.
+// arguments are present. Every command it builds runs without a console
+// window: Draftline is a GUI process, and a console-subsystem child (cmd.exe,
+// node, claude.exe) would otherwise flash a terminal over the app.
 func cmdExec(ctx context.Context, path string, args ...string) *exec.Cmd {
-	if goruntime.GOOS == "windows" {
-		lp := strings.ToLower(path)
-		if strings.HasSuffix(lp, ".cmd") || strings.HasSuffix(lp, ".bat") {
-			return platform.BatchCommand(ctx, path, args...)
-		}
+	var cmd *exec.Cmd
+	lp := strings.ToLower(path)
+	if goruntime.GOOS == "windows" && (strings.HasSuffix(lp, ".cmd") || strings.HasSuffix(lp, ".bat")) {
+		cmd = platform.BatchCommand(ctx, path, args...)
+	} else {
+		cmd = exec.CommandContext(ctx, path, args...)
 	}
-	return exec.CommandContext(ctx, path, args...)
+	platform.HideWindow(cmd)
+	return cmd
 }
 
-// claudeExec builds an exec.Cmd to run Claude Code. On Windows it bypasses the
-// claude.cmd shim entirely: claude-code 2.x ships a native bin/claude.exe, and
-// 1.x shipped cli.js for node — either avoids cmd.exe quoting quirks.
-// On macOS/Linux the shell script is directly executable so cmdExec is used as-is.
+// claudeExec builds a hidden-window exec.Cmd to run Claude Code. The window
+// flag is applied here, at the one funnel every Claude invocation passes
+// through, so no caller can forget it (a version check that did forget
+// flashed a console every time the settings dialog closed).
 func claudeExec(ctx context.Context, claudePath string, args ...string) *exec.Cmd {
+	cmd := claudeCommand(ctx, claudePath, args...)
+	platform.HideWindow(cmd)
+	return cmd
+}
+
+// claudeCommand resolves how to launch Claude Code. On Windows it bypasses
+// the claude.cmd shim entirely: claude-code 2.x ships a native bin/claude.exe,
+// and 1.x shipped cli.js for node — either avoids cmd.exe quoting quirks.
+// On macOS/Linux the shell script is directly executable so cmdExec is used as-is.
+func claudeCommand(ctx context.Context, claudePath string, args ...string) *exec.Cmd {
 	if goruntime.GOOS != "windows" {
 		return cmdExec(ctx, claudePath, args...)
 	}
@@ -239,12 +253,20 @@ func claudeExec(ctx context.Context, claudePath string, args ...string) *exec.Cm
 	return exec.CommandContext(ctx, nodeBin, append([]string{cliJS}, args...)...)
 }
 
-// codexExec builds an exec.Cmd to run the Codex CLI. On Windows it bypasses
+// codexExec builds a hidden-window exec.Cmd to run the Codex CLI; the window
+// flag is applied at this funnel for the same reason as claudeExec.
+func codexExec(ctx context.Context, codexPath string, args ...string) *exec.Cmd {
+	cmd := codexCommand(ctx, codexPath, args...)
+	platform.HideWindow(cmd)
+	return cmd
+}
+
+// codexCommand resolves how to launch the Codex CLI. On Windows it bypasses
 // the codex.cmd shim when possible: @openai/codex ships a native binary under
 // the package's vendor/ tree, and older layouts a bin/codex.js for node.
 // Falling back to the shim via cmdExec is safe — every codex invocation passes
 // only constant args, with the prompt piped via stdin.
-func codexExec(ctx context.Context, codexPath string, args ...string) *exec.Cmd {
+func codexCommand(ctx context.Context, codexPath string, args ...string) *exec.Cmd {
 	if goruntime.GOOS != "windows" {
 		return cmdExec(ctx, codexPath, args...)
 	}

@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.19.02601] - 2026-09-13
+
+### Fixed
+- Closing Settings no longer flashes a console window on Windows.
+
 ## [0.19.02600] - 2026-09-13
 
 ### Fixed
