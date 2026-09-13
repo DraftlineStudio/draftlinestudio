@@ -1579,6 +1579,29 @@ html, body, #root {
   border-radius: 3px;
   color: var(--accent);
 }
+/* Code Block — pre (a pasted terminal listing, a note, a document excerpt) */
+.ProseMirror pre {
+  font-family: 'IBM Plex Mono', 'Fira Code', monospace;
+  font-size: 0.82em;
+  line-height: 1.55;
+  margin: 1.4em 0;
+  padding: 0.9em 1.1em;
+  background: var(--bg-surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-indent: 0;
+}
+.ProseMirror pre code {
+  font-size: inherit;
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  color: inherit;
+}
+.ProseMirror pre + p { text-indent: 0; }
 
 /* ===== RIGHT PANEL ===== */
 /* ── Glyph Sidebar ─────────────────────────────────────────────────────────── */

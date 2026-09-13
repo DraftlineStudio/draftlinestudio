@@ -23,8 +23,11 @@ export default function Toolbar({ editor }: Props) {
 
   function setStyle(value: string) {
     if (value === 'blockquote') {
-      if (ed.isActive('heading')) ed.chain().focus().setParagraph().run()
+      if (ed.isActive('heading') || ed.isActive('codeBlock')) ed.chain().focus().setParagraph().run()
       ed.chain().focus().toggleBlockquote().run()
+    } else if (value === 'codeBlock') {
+      if (ed.isActive('blockquote')) ed.chain().focus().toggleBlockquote().run()
+      ed.chain().focus().setCodeBlock().run()
     } else if (value === 'normal') {
       if (ed.isActive('blockquote')) ed.chain().focus().toggleBlockquote().run()
       else ed.chain().focus().setParagraph().run()
@@ -38,6 +41,7 @@ export default function Toolbar({ editor }: Props) {
   const styleValue = ed.isActive('heading', { level: 1 }) ? 'h1'
     : ed.isActive('heading', { level: 2 }) ? 'h2'
     : ed.isActive('heading', { level: 3 }) ? 'h3'
+    : ed.isActive('codeBlock') ? 'codeBlock'
     : ed.isActive('blockquote') ? 'blockquote'
     : 'normal'
 
@@ -62,6 +66,7 @@ export default function Toolbar({ editor }: Props) {
         <option value="h2">Part Header</option>
         <option value="h3">Scene Heading</option>
         <option value="blockquote">Block Quote</option>
+        <option value="codeBlock">Code Block</option>
       </select>
 
       <div className="toolbar-sep" />
@@ -140,6 +145,22 @@ export default function Toolbar({ editor }: Props) {
           <rect x="5" y="4.75" width="8" height="1.5" rx="0.75"/>
           <text x="0" y="11" fontSize="4" fontFamily="monospace">3.</text>
           <rect x="5" y="8.75" width="6" height="1.5" rx="0.75"/>
+        </svg>
+      </button>
+
+      <div className="toolbar-sep" />
+
+      {/* Block quote */}
+      <button className={`toolbar-btn ${ed.isActive('blockquote') ? 'active' : ''}`} onClick={() => ed.chain().focus().toggleBlockquote().run()} title="Block quote (Ctrl+Shift+B)">
+        <svg width="13" height="11" viewBox="0 0 13 11" fill="currentColor">
+          <path d="M1 6.5c0-2.6 1.4-4.6 3.8-5.5l.5 1c-1.3.6-2.1 1.5-2.3 2.6.3-.1.6-.2.9-.2 1.2 0 2.1.9 2.1 2.1S5.1 8.6 3.9 8.6C2.2 8.6 1 7.8 1 6.5zm6 0c0-2.6 1.4-4.6 3.8-5.5l.5 1c-1.3.6-2.1 1.5-2.3 2.6.3-.1.6-.2.9-.2 1.2 0 2.1.9 2.1 2.1s-.9 2.1-2.1 2.1C8.2 8.6 7 7.8 7 6.5z"/>
+        </svg>
+      </button>
+
+      {/* Code block */}
+      <button className={`toolbar-btn ${ed.isActive('codeBlock') ? 'active' : ''}`} onClick={() => ed.chain().focus().toggleCodeBlock().run()} title="Code block (Ctrl+Alt+C)">
+        <svg width="14" height="11" viewBox="0 0 14 11" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4.2 2 1 5.5 4.2 9"/><path d="M9.8 2 13 5.5 9.8 9"/><path d="M8.2 1 5.8 10"/>
         </svg>
       </button>
 
