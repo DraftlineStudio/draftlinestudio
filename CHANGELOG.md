@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.19.02600] - 2026-09-13
+
+### Fixed
+- The spelling supplement now covers optics, weapon-light, and accessory brands and terms — EOTech, Holosun, Sightmark, Primary Arms, Aimpoint, Trijicon, ACOG, Leupold, Nightforce, Magpul, PMAG, Picatinny, SureFire, Streamlight, Olight, handguard, foregrip, and about forty more — so gear-heavy prose stops lighting up with false misspellings.
+
+---
+
 ## [0.19.02599] - 2026-09-13
 
 ### Fixed
