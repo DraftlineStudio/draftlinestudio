@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.19.02599] - 2026-09-13
+
+### Fixed
+- A book that fails to open now returns to the welcome screen instead of an empty editor.
+
 ## [0.19.02598] - 2026-09-13
 
 ### Fixed
