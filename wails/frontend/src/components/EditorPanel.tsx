@@ -148,7 +148,9 @@ function DiffPanel({ label, name, selectionReview = false }: { label: string; na
             </div>
           )}
           <div className="editor-page-body">
-            {diffs.map((diff, paraIdx) => (
+            {diffs.map((diff, paraIdx) => diff.tag === 'hr' ? (
+              <p key={paraIdx} className="diff-inline-p diff-inline-break">⁂</p>
+            ) : (
               <p key={paraIdx} className="diff-inline-p">
                 {diff.chunks.map((chunk, chunkIdx) => {
                   if (chunk.type === 'equal') {

@@ -72,7 +72,7 @@ wails/
     │
     ├── ai/                    # AI rewriting system
     │   ├── prompt.go          # System prompt building
-    │   ├── diff.go            # Paragraph diff format parsing
+    │   ├── diff.go            # Block-aware §N§ diff format parsing
     │   └── providers/         # AI HTTP transport (Anthropic/OpenAI-compat/Gemini
     │                          # + pure CLI helpers); app.go injects an Emit closure
     │

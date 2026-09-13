@@ -11,6 +11,7 @@ const changedParagraph: ParagraphDiff = {
   hasChanges: true,
   originalText: 'old',
   revisedText: 'new',
+  tag: 'p',
   originalHtml: '<p>old</p>',
   revisedHtml: '<p>new</p>',
 }

@@ -117,7 +117,7 @@ Output: §2§<p>Revised second paragraph</p>
         (Only changed paragraphs returned)
 ```
 
-The `applyDiffResponse()` function reconstructs the full HTML.
+Every top-level block is numbered, not just paragraphs, so scene breaks (`<hr>`), block quotes, code blocks, headings, and lists keep their place. `ApplyDiffResponse()` reconstructs the full HTML and refuses a replacement that changes a structural block's kind (a scene break is never replaced; a block quote returned as bare paragraphs is re-wrapped), so a chapter pass cannot flatten its structure. The frontend review aligns blocks by kind for the same reason.
 
 ## Error Handling
 

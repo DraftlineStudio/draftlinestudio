@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.19.02595] - 2026-09-13
+
+### Fixed
+- AI chapter passes no longer remove scene breaks, block quotes, or code blocks.
+- Partially accepted AI edits inside block quotes, code blocks, and headings keep their formatting.
+
 ## [0.19.02593] - 2026-09-12
 
 ### Fixed
