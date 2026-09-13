@@ -43,7 +43,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.19.02594"
+const AppVersion = "0.19.02595"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -885,7 +885,7 @@ func (a *App) RewriteText(html string, mode string, styleOptionsJson string, pro
 	switch {
 	case useDiffFormat:
 		// Append diff-format output instruction
-		system += "\n\nCRITICAL OUTPUT FORMAT: Each input paragraph is prefixed §N§ where N is its 1-based index.\nReturn ONLY paragraphs you change, one per line:\n§N§<p>revised text</p>\nOmit unchanged paragraphs entirely. If nothing needs changing: §NONE§"
+		system += "\n\nCRITICAL OUTPUT FORMAT: Each input block is prefixed §N§ where N is its 1-based index.\nReturn ONLY blocks you change, one per line:\n§N§<p>revised text</p>\nOmit unchanged blocks entirely. Blocks that are not <p> (scene breaks <hr>, block quotes, code blocks, headings, lists) are structure: omit them, or return them with their exact wrapper tags — never as <p>. If nothing needs changing: §NONE§"
 		userMsg = ai.BuildDiffUserMsg(html)
 	default:
 		userMsg = "Rewrite the following, returning only the rewritten HTML paragraphs:\n\n" + html

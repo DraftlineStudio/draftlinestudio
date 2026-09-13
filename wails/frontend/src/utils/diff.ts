@@ -11,14 +11,21 @@ export interface ParagraphDiff {
   originalText: string
   revisedText: string
   /**
-   * Verbatim original `<p>…</p>` HTML for this paragraph, including any inline
-   * formatting (`<em>`, `<strong>`, `<a>`, attributes). Empty for paragraphs
+   * Lower-case tag of the top-level block this row represents: `p` for prose,
+   * or a structural block such as `hr` (scene break), `blockquote`, `pre`,
+   * `h1`–`h6`, `ul`, `ol`. Structural rows keep their wrapper markup through
+   * the review so an AI pass can never flatten them into paragraphs.
+   */
+  tag: string
+  /**
+   * Verbatim original block HTML for this row, including any inline
+   * formatting (`<em>`, `<strong>`, `<a>`, attributes). Empty for blocks
    * that exist only on the revised side (pure insertions).
    */
   originalHtml: string
   /**
-   * Verbatim revised `<p>…</p>` HTML for this paragraph. Empty for paragraphs
-   * that exist only on the original side (pure deletions).
+   * Verbatim revised block HTML for this row. Empty for blocks that exist
+   * only on the original side (pure deletions).
    */
   revisedHtml: string
 }
@@ -107,30 +114,90 @@ function stripTags(html: string): string {
   return decodeEntities(html.replace(/<[^>]*>/g, ''))
 }
 
-/** One extracted paragraph: its plain text (for diffing) and verbatim HTML. */
+/** One extracted top-level block: its tag, plain text (for diffing), and verbatim HTML. */
 interface ParaBlock {
+  /** Lower-case tag of the top-level element (`p`, `hr`, `blockquote`, `pre`, `h2`, `ul`, …). */
+  tag: string
   /** Tag-stripped, entity-decoded, trimmed text used for word-level diffing. */
   text: string
-  /** Verbatim `<p …>…</p>` block exactly as it appeared in the source HTML. */
+  /** Verbatim block HTML exactly as it appeared in the source. */
   html: string
 }
 
-/** Extract each <p> element from an HTML string, keeping both text and verbatim HTML. */
-function extractBlocks(html: string): ParaBlock[] {
-  const blocks: ParaBlock[] = []
-  const re = /<p[^>]*>([\s\S]*?)<\/p>/gi
+/** Elements with no closing tag. */
+const VOID_TAGS = new Set(['hr', 'br', 'img', 'input', 'wbr', 'source', 'col', 'embed', 'area', 'base', 'link', 'meta', 'param', 'track'])
+/** Inline markup that, when it appears at the top level, is prose rather than a block boundary. */
+const INLINE_TAGS = new Set(['em', 'strong', 'b', 'i', 'u', 's', 'strike', 'span', 'a', 'code', 'sub', 'sup', 'mark', 'small', 'del', 'ins', 'br'])
+
+/**
+ * Split chapter HTML into its top-level blocks. Nested markup (a `<p>` inside
+ * a `<blockquote>`, `<li>` inside `<ul>`, `<code>` inside `<pre>`) stays inside
+ * its parent block, so structure survives a diff round trip. Bare top-level
+ * text and inline markup become a paragraph block.
+ */
+export function splitTopLevelBlocks(html: string): { tag: string; html: string }[] {
+  const blocks: { tag: string; html: string }[] = []
+  const tokenRe = /<!--[\s\S]*?-->|<(\/?)([a-zA-Z][a-zA-Z0-9-]*)(?:\s[^>]*)?(\/?)>/g
+  let depth = 0
+  let blockStart = -1
+  let blockTag = ''
+  let cursor = 0 // end of the last consumed block; bare text lives between cursor and the next block
+  const pushBareText = (to: number) => {
+    const raw = html.slice(cursor, to).trim()
+    if (raw) blocks.push({ tag: 'p', html: raw })
+  }
   let m: RegExpExecArray | null
-  while ((m = re.exec(html)) !== null) {
-    blocks.push({ text: stripTags(m[1]).trim(), html: m[0] })
+  while ((m = tokenRe.exec(html)) !== null) {
+    if (m[0].startsWith('<!--')) continue
+    const isClose = m[1] === '/'
+    const name = m[2].toLowerCase()
+    const selfClosing = m[3] === '/' || VOID_TAGS.has(name)
+    const end = m.index + m[0].length
+    if (depth === 0) {
+      if (isClose || INLINE_TAGS.has(name)) continue // stray close tag or inline prose at the top level
+      pushBareText(m.index)
+      if (selfClosing) {
+        blocks.push({ tag: name, html: m[0] })
+        cursor = end
+        continue
+      }
+      blockStart = m.index
+      blockTag = name
+      depth = 1
+    } else if (isClose) {
+      depth--
+      if (depth === 0) {
+        blocks.push({ tag: blockTag, html: html.slice(blockStart, end) })
+        cursor = end
+      }
+    } else if (!selfClosing) {
+      depth++
+    }
   }
-  // Fallback for plain text without <p> tags
-  if (blocks.length === 0 && html.trim()) {
-    blocks.push({ text: stripTags(html).trim(), html: html.trim() })
+  if (depth > 0) {
+    // Unterminated block (malformed model output): keep everything from its start.
+    blocks.push({ tag: blockTag, html: html.slice(blockStart).trim() })
+    cursor = html.length
   }
+  pushBareText(html.length)
   return blocks
 }
 
-/** Extract plain-text content of each <p> element from an HTML string. */
+/** Extract each top-level block from an HTML string, keeping tag, text, and verbatim HTML. */
+function extractBlocks(html: string): ParaBlock[] {
+  return splitTopLevelBlocks(html).map(block => ({
+    tag: block.tag,
+    text: stripTags(block.html).trim(),
+    html: block.html,
+  }))
+}
+
+/** Alignment key: blocks only align with blocks of the same kind, so a scene break never pairs with an empty paragraph. */
+function blockKey(block: ParaBlock): string {
+  return `${block.tag}\u0000${block.text}`
+}
+
+/** Extract plain-text content of each top-level block from an HTML string. */
 export function extractParagraphs(html: string): string[] {
   return extractBlocks(html).map(b => b.text)
 }
@@ -181,24 +248,30 @@ function makeRow(o: ParaBlock | null, r: ParaBlock | null): ParagraphDiff {
     hasChanges: chunks.some(c => c.type !== 'equal'),
     originalText: oText,
     revisedText: rText,
+    tag: o?.tag ?? r?.tag ?? 'p',
     originalHtml: o?.html ?? '',
     revisedHtml: r?.html ?? '',
   }
 }
 
 /**
- * Diff two HTML chapter strings paragraph by paragraph.
+ * Diff two HTML chapter strings block by block.
  *
- * Paragraphs are aligned by an LCS edit script over their plain text (not by
- * positional index), so an inserted or deleted paragraph does not cascade into
- * spurious full-paragraph diffs on every following paragraph. Each row keeps the
- * verbatim original and revised `<p>` HTML so formatting can be preserved when the
- * diff is reassembled.
+ * Blocks are aligned by an LCS edit script over their kind and plain text (not
+ * by positional index), so an inserted or deleted paragraph does not cascade
+ * into spurious full-paragraph diffs on every following paragraph. Each row
+ * keeps the verbatim original and revised block HTML so formatting can be
+ * preserved when the diff is reassembled.
+ *
+ * Structural blocks (scene-break `<hr>`, `<blockquote>`, `<pre>`, headings,
+ * lists) are rows of their own kind. A scene break the model dropped has no
+ * text on either side, so it produces no change and is always kept; a dropped
+ * block quote or heading shows as a deletion the writer must accept.
  */
 export function diffContent(originalHtml: string, revisedHtml: string): ParagraphDiff[] {
   const orig = extractBlocks(originalHtml)
   const rev = extractBlocks(revisedHtml)
-  const ops = diffSeq(orig.map(b => b.text), rev.map(b => b.text))
+  const ops = diffSeq(orig.map(blockKey), rev.map(blockKey))
 
   const rows: ParagraphDiff[] = []
   let k = 0
@@ -210,7 +283,8 @@ export function diffContent(originalHtml: string, revisedHtml: string): Paragrap
     }
     // Gather a maximal run of non-equal ops between two equal anchors and pair
     // deletes with inserts positionally so they render as word-level edits
-    // rather than whole-paragraph delete+insert churn.
+    // rather than whole-paragraph delete+insert churn. Only blocks of the same
+    // kind pair; a structural block never merges into a paragraph rewrite.
     const dels: number[] = []
     const inss: number[] = []
     while (k < ops.length && ops[k].type !== 'equal') {
@@ -218,10 +292,19 @@ export function diffContent(originalHtml: string, revisedHtml: string): Paragrap
       else inss.push(ops[k].bi!)
       k++
     }
-    const pairCount = Math.min(dels.length, inss.length)
-    for (let p = 0; p < pairCount; p++) rows.push(makeRow(orig[dels[p]], rev[inss[p]]))
-    for (let p = pairCount; p < dels.length; p++) rows.push(makeRow(orig[dels[p]], null))
-    for (let p = pairCount; p < inss.length; p++) rows.push(makeRow(null, rev[inss[p]]))
+    let i = 0
+    let j = 0
+    while (i < dels.length || j < inss.length) {
+      const o = i < dels.length ? orig[dels[i]] : null
+      const r = j < inss.length ? rev[inss[j]] : null
+      if (o && r && o.tag === r.tag) {
+        rows.push(makeRow(o, r)); i++; j++
+      } else if (o && (!r || o.tag !== 'p')) {
+        rows.push(makeRow(o, null)); i++
+      } else {
+        rows.push(makeRow(null, r)); j++
+      }
+    }
   }
   return rows
 }
@@ -279,13 +362,17 @@ export function extractChanges(diffs: ParagraphDiff[]): DiffChange[] {
  *                            (empty for a pure insertion → nothing).
  *  - Every change accepted → emit the verbatim REVISED `<p>` HTML
  *                            (empty for a pure deletion → nothing).
- *  - Mixed (some accepted) → reconstruct from word chunks. Only in this case is
- *                            inline formatting within the paragraph flattened,
- *                            and only for that one paragraph.
+ *  - Mixed (some accepted) → reconstruct from word chunks inside the block's
+ *                            own wrapper (`<p>`, heading, `<blockquote><p>`,
+ *                            `<pre><code>`). Only in this case is inline
+ *                            formatting within the block flattened, and only
+ *                            for that one block. Kinds with no sensible
+ *                            flattening (lists) take the revised HTML whole.
  *
  * This guarantees that accepting a change in one paragraph can never strip
- * formatting from any paragraph the user did not change, and that rejecting
- * everything reproduces the original HTML.
+ * formatting from any paragraph the user did not change, that rejecting
+ * everything reproduces the original HTML, and that scene breaks and other
+ * structural blocks survive the pass in place.
  */
 export function assembleFromChanges(diffs: ParagraphDiff[], changes: DiffChange[]): string {
   const changeMap = new Map<string, boolean>()
@@ -317,7 +404,7 @@ export function assembleFromChanges(diffs: ParagraphDiff[], changes: DiffChange[
       if (diff.revisedHtml) out.push(diff.revisedHtml)
       return
     }
-    // Mixed acceptance within a single paragraph: reconstruct from word chunks.
+    // Mixed acceptance within a single block: reconstruct from word chunks.
     const text = diff.chunks.map((chunk, ci) => {
       if (chunk.type === 'equal') return chunk.text
       const accepted = changeMap.get(`${paraIdx}-${ci}`) ?? true
@@ -325,7 +412,30 @@ export function assembleFromChanges(diffs: ParagraphDiff[], changes: DiffChange[
       if (chunk.type === 'delete') return accepted ? '' : chunk.text
       return ''
     }).join('')
-    out.push(`<p>${text}</p>`)
+    out.push(wrapMixedBlock(diff.tag, text) ?? diff.revisedHtml)
   })
   return out.join('')
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+/**
+ * Wrap flattened text in the block's own markup. Returns null for kinds that
+ * cannot be rebuilt from flat text (lists), where the caller falls back to the
+ * revised HTML as a whole.
+ */
+function wrapMixedBlock(tag: string, text: string): string | null {
+  const safe = escapeHtml(text)
+  switch (tag) {
+    case 'p': case 'h1': case 'h2': case 'h3': case 'h4': case 'h5': case 'h6':
+      return `<${tag}>${safe}</${tag}>`
+    case 'blockquote':
+      return `<blockquote><p>${safe}</p></blockquote>`
+    case 'pre':
+      return `<pre><code>${safe}</code></pre>`
+    default:
+      return null
+  }
 }

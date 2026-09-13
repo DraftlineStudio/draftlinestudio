@@ -77,11 +77,13 @@ Copy Edit never rephrases for style, rhythm, readability, or word choice. It pre
 **Diff Format Output (Token Optimization):**
 For line_edit, copy_edit, and smooth modes, Draftline uses a diff format that reduces output tokens by ~80%:
 ```
-CRITICAL OUTPUT FORMAT: Each input paragraph is prefixed §N§ where N is its 1-based index.
-Return ONLY paragraphs you change, one per line:
+CRITICAL OUTPUT FORMAT: Each input block is prefixed §N§ where N is its 1-based index.
+Return ONLY blocks you change, one per line:
 §N§<p>revised text</p>
-Omit unchanged paragraphs entirely. If nothing needs changing: §NONE§
+Omit unchanged blocks entirely. Blocks that are not <p> (scene breaks <hr>, block quotes, code blocks, headings, lists) are structure: omit them, or return them with their exact wrapper tags — never as <p>. If nothing needs changing: §NONE§
 ```
+
+Every mode's system prompt also carries a structure rule: scene breaks, block quotes, code blocks, headings, and lists stay exactly where they are with their own wrapper tags. The reconstruction step enforces it regardless of what the model does (see *Diff Format Optimization* below).
 
 ---
 
@@ -416,7 +418,7 @@ This constraint prevents the AI from:
 The author's paragraph breaks are intentional pacing choices.
 
 ### Diff Format Optimization
-For line_edit, copy_edit, and smooth modes, input paragraphs are prefixed with `§N§` markers. The AI returns only changed paragraphs with their indices, reducing output tokens significantly. The `applyDiffResponse()` function reconstructs the full HTML by merging changes with unchanged paragraphs.
+For line_edit, copy_edit, and smooth modes, every top-level block of the chapter (paragraphs and structural blocks alike) is prefixed with a `§N§` marker. The AI returns only changed blocks with their indices, reducing output tokens significantly. `ApplyDiffResponse()` in `internal/ai/diff.go` reconstructs the full HTML by merging changes with unchanged blocks, and it guards structure: a scene break (`<hr>`) is never replaced, a block quote that came back as bare paragraphs is re-wrapped, and any other structural block returned as a different kind of block is ignored so the original stays. The frontend review (`utils/diff.ts`) mirrors this: blocks only align with blocks of the same kind, so a dropped scene break produces no reviewable change and is always kept, while a dropped block quote or heading shows as a deletion the writer must accept.
 
 ### Context Limits
 - **Prose Guide:** Can include substantial examples since it's in the system prompt

@@ -42,7 +42,8 @@ func BuildSystemPrompt(mode, proseGuide string, styleOpts *types.WritingStyleOpt
 Rules:
 - Match the existing POV depth, tense, and voice exactly
 - Do not introduce new plot events or characters
-- Preserve paragraph breaks — return one <p> element per original paragraph (may be longer)
+- Preserve paragraph breaks — return one <p> element per original paragraph
+- Scene breaks (<hr>), block quotes, code blocks, headings, and lists are structure: keep each one exactly where it is with its own wrapper tags, never turn one into a paragraph, and never drop one (may be longer)
 - ` + bannedWords + `
 
 ` + aiTellBans + styleBlock
@@ -55,7 +56,7 @@ Rules:
 
 		return base + `
 
-CRITICAL: Return ONLY the rewritten HTML content using <p> tags. Do not include any instructions, explanations, system prompts, or meta-commentary. Output raw HTML only.`
+CRITICAL: Return ONLY the rewritten HTML content using <p> tags, with structural blocks keeping their own tags. Do not include any instructions, explanations, system prompts, or meta-commentary. Output raw HTML only.`
 
 	case "copy_edit":
 		// Mechanical correctness pass: fix rules, never restyle. A prose guide
@@ -72,8 +73,9 @@ Rules:
 - Dialogue keeps its character voice, including nonstandard grammar; correct only unambiguous typos inside quotations
 - Leave correct text byte-for-byte unchanged
 - Preserve paragraph breaks — return one <p> element per original paragraph
+- Scene breaks (<hr>), block quotes, code blocks, headings, and lists are structure: keep each one exactly where it is with its own wrapper tags, never turn one into a paragraph, and never drop one
 
-CRITICAL: Return ONLY the corrected HTML content using <p> tags. Do not include any instructions, explanations, system prompts, or meta-commentary. Output raw HTML only.`
+CRITICAL: Return ONLY the corrected HTML content using <p> tags, with structural blocks keeping their own tags. Do not include any instructions, explanations, system prompts, or meta-commentary. Output raw HTML only.`
 
 	case "smooth":
 		base := `You are a line editor focused on flow and rhythm. Smooth the provided HTML text.
@@ -84,6 +86,7 @@ Rules:
 - Vary sentence openings — avoid starting consecutive sentences the same way
 - Minimal changes — improve flow without changing meaning or voice
 - Preserve paragraph breaks — return one <p> element per original paragraph
+- Scene breaks (<hr>), block quotes, code blocks, headings, and lists are structure: keep each one exactly where it is with its own wrapper tags, never turn one into a paragraph, and never drop one
 - ` + bannedWords + `
 
 ` + aiTellBans + styleBlock
@@ -94,7 +97,7 @@ Rules:
 
 		return base + `
 
-CRITICAL: Return ONLY the rewritten HTML content using <p> tags. Do not include any instructions, explanations, system prompts, or meta-commentary. Output raw HTML only.`
+CRITICAL: Return ONLY the rewritten HTML content using <p> tags, with structural blocks keeping their own tags. Do not include any instructions, explanations, system prompts, or meta-commentary. Output raw HTML only.`
 
 	default: // "line_edit"
 		base := `You are a restrained line editor. Selectively polish the provided HTML text while preserving the author's voice.
@@ -107,6 +110,7 @@ Editing rules:
 - Do not replace words merely to make them stronger, more literary, or more varied
 - Preserve all facts, meaning, tense, POV, characterization, dialogue wording, and intentional fragments
 - Preserve paragraph breaks — return one <p> element per original paragraph
+- Scene breaks (<hr>), block quotes, code blocks, headings, and lists are structure: keep each one exactly where it is with its own wrapper tags, never turn one into a paragraph, and never drop one
 
 The restrictions below — including banned words and AI-tell rules — constrain wording YOU INTRODUCE. Never rewrite source text solely because it already contains one of them.
 - ` + bannedWords + `
@@ -123,6 +127,7 @@ Editing rules:
 - Do not add detail, imagery, emphasis, interpretation, new ideas, or vocabulary upgrades
 - Preserve all story facts, meaning, tense, POV, characterization, dialogue wording, and intentional fragments
 - Preserve paragraph breaks — return one <p> element per original paragraph
+- Scene breaks (<hr>), block quotes, code blocks, headings, and lists are structure: keep each one exactly where it is with its own wrapper tags, never turn one into a paragraph, and never drop one
 
 The restrictions below — including banned words and AI-tell rules — constrain wording YOU INTRODUCE. Never rewrite source text solely because it already contains one of them.
 - ` + bannedWords + `
@@ -131,7 +136,7 @@ The restrictions below — including banned words and AI-tell rules — constrai
 		}
 		return base + `
 
-CRITICAL: Return ONLY the rewritten HTML content using <p> tags. Do not include any instructions, explanations, system prompts, or meta-commentary. Output raw HTML only.`
+CRITICAL: Return ONLY the rewritten HTML content using <p> tags, with structural blocks keeping their own tags. Do not include any instructions, explanations, system prompts, or meta-commentary. Output raw HTML only.`
 	}
 }
 
