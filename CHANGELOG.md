@@ -2,6 +2,17 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.19.02605] - 2026-09-14
+
+### Added
+- Added Help & Documentation and Report an Issue to the project menu.
+
+### Changed
+- Book accent colors now skip a leading "The" in the title.
+
+### Fixed
+- The Edit button on the author card now opens the Author tab.
+
 ## [0.19.02604] - 2026-09-14
 
 ### Removed

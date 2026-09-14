@@ -2,8 +2,10 @@ import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useBookStore } from '../store/bookStore'
 import { useAppStore } from '../store/appStore'
-import { WindowMinimise, WindowToggleMaximise, Quit } from '../../wailsjs/runtime/runtime'
+import { WindowMinimise, WindowToggleMaximise, Quit, BrowserOpenURL } from '../../wailsjs/runtime/runtime'
+import { GetAppVersion } from '../../wailsjs/go/main/App'
 import { avatarColor, hexToRgba } from '../utils/accentColor'
+import { DOCS_URL, newIssueUrl } from '../services/links'
 
 interface TitleBarProps {
   minimal?: boolean
@@ -17,6 +19,9 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
   const btnRef = useRef<HTMLButtonElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
   const [authorOpen, setAuthorOpen] = useState(false)
+  // Pre-fills the version into issue reports opened from the menu.
+  const [appVersion, setAppVersion] = useState('')
+  useEffect(() => { GetAppVersion().then(setAppVersion).catch(() => {}) }, [])
   const [authorPos, setAuthorPos] = useState({ top: 0, right: 0 })
   const authorBtnRef = useRef<HTMLButtonElement>(null)
   const authorPopRef = useRef<HTMLDivElement>(null)
@@ -168,7 +173,7 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
           )}
           <button
             className="dialog-btn titlebar-author-pop-edit"
-            onClick={() => { setAuthorOpen(false); openSettings() }}
+            onClick={() => { setAuthorOpen(false); openSettings('author') }}
           >
             Edit…
           </button>
@@ -280,6 +285,31 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
         <span>Settings…</span>
+      </button>
+
+      <div className="titlebar-dropdown-sep" />
+
+      <button className="titlebar-dropdown-item" onClick={() => run(() => BrowserOpenURL(DOCS_URL))}>
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3">
+          <circle cx="6.5" cy="6.5" r="5.5" />
+          <path d="M4.8 5.2a1.7 1.7 0 1 1 2.4 1.6c-.5.3-.7.6-.7 1.1" strokeLinecap="round" />
+          <circle cx="6.5" cy="9.6" r="0.55" fill="currentColor" stroke="none" />
+        </svg>
+        <span>Help &amp; Documentation</span>
+      </button>
+      <button className="titlebar-dropdown-item" onClick={() => run(() => BrowserOpenURL(newIssueUrl('bug', appVersion)))}>
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3">
+          <path d="M4 5.5a2.5 2.5 0 0 1 5 0v3a2.5 2.5 0 0 1-5 0z" />
+          <path d="M6.5 3v-1M4.3 4.2l-1-.9M8.7 4.2l1-.9M2.5 7h1.5M9 7h1.5M3.4 10.3l.9-.8M9.6 10.3l-.9-.8" strokeLinecap="round" />
+        </svg>
+        <span>Report an Issue…</span>
+      </button>
+      <button className="titlebar-dropdown-item" onClick={() => run(() => BrowserOpenURL(newIssueUrl('feature', appVersion)))}>
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4.5 9.5h4M5.2 11.5h2.6" />
+          <path d="M6.5 1.5a3.6 3.6 0 0 0-2 6.6c.3.2.5.6.5 1v.4h3v-.4c0-.4.2-.8.5-1a3.6 3.6 0 0 0-2-6.6z" />
+        </svg>
+        <span>Request a Feature…</span>
       </button>
 
       <div className="titlebar-dropdown-sep" />
