@@ -4,6 +4,19 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.19.02605] - 2026-09-14
+
+### Added
+- **Help & Documentation**, **Report an Issue…**, and **Request a Feature…** in the project menu. The two issue links open a pre-labelled GitHub issue with the running version already filled in.
+
+### Changed
+- Book accent colors are keyed by the first word after a leading "The", so *the benchmark manuscript* and *The Unmoved* no longer share the color of every other title that starts with "The".
+
+### Fixed
+- The **Edit…** button in the title-bar author card now opens the Author tab instead of the first settings tab.
+
+---
+
 ## [0.19.02604] - 2026-09-14
 
 ### Removed

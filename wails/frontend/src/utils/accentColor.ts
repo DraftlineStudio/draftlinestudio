@@ -6,8 +6,16 @@ export const AVATAR_PALETTE = [
   '#4ADE80','#38BDF8','#F87171','#A3E635','#C084FC','#FDD663',
 ]
 
+// The letter a title is filed under: a leading "The" is skipped so "The
+// Reset" and "The Unmoved" get the colors of R and U, not a shelf full of Ts.
+export function colorKeyLetter(title: string): string {
+  const trimmed = title.trim()
+  const rest = trimmed.replace(/^the\s+/i, '')
+  return (rest || trimmed).charAt(0).toUpperCase()
+}
+
 export function avatarColor(title: string): string {
-  const code = title.toUpperCase().charCodeAt(0)
+  const code = colorKeyLetter(title).charCodeAt(0) || 65 // empty title files under A
   return AVATAR_PALETTE[Math.abs(code - 32) % AVATAR_PALETTE.length]
 }
 
