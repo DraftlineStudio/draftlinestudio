@@ -4,7 +4,9 @@
 #   Windows  Draftline-<version>-windows-amd64-setup.exe     (NSIS installer)
 #            Draftline-<version>-windows-amd64-portable.zip  (plain exe)
 #   macOS    Draftline-<version>-macos-universal.dmg          (Intel + Apple Silicon)
-#   Linux    Draftline-<version>-linux-x86_64.AppImage
+#   Linux    Draftline-<version>-linux-x86_64.deb           (Debian/Ubuntu and derivatives)
+#            Draftline-<version>-linux-x86_64.rpm           (Fedora/RHEL/openSUSE and derivatives)
+#            Draftline-<version>-linux-x86_64.AppImage
 #            SHA256SUMS.txt
 #
 # The version is read from `const AppVersion` in wails/app.go and must match the
@@ -110,9 +112,13 @@ jobs:
           if-no-files-found: error
 
   linux:
-    name: Linux AppImage
+    name: Linux packages
     needs: version
-    runs-on: ubuntu-24.04
+    # Built on the oldest supported Ubuntu so the binary links against its
+    # glibc and WebKitGTK 4.1: a package built on 24.04 installs on 22.04 but
+    # fails to start there. Packages built here run on 22.04 and everything
+    # newer.
+    runs-on: ubuntu-22.04
     env:
       VERSION: ${{ needs.version.outputs.version }}
       LABEL: ${{ needs.version.outputs.label }}
@@ -158,8 +164,25 @@ jobs:
 
           curl -fsSL -o appimagetool "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
           chmod +x appimagetool
+          # Embed the current static type2 runtime explicitly. It carries its
+          # own FUSE support, so the AppImage runs on a stock desktop without
+          # the libfuse2 package that Ubuntu 22.04 and newer no longer ship.
+          curl -fsSL -o runtime-x86_64 "https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-x86_64"
           mkdir -p dist
-          ARCH=x86_64 ./appimagetool --appimage-extract-and-run --no-appstream "$appdir" "dist/Draftline-${LABEL}-linux-x86_64.AppImage"
+          ARCH=x86_64 ./appimagetool --appimage-extract-and-run --no-appstream \
+            --runtime-file runtime-x86_64 "$appdir" "dist/Draftline-${LABEL}-linux-x86_64.AppImage"
+          ls -l dist
+      - name: Build deb and rpm packages
+        # nfpm packages the same file layout as the AppDir for both families
+        # from wails/build/linux/nfpm.yaml; no dpkg or rpmbuild is needed.
+        run: |
+          set -euo pipefail
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+          export VERSION
+          for packager in deb rpm; do
+            "$(go env GOPATH)/bin/nfpm" package --config wails/build/linux/nfpm.yaml \
+              --packager "$packager" --target "dist/Draftline-${LABEL}-linux-x86_64.$packager"
+          done
           ls -l dist
       - uses: actions/upload-artifact@v7
         with:

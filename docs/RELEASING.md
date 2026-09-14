@@ -18,7 +18,9 @@ signed-in user rather than inheriting the installer's elevated token
 | `Draftline-<version>-windows-amd64-setup.exe` | Windows 10/11, x64 | NSIS installer. Installs to Program Files, adds Start Menu and desktop shortcuts, downloads the WebView2 runtime if missing, registers an uninstaller. |
 | `Draftline-<version>-windows-amd64-portable.zip` | Windows 10/11, x64 | The bare `draftline.exe`. Runs from anywhere; file associations are registered per-user on first launch. |
 | `Draftline-<version>-macos-universal.dmg` | macOS 10.15+, Intel and Apple Silicon | Drag-to-Applications disk image. Ad-hoc signed unless Apple credentials are configured (see below). |
-| `Draftline-<version>-linux-x86_64.AppImage` | Linux x86_64 | Needs `libwebkit2gtk-4.1` and GTK 3 on the host (Ubuntu 22.04+, Fedora 36+, and equivalents). Mark executable and run. |
+| `Draftline-<version>-linux-x86_64.deb` | Debian, Ubuntu 22.04+, Mint, Pop!_OS, and derivatives (x86_64) | The recommended Linux install. Double-click, or `sudo apt install ./Draftline-<version>-linux-x86_64.deb`; apt pulls in WebKitGTK 4.1 and GTK 3 itself. Registers the desktop entry, icon, and `.draftline` association system-wide. |
+| `Draftline-<version>-linux-x86_64.rpm` | Fedora 36+, RHEL 9+, openSUSE, and derivatives (x86_64) | `sudo dnf install ./Draftline-<version>-linux-x86_64.rpm` (or `zypper`). Same contents and dependencies as the .deb. |
+| `Draftline-<version>-linux-x86_64.AppImage` | Any x86_64 Linux with WebKitGTK 4.1 and GTK 3 installed | Mark executable and run. Self-contained runtime with its own FUSE support, so no `libfuse2` package is needed. Nothing is registered with the desktop. |
 | `SHA256SUMS.txt` | all | Checksums of every asset. |
 
 ## Cutting a release
@@ -58,10 +60,25 @@ repository during a release.
   produces the `.app` from `build/darwin/Info.plist` and an `.icns` generated
   from `build/appicon.png`. The bundle is code-signed, wrapped in a DMG with
   `hdiutil`, and notarized when credentials exist.
-- **Linux** (`ubuntu-24.04`): `wails build -platform linux/amd64 -tags webkit2_41`,
-  then an AppDir is assembled from `build/linux/draftline.desktop`,
-  `build/linux/draftline-mime.xml`, and `build/appicon.png`, and packed with
-  `appimagetool`.
+- **Linux** (`ubuntu-22.04`, deliberately the oldest supported release so
+  the binary links against its glibc and WebKitGTK; a build from 24.04
+  installs on 22.04 but will not start): `wails build -platform linux/amd64
+  -tags webkit2_41`, then the same four files (`build/bin/draftline`,
+  `build/linux/draftline.desktop`, `build/linux/draftline-mime.xml`,
+  `build/appicon.png`) are packaged three ways. `nfpm` reads
+  `build/linux/nfpm.yaml` and produces the `.deb` and `.rpm` (dependencies
+  declared per family, post-install scripts refresh the desktop, MIME, and
+  icon caches). `appimagetool` packs the AppDir with an explicitly supplied
+  static type2 runtime so the AppImage needs no `libfuse2`.
+
+  The in-app updater on Linux works out how Draftline was installed: an
+  AppImage (the runtime exports `APPIMAGE`) is replaced in place and
+  relaunched; a `.deb` or `.rpm` install (binary under `/usr` with `dpkg` or
+  `rpm` present) downloads the matching package and opens a terminal window
+  running `sudo apt-get install -y <file>` (or `dnf`, `yum`, `zypper`), which
+  resolves dependencies and then starts the new Draftline. A source build or
+  hand-unpacked binary is offered no package and pointed at the release page.
+  See `wails/update_packaging.go`.
 
 ## Optional signing secrets
 

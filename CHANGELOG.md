@@ -2,6 +2,16 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.19.02606] - 2026-09-14
+
+### Added
+- Linux releases now include .deb and .rpm packages.
+- The updater can install Linux updates directly.
+
+### Fixed
+- Linux packages now launch on Ubuntu 22.04.
+- The AppImage no longer requires libfuse2.
+
 ## [0.19.02605] - 2026-09-14
 
 ### Added

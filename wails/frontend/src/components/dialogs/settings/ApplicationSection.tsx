@@ -119,7 +119,7 @@ export default function ApplicationSection({
         )}
         {updateState === 'downloaded' && (
           <div className="settings-hint">
-            Downloaded and verified{downloadPath ? `: ${downloadPath}` : '.'} Draftline will close in a moment so the installer can replace it, then reopen when the installer finishes — you'll be prompted first if you have unsaved changes.
+            Downloaded and verified{downloadPath ? `: ${downloadPath}` : '.'} Draftline will close in a moment so the update can be applied, then reopen when it finishes — you'll be prompted first if you have unsaved changes. On Linux the package manager runs in a terminal window and may ask for your password.
           </div>
         )}
         {updateState === 'idle' && (
