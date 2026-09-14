@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.19.02607] - 2026-09-14
+
+### Fixed
+- The Linux package step of the release build uses nfpm's prebuilt binary at a pinned version instead of compiling it from source, which failed once the newest nfpm required a newer Go than the build runner provides. 0.19.02606 produced no packages for this reason; this release carries everything it was meant to.
+
+---
+
 ## [0.19.02606] - 2026-09-14
 
 ### Added
