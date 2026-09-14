@@ -346,8 +346,7 @@ export function attributeSpeakers(
   }
 
   // A dialogue tag is often its own segmented sentence between quotations:
-  // “Technician Vale.” She said sharply. “The parts are ready.” Treat the
-  // narration sentence as an attribution anchor for adjacent quote spans in
+  // Treat that narration sentence as an attribution anchor for adjacent spans in
   // the same paragraph. The tag itself remains narration and keeps the
   // narrator voice.
   const adjacentSpanSpeakers = new Map<number, SpeakerKey>()

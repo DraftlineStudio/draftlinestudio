@@ -612,7 +612,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [0.17.02535] - 2026-09-03
 
 ### Fixed
-- Corrected Read Aloud character casting for dialogue tags segmented into standalone narration, including the exact `“Technician Vale.” She said sharply. “The parts are ready.”` failure. The intervening tag now anchors both adjacent quotations while remaining in the narrator voice, and pronoun-led action beats can anchor the quotation that follows.
+- Corrected Read Aloud character casting for dialogue tags segmented into standalone narration. The intervening tag now anchors both adjacent quotations while remaining in the narrator voice, and pronoun-led action beats can anchor the quotation that follows.
 - Cast-roster ambiguity is now scoped to characters who can occur in the active chapter. A same-surname character elsewhere in the manuscript no longer strips a valid local surname alias, as `Dr. Renee Alvarez` previously did to `Detective Renee Alvarez` in Chapter 1 of the benchmark manuscript.
 - Reordered fallback evidence so a previous paragraph's action beat cannot override established two-person turn-taking. Added a manuscript-derived interrogation fixture covering named and pronoun tags, action beats, same-paragraph continuation, and untagged replies, plus a cross-chapter namesake regression.
 
