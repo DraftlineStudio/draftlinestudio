@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.19.02607] - 2026-09-14
+
+### Fixed
+- Fixed Linux package builds by using a pinned prebuilt nfpm.
+
 ## [0.19.02606] - 2026-09-14
 
 ### Added

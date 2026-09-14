@@ -175,12 +175,17 @@ jobs:
       - name: Build deb and rpm packages
         # nfpm packages the same file layout as the AppDir for both families
         # from wails/build/linux/nfpm.yaml; no dpkg or rpmbuild is needed.
+        # The prebuilt release binary is used, pinned: building nfpm from
+        # source ties the job to whatever Go version its newest release wants.
+        env:
+          NFPM_VERSION: 2.47.0
         run: |
           set -euo pipefail
-          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+          curl -fsSL -o nfpm.tar.gz "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_Linux_x86_64.tar.gz"
+          tar -xzf nfpm.tar.gz nfpm
           export VERSION
           for packager in deb rpm; do
-            "$(go env GOPATH)/bin/nfpm" package --config wails/build/linux/nfpm.yaml \
+            ./nfpm package --config wails/build/linux/nfpm.yaml \
               --packager "$packager" --target "dist/Draftline-${LABEL}-linux-x86_64.$packager"
           done
           ls -l dist
