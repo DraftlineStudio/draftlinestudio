@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { LoadSettings, SaveSettings, BrowseForDirectory, GetRecentProjects, AddRecentProject, RemoveRecentProject, ClearRecentProjects } from '../../wailsjs/go/main/App'
 import { types } from '../../wailsjs/go/models'
+import type { main } from '../../wailsjs/go/models'
 import type { Section } from '../types/draftline'
 import type { AITaskRoutes } from '../services/aiRouting'
 
@@ -112,9 +113,11 @@ interface AppStore {
   clearRecentProjects: () => Promise<void>
   setShowWelcome: (show: boolean) => void
   setShowNewUniverse: (show: boolean) => void
-  // Set by the background update check when a newer release exists.
-  updateAvailable: { label: string } | null
-  setUpdateAvailable: (update: { label: string } | null) => void
+  // Set by the background update check when a newer release exists. Carries
+  // the full check result so the settings dialog can offer the download at
+  // once instead of asking for a second check.
+  updateAvailable: { label: string; result: main.UpdateCheckResult } | null
+  setUpdateAvailable: (update: { label: string; result: main.UpdateCheckResult } | null) => void
 }
 
 // saveChain serializes all backend SaveSettings writes so two rapid

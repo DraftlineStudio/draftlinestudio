@@ -47,6 +47,12 @@ nul
 # ─────────────────────────────────────────────────────────────────────────────
 *.log
 
+# Private manuscript diagnostics, experiment notes and generated reports.
+# Never publish these with source code or public documentation.
+.diag/
+*.draftline
+*.epub
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Static-analysis output (huge; findings are distilled into markdown reports)
 # ─────────────────────────────────────────────────────────────────────────────

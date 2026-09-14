@@ -117,7 +117,7 @@ checking the hallway) stay with the narrator, audiobook-style. Tiny fragments
 merge into their neighbor rather than being spoken alone.
 
 Dialogue tags may be segmented into their own narration sentence between two
-quotes (for example, `“Technician Vale.” She said sharply. “The parts are ready.”`). Draftline treats that intervening tag as evidence for both
+quotes. Draftline treats that intervening tag as evidence for both
 adjacent quote spans while continuing to read the tag itself in the narrator's
 voice. Pronoun-led action beats can similarly anchor the quote that follows.
 Surname ambiguity is evaluated within the active chapter, so two different

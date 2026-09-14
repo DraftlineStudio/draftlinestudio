@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.19.02602] - 2026-09-14
+
+### Changed
+- Added an Author tab to Settings.
+- The update chip now opens Settings with the download ready.
+
 ## [0.19.02601] - 2026-09-13
 
 ### Fixed

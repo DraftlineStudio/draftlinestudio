@@ -119,8 +119,8 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
   const updateButton = updateAvailable && (
     <button
       className="titlebar-update-chip"
-      onClick={() => openSettings()}
-      title={`Draftline ${updateAvailable.label} is available — open Settings to download`}
+      onClick={() => openSettings('application')}
+      title={`Draftline ${updateAvailable.label} is ready to download`}
       style={{ '--wails-draggable': 'no-drag' } as React.CSSProperties}
     >
       <svg className="titlebar-update-chip-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
