@@ -46,7 +46,7 @@ To remove: delete `HKCU\Software\Classes\Draftline.Project`, `.draftline`,
 and `Applications\draftline.exe`. Explorer may need a restart to refresh
 icons.
 
-## macOS (packaging asset, untested — no mac hardware here)
+## macOS (packaging asset)
 
 `build/darwin/Info.plist` declares `CFBundleDocumentTypes`: `.draftline` as
 an exported UTI (`com.draftline.project`, `LSHandlerRank Owner`), epub/docx
