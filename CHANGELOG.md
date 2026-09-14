@@ -4,6 +4,16 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.19.02603] - 2026-09-14
+
+### Changed
+- The Windows installer's finish page offers **Launch Draftline**, ticked by default, so an in-app update comes straight back after the installer replaces the closed app. The launch goes through the shell rather than the installer's elevated token, so Draftline runs as the signed-in user.
+
+### Fixed
+- Handing a downloaded installer to Windows no longer flashes a console window as the app closes.
+
+---
+
 ## [0.19.02602] - 2026-09-14
 
 ### Changed
