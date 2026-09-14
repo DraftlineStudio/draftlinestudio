@@ -111,8 +111,10 @@ func versionNewer(candidate, current string) bool {
 }
 
 // platformAssetSuffix names the release asset for this build's platform,
-// matching the packaging workflow's naming exactly.
-func platformAssetSuffix(goos, goarch string) string {
+// matching the packaging workflow's naming exactly. On Linux the asset
+// depends on how this copy was installed (see update_linux.go); an unknown
+// install kind gets no asset, so a source build is never handed a package.
+func platformAssetSuffix(goos, goarch, linuxKind string) string {
 	switch goos {
 	case "windows":
 		if goarch == "amd64" {
@@ -122,14 +124,22 @@ func platformAssetSuffix(goos, goarch string) string {
 		return "-macos-universal.dmg"
 	case "linux":
 		if goarch == "amd64" {
-			return "-linux-x86_64.AppImage"
+			return linuxAssetSuffix(linuxKind)
 		}
 	}
 	return ""
 }
 
-func pickReleaseAsset(release *githubRelease, goos, goarch string) *githubReleaseAsset {
-	suffix := platformAssetSuffix(goos, goarch)
+// installKind is the Linux install kind for this process ("" elsewhere).
+func installKind() string {
+	if runtime.GOOS != "linux" {
+		return ""
+	}
+	return linuxInstallKind()
+}
+
+func pickReleaseAsset(release *githubRelease, goos, goarch, linuxKind string) *githubReleaseAsset {
+	suffix := platformAssetSuffix(goos, goarch, linuxKind)
 	if suffix == "" {
 		return nil
 	}
@@ -228,7 +238,7 @@ func (a *App) CheckForUpdates() UpdateCheckResult {
 		result.ReleaseNotes = result.ReleaseNotes[:4000] + "…"
 	}
 	result.UpdateAvailable = versionNewer(version, AppVersion)
-	if asset := pickReleaseAsset(release, runtime.GOOS, runtime.GOARCH); asset != nil {
+	if asset := pickReleaseAsset(release, runtime.GOOS, runtime.GOARCH, installKind()); asset != nil {
 		result.AssetName = asset.Name
 		result.AssetSize = asset.Size
 	}
@@ -252,8 +262,12 @@ func (a *App) DownloadUpdate() UpdateDownloadResult {
 	if !ok || !versionNewer(version, AppVersion) {
 		return UpdateDownloadResult{Error: "No newer release is available."}
 	}
-	asset := pickReleaseAsset(release, runtime.GOOS, runtime.GOARCH)
+	kind := installKind()
+	asset := pickReleaseAsset(release, runtime.GOOS, runtime.GOARCH, kind)
 	if asset == nil {
+		if runtime.GOOS == "linux" && kind == "" {
+			return UpdateDownloadResult{Error: "This Draftline was not installed from a release package, so it cannot update itself. Download the AppImage, .deb, or .rpm from the release page."}
+		}
 		return UpdateDownloadResult{Error: "The newest release has no package for this platform yet."}
 	}
 	if asset.Size > maxUpdateDownloadBytes {
@@ -309,12 +323,13 @@ func (a *App) DownloadUpdate() UpdateDownloadResult {
 		return UpdateDownloadResult{Error: "The downloaded file did not match the release checksum." + discardNote(targetPath)}
 	}
 
-	launched := openDownloadedUpdate(targetPath)
-	if launched && runtime.GOOS != "linux" {
-		// The installer (or the mounted disk image's drag-to-replace) needs
-		// the running app out of the way. Give the frontend a moment to show
-		// the result, then close through the normal quit path — unsaved-work
-		// protection applies exactly as it does for the window close button.
+	launched := openDownloadedUpdate(targetPath, kind)
+	if launched {
+		// The installer (or the mounted disk image's drag-to-replace, or the
+		// package manager in its terminal) needs the running app out of the
+		// way. Give the frontend a moment to show the result, then close
+		// through the normal quit path — unsaved-work protection applies
+		// exactly as it does for the window close button.
 		go func() {
 			time.Sleep(2 * time.Second)
 			a.quit()
@@ -342,7 +357,12 @@ func (a *App) quit() {
 	}
 }
 
-func openDownloadedUpdate(path string) bool {
+// openDownloadedUpdate hands the verified download to whatever applies it on
+// this platform and reports whether that started. Linux applies the package
+// itself (update_packaging.go); when that is not possible the containing
+// folder is opened so the writer can finish by hand, and false is returned so
+// the app stays open.
+func openDownloadedUpdate(path, linuxKind string) bool {
 	var command *exec.Cmd
 	switch runtime.GOOS {
 	case "windows":
@@ -353,7 +373,11 @@ func openDownloadedUpdate(path string) bool {
 	case "darwin":
 		command = exec.Command("open", path)
 	default:
-		command = exec.Command("xdg-open", filepath.Dir(path))
+		if applyLinuxUpdate(linuxKind, path) {
+			return true
+		}
+		_ = exec.Command("xdg-open", filepath.Dir(path)).Start()
+		return false
 	}
 	return command.Start() == nil
 }

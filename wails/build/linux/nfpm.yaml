@@ -1,0 +1,53 @@
+# nfpm packaging spec for the Linux .deb and .rpm. Run from the repository
+# root by the release workflow with VERSION exported (the numeric version;
+# any pre-release suffix lives only in the asset file name):
+#
+#   nfpm package --config wails/build/linux/nfpm.yaml --packager deb --target dist/Draftline-<label>-linux-x86_64.deb
+#   nfpm package --config wails/build/linux/nfpm.yaml --packager rpm --target dist/Draftline-<label>-linux-x86_64.rpm
+#
+# The file layout mirrors the AppImage's AppDir so the desktop entry, MIME
+# registration, and icon behave identically however Draftline was installed.
+name: draftline
+arch: amd64
+platform: linux
+version: ${VERSION}
+release: "1"
+section: editors
+priority: optional
+maintainer: Draftline Studio <noreply@draftlinestudio.dev>
+description: |
+  Author's studio for planning, drafting, and exporting books.
+  A desktop writing application for novelists: a rich-text manuscript editor,
+  chapter history, character and continuity analysis, Read Aloud, and export
+  to EPUB, DOCX, and print-ready PDF.
+vendor: Draftline Studio
+homepage: https://github.com/DraftlineStudio/draftlinestudio
+license: MIT
+
+contents:
+  - src: wails/build/bin/draftline
+    dst: /usr/bin/draftline
+    file_info:
+      mode: 0755
+  - src: wails/build/linux/draftline.desktop
+    dst: /usr/share/applications/draftline.desktop
+  - src: wails/build/linux/draftline-mime.xml
+    dst: /usr/share/mime/packages/draftline-mime.xml
+  - src: wails/build/appicon.png
+    dst: /usr/share/icons/hicolor/512x512/apps/draftline.png
+
+scripts:
+  postinstall: wails/build/linux/postinstall.sh
+  postremove: wails/build/linux/postremove.sh
+
+# The WebKitGTK 4.1 runtime the binary is built against, under each family's
+# package name. Everything else Draftline needs is part of a desktop install.
+overrides:
+  deb:
+    depends:
+      - libwebkit2gtk-4.1-0
+      - libgtk-3-0
+  rpm:
+    depends:
+      - webkit2gtk4.1
+      - gtk3

@@ -4,6 +4,18 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.19.02606] - 2026-09-14
+
+### Added
+- Linux releases now ship a `.deb` (Debian, Ubuntu, Mint, Pop!_OS) and an `.rpm` (Fedora, RHEL, openSUSE) alongside the AppImage. Both install with a double-click or one package-manager command and register the desktop entry, icon, and `.draftline` file association system-wide.
+- The in-app updater applies Linux updates itself. A `.deb` or `.rpm` install downloads the matching package and opens a terminal window that runs the system package manager (it may ask for your password), resolves dependencies, and starts the new Draftline. An AppImage is replaced in place and relaunched. A copy built from source is pointed at the release page instead.
+
+### Fixed
+- Linux packages are now built on Ubuntu 22.04 so they start on 22.04 as well as newer releases; a build from 24.04 installed on 22.04 but would not launch.
+- The AppImage embeds a current static runtime with its own FUSE support, so it runs without installing the `libfuse2` package first.
+
+---
+
 ## [0.19.02605] - 2026-09-14
 
 ### Added

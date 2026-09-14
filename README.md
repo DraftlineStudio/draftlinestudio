@@ -44,7 +44,7 @@ AI debug logging is opt-in because its logs can contain prompts and manuscript t
 
 ## Downloads
 
-Prebuilt packages are attached to each [GitHub release](https://github.com/DraftlineStudio/draftlinestudio/releases): a Windows installer and portable exe, a universal macOS disk image, and a Linux AppImage. See [docs/RELEASING.md](docs/RELEASING.md) for platform requirements and signing status.
+Prebuilt packages are attached to each [GitHub release](https://github.com/DraftlineStudio/draftlinestudio/releases): a Windows installer and portable exe, a universal macOS disk image, and Linux packages (`.deb` for Debian and Ubuntu, `.rpm` for Fedora and openSUSE, plus an AppImage). See [docs/RELEASING.md](docs/RELEASING.md) for platform requirements and signing status.
 
 ## Building from source
 

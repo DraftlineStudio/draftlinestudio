@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -52,28 +53,70 @@ func TestPickReleaseAsset(t *testing.T) {
 		{Name: "Draftline-0.18.02600-beta-windows-amd64-portable.zip"},
 		{Name: "Draftline-0.18.02600-beta-macos-universal.dmg"},
 		{Name: "Draftline-0.18.02600-beta-linux-x86_64.AppImage"},
+		{Name: "Draftline-0.18.02600-beta-linux-x86_64.deb"},
+		{Name: "Draftline-0.18.02600-beta-linux-x86_64.rpm"},
 		{Name: "SHA256SUMS.txt"},
 	}}
 	cases := []struct {
-		goos, goarch, want string
+		goos, goarch, linuxKind, want string
 	}{
-		{"windows", "amd64", "Draftline-0.18.02600-beta-windows-amd64-setup.exe"},
-		{"darwin", "arm64", "Draftline-0.18.02600-beta-macos-universal.dmg"},
-		{"darwin", "amd64", "Draftline-0.18.02600-beta-macos-universal.dmg"},
-		{"linux", "amd64", "Draftline-0.18.02600-beta-linux-x86_64.AppImage"},
+		{"windows", "amd64", "", "Draftline-0.18.02600-beta-windows-amd64-setup.exe"},
+		{"darwin", "arm64", "", "Draftline-0.18.02600-beta-macos-universal.dmg"},
+		{"darwin", "amd64", "", "Draftline-0.18.02600-beta-macos-universal.dmg"},
+		// Linux gets the package matching how this copy was installed.
+		{"linux", "amd64", "appimage", "Draftline-0.18.02600-beta-linux-x86_64.AppImage"},
+		{"linux", "amd64", "deb", "Draftline-0.18.02600-beta-linux-x86_64.deb"},
+		{"linux", "amd64", "rpm", "Draftline-0.18.02600-beta-linux-x86_64.rpm"},
 	}
 	for _, c := range cases {
-		asset := pickReleaseAsset(release, c.goos, c.goarch)
+		asset := pickReleaseAsset(release, c.goos, c.goarch, c.linuxKind)
 		if asset == nil || asset.Name != c.want {
-			t.Fatalf("pickReleaseAsset(%s/%s) = %v, want %s", c.goos, c.goarch, asset, c.want)
+			t.Fatalf("pickReleaseAsset(%s/%s/%q) = %v, want %s", c.goos, c.goarch, c.linuxKind, asset, c.want)
 		}
 	}
-	if pickReleaseAsset(release, "linux", "arm64") != nil {
+	if pickReleaseAsset(release, "linux", "arm64", "appimage") != nil {
 		t.Fatal("platforms without a published package must not match another platform's asset")
 	}
+	// A Linux build that did not come from a release package (source build,
+	// hand-unpacked tarball) has no in-app update path.
+	if pickReleaseAsset(release, "linux", "amd64", "") != nil {
+		t.Fatal("an unknown Linux install kind must not be offered a package")
+	}
 	// The portable zip must never shadow the installer.
-	if asset := pickReleaseAsset(release, "windows", "amd64"); asset == nil || asset.Name != cases[0].want {
+	if asset := pickReleaseAsset(release, "windows", "amd64", ""); asset == nil || asset.Name != cases[0].want {
 		t.Fatalf("windows picked %v", asset)
+	}
+}
+
+// The terminal script must install with the detected package manager and,
+// on failure, keep its window open rather than vanishing with the error.
+func TestPackageInstallScript(t *testing.T) {
+	script := packageInstallScript("/home/w/.cache/Draftline/updates/Draftline-0.19.02606-linux-x86_64.deb")
+	for _, want := range []string{
+		`PKG="/home/w/.cache/Draftline/updates/Draftline-0.19.02606-linux-x86_64.deb"`,
+		"sudo apt-get install -y \"$PKG\"",
+		"sudo dnf install -y \"$PKG\"",
+		"sudo zypper --non-interactive install --allow-unsigned-rpm \"$PKG\"",
+		"(setsid draftline >/dev/null 2>&1 &)",
+		"read -r _",
+	} {
+		if !strings.Contains(script, want) {
+			t.Fatalf("install script missing %q:\n%s", want, script)
+		}
+	}
+}
+
+func TestLinuxAssetSuffix(t *testing.T) {
+	for kind, want := range map[string]string{
+		"appimage": "-linux-x86_64.AppImage",
+		"deb":      "-linux-x86_64.deb",
+		"rpm":      "-linux-x86_64.rpm",
+		"":         "",
+		"snap":     "",
+	} {
+		if got := linuxAssetSuffix(kind); got != want {
+			t.Fatalf("linuxAssetSuffix(%q) = %q, want %q", kind, got, want)
+		}
 	}
 }
 
