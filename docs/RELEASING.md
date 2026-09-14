@@ -20,7 +20,7 @@ signed-in user rather than inheriting the installer's elevated token
 | `Draftline-<version>-macos-universal.dmg` | macOS 10.15+, Intel and Apple Silicon | Drag-to-Applications disk image. Ad-hoc signed unless Apple credentials are configured (see below). |
 | `Draftline-<version>-linux-x86_64.deb` | Debian, Ubuntu 22.04+, Mint, Pop!_OS, and derivatives (x86_64) | The recommended Linux install. Double-click, or `sudo apt install ./Draftline-<version>-linux-x86_64.deb`; apt pulls in WebKitGTK 4.1 and GTK 3 itself. Registers the desktop entry, icon, and `.draftline` association system-wide. |
 | `Draftline-<version>-linux-x86_64.rpm` | Fedora 36+, RHEL 9+, openSUSE, and derivatives (x86_64) | `sudo dnf install ./Draftline-<version>-linux-x86_64.rpm` (or `zypper`). Same contents and dependencies as the .deb. |
-| `Draftline-<version>-linux-x86_64.AppImage` | Any x86_64 Linux with WebKitGTK 4.1 and GTK 3 installed | Mark executable and run. Self-contained runtime with its own FUSE support, so no `libfuse2` package is needed. Nothing is registered with the desktop. |
+| `Draftline-<version>-linux-x86_64.AppImage` | Other x86_64 distributions with WebKitGTK 4.1 and GTK 3 installed (Arch, Alpine, NixOS, and the like) | Mark executable and run. Nothing is registered with the desktop. Does not start on Ubuntu 22.04 (verified on hardware); Debian and Ubuntu-family users should take the `.deb`, Red Hat-family users the `.rpm`. On Ubuntu 24.04 the `.deb` is still the first choice, with the AppImage as the fallback. |
 | `SHA256SUMS.txt` | all | Checksums of every asset. |
 
 ## Cutting a release
