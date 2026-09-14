@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.19.02603] - 2026-09-14
+
+### Changed
+- The Windows installer can relaunch Draftline after an in-app update.
+
+### Fixed
+- Launching a downloaded installer no longer flashes a console window.
+
 ## [0.19.02602] - 2026-09-14
 
 ### Changed

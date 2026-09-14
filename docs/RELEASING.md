@@ -4,6 +4,13 @@ Publishing a GitHub release builds installers for all three desktop platforms
 and attaches them to that release. The automation lives in
 `.github/workflows/release.yml`.
 
+The Windows installer's finish page offers **Launch Draftline**, ticked by
+default. The in-app updater closes Draftline before handing the downloaded
+installer to the shell, so this is what brings the app back once the update
+is applied. The launch goes through `explorer.exe` so Draftline starts as the
+signed-in user rather than inheriting the installer's elevated token
+(`LaunchDraftline` in `wails/build/windows/installer/project.nsi`).
+
 ## What a release produces
 
 | Asset | Platform | Notes |

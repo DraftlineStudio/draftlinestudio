@@ -62,6 +62,13 @@ ManifestDPIAware true
 !insertmacro MUI_PAGE_LICENSE "..\..\..\..\LICENSE" # Repository LICENSE (MIT); makensis runs from this directory.
 !insertmacro MUI_PAGE_DIRECTORY # In which folder install page.
 !insertmacro MUI_PAGE_INSTFILES # Installing page.
+# Offer to launch Draftline from the finish page, ticked by default, so an
+# in-app update (which closes Draftline before running this installer) comes
+# straight back. Launched through explorer.exe so the app runs as the signed-in
+# user rather than inheriting the installer's elevated token.
+!define MUI_FINISHPAGE_RUN
+!define MUI_FINISHPAGE_RUN_TEXT "Launch ${INFO_PRODUCTNAME}"
+!define MUI_FINISHPAGE_RUN_FUNCTION LaunchDraftline
 !insertmacro MUI_PAGE_FINISH # Finished installation page.
 
 !insertmacro MUI_UNPAGE_INSTFILES # Uinstalling page
@@ -87,6 +94,10 @@ ShowInstDetails show # This will always show the installation details.
 
 Function .onInit
    !insertmacro wails.checkArchitecture
+FunctionEnd
+
+Function LaunchDraftline
+   Exec '"$WINDIR\explorer.exe" "$INSTDIR\${PRODUCT_EXECUTABLE}"'
 FunctionEnd
 
 Section

@@ -22,6 +22,8 @@ import (
 	"strings"
 	"time"
 
+	"draftline/internal/platform"
+
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -344,7 +346,10 @@ func openDownloadedUpdate(path string) bool {
 	var command *exec.Cmd
 	switch runtime.GOOS {
 	case "windows":
+		// start hands the installer to the shell; the cmd.exe wrapper itself
+		// must not flash a console over the closing app.
 		command = exec.Command("cmd", "/C", "start", "", path)
+		platform.HideWindow(command)
 	case "darwin":
 		command = exec.Command("open", path)
 	default:
