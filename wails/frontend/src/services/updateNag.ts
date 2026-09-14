@@ -19,7 +19,7 @@ async function runCheck(): Promise<void> {
   try {
     const result = await CheckForUpdates()
     if (result.update_available && result.latest_label && !result.error) {
-      setUpdateAvailable({ label: result.latest_label })
+      setUpdateAvailable({ label: result.latest_label, result })
     } else {
       setUpdateAvailable(null)
     }

@@ -1,6 +1,6 @@
-// Application Settings Section - Identity, Theme, Save Location, Updates
+// Application Settings Section - Updates, Theme, Saving & Recovery, Analysis
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CheckForUpdates, DownloadUpdate } from '../../../../wailsjs/go/main/App'
 import { BrowserOpenURL } from '../../../../wailsjs/runtime/runtime'
 import type { main } from '../../../../wailsjs/go/models'
@@ -9,9 +9,6 @@ import { checkNow } from '../../../services/updateNag'
 import type { ApplicationSectionProps } from './types'
 
 export default function ApplicationSection({
-  author, setAuthor,
-  publisher, setPublisher,
-  copyright, setCopyright,
   saveDir, setSaveDir,
   themeMode, setThemeMode,
   autoThemeUseManual, setAutoThemeUseManual,
@@ -23,9 +20,13 @@ export default function ApplicationSection({
 }: ApplicationSectionProps) {
   const updateCheckEnabled = useAppStore(s => s.settings.update_check_enabled)
   const saveAppSettings = useAppStore(s => s.saveSettings)
+  const knownUpdate = useAppStore(s => s.updateAvailable)
   const setUpdateAvailable = useAppStore(s => s.setUpdateAvailable)
-  const [updateState, setUpdateState] = useState<'idle' | 'checking' | 'checked' | 'downloading' | 'downloaded'>('idle')
-  const [updateResult, setUpdateResult] = useState<main.UpdateCheckResult | null>(null)
+  // The background check already knows whether a newer version exists. Seed
+  // from it so the title-bar chip leads straight to a ready Download button
+  // instead of a second manual check.
+  const [updateState, setUpdateState] = useState<'idle' | 'checking' | 'checked' | 'downloading' | 'downloaded'>(knownUpdate ? 'checked' : 'idle')
+  const [updateResult, setUpdateResult] = useState<main.UpdateCheckResult | null>(knownUpdate?.result ?? null)
   const [updateError, setUpdateError] = useState('')
   const [downloadPath, setDownloadPath] = useState('')
 
@@ -38,11 +39,23 @@ export default function ApplicationSection({
       setUpdateResult(result)
       setUpdateError(result.error || '')
       setUpdateState('checked')
+      if (result.update_available && result.latest_label && !result.error) {
+        setUpdateAvailable({ label: result.latest_label, result })
+      } else if (!result.error) {
+        setUpdateAvailable(null)
+      }
     } catch {
       setUpdateError('Could not check for updates.')
       setUpdateState('checked')
     }
   }
+
+  // With automatic checks on, opening this section is itself the ask: run a
+  // check when nothing is known yet so the answer is waiting, not a button.
+  useEffect(() => {
+    if (!knownUpdate && updateCheckEnabled) void runUpdateCheck()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const runUpdateDownload = async () => {
     setUpdateState('downloading')
@@ -62,30 +75,77 @@ export default function ApplicationSection({
     }
   }
 
+  const updateReady = !updateError && updateResult?.update_available && (updateState === 'checked' || updateState === 'downloading')
+
   return (
     <>
-      <div className="settings-section-label" style={{ marginTop: 0 }}>Identity</div>
+      <div className="settings-section-label" style={{ marginTop: 0 }}>Updates</div>
       <div className="dialog-field">
-        <label className="dialog-label">Default Author Name</label>
-        <input className="dialog-input" value={author} onChange={e => setAuthor(e.target.value)} placeholder="Your name" autoFocus />
-        <div className="settings-hint">Pre-filled when creating a new book.</div>
+        <div className="settings-path-row">
+          {updateReady && (
+            <button
+              className="dialog-btn primary settings-browse-btn"
+              onClick={() => void runUpdateDownload()}
+              disabled={updateState === 'downloading'}
+            >
+              {updateState === 'downloading' ? 'Downloading…' : `Download ${updateResult?.latest_label ?? ''}`}
+            </button>
+          )}
+          <button
+            className="dialog-btn settings-browse-btn"
+            onClick={() => void runUpdateCheck()}
+            disabled={updateState === 'checking' || updateState === 'downloading'}
+          >
+            {updateState === 'checking' ? 'Checking…' : updateReady ? 'Check again' : 'Check for Updates'}
+          </button>
+        </div>
+        {updateError && <div className="settings-hint">{updateError}</div>}
+        {!updateError && updateState === 'checked' && updateResult && !updateResult.update_available && (
+          <div className="settings-hint">You're up to date ({updateResult.current_version}).</div>
+        )}
+        {updateReady && updateResult && (
+          <div className="settings-hint">
+            Version {updateResult.latest_label} is ready to download (you have {updateResult.current_version}).{' '}
+            {updateResult.release_url && (
+              <a
+                href="#"
+                onClick={event => { event.preventDefault(); BrowserOpenURL(updateResult.release_url!) }}
+              >
+                Release notes
+              </a>
+            )}
+            {!updateResult.asset_name && ' No package is published for this platform yet — use the release page.'}
+          </div>
+        )}
+        {updateState === 'downloaded' && (
+          <div className="settings-hint">
+            Downloaded and verified{downloadPath ? `: ${downloadPath}` : '.'} Draftline will close in a moment so the installer can replace it, then reopen when the installer finishes — you'll be prompted first if you have unsaved changes.
+          </div>
+        )}
+        {updateState === 'idle' && (
+          <div className="settings-hint">
+            Checks the Draftline releases page on GitHub. Nothing is downloaded unless you ask.
+          </div>
+        )}
       </div>
       <div className="dialog-field">
-        <label className="dialog-label">Default Publisher</label>
-        <input className="dialog-input" value={publisher} onChange={e => setPublisher(e.target.value)} placeholder="Publisher or imprint name" />
-      </div>
-
-      <div className="settings-section-label">Copyright Template</div>
-      <div className="dialog-field">
-        <label className="dialog-label">Default Copyright Text</label>
-        <textarea
-          className="dialog-input settings-copyright-textarea"
-          value={copyright}
-          onChange={e => setCopyright(e.target.value)}
-          placeholder={"Copyright © [YEAR] [AUTHOR]. All rights reserved.\n\nNo part of this publication may be reproduced..."}
-          rows={5}
-        />
-        <div className="settings-hint">Inserted into the Copyright page of every new book. Use [YEAR] and [AUTHOR] as placeholders.</div>
+        <label className="settings-toggle">
+          <input
+            type="checkbox"
+            checked={updateCheckEnabled}
+            onChange={e => {
+              const enabled = e.target.checked
+              void saveAppSettings({ update_check_enabled: enabled })
+              if (enabled) checkNow()
+              else setUpdateAvailable(null)
+            }}
+          />
+          <span className="settings-toggle-track"><span className="settings-toggle-thumb" /></span>
+          <span className="settings-toggle-label">Check for updates automatically</span>
+        </label>
+        <div className="settings-hint">
+          Checks the GitHub releases page on launch and once an hour, and shows a small arrow in the title bar when a newer version exists. Nothing downloads without you asking.
+        </div>
       </div>
 
       <div className="settings-section-label">Interface</div>
@@ -161,13 +221,7 @@ export default function ApplicationSection({
           )}
         </div>
       )}
-      <div className="dialog-field">
-        <label className="dialog-label">Default Save Location</label>
-        <div className="settings-path-row">
-          <input className="dialog-input" value={saveDir} onChange={e => setSaveDir(e.target.value)} placeholder="Leave blank to use system default" />
-          <button className="dialog-btn settings-browse-btn" onClick={onBrowse}>Browse…</button>
-        </div>
-      </div>
+
       <div className="settings-section-label">Saving &amp; Recovery</div>
       <div className="dialog-field">
         <label className="settings-toggle">
@@ -183,6 +237,14 @@ export default function ApplicationSection({
           Saves paused edits and records changed chapter versions during active writing. When disabled, Draftline saves only when you ask it to.
         </div>
       </div>
+      <div className="dialog-field">
+        <label className="dialog-label">Default Save Location</label>
+        <div className="settings-path-row">
+          <input className="dialog-input" value={saveDir} onChange={e => setSaveDir(e.target.value)} placeholder="Leave blank to use system default" />
+          <button className="dialog-btn settings-browse-btn" onClick={onBrowse}>Browse…</button>
+        </div>
+      </div>
+
       <div className="settings-section-label">Background Analysis</div>
       <div className="dialog-field">
         <label className="dialog-label">CPU usage</label>
@@ -199,75 +261,6 @@ export default function ApplicationSection({
         <div className="settings-hint">
           These limits apply only to linguistic and evidence-analysis workers. They never constrain Draftline's scheduler, bindings, files, asset server, or Read Aloud. Adaptive uses Balanced workers and adds a bounded-memory queue for large manuscripts.
         </div>
-      </div>
-
-      <div className="settings-section-label">Updates</div>
-      <div className="dialog-field">
-        <label className="settings-toggle">
-          <input
-            type="checkbox"
-            checked={updateCheckEnabled}
-            onChange={e => {
-              const enabled = e.target.checked
-              void saveAppSettings({ update_check_enabled: enabled })
-              if (enabled) checkNow()
-              else setUpdateAvailable(null)
-            }}
-          />
-          <span className="settings-toggle-track"><span className="settings-toggle-thumb" /></span>
-          <span className="settings-toggle-label">Check for updates automatically</span>
-        </label>
-        <div className="settings-hint">
-          Checks the GitHub releases page on launch and once an hour, and shows a small arrow in the title bar when a newer version exists. Nothing downloads without you asking.
-        </div>
-      </div>
-      <div className="dialog-field">
-        <div className="settings-path-row">
-          <button
-            className="dialog-btn settings-browse-btn"
-            onClick={() => void runUpdateCheck()}
-            disabled={updateState === 'checking' || updateState === 'downloading'}
-          >
-            {updateState === 'checking' ? 'Checking…' : 'Check for Updates'}
-          </button>
-          {updateState !== 'idle' && updateState !== 'checking' && updateResult?.update_available && !updateError && (
-            <button
-              className="dialog-btn settings-browse-btn"
-              onClick={() => void runUpdateDownload()}
-              disabled={updateState === 'downloading' || updateState === 'downloaded'}
-            >
-              {updateState === 'downloading' ? 'Downloading…' : `Download ${updateResult.latest_label ?? ''}`}
-            </button>
-          )}
-        </div>
-        {updateError && <div className="settings-hint">{updateError}</div>}
-        {!updateError && updateState === 'checked' && updateResult && !updateResult.update_available && (
-          <div className="settings-hint">You're up to date ({updateResult.current_version}).</div>
-        )}
-        {!updateError && (updateState === 'checked' || updateState === 'downloading') && updateResult?.update_available && (
-          <div className="settings-hint">
-            Version {updateResult.latest_label} is available (you have {updateResult.current_version}).{' '}
-            {updateResult.release_url && (
-              <a
-                href="#"
-                onClick={event => { event.preventDefault(); BrowserOpenURL(updateResult.release_url!) }}
-              >
-                Release notes
-              </a>
-            )}
-            {!updateResult.asset_name && ' No package is published for this platform yet — use the release page.'}
-          </div>
-        )}
-        {updateState === 'downloaded' && (
-          <div className="settings-hint">
-            Downloaded and verified{downloadPath ? `: ${downloadPath}` : '.'} Draftline will close in a moment so the installer can replace it — you'll be prompted first if you have unsaved changes.
-          </div>
-        )}
-        {updateState === 'idle' && (
-          <div className="settings-hint">
-            Checks the Draftline releases page on GitHub. Nothing is checked or downloaded unless you ask.
-          </div>
-        )}
       </div>
     </>
   )

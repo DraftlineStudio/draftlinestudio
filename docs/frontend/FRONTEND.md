@@ -40,7 +40,7 @@ frontend/src/
 │   │       └── *Panel.tsx      # One component per panel (styles in global.css)
 │   └── dialogs/
 │       ├── AppSettingsDialog.tsx  # 2-line re-export shim → settings/
-│       ├── settings/              # Settings dialog sections (Application, Book, AI Studio, Plugins, Read Aloud)
+│       ├── settings/              # Settings dialog sections (Author, Application, Book, AI Studio, Plugins, Read Aloud)
 │       ├── ChapterHistoryDialog.tsx
 │       ├── ExportWizard.tsx
 │       ├── MetadataDialog.tsx

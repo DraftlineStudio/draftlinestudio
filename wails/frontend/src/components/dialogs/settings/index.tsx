@@ -7,6 +7,7 @@ import { EventsOn } from '../../../../wailsjs/runtime/runtime'
 import type { types } from '../../../../wailsjs/go/models'
 import type { SettingsSection, AIMode, AIProvider, ThemeMode, EditorFontSize, AnalysisCPUProfile, ClaudeCodeSetupStep, TestStatus } from './types'
 import ApplicationSection from './ApplicationSection'
+import AuthorSection from './AuthorSection'
 import AIStudioSection from './AIStudioSection'
 import BookSection from './BookSection'
 import PluginsSection from './PluginsSection'
@@ -21,7 +22,7 @@ export default function AppSettingsDialog() {
 
   // Callers can deep-link a section (e.g. the Read Aloud rail icon when the
   // voice model needs setup).
-  const validSections: SettingsSection[] = ['application', 'plugins', 'ai', 'readaloud', 'book']
+  const validSections: SettingsSection[] = ['author', 'application', 'plugins', 'ai', 'readaloud', 'book']
   const [section, setSection] = useState<SettingsSection>(
     validSections.includes(settingsInitialSection as SettingsSection)
       ? settingsInitialSection as SettingsSection
@@ -326,9 +327,15 @@ export default function AppSettingsDialog() {
         <div className="settings-body">
           {/* Left nav */}
           <nav className="settings-nav">
-            <button className={`settings-nav-item${section === 'application' ? ' active' : ''}`} onClick={() => setSection('application')}>
+            <button className={`settings-nav-item${section === 'author' ? ' active' : ''}`} onClick={() => setSection('author')}>
               <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
                 <circle cx="7" cy="5" r="2.4"/><path d="M2 12c0-2.8 2.2-5 5-5s5 2.2 5 5"/>
+              </svg>
+              Author
+            </button>
+            <button className={`settings-nav-item${section === 'application' ? ' active' : ''}`} onClick={() => setSection('application')}>
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+                <path d="M2 4h10M2 7h10M2 10h10"/><circle cx="5" cy="4" r="1.3" fill="var(--bg-panel)"/><circle cx="9.5" cy="7" r="1.3" fill="var(--bg-panel)"/><circle cx="4" cy="10" r="1.3" fill="var(--bg-panel)"/>
               </svg>
               Application
             </button>
@@ -374,11 +381,16 @@ export default function AppSettingsDialog() {
 
           {/* Content pane */}
           <div className="settings-content">
-            {section === 'application' && (
-              <ApplicationSection
+            {section === 'author' && (
+              <AuthorSection
                 author={author} setAuthor={setAuthor}
                 publisher={publisher} setPublisher={setPublisher}
                 copyright={copyright} setCopyright={setCopyright}
+              />
+            )}
+
+            {section === 'application' && (
+              <ApplicationSection
                 saveDir={saveDir} setSaveDir={setSaveDir}
                 themeMode={themeMode} setThemeMode={setThemeMode}
                 autoThemeUseManual={autoThemeUseManual} setAutoThemeUseManual={setAutoThemeUseManual}

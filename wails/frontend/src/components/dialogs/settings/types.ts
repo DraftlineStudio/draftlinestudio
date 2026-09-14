@@ -3,7 +3,7 @@
 import type { types } from '../../../../wailsjs/go/models'
 import type { AIProviderMode, AITaskRoutes } from '../../../services/aiRouting'
 
-export type SettingsSection = 'application' | 'plugins' | 'ai' | 'readaloud' | 'book' | 'plugin'
+export type SettingsSection = 'author' | 'application' | 'plugins' | 'ai' | 'readaloud' | 'book' | 'plugin'
 
 export type AIMode = AIProviderMode
 export type AIProvider = 'claude' | 'openai' | 'gemini' | 'grok' | ''
@@ -14,13 +14,16 @@ export type AnalysisCPUProfile = 'adaptive' | 'gentle' | 'balanced' | 'fast'
 export type ClaudeCodeSetupStep = 'idle' | 'running' | 'auth' | 'auth-waiting' | 'done' | 'error'
 export type TestStatus = 'idle' | 'testing' | 'ok' | 'error'
 
-export interface ApplicationSectionProps {
+export interface AuthorSectionProps {
   author: string
   setAuthor: (v: string) => void
   publisher: string
   setPublisher: (v: string) => void
   copyright: string
   setCopyright: (v: string) => void
+}
+
+export interface ApplicationSectionProps {
   saveDir: string
   setSaveDir: (v: string) => void
   themeMode: ThemeMode

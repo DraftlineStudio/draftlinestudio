@@ -4,6 +4,14 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.19.02602] - 2026-09-14
+
+### Changed
+- Settings has an **Author** tab of its own for the default author, publisher, and copyright template. The **Application** tab now leads with Updates, then Theme, then Saving & Recovery (activity-based saving and the default save location, which used to sit under the theme controls), then Background Analysis.
+- The title-bar update chip opens straight to the Updates section with the download already offered: the background check's result is carried into the dialog, so there is no second "Check for Updates" click and no scrolling past the author fields. Opening the Application tab with automatic checks enabled also runs a check when nothing is known yet.
+
+---
+
 ## [0.19.02601] - 2026-09-13
 
 ### Fixed
