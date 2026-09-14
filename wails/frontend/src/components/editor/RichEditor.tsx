@@ -22,7 +22,6 @@ import ReadAloudPlayerBar from './readaloud/ReadAloudPlayerBar'
 import ReopenButton from './readaloud/ReopenButton'
 import { useReadAloudStore } from '../../store/readAloudStore'
 import ContextMenu, { ContextMenuItem } from '../ContextMenu'
-import InlinePrompt from './InlinePrompt'
 import { checkWord, getDictionaryRoot, getImmediateSuggestions, getSuggestions, isLoaded as isSpellCheckLoaded, normalizeCustomDictionary, setCustomWords, setIgnoredWords, setSpellCheckEnabled } from '../../services/spellCheck'
 import { analyzeGrammar, setGrammarCheckEnabled, type GrammarIssue } from '../../services/grammarCheck'
 import { useBookStore } from '../../store/bookStore'
@@ -66,7 +65,6 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
   const [editingSubtitle, setEditingSubtitle] = useState(false)
   const [titleValue, setTitleValue] = useState(chapterName || '')
   const [subtitleValue, setSubtitleValue] = useState(chapterSubtitle || '')
-  const [showAiDisabledModal, setShowAiDisabledModal] = useState(false)
   const titleInputRef = useRef<HTMLInputElement>(null)
   const subtitleInputRef = useRef<HTMLInputElement>(null)
   const { settings, openSettings, saveSettings } = useAppStore()
@@ -192,65 +190,6 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
       subtitleInputRef.current.select()
     }
   }, [editingSubtitle])
-
-  // Inline AI prompt state — subscribe to editorStore directly; the bookStore
-  // bridge getter does not notify bookStore subscribers when editorStore changes
-  const inlinePrompt = useEditorStore(s => s.inlinePrompt)
-  const openInlinePrompt = useEditorStore(s => s.openInlinePrompt)
-
-  // Ctrl+L to open inline prompt (if AI is enabled)
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
-        e.preventDefault()
-        if (!editor || inlinePrompt) return
-
-        // Check if AI is enabled
-        if (!settings.ai_enabled) {
-          setShowAiDisabledModal(true)
-          return
-        }
-
-        const { from } = editor.state.selection
-        openInlinePrompt(from)
-      }
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [editor, inlinePrompt, openInlinePrompt, settings.ai_enabled])
-
-  // Get context around cursor for inline prompt
-  const getInlineContext = useCallback(() => {
-    if (!editor || !inlinePrompt) return { before: '', after: '' }
-
-    const { doc } = editor.state
-    const pos = inlinePrompt.cursorPos
-    const docSize = doc.content.size
-
-    // Get ~500 chars before and ~300 chars after
-    const beforeStart = Math.max(0, pos - 500)
-    const afterEnd = Math.min(docSize, pos + 300)
-
-    const before = doc.textBetween(beforeStart, pos, '\n\n')
-    const after = doc.textBetween(pos, afterEnd, '\n\n')
-
-    return { before, after }
-  }, [editor, inlinePrompt])
-
-  // Handle inserting generated content
-  const handleInlineInsert = useCallback((html: string) => {
-    if (!editor || !inlinePrompt) return
-
-    editor
-      .chain()
-      .focus()
-      .setTextSelection(inlinePrompt.cursorPos)
-      .insertContent(html)
-      .run()
-
-    // Trigger content update
-    onUpdate(editor.getHTML())
-  }, [editor, inlinePrompt, onUpdate])
 
   // Handle context menu on editor
   function handleContextMenu(e: React.MouseEvent) {
@@ -555,14 +494,6 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
             <EditorContent editor={editor} />
           </div>
         </div>
-        {inlinePrompt && (
-          <InlinePrompt
-            onInsert={handleInlineInsert}
-            onCancel={() => editor?.commands.focus()}
-            beforeContext={getInlineContext().before}
-            afterContext={getInlineContext().after}
-          />
-        )}
       </div>
       <ReadAloudBarGate />
       <ReopenButton />
@@ -574,27 +505,6 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
           items={contextMenuItems}
           onClose={() => setContextMenu(null)}
         />
-      )}
-      {showAiDisabledModal && (
-        <div className="dialog-overlay" onClick={() => setShowAiDisabledModal(false)}>
-          <div className="dialog ai-disabled-dialog" onClick={e => e.stopPropagation()}>
-            <div className="dialog-title">AI Features Disabled</div>
-            <p className="ai-disabled-message">
-              AI features are currently disabled. Enable them in Settings to use inline AI generation, rewriting, and other AI-powered tools.
-            </p>
-            <div className="dialog-actions">
-              <button className="ai-link-btn" onClick={() => setShowAiDisabledModal(false)}>
-                Dismiss
-              </button>
-              <button
-                className="ai-run-btn"
-                onClick={() => { setShowAiDisabledModal(false); openSettings() }}
-              >
-                Open Settings
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   )

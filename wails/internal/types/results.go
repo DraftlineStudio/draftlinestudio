@@ -73,11 +73,3 @@ type RecentProjectStats struct {
 	Words    int  `json:"words"`
 }
 
-// InlineGenerateRequest contains the context for inline AI generation.
-type InlineGenerateRequest struct {
-	Instruction   string   `json:"instruction"`    // User's prompt
-	BeforeContext string   `json:"before_context"` // Text before cursor (2-3 paragraphs)
-	AfterContext  string   `json:"after_context"`  // Text after cursor (1-2 paragraphs)
-	Characters    []string `json:"characters"`     // Character names from story bible
-	ChapterTitle  string   `json:"chapter_title"`  // Current chapter title
-}

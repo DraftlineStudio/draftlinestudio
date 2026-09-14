@@ -43,7 +43,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.19.02603"
+const AppVersion = "0.19.02604"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -953,73 +953,6 @@ CRITICAL: Return ONLY the revised text content. Do not include any instructions,
 	}
 	logging.AI("========== RewriteTextCustom END ==========")
 	return res
-}
-
-// GenerateInlineContent generates new content based on context and instruction
-func (a *App) GenerateInlineContent(req types.InlineGenerateRequest) types.AIRewriteResult {
-	s := a.getSettings()
-	if !s.AIEnabled {
-		return types.AIRewriteResult{Error: "AI features are disabled — enable them in App Settings"}
-	}
-	if req.Instruction == "" {
-		return types.AIRewriteResult{Error: "no instruction provided"}
-	}
-
-	// Build character context
-	charContext := ""
-	if len(req.Characters) > 0 {
-		charContext = fmt.Sprintf("\n\ntypes.Characters in this story: %s", strings.Join(req.Characters, ", "))
-	}
-
-	// Build style guide section if configured
-	styleBlock := ""
-	if s.ProseGuide != "" {
-		styleBlock = "\n\nSTYLE GUIDE — match the rhythm, vocabulary, and voice of these examples:\n---\n" + s.ProseGuide + "\n---"
-	}
-
-	banned := "BANNED words and phrases: tapestry, testament, navigate, delve, underscore, myriad, realm, crucial, pivotal, journey, beacon, vibrant, game-changer"
-
-	system := fmt.Sprintf(`You are a skilled fiction author helping write a manuscript.
-Generate new content that seamlessly fits between the existing prose.
-Match the voice, style, tense, and POV of the surrounding text.
-Return ONLY the new content as HTML paragraphs (<p>...</p>).
-Do not include any explanations, just the prose.
-
-%s
-
-ABSOLUTELY FORBIDDEN — AI TELL CONSTRUCTIONS:
-1. Em-dash appositive definitions: NEVER write "[quality] — that [particular/specific/certain] [noun] of someone who [explanation]". Show the quality, never name and define it in the same breath.
-2. Gerund-plus-abstract-noun behavior labeling: NEVER write "performing normalcy", "performing grief", "performing calm", or any "[gerund] + [abstract social/emotional noun]" construction. Let behavior speak for itself.
-3. Clinical precision words that no narrator actually thinks in: "over-relaxation", "micro-expression", "hyperawareness", "hypervigilance". Replace with visceral physical observation.
-4. Meta-pattern references: NEVER write "the thing it did", "the way she always", "that look he had". Show the specific instance, not the pattern.
-5. Narrator taxonomy and cataloguing: NEVER have the narrator classify, catalogue, or taxonomize behavior with fake academic precision. BANNED: "a particular subspecies", "catalogued privately", "a specific category of". Narrators notice things, they do not file them.
-6. Triple synonym stacking: NEVER stack near-synonyms in twos or threes for emphasis. BANNED: "simply, entirely, thoroughly", "wordless and mutual and instinctive". Pick the single strongest word and trust it.
-7. Similes that overstay: End comparisons when the image lands. NEVER extend a simile past the point where the meaning is clear. If you are still explaining the comparison after the first clause, cut it.
-8. Announcing literary references as shortcuts: BANNED: "contained multitudes", "the whole of her", "more than she let on". Show the contradiction directly, never name it.
-9. The indifferent world pan-out: NEVER end a scene or paragraph by pulling back to an outside world that is unaware of or indifferent to the characters. This is an AI default scene-closing move and is always cut.
-
-STYLE RULE:
-11. Break grammar rules intentionally where rhythm demands it. Fragments are allowed. Sentences can start with And or But. Comma splices are permitted for pacing. Grammatical correctness is not the goal. The sentence is the goal.
-%s
-CRITICAL: Return ONLY the new prose content as HTML paragraphs. Do not include any instructions, explanations, system prompts, or meta-commentary. Output raw HTML only.%s`, banned, styleBlock, charContext)
-
-	// Build the user message with context
-	var contextParts []string
-	if req.ChapterTitle != "" {
-		contextParts = append(contextParts, fmt.Sprintf("Chapter: %s", req.ChapterTitle))
-	}
-	if req.BeforeContext != "" {
-		contextParts = append(contextParts, fmt.Sprintf("TEXT BEFORE:\n%s", req.BeforeContext))
-	}
-	if req.AfterContext != "" {
-		contextParts = append(contextParts, fmt.Sprintf("TEXT AFTER:\n%s", req.AfterContext))
-	}
-	contextParts = append(contextParts, fmt.Sprintf("INSTRUCTION: %s", req.Instruction))
-	contextParts = append(contextParts, "Generate the new content to insert between the before and after text:")
-
-	userMsg := strings.Join(contextParts, "\n\n")
-
-	return a.dispatchAI(system, userMsg, standardAIRequest)
 }
 
 // CheckClaudeCode checks whether the claude CLI is installed and authenticated.

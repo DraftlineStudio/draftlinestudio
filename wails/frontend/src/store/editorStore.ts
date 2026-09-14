@@ -95,14 +95,6 @@ interface EditorStore {
   setEditorRef: (editor: EditorInstance | null) => void
   getEditorSelection: () => EditorSelection | null
 
-  // Inline AI prompt (Ctrl+L)
-  inlinePrompt: {
-    active: boolean
-    cursorPos: number
-  } | null
-  openInlinePrompt: (cursorPos: number) => void
-  closeInlinePrompt: () => void
-
   // Diff/review state
   pendingDiff: {
     diffs: ParagraphDiff[]
@@ -148,17 +140,6 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       startsAtTextBlockBoundary: selection.$from.parentOffset === 0,
       endsAtTextBlockBoundary: selection.$to.parentOffset === selection.$to.parent.content.size,
     }
-  },
-
-  // Inline AI prompt
-  inlinePrompt: null,
-
-  openInlinePrompt: (cursorPos) => {
-    set({ inlinePrompt: { active: true, cursorPos } })
-  },
-
-  closeInlinePrompt: () => {
-    set({ inlinePrompt: null })
   },
 
   // Diff/review state

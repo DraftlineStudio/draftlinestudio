@@ -23,7 +23,6 @@ frontend/src/
 │   ├── editor/
 │   │   ├── RichEditor.tsx      # TipTap editor wrapper
 │   │   ├── Toolbar.tsx         # Formatting toolbar
-│   │   ├── InlinePrompt.tsx    # Ctrl+L prompt UI
 │   │   ├── ChapterFindReplaceBar.tsx # In-chapter find/replace
 │   │   └── readaloud/          # Read Aloud player bar + voice cast UI
 │   ├── tools/                  # ToolsPanel feature modules

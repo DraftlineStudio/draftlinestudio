@@ -4,6 +4,13 @@ All notable changes to Draftline will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [0.19.02604] - 2026-09-14
+
+### Removed
+- The Ctrl+L inline prose generation prompt. Draftline's AI features edit what the writer has written — line, copy, smooth, expand, and custom passes over existing text with every change reviewed — and do not write new prose at the cursor. The shortcut, its floating prompt, the backend generation call, and its documentation are gone. Ctrl+Shift+L for Read Aloud is unchanged.
+
+---
+
 ## [0.19.02603] - 2026-09-14
 
 ### Changed

@@ -285,9 +285,6 @@ interface BookStore {
   editorRef: EditorInstance | null
   setEditorRef: (editor: EditorInstance | null) => void
   getEditorSelection: () => EditorSelection | null
-  inlinePrompt: { active: boolean; cursorPos: number } | null
-  openInlinePrompt: (cursorPos: number) => void
-  closeInlinePrompt: () => void
   pendingDiff: {
     diffs: ParagraphDiff[]
     changes: DiffChange[]
@@ -402,9 +399,6 @@ export const useBookStore = create<BookStore>((set, get) => ({
   get editorRef() { return useEditorStore.getState().editorRef },
   setEditorRef: (editor) => useEditorStore.getState().setEditorRef(editor),
   getEditorSelection: () => useEditorStore.getState().getEditorSelection(),
-  get inlinePrompt() { return useEditorStore.getState().inlinePrompt },
-  openInlinePrompt: (cursorPos) => useEditorStore.getState().openInlinePrompt(cursorPos),
-  closeInlinePrompt: () => useEditorStore.getState().closeInlinePrompt(),
   get pendingDiff() { return useEditorStore.getState().pendingDiff },
   setPendingDiff: (payload) => useEditorStore.getState().setPendingDiff(payload),
   acceptChange: (idx) => useEditorStore.getState().acceptChange(idx),
