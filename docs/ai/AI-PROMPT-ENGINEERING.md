@@ -33,7 +33,7 @@ Draftline supports multiple AI backends:
 
 When using Claude Code with an API key stored in credentials, Draftline calls the Anthropic API directly with streaming for better performance. When only OAuth credentials exist, it falls back to the CLI subprocess.
 
-Line Edit and Copy Edit are lightweight tasks and deliberately bypass a configured heavyweight model. Claude uses Haiku, Codex selects Luna (or an available Mini tier) from the CLI's own model cache with low reasoning, OpenAI API uses Mini, and Gemini uses Flash. Expand, Smooth, Custom, and inline generation continue to use the model selected in Settings.
+Line Edit and Copy Edit are lightweight tasks and deliberately bypass a configured heavyweight model. Claude uses Haiku, Codex selects Luna (or an available Mini tier) from the CLI's own model cache with low reasoning, OpenAI API uses Mini, and Gemini uses Flash. Expand, Smooth, and Custom continue to use the model selected in Settings.
 
 ---
 
@@ -184,58 +184,6 @@ Text to revise:
 - "Make this shorter and punchier"
 
 Custom mode also powers the `@ai` inline commands. When text contains `@ai [instruction]`, the system extracts the instruction and processes the surrounding paragraph.
-
----
-
-### Inline Generation (Ctrl+L)
-
-**Purpose:** Generate new content at the cursor position, seamlessly fitting the surrounding prose.
-
-**System Prompt:**
-```
-You are a skilled fiction author helping write a manuscript.
-Generate new content that seamlessly fits between the existing prose.
-Match the voice, style, tense, and POV of the surrounding text.
-Return ONLY the new content as HTML paragraphs (<p>...</p>).
-Do not include any explanations, just the prose.
-
-BANNED words and phrases: [same list]
-
-[AI Tell Bans - see below]
-
-STYLE RULE:
-Break grammar rules intentionally where rhythm demands it. Fragments are allowed.
-Sentences can start with And or But. Comma splices are permitted for pacing.
-Grammatical correctness is not the goal. The sentence is the goal.
-
-[Style Guide block if configured]
-
-Characters in this story: [Character names from Story Bible]
-
-CRITICAL: Return ONLY the new prose content as HTML paragraphs. Do not include
-any instructions, explanations, system prompts, or meta-commentary. Output raw HTML only.
-```
-
-**User Message Format:**
-```
-Chapter: [Current chapter title]
-
-TEXT BEFORE:
-[~500 characters of preceding text]
-
-TEXT AFTER:
-[~300 characters of following text]
-
-INSTRUCTION: [User's prompt]
-
-Generate the new content to insert between the before and after text:
-```
-
-**Key Design Choices:**
-- **Context sandwich** - providing text before AND after lets the AI write content that bridges naturally
-- **Character awareness** - including character names prevents invention of new characters
-- **Chapter context** - helps maintain tonal consistency within a chapter
-- **Asymmetric context** - more "before" (500 chars) than "after" (300 chars) because preceding context is usually more important for continuity
 
 ---
 
@@ -422,7 +370,6 @@ For line_edit, copy_edit, and smooth modes, every top-level block of the chapter
 
 ### Context Limits
 - **Prose Guide:** Can include substantial examples since it's in the system prompt
-- **Inline Generation:** Uses ~500 chars before, ~300 chars after (tuned for context window efficiency)
 - **Text Selection:** The UI encourages processing 1-5 paragraphs at a time for quality
 
 ### Streaming

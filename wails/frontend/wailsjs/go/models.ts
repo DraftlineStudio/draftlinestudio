@@ -2915,26 +2915,6 @@ export namespace types {
 		    return a;
 		}
 	}
-	export class InlineGenerateRequest {
-	    instruction: string;
-	    before_context: string;
-	    after_context: string;
-	    characters: string[];
-	    chapter_title: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new InlineGenerateRequest(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.instruction = source["instruction"];
-	        this.before_context = source["before_context"];
-	        this.after_context = source["after_context"];
-	        this.characters = source["characters"];
-	        this.chapter_title = source["chapter_title"];
-	    }
-	}
 	
 	
 	

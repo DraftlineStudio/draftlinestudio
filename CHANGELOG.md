@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.19.02604] - 2026-09-14
+
+### Removed
+- Removed the Ctrl+L inline prose generation prompt.
+
 ## [0.19.02603] - 2026-09-14
 
 ### Changed

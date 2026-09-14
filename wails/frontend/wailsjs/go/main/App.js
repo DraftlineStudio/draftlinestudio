@@ -90,10 +90,6 @@ export function ExportPrintPDF(arg1, arg2) {
   return window['go']['main']['App']['ExportPrintPDF'](arg1, arg2);
 }
 
-export function GenerateInlineContent(arg1) {
-  return window['go']['main']['App']['GenerateInlineContent'](arg1);
-}
-
 export function GetAppVersion() {
   return window['go']['main']['App']['GetAppVersion']();
 }

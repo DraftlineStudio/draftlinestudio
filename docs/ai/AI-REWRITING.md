@@ -40,9 +40,6 @@ Flow and rhythm polish. Eliminates repetition, improves transitions, varies sent
 ### Custom
 User-defined instruction. "Make this more suspenseful", "Add humor to dialogue", etc.
 
-### Inline Generation (Ctrl+L)
-Generate new content at cursor position, seamlessly fitting surrounding prose.
-
 ## The Style Mixer
 
 8 sliders (0-3 each) that control prose characteristics:
