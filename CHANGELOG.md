@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.19.02618] - 2026-09-15
+
+### Added
+- Added the Planner, a story line timeline across chapters with plot cards, lanes, and a Board view.
+- Added Import Outline for Markdown, numbered lists, beat sheets, and chapter synopses.
+- Added scratch notes, a Dead ideas note for deleted cards, and a Synopsis view with Markdown export.
+- Planner data is saved inside the project file.
+
 ## [0.19.02616] - 2026-09-15
 
 ### Fixed

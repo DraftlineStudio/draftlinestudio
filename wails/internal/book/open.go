@@ -265,6 +265,22 @@ func Open(path string) (types.BookData, error) {
 		}
 	}
 
+	// planner.json contains author-owned planning work. Refuse malformed or
+	// unsupported data so a later save cannot silently erase it.
+	if plannerData, err := ReadZipEntry(r, "planner.json"); err == nil {
+		var planner types.PlannerData
+		if err := json.Unmarshal(plannerData, &planner); err != nil {
+			return types.BookData{}, fmt.Errorf("planner data could not be parsed: %w", err)
+		}
+		planner, err = preparePlannerData(planner)
+		if err != nil {
+			return types.BookData{}, err
+		}
+		book.Planner = &planner
+	} else if !errors.Is(err, ziputil.ErrEntryNotFound) {
+		return types.BookData{}, fmt.Errorf("planner entry %q could not be read: %w", "planner.json", err)
+	}
+
 	RefreshWordCount(&book)
 	return book, nil
 }

@@ -588,6 +588,108 @@ export interface ChapterHistorySnapshot {
   content: string
 }
 
+// ── Planner (planner.json) ──────────────────────────────────────────────────
+
+export type PlannerLaneKind = 'main' | 'subplot' | 'character'
+
+export interface PlannerLane {
+  id: string
+  name: string
+  kind: PlannerLaneKind | string
+  color: string
+  character_id?: string
+}
+
+// A card's scene link: the chapter's stable ID and a 1-based scene number.
+export interface PlannerLink {
+  chapter_id: string
+  scene: number
+}
+
+export interface PlannerEvidence {
+  source_id: string
+  revision: string
+  chapter_id: string
+  scene: number
+  block_id: string
+  start: number
+  end: number
+  quote: string
+}
+
+export type PlannerCardStatus = 'planned' | 'drafted'
+
+// A plot card. It sits on lines[0] at chapter_id ('' = Later, not yet pinned);
+// the other lines are drawn as crossings. `changes` and `stakes` are the
+// promise the card makes, kept separate so reconciliation needs no migration.
+export interface PlannerCard {
+  id: string
+  source_id?: string
+  title: string
+  synopsis: string
+  lines: string[]
+  who: string[]
+  changes?: string
+  stakes?: string
+  chapter_id: string
+  link?: PlannerLink
+  status: PlannerCardStatus | string
+  origin?: 'manual' | 'outline' | 'adopted' | string
+  dev_kind?: string
+  evidence?: PlannerEvidence[]
+  updated?: string
+}
+
+export interface PlannerNote {
+  id: string
+  title: string
+  body: string
+  updated?: string
+  excluded?: boolean
+  system?: 'dead' | string
+}
+
+export type BeatTemplateId = 'none' | 'three-act' | 'save-the-cat'
+
+export interface PlannerData {
+  version: number
+  source_id?: string
+  lanes: PlannerLane[]
+  cards: PlannerCard[]
+  notes: PlannerNote[]
+  synopsis?: Record<string, string>
+  beat_template?: BeatTemplateId | string
+  hidden_lanes?: string[]
+  dismissed?: string[]
+  plot_walker?: boolean
+  compact?: boolean
+}
+
+// A development the narrative engine found in the text, offered as an
+// unplanned card. Proposals only; the writer adopts or dismisses them.
+export interface PlannerDetectedCard {
+  id: string
+  title: string
+  synopsis: string
+  chapter_id: string
+  scene: number
+  who: string[]
+  evidence: PlannerEvidence[]
+  kind: string
+  status: string
+  support: string
+  discourse_mode: string
+  selection_rule: string
+}
+
+export interface PlannerDetection {
+  revision: string
+  source_id: string
+  cards: PlannerDetectedCard[]
+  limitations: string[]
+  error?: string
+}
+
 export interface BookData {
   version: string
   metadata: Metadata
@@ -605,6 +707,8 @@ export interface BookData {
   // Per-book Read Aloud voice casting; keys of voices are lowercased
   // canonical character names. Optional archive member read_aloud_cast.json.
   read_aloud_cast?: ReadAloudCast
+  // Story-line timeline. Optional archive member planner.json.
+  planner?: PlannerData
   foreshadowing?: ForeshadowingLedger
   knowledge_matrix?: KnowledgeMatrix
   // Entity resolution and other analysis results

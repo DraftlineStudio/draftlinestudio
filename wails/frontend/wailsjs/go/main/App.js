@@ -182,6 +182,10 @@ export function PickBookPath() {
   return window['go']['main']['App']['PickBookPath']();
 }
 
+export function PlannerDetectCards(arg1) {
+  return window['go']['main']['App']['PlannerDetectCards'](arg1);
+}
+
 export function PluginInvoke(arg1, arg2, arg3) {
   return window['go']['main']['App']['PluginInvoke'](arg1, arg2, arg3);
 }

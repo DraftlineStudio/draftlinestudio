@@ -171,6 +171,21 @@ func WriteWithSnapshots(path string, book types.BookData, appVersion string, sna
 		}
 	}
 
+	// Save planner.json once the Planner has been used for this book.
+	if book.Planner != nil {
+		planner, err := preparePlannerData(*book.Planner)
+		if err != nil {
+			return types.SaveResult{Success: false, Error: err.Error()}
+		}
+		plannerJSON, err := json.MarshalIndent(planner, "", "  ")
+		if err != nil {
+			return types.SaveResult{Success: false, Error: fmt.Sprintf("failed to encode planner data: %v", err)}
+		}
+		if err := addEntry("planner.json", string(plannerJSON)); err != nil {
+			return types.SaveResult{Success: false, Error: err.Error()}
+		}
+	}
+
 	for i, item := range book.FrontMatter {
 		file := fmt.Sprintf("front_matter/%03d.html", i)
 		if err := addEntry(file, item.Content); err != nil {

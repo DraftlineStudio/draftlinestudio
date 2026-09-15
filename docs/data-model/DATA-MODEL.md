@@ -21,6 +21,7 @@ book.draftline (ZIP)
 │   └── ...
 │
 ├── analysis.json           # Rebuildable characters, relationships, story metrics, evidence
+├── planner.json            # Planner: story lines, cards, notes (optional)
 ├── history/                # Chapter snapshot history (format 2.2+)
 │   ├── index.json          # Snapshot metadata
 │   └── snapshots/          # Deduplicated chapter versions
@@ -89,6 +90,21 @@ interface ChapterItem {
 Archive format 2.2 stores snapshot metadata in `history/index.json` and chapter HTML in `history/snapshots/`. A snapshot records the stable chapter ID, section and title at capture time, timestamp, reason, word count, and SHA-256 content hash. Identical content is not stored twice. Draftline retains at most 50 snapshots per chapter and 1,000 per project.
 
 Automatic snapshots are activity-driven: editing marks the affected chapter, and Draftline records its current content after ten minutes. An unchanged or background-idle project produces no snapshot. Chapter history remains active when activity-based autosave is disabled. Accepted AI and comparison passes atomically record the chapter immediately before and after the change rather than waiting for the periodic timer. A writer can also take a manual snapshot at any time (Chapter History dialog, or *Snapshot Chapter Now* in the project menu) with an optional label such as "Before rewrite"; it is stored under that reason and saves the manuscript in the same archive write. Ordinary saves copy unchanged history in its compressed ZIP representation.
+
+### Planner
+
+`planner.json` is written once the Planner has been used for a book and holds
+the story-line timeline: `lanes` (main plot, subplots, character arcs keyed by
+`character_id`), `cards` (title, synopsis, `lines`, `who`, `changes`,
+`stakes`, `chapter_id`, optional scene `link`, `status`, `origin`, and for
+adopted cards revision-bound `evidence` anchors), `notes` (scratch notes; the
+one with `system: "dead"` is the automatic Dead ideas note), per-chapter
+`synopsis` edits keyed by chapter ID, `beat_template`, `hidden_lanes`,
+`dismissed` proposal IDs, and the `plot_walker` and `compact` settings. Cards
+reference chapters by their stable IDs, never by index, so reordering
+chapters does not move cards; a card with an empty `chapter_id` sits in
+*Later*. A book that never opened the Planner has no `planner.json`. See
+`docs/frontend/PLANNER.md`.
 
 ### Derived Story Analysis
 

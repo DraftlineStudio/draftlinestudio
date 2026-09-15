@@ -16,6 +16,8 @@ import ChapterPanel from './components/ChapterPanel'
 import EditorPanel from './components/EditorPanel'
 import ErrorBoundary from './components/ErrorBoundary'
 import CharactersView from './components/characters/CharactersView'
+import PlannerView from './components/planner/PlannerView'
+import PlannerPanel from './components/planner/PlannerPanel'
 import ToolsPanel from './components/ToolsPanel'
 import StatusBar from './components/StatusBar'
 import AnalysisCoordinator from './components/AnalysisCoordinator'
@@ -302,14 +304,19 @@ export default function App() {
         <ChapterPanel />
         {viewMode === 'cast' ? (
           <CharactersView />
+        ) : viewMode === 'planner' ? (
+          <ErrorBoundary name="Planner">
+            <PlannerView />
+          </ErrorBoundary>
         ) : (
           <ErrorBoundary name="Editor">
             <EditorPanel />
           </ErrorBoundary>
         )}
-        {viewMode !== 'cast' && <ToolsPanel />}
+        {viewMode === 'planner' && <PlannerPanel />}
+        {viewMode === 'editor' && <ToolsPanel />}
       </div>
-      {bottomToolOpen && viewMode !== 'cast' && <StorySearchToolWindow />}
+      {bottomToolOpen && viewMode === 'editor' && <StorySearchToolWindow />}
       <StatusBar />
       <AnalysisCoordinator />
       {showMetadata && <MetadataDialog />}

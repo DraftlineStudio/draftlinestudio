@@ -22,6 +22,7 @@ import type { Section } from '../types/draftline'
 import { FRONT_MATTER_TYPES, BODY_TYPES, BACK_MATTER_TYPES } from '../types/draftline'
 import ContextMenu, { ContextMenuItem } from './ContextMenu'
 import { countBookWords } from '../utils/textUtils'
+import PlannerSidebar from './planner/PlannerSidebar'
 
 interface SortableItemProps {
   id: string
@@ -301,6 +302,9 @@ export default function ChapterPanel() {
   // updates (isDirty / statusMessage / isAutoSaving) that used to re-render this
   // panel via a bare store subscription.
   const totalWords = useMemo(() => (book ? countBookWords(book) : 0), [book])
+  // Manuscript | Planner tabs switch the whole center + right side of the app.
+  const viewMode = useBookStore(s => s.viewMode)
+  const setViewMode = useBookStore(s => s.setViewMode)
 
   return (
     <div className={`chapter-panel${leftPanelOpen ? '' : ' collapsed'}`}>
@@ -314,7 +318,14 @@ export default function ChapterPanel() {
 
       <div className="chapter-panel-inner">
         <div className="chapter-panel-header">
-          <span className="chapter-panel-header-title">Manuscript</span>
+          {book ? (
+            <div className="pl-tabs" style={{ flex: 1, height: '100%', borderBottom: 'none' }}>
+              <button className={`pl-tab${viewMode !== 'planner' ? ' active' : ''}`} onClick={() => setViewMode('editor')}>Manuscript</button>
+              <button className={`pl-tab${viewMode === 'planner' ? ' active' : ''}`} onClick={() => setViewMode('planner')}>Planner</button>
+            </div>
+          ) : (
+            <span className="chapter-panel-header-title">Manuscript</span>
+          )}
           <button className="panel-collapse-btn" onClick={toggleLeftPanel} title="Collapse panel (Ctrl+[)">
             <svg width="6" height="10" viewBox="0 0 6 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 1L1 5l4 4" />
@@ -322,7 +333,8 @@ export default function ChapterPanel() {
           </button>
         </div>
 
-        <div className="chapter-list-scroll">
+        {viewMode === 'planner' && book && <PlannerSidebar />}
+        <div className="chapter-list-scroll" style={viewMode === 'planner' ? { display: 'none' } : undefined}>
           {book && <>
             {/* Copyright — single, non-sortable */}
             <div className="chapter-section">

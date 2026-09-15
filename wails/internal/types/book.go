@@ -130,6 +130,90 @@ type ReadAloudCast struct {
 	Voices   map[string]string `json:"voices,omitempty"`
 }
 
+// PlannerLane is a story line on the Planner timeline: the main plot, a typed
+// subplot, or a character's arc (CharacterID set). Lanes and cards refer to
+// each other by ID.
+type PlannerLane struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Kind        string `json:"kind"` // main | subplot | character
+	Color       string `json:"color"`
+	CharacterID string `json:"character_id,omitempty"`
+}
+
+// PlannerLink ties a card to a scene: the chapter's stable ID and the
+// 1-based scene index within it (scenes are separated by scene breaks).
+type PlannerLink struct {
+	ChapterID string `json:"chapter_id"`
+	Scene     int    `json:"scene"`
+}
+
+// PlannerEvidence keeps an adopted card tied to the exact manuscript revision
+// and passage that proposed it. A stale reference remains useful provenance but
+// must not be presented as evidence from the current manuscript.
+type PlannerEvidence struct {
+	SourceID  string `json:"source_id"`
+	Revision  string `json:"revision"`
+	ChapterID string `json:"chapter_id"`
+	Scene     int    `json:"scene"`
+	BlockID   string `json:"block_id"`
+	Start     int    `json:"start"`
+	End       int    `json:"end"`
+	Quote     string `json:"quote"`
+}
+
+// PlannerCard is one plot card. It sits on the first line in Lines at the
+// chapter in ChapterID (empty = "Later", not yet pinned to a chapter); other
+// lines are drawn as crossings. Who are character IDs. Changes and Stakes are
+// the promise the card makes, kept as separate fields so a future
+// reconciliation against extracted developments needs no migration.
+type PlannerCard struct {
+	ID        string            `json:"id"`
+	SourceID  string            `json:"source_id,omitempty"`
+	Title     string            `json:"title"`
+	Synopsis  string            `json:"synopsis"`
+	Lines     []string          `json:"lines"`
+	Who       []string          `json:"who"`
+	Changes   string            `json:"changes,omitempty"`
+	Stakes    string            `json:"stakes,omitempty"`
+	ChapterID string            `json:"chapter_id"`
+	Link      *PlannerLink      `json:"link,omitempty"`
+	Status    string            `json:"status"` // planned | drafted
+	Origin    string            `json:"origin,omitempty"`
+	DevKind   string            `json:"dev_kind,omitempty"`
+	Evidence  []PlannerEvidence `json:"evidence,omitempty"`
+	Updated   string            `json:"updated,omitempty"`
+}
+
+// PlannerNote is a scratch note. System "dead" marks the automatic Dead Ideas
+// note that deleted cards are written into; Excluded notes are ignored by
+// Propose Cards.
+type PlannerNote struct {
+	ID       string `json:"id"`
+	Title    string `json:"title"`
+	Body     string `json:"body"`
+	Updated  string `json:"updated,omitempty"`
+	Excluded bool   `json:"excluded,omitempty"`
+	System   string `json:"system,omitempty"`
+}
+
+// PlannerData is the Planner's state for one book, stored as the optional
+// archive member planner.json. Synopsis holds per-chapter edits keyed by
+// chapter ID; chapters without an entry are generated from their cards.
+type PlannerData struct {
+	Version      int               `json:"version"`
+	SourceID     string            `json:"source_id,omitempty"`
+	Lanes        []PlannerLane     `json:"lanes"`
+	Cards        []PlannerCard     `json:"cards"`
+	Notes        []PlannerNote     `json:"notes"`
+	Synopsis     map[string]string `json:"synopsis,omitempty"`
+	BeatTemplate string            `json:"beat_template,omitempty"`
+	HiddenLanes  []string          `json:"hidden_lanes,omitempty"`
+	Dismissed    []string          `json:"dismissed,omitempty"`
+	PlotWalker   bool              `json:"plot_walker,omitempty"`
+	Compact      bool              `json:"compact,omitempty"`
+}
+
 // BookData is the main container for all book content.
 type BookData struct {
 	Version             string              `json:"version"`
@@ -148,6 +232,9 @@ type BookData struct {
 	ForeshadowingLedger ForeshadowingLedger `json:"foreshadowing,omitempty"`
 	KnowledgeMatrix     KnowledgeMatrix     `json:"knowledge_matrix,omitempty"`
 	ReadAloudCast       ReadAloudCast       `json:"read_aloud_cast,omitempty"`
+	// Planner is the story-line timeline: lanes, cards, notes. Optional
+	// archive member planner.json; nil for books that never opened it.
+	Planner *PlannerData `json:"planner,omitempty"`
 	// Analysis contains entity resolution and other analysis results.
 	// This is a future-proof container that can be extended without schema changes.
 	Analysis AnalysisData `json:"analysis,omitempty"`

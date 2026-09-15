@@ -25,6 +25,7 @@ frontend/src/
 │   │   ├── Toolbar.tsx         # Formatting toolbar
 │   │   ├── ChapterFindReplaceBar.tsx # In-chapter find/replace
 │   │   └── readaloud/          # Read Aloud player bar + voice cast UI
+│   ├── planner/                # Story-line timeline, board, scratch, synopsis (see PLANNER.md)
 │   ├── tools/                  # ToolsPanel feature modules
 │   │   ├── constants.ts        # SECTION_CONFIG, AI_MODES
 │   │   ├── types.ts            # GlyphSection, AIMode, AIState
@@ -53,6 +54,7 @@ frontend/src/
 │   ├── analysisStore.ts        # Consolidated analysis run + results
 │   ├── chapterHistory.ts       # Chapter snapshot history
 │   ├── editorStore.ts          # Editor and diff/review state
+│   ├── plannerStore.ts         # Planner view state + persisted-data mutations
 │   ├── readAloudStore.ts       # Read Aloud playback state
 │   ├── relationshipStore.ts    # Character relationship data
 │   └── storyBibleStore.ts      # Characters CRUD + highlighting

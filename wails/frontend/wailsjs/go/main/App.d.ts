@@ -94,6 +94,8 @@ export function OpenRecentProject(arg1:string):Promise<types.BookData>;
 
 export function PickBookPath():Promise<string>;
 
+export function PlannerDetectCards(arg1:types.BookData):Promise<main.PlannerDetection>;
+
 export function PluginInvoke(arg1:string,arg2:string,arg3:string):Promise<string>;
 
 export function PluginList():Promise<Array<main.PluginInfo>>;

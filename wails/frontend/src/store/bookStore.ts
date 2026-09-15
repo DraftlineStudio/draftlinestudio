@@ -217,8 +217,8 @@ interface BookStore {
   dialogs: DialogState
 
   // Workspace view: the editor, or the full-screen Cast view
-  viewMode: 'editor' | 'cast'
-  setViewMode: (mode: 'editor' | 'cast') => void
+  viewMode: 'editor' | 'cast' | 'planner'
+  setViewMode: (mode: 'editor' | 'cast' | 'planner') => void
 
   // File operations
   newBook: () => Promise<void>

@@ -1,5 +1,95 @@
 export namespace main {
 	
+	export class PlannerDetectedCard {
+	    id: string;
+	    title: string;
+	    synopsis: string;
+	    chapter_id: string;
+	    scene: number;
+	    who: string[];
+	    evidence: types.PlannerEvidence[];
+	    kind: string;
+	    status: string;
+	    support: string;
+	    discourse_mode: string;
+	    selection_rule: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PlannerDetectedCard(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	        this.synopsis = source["synopsis"];
+	        this.chapter_id = source["chapter_id"];
+	        this.scene = source["scene"];
+	        this.who = source["who"];
+	        this.evidence = this.convertValues(source["evidence"], types.PlannerEvidence);
+	        this.kind = source["kind"];
+	        this.status = source["status"];
+	        this.support = source["support"];
+	        this.discourse_mode = source["discourse_mode"];
+	        this.selection_rule = source["selection_rule"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class PlannerDetection {
+	    revision: string;
+	    source_id: string;
+	    cards: PlannerDetectedCard[];
+	    limitations: string[];
+	    error?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PlannerDetection(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.revision = source["revision"];
+	        this.source_id = source["source_id"];
+	        this.cards = this.convertValues(source["cards"], PlannerDetectedCard);
+	        this.limitations = source["limitations"];
+	        this.error = source["error"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class PluginInfo {
 	    id: string;
 	    name: string;
@@ -2014,6 +2104,196 @@ export namespace types {
 		    return a;
 		}
 	}
+	export class PlannerNote {
+	    id: string;
+	    title: string;
+	    body: string;
+	    updated?: string;
+	    excluded?: boolean;
+	    system?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PlannerNote(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	        this.body = source["body"];
+	        this.updated = source["updated"];
+	        this.excluded = source["excluded"];
+	        this.system = source["system"];
+	    }
+	}
+	export class PlannerEvidence {
+	    source_id: string;
+	    revision: string;
+	    chapter_id: string;
+	    scene: number;
+	    block_id: string;
+	    start: number;
+	    end: number;
+	    quote: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PlannerEvidence(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.source_id = source["source_id"];
+	        this.revision = source["revision"];
+	        this.chapter_id = source["chapter_id"];
+	        this.scene = source["scene"];
+	        this.block_id = source["block_id"];
+	        this.start = source["start"];
+	        this.end = source["end"];
+	        this.quote = source["quote"];
+	    }
+	}
+	export class PlannerLink {
+	    chapter_id: string;
+	    scene: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new PlannerLink(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.chapter_id = source["chapter_id"];
+	        this.scene = source["scene"];
+	    }
+	}
+	export class PlannerCard {
+	    id: string;
+	    source_id?: string;
+	    title: string;
+	    synopsis: string;
+	    lines: string[];
+	    who: string[];
+	    changes?: string;
+	    stakes?: string;
+	    chapter_id: string;
+	    link?: PlannerLink;
+	    status: string;
+	    origin?: string;
+	    dev_kind?: string;
+	    evidence?: PlannerEvidence[];
+	    updated?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PlannerCard(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.source_id = source["source_id"];
+	        this.title = source["title"];
+	        this.synopsis = source["synopsis"];
+	        this.lines = source["lines"];
+	        this.who = source["who"];
+	        this.changes = source["changes"];
+	        this.stakes = source["stakes"];
+	        this.chapter_id = source["chapter_id"];
+	        this.link = this.convertValues(source["link"], PlannerLink);
+	        this.status = source["status"];
+	        this.origin = source["origin"];
+	        this.dev_kind = source["dev_kind"];
+	        this.evidence = this.convertValues(source["evidence"], PlannerEvidence);
+	        this.updated = source["updated"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class PlannerLane {
+	    id: string;
+	    name: string;
+	    kind: string;
+	    color: string;
+	    character_id?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PlannerLane(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.kind = source["kind"];
+	        this.color = source["color"];
+	        this.character_id = source["character_id"];
+	    }
+	}
+	export class PlannerData {
+	    version: number;
+	    source_id?: string;
+	    lanes: PlannerLane[];
+	    cards: PlannerCard[];
+	    notes: PlannerNote[];
+	    synopsis?: Record<string, string>;
+	    beat_template?: string;
+	    hidden_lanes?: string[];
+	    dismissed?: string[];
+	    plot_walker?: boolean;
+	    compact?: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new PlannerData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.version = source["version"];
+	        this.source_id = source["source_id"];
+	        this.lanes = this.convertValues(source["lanes"], PlannerLane);
+	        this.cards = this.convertValues(source["cards"], PlannerCard);
+	        this.notes = this.convertValues(source["notes"], PlannerNote);
+	        this.synopsis = source["synopsis"];
+	        this.beat_template = source["beat_template"];
+	        this.hidden_lanes = source["hidden_lanes"];
+	        this.dismissed = source["dismissed"];
+	        this.plot_walker = source["plot_walker"];
+	        this.compact = source["compact"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ReadAloudCast {
 	    cast_mode: boolean;
 	    voices?: Record<string, string>;
@@ -2367,6 +2647,7 @@ export namespace types {
 	    foreshadowing?: ForeshadowingLedger;
 	    knowledge_matrix?: KnowledgeMatrix;
 	    read_aloud_cast?: ReadAloudCast;
+	    planner?: PlannerData;
 	    analysis?: AnalysisData;
 	
 	    static createFrom(source: any = {}) {
@@ -2391,6 +2672,7 @@ export namespace types {
 	        this.foreshadowing = this.convertValues(source["foreshadowing"], ForeshadowingLedger);
 	        this.knowledge_matrix = this.convertValues(source["knowledge_matrix"], KnowledgeMatrix);
 	        this.read_aloud_cast = this.convertValues(source["read_aloud_cast"], ReadAloudCast);
+	        this.planner = this.convertValues(source["planner"], PlannerData);
 	        this.analysis = this.convertValues(source["analysis"], AnalysisData);
 	    }
 	
@@ -2958,6 +3240,12 @@ export namespace types {
 	        this.textAlign = source["textAlign"];
 	    }
 	}
+	
+	
+	
+	
+	
+	
 	export class PrintPDFOptions {
 	    includeCopyright: boolean;
 	    includeFrontMatter: boolean;
