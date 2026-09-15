@@ -25,14 +25,14 @@ glyph hides the tools panel.
   axis when a template is chosen.
 - **Board** — the same cards as index cards, grouped by chapter or by story
   line. Drag onto a column to move; drop onto a card to order before it.
-- **Scratch** — free-text notes. The *Dead ideas* note is automatic: every
+- **Scratchpad** — free-text notes. The *Dead ideas* note is automatic: every
   card deleted from the timeline or board, and every dismissed unplanned
   development, is written there as an outline entry so *Propose Cards* can
   bring it back. A note can be excluded from analysis.
 - **Synopsis** — one paragraph per chapter, generated from that chapter's card
   synopses in timeline order. Paragraphs are editable; *Rebuild from Cards*
   discards edits. Chapters without cards stay blank rather than being
-  invented. Export copies Markdown or saves it as a scratch note.
+  invented. Export copies Markdown or saves it as a Scratchpad note.
 
 ## Cards
 
@@ -63,7 +63,7 @@ accepted:
 The proposal view lets each card be retitled, re-laned, re-chaptered, or
 dropped. Accepting adds planned cards, creates any chapters the outline reaches
 past the end of the manuscript (empty, titled from the outline), and keeps the
-pasted text as a scratch note.
+pasted text as a Scratchpad note.
 
 ## Plot Walker
 

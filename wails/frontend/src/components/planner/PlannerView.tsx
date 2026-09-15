@@ -341,17 +341,17 @@ function SynopsisView() {
 export default function PlannerView() {
   const book = useBookStore(s => s.book)
   const analysisRevision = useBookStore(s => s.analysisRevision)
-  const { view, boardBy, noteId, noteMono, detected, detecting, detectedRevision, setBoardBy, addCard, openLineDialog, setCompact, updateNote, deleteNote, toggleNoteMono, resetSynopsis, refreshDetected } = usePlannerStore(useShallow(s => ({
+  const { view, boardBy, noteId, noteMono, detected, detecting, detectedRevision, setBoardBy, addCard, openLineDialog, setCompact, updateNote, askDeleteNote, toggleNoteMono, resetSynopsis, refreshDetected } = usePlannerStore(useShallow(s => ({
     view: s.view, boardBy: s.boardBy, noteId: s.noteId, noteMono: s.noteMono, detected: s.detected, detecting: s.detecting, detectedRevision: s.detectedRevision,
     setBoardBy: s.setBoardBy, addCard: s.addCard, openLineDialog: s.openLineDialog, setCompact: s.setCompact, updateNote: s.updateNote,
-    deleteNote: s.deleteNote, toggleNoteMono: s.toggleNoteMono, resetSynopsis: s.resetSynopsis, refreshDetected: s.refreshDetected,
+    askDeleteNote: s.askDeleteNote, toggleNoteMono: s.toggleNoteMono, resetSynopsis: s.resetSynopsis, refreshDetected: s.refreshDetected,
   })))
   const planner = ensurePlanner(book)
   const chapters = useMemo(() => bookChapters(book), [book])
   const cards = displayCards(planner, detected)
   const note = planner.notes.find(n => n.id === noteId) ?? null
   const isCards = view === 'timeline' || view === 'board'
-  const titles = { timeline: 'Timeline', board: 'Board', scratch: 'Scratch', synopsis: 'Synopsis' }
+  const titles = { timeline: 'Timeline', board: 'Board', scratch: 'Scratchpad', synopsis: 'Synopsis' }
 
   // Detection runs when Plot Walker is on and the text has changed since the
   // last pass — on entering the Planner, never per keystroke.
@@ -403,7 +403,7 @@ export default function PlannerView() {
           <span className="pl-tool-status">{countWords(note.body)} words</span>
           <span className="pl-tool-sep" />
           <button className={`toolbar-btn${noteMono ? ' active' : ''}`} onClick={toggleNoteMono} title="Monospace">Mono</button>
-          {!note.system && <button className="toolbar-btn" onClick={() => deleteNote(note.id)} title="Delete note">Delete</button>}
+          {!note.system && <button className="toolbar-btn" onClick={() => askDeleteNote(note.id)} title="Delete note">Delete</button>}
         </>)}
         {view === 'synopsis' && (<>
           <span className="pl-tool-sep" />

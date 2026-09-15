@@ -74,6 +74,10 @@ interface PlannerStore {
   newNote: (title?: string, body?: string) => string
   updateNote: (id: string, patch: Partial<PlannerNote>) => void
   deleteNote: (id: string) => void
+  // Deleting a note asks first; noteDeleteId is the note awaiting confirmation.
+  noteDeleteId: string | null
+  askDeleteNote: (id: string) => void
+  cancelDeleteNote: () => void
 
   // Synopsis
   setSynopsis: (chapterId: string, text: string) => void
@@ -95,7 +99,7 @@ interface PlannerStore {
 
 const initialUI = {
   view: 'timeline' as PlannerView, panelOpen: true, selected: null, drag: null, boardBy: 'chapter' as const,
-  noteId: null, noteMono: false, linkOpen: false, chapterDialog: null, lineDialog: null,
+  noteId: null, noteMono: false, linkOpen: false, chapterDialog: null, lineDialog: null, noteDeleteId: null as string | null,
   importOpen: false, importText: '', importFromNoteId: null, proposals: null,
   detected: [] as PlannerDetectedCard[], detecting: false, detectError: '', detectedRevision: -1,
 }
@@ -251,7 +255,14 @@ export const usePlannerStore = create<PlannerStore>((set, get) => ({
     ...p, notes: p.notes.map(n => (n.id === id ? { ...n, ...patch, updated: nowStamp() } : n)),
   })),
 
+  askDeleteNote: (id) => {
+    if (get().planner().notes.find(n => n.id === id)?.system) return
+    set({ noteDeleteId: id })
+  },
+  cancelDeleteNote: () => set({ noteDeleteId: null }),
+
   deleteNote: (id) => {
+    set({ noteDeleteId: null })
     const planner = get().planner()
     if (planner.notes.find(n => n.id === id)?.system) return
     get().mutate(p => ({ ...p, notes: p.notes.filter(n => n.id !== id) }))

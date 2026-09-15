@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.19.02619] - 2026-09-15
+
+### Changed
+- Renamed the Planner notes view to Scratchpad.
+- Deleting a Scratchpad note now asks for confirmation.
+
 ## [0.19.02618] - 2026-09-15
 
 ### Added

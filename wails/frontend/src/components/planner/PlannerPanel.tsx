@@ -1,6 +1,6 @@
 // The Planner's right side: a 292px tools panel (overview, note tools,
 // synopsis export, or the card inspector) and the 45px glyph rail that
-// switches between Timeline, Board, Scratch, and Synopsis.
+// switches between Timeline, Board, Scratchpad, and Synopsis.
 
 import { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
@@ -109,7 +109,7 @@ function SynopsisTools() {
       <Section title="Export">
         <div className="pl-btn-col">
           <button className="dialog-btn" onClick={() => { void navigator.clipboard?.writeText(markdown()) }}>Copy as Markdown</button>
-          <button className="dialog-btn" onClick={() => newNote(`Synopsis — ${new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`, markdown())}>Save as Scratch</button>
+          <button className="dialog-btn" onClick={() => newNote(`Synopsis — ${new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`, markdown())}>Save as Scratchpad</button>
         </div>
         <div className="pl-hint" style={{ marginTop: 8 }}>{words ? `${words.toLocaleString()} edited words · ` : ''}one paragraph per chapter, chapters without cards left out.</div>
       </Section>
@@ -304,7 +304,7 @@ function Inspector({ id }: { id: string }) {
 const GLYPHS: { view: PlannerView; title: string; icon: React.ReactNode }[] = [
   { view: 'timeline', title: 'Timeline', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M3 12h18" /><path d="M3 18h18" /><rect x="6" y="4" width="6" height="4" rx="1" fill="var(--bg-panel)" /><rect x="13" y="10" width="7" height="4" rx="1" fill="var(--bg-panel)" /><rect x="8" y="16" width="5" height="4" rx="1" fill="var(--bg-panel)" /></svg> },
   { view: 'board', title: 'Board', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="5" height="18" rx="1" /><rect x="10" y="3" width="5" height="12" rx="1" /><rect x="17" y="3" width="4" height="8" rx="1" /></svg> },
-  { view: 'scratch', title: 'Scratch', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg> },
+  { view: 'scratch', title: 'Scratchpad', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg> },
   { view: 'synopsis', title: 'Synopsis', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg> },
 ]
 
@@ -313,7 +313,7 @@ export default function PlannerPanel() {
     view: s.view, panelOpen: s.panelOpen, selected: s.selected, pick: s.pick, setPanelOpen: s.setPanelOpen, select: s.select,
   })))
   const isCards = view === 'timeline' || view === 'board'
-  const title = selected && isCards ? 'Card' : view === 'scratch' ? 'Scratch' : view === 'synopsis' ? 'Synopsis' : 'Overview'
+  const title = selected && isCards ? 'Card' : view === 'scratch' ? 'Scratchpad' : view === 'synopsis' ? 'Synopsis' : 'Overview'
   return (
     <div className="pl-right">
       {panelOpen && (

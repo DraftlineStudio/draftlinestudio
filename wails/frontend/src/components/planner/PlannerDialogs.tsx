@@ -166,11 +166,33 @@ function ImportOutlineDialog() {
   )
 }
 
+function DeleteNoteDialog() {
+  const book = useBookStore(s => s.book)
+  const { noteDeleteId, cancelDeleteNote, deleteNote } = usePlannerStore(useShallow(s => ({ noteDeleteId: s.noteDeleteId, cancelDeleteNote: s.cancelDeleteNote, deleteNote: s.deleteNote })))
+  if (!noteDeleteId) return null
+  const note = ensurePlanner(book).notes.find(n => n.id === noteDeleteId)
+  if (!note) return null
+  const words = note.body.trim() ? `${note.body.trim().split(/\s+/).length.toLocaleString()} words` : 'empty'
+  return (
+    <div className="dialog-overlay" onClick={cancelDeleteNote}>
+      <div className="dialog" onClick={e => e.stopPropagation()} onKeyDown={e => { if (e.key === 'Escape') cancelDeleteNote() }}>
+        <div className="dialog-title">Delete Note</div>
+        <div className="dialog-subtitle">Delete “{note.title || 'Untitled note'}” ({words})? Notes are not kept in Dead ideas; this cannot be undone.</div>
+        <div className="pl-dialog-actions">
+          <button className="dialog-btn" autoFocus onClick={cancelDeleteNote}>Cancel</button>
+          <button className="dialog-btn primary" onClick={() => deleteNote(note.id)}>Delete Note</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function PlannerDialogs() {
   return (
     <>
       <NewChapterDialog />
       <NewLineDialog />
+      <DeleteNoteDialog />
       <ImportOutlineDialog />
     </>
   )
