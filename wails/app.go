@@ -43,7 +43,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.19.02607"
+const AppVersion = "0.19.02616"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -383,13 +383,16 @@ func (a *App) PickBookPath() (string, error) {
 func (a *App) openBook(path string) (types.BookData, error) {
 	// Lock before parsing: if another instance has this book, foreground it
 	// and refuse the second copy (Word-style same-file semantics).
-	if err := a.acquireBookLock(path); err != nil {
+	lock, err := a.claimBookLock(path)
+	if err != nil {
 		return types.BookData{}, err
 	}
 	b, err := book.Open(path)
 	if err != nil {
+		a.discardBookLockClaim(lock)
 		return types.BookData{}, err
 	}
+	a.installBookLock(lock)
 	a.setCurrentFile(path)
 	return b, nil
 }
@@ -1358,9 +1361,18 @@ func (a *App) writeBook(b types.BookData, path string) types.SaveResult {
 	// two instances can't silently write over each other's book. Saving to
 	// the already-current path keeps the lock it holds.
 	if path != a.getCurrentFile() {
-		if err := a.acquireBookLock(path); err != nil {
+		lock, err := a.claimBookLock(path)
+		if err != nil {
 			return types.SaveResult{Success: false, Error: err.Error()}
 		}
+		result := book.Write(path, b, AppVersion)
+		if !result.Success {
+			a.discardBookLockClaim(lock)
+			return result
+		}
+		a.installBookLock(lock)
+		a.setCurrentFile(path)
+		return result
 	}
 	result := book.Write(path, b, AppVersion)
 	if result.Success {

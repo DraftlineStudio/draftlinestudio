@@ -35,6 +35,9 @@ func TestAcquireReleaseRoundTrip(t *testing.T) {
 	if err != nil || owner2 != nil || again == nil {
 		t.Fatalf("re-acquire by same pid: owner=%v err=%v", owner2, err)
 	}
+	if !lock.Same(again) {
+		t.Fatal("re-acquired handle should identify the same lock")
+	}
 	lock.Release()
 	if CurrentOwner(book) != nil {
 		t.Fatal("owner should be gone after release")
@@ -104,6 +107,9 @@ func TestNormalizeMapsEquivalentPathsToOneLock(t *testing.T) {
 	other, owner, err := Acquire(alias)
 	if err != nil || owner != nil || other == nil {
 		t.Fatalf("alias path should map to the same held lock: owner=%v err=%v", owner, err)
+	}
+	if !lock.Same(other) {
+		t.Fatal("equivalent paths should identify the same lock")
 	}
 }
 

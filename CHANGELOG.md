@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.19.02616] - 2026-09-15
+
+### Fixed
+- A failed open or Save As no longer releases the lock on the currently open book.
+
 ## [0.19.02607] - 2026-09-14
 
 ### Fixed

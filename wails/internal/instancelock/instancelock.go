@@ -33,6 +33,13 @@ type Lock struct {
 	pid  int
 }
 
+// Same reports whether two handles represent this process's lock on the same
+// normalized book path. Acquire can return a fresh handle when this process
+// reopens a book it already holds.
+func (l *Lock) Same(other *Lock) bool {
+	return l != nil && other != nil && l.file == other.file && l.pid == other.pid
+}
+
 // lockDir returns the per-user lock directory. Per-user is deliberate for
 // now: the realistic collision is one author double-opening their own book.
 // (Cross-OS-user simultaneous opens of one shared file are not detected.)

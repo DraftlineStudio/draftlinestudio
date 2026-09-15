@@ -112,3 +112,37 @@ func countLines(path string) (int, error) {
 	}
 	return n, scanner.Err()
 }
+
+// Prose guardrail: planning notes, acceptance gates, and AI handoff documents
+// do not belong inside Go packages. They have been dumped into internal/
+// twice; the second time they were named as if they were package docs. Package
+// documentation is a doc.go comment; everything else goes under docs/ (or the
+// private planning docs when it is not public-safe). The font licence texts
+// are the one legitimate exception.
+func TestNoProseDocumentsInsideGoPackages(t *testing.T) {
+	allowed := map[string]bool{
+		"internal/export/fonts/SOURCES.md": true,
+	}
+	for _, root := range []string{"internal", "cmd"} {
+		err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				if d.Name() == "testdata" {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			rel := filepath.ToSlash(path)
+			ext := strings.ToLower(filepath.Ext(rel))
+			if (ext == ".md" || ext == ".txt") && !allowed[rel] && !strings.HasSuffix(rel, "-OFL.txt") {
+				t.Errorf("%s: prose document inside a Go package — move it under docs/ (package docs go in a doc.go comment)", rel)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
