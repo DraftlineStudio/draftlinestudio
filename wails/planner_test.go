@@ -6,6 +6,7 @@ import (
 	"unicode/utf8"
 
 	"draftline/internal/book"
+	"draftline/internal/plotwalker"
 	"draftline/internal/types"
 )
 
@@ -63,33 +64,33 @@ func TestPlannerPositionResolvesChapterAndScene(t *testing.T) {
 
 func TestPlannerSourceIdentitySurvivesRenameAndSaveAs(t *testing.T) {
 	b := plannerTestBook()
-	first, err := plannerSourceID(b)
+	first, err := plotwalker.SourceID(b)
 	if err != nil {
 		t.Fatal(err)
 	}
 	b.Metadata.Title = "Renamed"
 	b.FilePath = "D:/elsewhere/copy.draftline"
-	second, err := plannerSourceID(b)
+	second, err := plotwalker.SourceID(b)
 	if err != nil || first != second {
 		t.Fatalf("source identity changed across rename/save-as: %q -> %q (%v)", first, second, err)
 	}
 	b.Planner = &types.PlannerData{SourceID: "planner-source"}
-	if got, err := plannerSourceID(b); err != nil || got != "planner-source" {
+	if got, err := plotwalker.SourceID(b); err != nil || got != "planner-source" {
 		t.Fatalf("persisted source identity ignored: %q (%v)", got, err)
 	}
 }
 
 func TestPlannerTitleShortensLongSentences(t *testing.T) {
 	long := strings.Repeat("word ", 30)
-	title := plannerTitle(long)
+	title := plotwalker.Title(long)
 	if utf8.RuneCountInString(title) > 72 || !strings.HasSuffix(title, "…") || !utf8.ValidString(title) {
 		t.Fatalf("title %q", title)
 	}
-	unicodeTitle := plannerTitle(strings.Repeat("界", 80))
+	unicodeTitle := plotwalker.Title(strings.Repeat("界", 80))
 	if utf8.RuneCountInString(unicodeTitle) != 70 || !utf8.ValidString(unicodeTitle) {
 		t.Fatalf("unicode title was not shortened safely: %q", unicodeTitle)
 	}
-	if got := plannerTitle("Short."); got != "Short." {
+	if got := plotwalker.Title("Short."); got != "Short." {
 		t.Fatalf("short title changed: %q", got)
 	}
 }

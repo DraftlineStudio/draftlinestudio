@@ -22,6 +22,11 @@ import (
 
 // ── carried story state ──────────────────────────────────────────────────────
 
+// Carried stakes keep the content words of their clause head (ContentWords):
+// the proposition a later fact must touch or cover. Acquisitions and stake
+// ties compare that head against the fact's whole phrase (phraseWords), so
+// a stake's object named late in a fact still ties, while the stake itself
+// never grows past its head and cannot tie on a trailing adjunct.
 type openQuestion struct {
 	entity      string
 	key         string
@@ -121,7 +126,7 @@ func (s *developmentSynthesizer) emit(kind, summary string, unit unitRef, frames
 	}
 	development := &types.NarrativeDevelopment{
 		ID: stableID("development", append([]string{kind}, frameIDs...)...), Kind: kind,
-		Summary: summary, Basis: basis, Entities: entities,
+		Summary: summary, Discourse: DevelopmentDiscourse(frames), Basis: basis, Entities: entities,
 		FrameIDs: frameIDs, EvidenceIDs: evidenceIDs, EvidenceSpans: spans,
 		ScopeID: frames[0].Scope.ID, ChapterIndex: unit.chapter, SceneIndex: unit.scene,
 		NarrativeOrder: order, Confidence: confidence,
@@ -258,14 +263,16 @@ func (s *developmentSynthesizer) knowledgeRules(unit unitRef, frame types.Narrat
 	if subject == "" || frame.Detail == "" {
 		return learnedFact{}, false
 	}
-	key := qualifierKey(frame.Detail)
-	words := contentWords(frame.Detail, subject)
+	key := QualifierKey(frame.Detail)
+	words := ContentWords(frame.Detail, subject)
 
 	if questionShaped(frame) {
 		s.questionRule(unit, frame, subject, key, words)
 		return learnedFact{}, false
 	}
-	if !firmFact(frame) {
+	if !firmFact(frame) || !supportsCurrentStake(frame) {
+		// A claim, a recollection, or a fact told in a flashback or other
+		// non-current reality answers, narrows, and advances nothing.
 		return learnedFact{}, false
 	}
 	if s.knownFacts[subject+"\x00"+key] {
@@ -298,7 +305,7 @@ func (s *developmentSynthesizer) knowledgeRules(unit unitRef, frame types.Narrat
 	var best *openQuestion
 	bestShared := []string{}
 	for _, question := range s.openQuestions {
-		shared := overlapWords(words, question.words)
+		shared := OverlapWords(words, question.words)
 		if len(shared) >= 2 && len(shared) > len(bestShared) {
 			best = question
 			bestShared = shared
@@ -323,7 +330,7 @@ func (s *developmentSynthesizer) knowledgeRules(unit unitRef, frame types.Narrat
 	// with an open goal it advances when the content overlaps.
 	fact := learnedFact{frame: frame}
 	for _, goal := range s.openGoals {
-		if goal.entity == subject && len(overlapWords(words, goal.words)) >= 2 {
+		if goal.entity == subject && len(OverlapWords(words, goal.words)) >= 2 {
 			fact.goal = goal
 			break
 		}
@@ -341,7 +348,7 @@ func (s *developmentSynthesizer) questionRule(unit unitRef, frame types.Narrativ
 		return // already firmly known to this character — not a mystery
 	}
 	if len(words) < 2 {
-		// "Hanlon didn't know." carries no content to ever resolve against —
+		// "Rhea didn't know." carries no content to ever resolve against —
 		// pure anaphora opens nothing.
 		return
 	}
@@ -362,7 +369,7 @@ func (s *developmentSynthesizer) questionRule(unit unitRef, frame types.Narrativ
 		// A belief that substantially overlaps an open question but states it
 		// differently reframes that question.
 		if frame.Type == types.FrameBelief {
-			shared := overlapWords(words, question.words)
+			shared := OverlapWords(words, question.words)
 			if len(shared) >= 2 && !covers(words, question.words) {
 				development := s.emit("mystery_reframed",
 					fmt.Sprintf("The question shifts for %s: from “%s” to “%s”", subject, question.detail, frame.Detail),
@@ -407,15 +414,15 @@ func (s *developmentSynthesizer) questionRule(unit unitRef, frame types.Narrativ
 // so obstacle-clearing acquisitions count as progress.
 func (s *developmentSynthesizer) goalAcquisitionRule(frame types.NarrativeFrame) (learnedFact, bool) {
 	subject := subjectName(frame)
-	if subject == "" || frame.Detail == "" || frame.Polarity == "negated" {
+	if subject == "" || frame.Detail == "" || !supportsCurrentStake(frame) {
 		return learnedFact{}, false
 	}
 	if frame.Value == "relinquished" || frame.Value == "clear" || frame.Value == "revoked" {
 		return learnedFact{}, false
 	}
-	words := contentWords(frame.Detail, subject)
+	words := phraseWords(frame.Detail, subject)
 	for _, goal := range s.openGoals {
-		if goal.entity == subject && len(overlapWords(words, goal.words)) >= 2 {
+		if goal.entity == subject && len(OverlapWords(words, goal.words)) >= 2 {
 			return learnedFact{frame: frame, goal: goal}, true
 		}
 	}
@@ -427,18 +434,18 @@ func (s *developmentSynthesizer) goalAcquisitionRule(frame types.NarrativeFrame)
 // Untied events and claims stay out of the account entirely.
 func (s *developmentSynthesizer) stakeTieRule(frame types.NarrativeFrame) (learnedFact, bool) {
 	subject := subjectName(frame)
-	if subject == "" || frame.Detail == "" || frame.Polarity == "negated" {
+	if subject == "" || frame.Detail == "" || !supportsCurrentStake(frame) {
 		return learnedFact{}, false
 	}
 	attributed := frame.Type == types.FrameClaim
-	words := contentWords(frame.Detail, subject)
+	words := phraseWords(frame.Detail, subject)
 	for _, goal := range s.openGoals {
-		if goal.entity == subject && len(overlapWords(words, goal.words)) >= 2 {
+		if goal.entity == subject && len(OverlapWords(words, goal.words)) >= 2 {
 			return learnedFact{frame: frame, goal: goal, attributed: attributed}, true
 		}
 	}
 	for _, question := range s.openQuestions {
-		if len(overlapWords(words, question.words)) >= 2 {
+		if len(OverlapWords(words, question.words)) >= 2 {
 			return learnedFact{frame: frame, question: question, attributed: attributed}, true
 		}
 	}
@@ -479,6 +486,10 @@ func (s *developmentSynthesizer) investigationRule(unit unitRef, entity string, 
 		details := []string{}
 		confidence := .75
 		basis := "acquisitions in this scene share content with the character's open goal"
+		// A word-overlap tie says the fact concerns the goal, not that it
+		// helps: only obtaining, reaching, or gaining access to the goal's
+		// object reads as progress; a learned fact merely bears on it.
+		template := "%s learns something that bears on “%s”: %s"
 		for _, fact := range tied {
 			frames = append(frames, fact.frame)
 			details = append(details, "“"+fact.frame.Detail+"”")
@@ -486,9 +497,13 @@ func (s *developmentSynthesizer) investigationRule(unit unitRef, entity string, 
 				confidence = .6
 				basis += "; part of the support is an attributed claim, not narration"
 			}
+			switch fact.frame.Type {
+			case types.FramePossession, types.FrameAccess, types.FrameLocation:
+				template = "%s makes progress toward “%s”: %s"
+			}
 		}
 		development := s.emit("investigation_progress",
-			fmt.Sprintf("%s makes progress toward “%s”: %s", entity, goal.detail, strings.Join(details, "; ")),
+			fmt.Sprintf(template, entity, goal.detail, strings.Join(details, "; ")),
 			unit, frames,
 			[]string{basis}, confidence)
 		if development != nil {
@@ -523,7 +538,7 @@ func (s *developmentSynthesizer) investigationRule(unit unitRef, entity string, 
 	// knows by scene close.
 	if len(untied) == 1 {
 		fact := untied[0]
-		if len(contentWords(fact.frame.Detail, entity)) >= 4 {
+		if len(ContentWords(fact.frame.Detail, entity)) >= 4 {
 			s.emit("investigation_progress",
 				fmt.Sprintf("%s learns: “%s”", entity, fact.frame.Detail),
 				unit, []types.NarrativeFrame{fact.frame},
@@ -554,17 +569,17 @@ func (s *developmentSynthesizer) investigationRule(unit unitRef, entity string, 
 
 func (s *developmentSynthesizer) goalRule(unit unitRef, frame types.NarrativeFrame) {
 	subject := subjectName(frame)
-	if subject == "" || frame.Detail == "" || frame.Polarity == "negated" {
-		return
+	if subject == "" || frame.Detail == "" || !supportsCurrentStake(frame) {
+		return // a goal held in a flashback or other reality is not a current pursuit
 	}
-	key := qualifierKey(frame.Detail)
-	words := contentWords(frame.Detail, subject)
+	key := QualifierKey(frame.Detail)
+	words := ContentWords(frame.Detail, subject)
 	var latest *openGoal
 	for _, goal := range s.openGoals {
 		if goal.entity != subject {
 			continue
 		}
-		if goal.key == key || len(overlapWords(words, goal.words)) >= 2 {
+		if goal.key == key || len(OverlapWords(words, goal.words)) >= 2 {
 			return // the same pursuit restated is not a change of course
 		}
 		latest = goal

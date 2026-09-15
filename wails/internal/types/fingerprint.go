@@ -165,6 +165,11 @@ type NarrativeDevelopment struct {
 	// revelation | setup | payoff
 	Kind    string `json:"kind"`
 	Summary string `json:"summary"`
+	// Discourse names the strongest reason the supporting frames are not
+	// plain current narration: narration | belief | reported | recalled |
+	// hypothetical | negated | uncertain. A consumer must not present a
+	// development whose discourse is not "narration" as a settled fact.
+	Discourse string `json:"discourse,omitempty"`
 	// Basis lists the mechanical reasons this development was synthesized.
 	Basis          []string                `json:"basis"`
 	Entities       []NarrativeParticipant  `json:"entities,omitempty"`

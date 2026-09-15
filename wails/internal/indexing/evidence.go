@@ -17,9 +17,18 @@ import (
 )
 
 const (
-	evidenceEngine     = "prose-v3-evidence-v3"
+	// evidenceEngine names the extraction rules. It changes whenever the
+	// records an unchanged chapter would produce change, so caches built by
+	// an older engine are rebuilt once instead of reused by text hash.
+	evidenceEngine     = "prose-v3-evidence-v4"
+	evidenceVersion    = 3
 	maxEvidenceRecords = 50_000
 )
+
+// intentCueRe catches goals, decisions, and obligations that carry no
+// state, movement, or time cue of their own ("decided to search the loft
+// before dark"); without a record the frame extractors never see them.
+var intentCueRe = regexp.MustCompile(`(?i)\b(?:wanted|needed|planned|intended|hoped|aimed|decided|chose|agreed|resolved|refused|promised|swore|was supposed|was ordered)\s+(?:not\s+)?to\b`)
 
 var (
 	discoveryCueRe         = regexp.MustCompile(`(?i)\b(discover(?:ed|s|ing)?|finds?|found|learn(?:ed|t|s|ing)?|reveal(?:ed|s|ing)?|uncover(?:ed|s|ing)?|realiz(?:ed|es|ing)|identif(?:ied|ies|ying)|determin(?:ed|es|ing)|locat(?:ed|es|ing)|notic(?:ed|es|ing))\b`)
@@ -73,14 +82,10 @@ func AnalyzeEvidenceWithOptions(book *types.BookData, progress func(types.StoryA
 		LastAnalyzed:  time.Now().Format(time.RFC3339),
 		Records:       []types.EvidenceRecord{},
 		ChapterHashes: map[string]string{},
-		Version:       3,
+		Version:       evidenceVersion,
 	}
 
-	hasher := sha256.New()
-	for _, item := range chapters {
-		fmt.Fprintf(hasher, "%d\x00%s\x00%s\x00%s\x00", item.globalIndex, item.chapter.ID, item.chapter.Title, item.text)
-	}
-	result.ContentHash = hex.EncodeToString(hasher.Sum(nil))
+	result.ContentHash = contentHash(chapters)
 
 	prior := priorEvidence(book.Analysis.Evidence)
 	reusable := reusableEvidenceChapters(book.Analysis.Evidence, chapters, result.ChapterHashes)
@@ -163,7 +168,9 @@ func AnalyzeEvidenceWithOptions(book *types.BookData, progress func(types.StoryA
 
 func reusableEvidenceChapters(old *types.EvidenceData, chapters []evidenceChapter, hashes map[string]string) map[string][]types.EvidenceRecord {
 	result := map[string][]types.EvidenceRecord{}
-	if old == nil || len(old.ChapterHashes) == 0 { // v2 caches safely fall back to one full rebuild.
+	// A cache from another engine or schema is rebuilt in full: its records
+	// for an unchanged chapter are not the records this engine would produce.
+	if old == nil || len(old.ChapterHashes) == 0 || old.Engine != evidenceEngine || old.Version != evidenceVersion {
 		for _, item := range chapters {
 			hashes[item.chapter.ID] = evidenceChapterHash(item.text)
 		}
@@ -193,6 +200,24 @@ func reusableEvidenceChapters(old *types.EvidenceData, chapters []evidenceChapte
 func evidenceChapterHash(text string) string {
 	sum := sha256.Sum256([]byte(text))
 	return hex.EncodeToString(sum[:16])
+}
+
+// ContentHash is the revision token of the analyzed manuscript text: a hash
+// over every analyzable chapter's global index, ID, title, and stripped text
+// in reading order. It is the hash the evidence index and the manuscript
+// memory record as their ContentHash, so any consumer can tell whether a
+// stored analysis still describes the text in front of the writer by
+// recomputing it here — without running any analysis.
+func ContentHash(book *types.BookData) string {
+	return contentHash(evidenceChapters(book))
+}
+
+func contentHash(chapters []evidenceChapter) string {
+	hasher := sha256.New()
+	for _, item := range chapters {
+		fmt.Fprintf(hasher, "%d\x00%s\x00%s\x00%s\x00", item.globalIndex, item.chapter.ID, item.chapter.Title, item.text)
+	}
+	return hex.EncodeToString(hasher.Sum(nil))
 }
 
 func evidenceChapters(book *types.BookData) []evidenceChapter {
@@ -268,27 +293,30 @@ func analyzeEvidenceChapter(item evidenceChapter, mentions []types.MentionRecord
 	paragraphs := splitIntoParagraphs(item.text)
 	result := make([]evidenceSentence, 0, len(doc.Sentences()))
 	for sentenceIndex, sentence := range doc.Sentences() {
-		text := strings.TrimSpace(sentence.Text)
-		if text == "" {
-			continue
-		}
-		end := sentence.End()
-		characterIDs := charactersInSpan(mentions, mentionToEntity, sentence.Start, end)
-		characterNames := make([]string, 0, len(characterIDs))
-		for _, id := range characterIDs {
-			if name := canonicalByID[id]; name != "" {
-				characterNames = append(characterNames, name)
+		// A scene-break marker is never part of a sentence: the segmenter
+		// glues it to the front of the sentence after it, or leaves it in
+		// the middle when the paragraph before it had no terminal
+		// punctuation. Each prose piece is indexed on its own, with offsets
+		// that still locate it.
+		for _, piece := range splitAtSceneBreaks(sentence.Text, sentence.Start) {
+			text, start, end := piece.text, piece.start, piece.end
+			characterIDs := charactersInSpan(mentions, mentionToEntity, start, end)
+			characterNames := make([]string, 0, len(characterIDs))
+			for _, id := range characterIDs {
+				if name := canonicalByID[id]; name != "" {
+					characterNames = append(characterNames, name)
+				}
 			}
+			result = append(result, evidenceSentence{
+				text: text, start: start, end: end,
+				paragraphIndex: paragraphForOffset(paragraphs, start), sentenceIndex: sentenceIndex,
+				characterIDs: characterIDs, characterNames: characterNames,
+				named:           namedEntitiesInSpan(doc.Entities(), start, end),
+				action:          firstVerbInSpan(doc.Tokens(), start, end),
+				timeExpressions: uniqueStrings(timeCueRe.FindAllString(text, -1)),
+				knowledgeStates: inferKnowledgeStates(text, start, mentions, mentionToEntity, canonicalByID),
+			})
 		}
-		result = append(result, evidenceSentence{
-			text: text, start: sentence.Start, end: end,
-			paragraphIndex: paragraphForOffset(paragraphs, sentence.Start), sentenceIndex: sentenceIndex,
-			characterIDs: characterIDs, characterNames: characterNames,
-			named:           namedEntitiesInSpan(doc.Entities(), sentence.Start, end),
-			action:          firstVerbInSpan(doc.Tokens(), sentence.Start, end),
-			timeExpressions: uniqueStrings(timeCueRe.FindAllString(text, -1)),
-			knowledgeStates: inferKnowledgeStates(text, sentence.Start, mentions, mentionToEntity, canonicalByID),
-		})
 	}
 	return result
 }
@@ -589,6 +617,8 @@ func classifyEvidence(text string, characterIDs []string, named []types.Evidence
 		return "event", "interaction", .84, "Contains two confirmed characters and direct interaction language"
 	case stateCueRe.MatchString(text) && hasSubject:
 		return "fact", "state", .7, "States an identity, possession, knowledge, work, residence, or named condition"
+	case intentCueRe.MatchString(text) && hasSubject:
+		return "fact", "state", .7, "States a goal, decision, promise, or obligation of a named story subject"
 	case len(times) > 0 && hasSubject:
 		return "fact", "time_reference", .72, "Contains an explicit time expression tied to a named story subject"
 	case hasKnowledgeState(knowledge, "shared") || hasKnowledgeState(knowledge, "withheld"):

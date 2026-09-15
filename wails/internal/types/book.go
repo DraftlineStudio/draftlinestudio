@@ -151,6 +151,13 @@ type PlannerLink struct {
 // PlannerEvidence keeps an adopted card tied to the exact manuscript revision
 // and passage that proposed it. A stale reference remains useful provenance but
 // must not be presented as evidence from the current manuscript.
+//
+// Space names the coordinate space of Start and End. "chapter" means byte
+// offsets into the chapter's stripped analysis text (the space the story
+// analysis, its evidence, and scene numbers share; Revision is then the
+// analysis content hash and BlockID is empty). An empty Space is the legacy
+// form: byte offsets into one block of the isolated narrative engine's
+// document, identified by BlockID under that engine's own revision.
 type PlannerEvidence struct {
 	SourceID  string `json:"source_id"`
 	Revision  string `json:"revision"`
@@ -160,13 +167,20 @@ type PlannerEvidence struct {
 	Start     int    `json:"start"`
 	End       int    `json:"end"`
 	Quote     string `json:"quote"`
+	Space     string `json:"space,omitempty"`
 }
+
+// PlannerEvidenceChapterSpace is the Space of an anchor whose offsets index
+// the chapter's stripped analysis text.
+const PlannerEvidenceChapterSpace = "chapter"
 
 // PlannerCard is one plot card. It sits on the first line in Lines at the
 // chapter in ChapterID (empty = "Later", not yet pinned to a chapter); other
-// lines are drawn as crossings. Who are character IDs. Changes and Stakes are
-// the promise the card makes, kept as separate fields so a future
-// reconciliation against extracted developments needs no migration.
+// lines are drawn as crossings. Who are character IDs; WhoNames are the same
+// people's names at the time Who was set, so a card still names its people
+// after re-indexing reassigns entity IDs. Changes and Stakes are the promise
+// the card makes, kept as separate fields so a future reconciliation against
+// extracted developments needs no migration.
 type PlannerCard struct {
 	ID        string            `json:"id"`
 	SourceID  string            `json:"source_id,omitempty"`
@@ -174,6 +188,7 @@ type PlannerCard struct {
 	Synopsis  string            `json:"synopsis"`
 	Lines     []string          `json:"lines"`
 	Who       []string          `json:"who"`
+	WhoNames  []string          `json:"who_names,omitempty"`
 	Changes   string            `json:"changes,omitempty"`
 	Stakes    string            `json:"stakes,omitempty"`
 	ChapterID string            `json:"chapter_id"`

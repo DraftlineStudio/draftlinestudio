@@ -12,7 +12,7 @@ func TestAnalyzeEvidenceIndexesDiscoveryWithExactSourceAndCharacters(t *testing.
 	book := evidenceTestBook(text, map[string]string{"Hanlon": "hanlon", "Ruiz": "ruiz"})
 
 	result := AnalyzeEvidence(&book, nil)
-	if result.Engine != "prose-v3-evidence-v3" || result.Version != 3 {
+	if result.Engine != "prose-v3-evidence-v4" || result.Version != 3 {
 		t.Fatalf("unexpected evidence schema identity: engine=%s version=%d", result.Engine, result.Version)
 	}
 	record := findEvidenceType(result.Records, "discovery")

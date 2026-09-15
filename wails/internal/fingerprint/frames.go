@@ -18,6 +18,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"draftline/internal/types"
 )
@@ -35,6 +36,11 @@ type aliasEntry struct {
 
 type rosterMatcher struct {
 	entries []aliasEntry
+	// ids maps a case-folded canonical name or alias to the codex entity ID
+	// of an accepted person, so a participant can carry the ID the Planner
+	// and the character codex use. IDs are positional and churn across
+	// re-indexing; the name stays the durable key.
+	ids map[string]string
 }
 
 // buildRoster collects canonical character names and aliases. Recall-first:
@@ -73,7 +79,7 @@ func buildRoster(book *types.BookData) *rosterMatcher {
 		}
 	}
 	sort.SliceStable(entries, func(i, j int) bool { return len(entries[i].alias) > len(entries[j].alias) })
-	return &rosterMatcher{entries: entries}
+	return &rosterMatcher{entries: entries, ids: AcceptedPeopleIDs(book)}
 }
 
 func wordBoundary(text string, start, end int) bool {
@@ -97,8 +103,13 @@ func isWordByte(b byte) bool {
 // position zero (optionally after an opening quote/dash) or its possessive.
 func (r *rosterMatcher) subjectAt(text string) (canonical string, rest string, ok bool) {
 	offset := 0
-	for offset < len(text) && strings.ContainsRune("“\"'‘—- ", rune(text[offset])) {
-		offset++
+	for offset < len(text) {
+		// Decode runes: the curly quotes and the dash are multi-byte.
+		r, size := utf8.DecodeRuneInString(text[offset:])
+		if !strings.ContainsRune("“\"'‘—- ", r) {
+			break
+		}
+		offset += size
 	}
 	body := text[offset:]
 	for _, entry := range r.entries {
@@ -360,6 +371,7 @@ func extractFrames(
 		frames = append(frames, extractFromRecord(fc)...)
 	}
 	sort.SliceStable(frames, func(i, j int) bool { return frames[i].NarrativeOrder < frames[j].NarrativeOrder })
+	bindParticipantIDs(roster, frames)
 	return frames
 }
 
@@ -383,7 +395,15 @@ func extractFromRecord(fc *frameContext) []types.NarrativeFrame {
 	fc.negated = negationRe.MatchString(firstWords(rest, 6))
 
 	// Typed extractors in specificity order; each may add at most one frame.
-	frames = append(frames, subjectFrames(fc, text, subject, rest)...)
+	anchored := subjectFrames(fc, text, subject, rest)
+	if startsInsideQuote(text) {
+		// The subject is anchored inside quoted speech: whatever the sentence
+		// says about the subject is said by a character, never narrated.
+		for index := range anchored {
+			attributeToSpeech(fc, text, &anchored[index])
+		}
+	}
+	frames = append(frames, anchored...)
 	frames = append(frames, knowledgeStateFrames(fc)...)
 	return capFrames(frames)
 }
@@ -464,7 +484,9 @@ func subjectFrames(fc *frameContext, text, subject, rest string) []types.Narrati
 		}
 	}
 
-	if match := injuryRe.FindStringIndex(rest); match != nil {
+	// An injury term inside a known/believed clause ("learned that the room
+	// had burned") describes the clause's content, not the subject's body.
+	if match := injuryRe.FindStringIndex(rest); match != nil && !insideReportedClause(rest, match[0]) {
 		term := strings.TrimSpace(rest[match[0]:match[1]])
 		// "a clear shot", "the shot" — determiner-led "shot" is the noun
 		// (an opportunity to fire), not a wound. Abstain.
@@ -484,7 +506,12 @@ func subjectFrames(fc *frameContext, text, subject, rest string) []types.Narrati
 			switch verb {
 			case "knew", "understood", "recognized":
 				frame.Value = "knows"
-			default: // learned, realized, discovered, remembered, noticed
+			case "remembered":
+				// A recollection is neither standing knowledge nor an
+				// acquisition: it surfaces something already known, and may
+				// be wrong. It never completes a current stake.
+				frame.Value = "recalled"
+			default: // learned, realized, discovered, noticed
 				frame.Value = "learned"
 			}
 			frame.Participants = []types.NarrativeParticipant{participant("subject", subject)}
@@ -690,6 +717,14 @@ func knowledgeStateFrames(fc *frameContext) []types.NarrativeFrame {
 		frame := fc.newFrame(frameType, detail, minFloat(.9, state.Confidence+.1))
 		frame.Value = value
 		frame.Epistemic = epistemic
+		if value == "knows" && strings.HasPrefix(strings.ToLower(strings.TrimSpace(state.Cue)), "remember") {
+			frame.Value = "recalled"
+		}
+		if cueInsideQuote(fc.record.Text, state.Cue) {
+			// The knower is a character inside quoted speech: the sentence is
+			// a claim by the speaker, not narration about the knower.
+			attributeToSpeech(fc, fc.record.Text, &frame)
+		}
 		if state.State == "does_not_know" {
 			frame.Polarity = "negated"
 		}

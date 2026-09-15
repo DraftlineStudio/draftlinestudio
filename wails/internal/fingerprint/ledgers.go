@@ -16,9 +16,22 @@ import (
 var articleRe = regexp.MustCompile(`(?i)^(the|a|an|his|her|their|its|my|your|our)\s+`)
 var nonKeyRe = regexp.MustCompile(`[^\p{L}\p{N} ]+`)
 
-// qualifierKey normalizes a verbatim phrase into a stable ledger qualifier:
-// lowercased, article-stripped, punctuation-free, capped at six words.
-func qualifierKey(text string) string {
+// QualifierKey normalizes a verbatim phrase into a stable ledger qualifier:
+// lowercased, article-stripped, punctuation-free, capped at six words — the
+// head of the clause, where English puts the proposition; trailing adjuncts
+// ("somewhere in the tower", "before dark") fall outside the key.
+func QualifierKey(text string) string {
+	words := strings.Fields(normalizePhrase(text))
+	if len(words) > 6 {
+		words = words[:6]
+	}
+	return strings.Join(words, " ")
+}
+
+// normalizePhrase lowercases, strips leading articles and punctuation, and
+// keeps every word: the whole phrase, for word-set relations that must not
+// depend on where in a clause a word happens to fall.
+func normalizePhrase(text string) string {
 	text = strings.ToLower(strings.TrimSpace(text))
 	for {
 		next := articleRe.ReplaceAllString(text, "")
@@ -27,12 +40,7 @@ func qualifierKey(text string) string {
 		}
 		text = next
 	}
-	text = nonKeyRe.ReplaceAllString(text, "")
-	words := strings.Fields(text)
-	if len(words) > 6 {
-		words = words[:6]
-	}
-	return strings.Join(words, " ")
+	return nonKeyRe.ReplaceAllString(text, "")
 }
 
 func subjectName(frame types.NarrativeFrame) string {
@@ -110,13 +118,13 @@ func buildLedgers(frames []types.NarrativeFrame) []types.StateLedger {
 			if frame.Value == "relinquished" || frame.Polarity == "negated" {
 				operation = "clear"
 			}
-			add(subject, "possession", qualifierKey(item), frame, item, operation)
+			add(subject, "possession", QualifierKey(item), frame, item, operation)
 		case types.FrameTransfer:
 			item := participantNamed(frame, "item")
 			source := participantNamed(frame, "source")
 			recipient := participantNamed(frame, "recipient")
-			add(source, "possession", qualifierKey(item), frame, item, "transfer_out")
-			add(recipient, "possession", qualifierKey(item), frame, item, "transfer_in")
+			add(source, "possession", QualifierKey(item), frame, item, "transfer_out")
+			add(recipient, "possession", QualifierKey(item), frame, item, "transfer_in")
 		case types.FrameInjury:
 			operation := "set"
 			if frame.Polarity == "negated" {
@@ -130,13 +138,13 @@ func buildLedgers(frames []types.NarrativeFrame) []types.StateLedger {
 			if frame.Polarity == "negated" {
 				operation = "clear"
 			}
-			add(subject, "knowledge", qualifierKey(frame.Detail), frame, frame.Detail, operation)
+			add(subject, "knowledge", QualifierKey(frame.Detail), frame, frame.Detail, operation)
 		case types.FrameBelief:
-			add(subject, "knowledge", qualifierKey(frame.Detail), frame, frame.Detail, "set")
+			add(subject, "knowledge", QualifierKey(frame.Detail), frame, frame.Detail, "set")
 		case types.FrameGoal:
-			add(subject, "goal", qualifierKey(frame.Detail), frame, frame.Detail, "open")
+			add(subject, "goal", QualifierKey(frame.Detail), frame, frame.Detail, "open")
 		case types.FrameObligation:
-			add(subject, "obligation", qualifierKey(frame.Detail), frame, frame.Detail, "open")
+			add(subject, "obligation", QualifierKey(frame.Detail), frame, frame.Detail, "open")
 		case types.FrameRelationship:
 			counterparty := participantNamed(frame, "counterparty")
 			if counterparty == "" {
@@ -148,7 +156,7 @@ func buildLedgers(frames []types.NarrativeFrame) []types.StateLedger {
 			if frame.Value == "revoked" || frame.Polarity == "negated" {
 				operation = "clear"
 			}
-			add(subject, "access", qualifierKey(frame.Detail), frame, frame.Detail, operation)
+			add(subject, "access", QualifierKey(frame.Detail), frame, frame.Detail, operation)
 		}
 		// Timeline ledger: any frame with a solved story day contributes to
 		// the per-scope chronology history.

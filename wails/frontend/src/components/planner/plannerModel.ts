@@ -191,8 +191,21 @@ export function laneChips(card: PlannerCard, lanes: PlannerLane[]): PlannerLane[
   return card.lines.map(id => lanes.find(l => l.id === id)).filter((l): l is PlannerLane => !!l)
 }
 
+// The names to store beside a card's `who`: the codex name for each ID, else
+// the name the card already recorded for that ID, else the ID itself.
+export function whoNames(who: string[], codex: CodexPerson[], previous?: Pick<PlannerCard, 'who' | 'who_names'>): string[] {
+  return who.map(id => {
+    const known = codex.find(c => c.id === id)?.name
+    if (known) return known
+    const at = previous?.who.indexOf(id) ?? -1
+    return (at >= 0 ? previous?.who_names?.[at] : undefined) ?? id
+  })
+}
+
+// A card's people by first name: the codex name for each ID, else the name
+// recorded on the card when the ID was set, else the raw ID.
 export function whoText(card: PlannerCard, codex: CodexPerson[]): string {
-  return card.who.map(id => firstName(codex.find(c => c.id === id)?.name ?? id)).join(', ')
+  return card.who.map((id, i) => firstName(codex.find(c => c.id === id)?.name ?? card.who_names?.[i] ?? id)).join(', ')
 }
 
 export function chapterLabel(ch: PlannerChapter | undefined, fallback = 'Later'): string {

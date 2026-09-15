@@ -11,7 +11,7 @@ import { useBookStore } from './bookStore'
 import { useAppStore } from './appStore'
 import {
   adoptedId, bookChapters, codexPeople, deadIdeaBlock, ensurePlanner, LANE_PALETTE, MAIN_LANE_ID, newId, nowStamp,
-  parseOutline, type ParsedOutline, type Proposal,
+  parseOutline, whoNames, type ParsedOutline, type Proposal,
 } from '../components/planner/plannerModel'
 
 export type PlannerView = 'timeline' | 'board' | 'scratch' | 'synopsis'
@@ -145,9 +145,16 @@ export const usePlannerStore = create<PlannerStore>((set, get) => ({
     set({ selected: id, linkOpen: false })
   },
 
-  updateCard: (id, patch) => get().mutate(p => ({
-    ...p, cards: p.cards.map(c => (c.id === id ? { ...c, ...patch, updated: nowStamp() } : c)),
-  })),
+  // Whenever `who` changes, the people's names are written beside it so the
+  // card survives re-indexing reassigning codex IDs.
+  updateCard: (id, patch) => {
+    const codex = patch.who ? codexPeople(useBookStore.getState().book) : []
+    get().mutate(p => ({
+      ...p, cards: p.cards.map(c => (c.id === id
+        ? { ...c, ...patch, ...(patch.who ? { who_names: whoNames(patch.who, codex, c) } : {}), updated: nowStamp() }
+        : c)),
+    }))
+  },
 
   moveCard: (id, chapterId, laneId, beforeId) => {
     get().mutate(p => {
@@ -185,9 +192,10 @@ export const usePlannerStore = create<PlannerStore>((set, get) => ({
     const d = get().detected.find(x => x.id === detectedId)
     if (!d) return
     const id = adoptedId(d.id)
+    const codex = codexPeople(useBookStore.getState().book)
     get().mutate(p => ({
       ...p, cards: p.cards.some(c => c.id === id) ? p.cards : [...p.cards, {
-        id, source_id: d.evidence[0]?.source_id, title: d.title, synopsis: d.synopsis, lines: [MAIN_LANE_ID], who: d.who, changes: '', stakes: '',
+        id, source_id: d.evidence[0]?.source_id, title: d.title, synopsis: d.synopsis, lines: [MAIN_LANE_ID], who: d.who, who_names: whoNames(d.who, codex), changes: '', stakes: '',
         chapter_id: d.chapter_id, link: { chapter_id: d.chapter_id, scene: d.scene }, status: 'drafted', origin: 'adopted',
         dev_kind: d.kind, evidence: d.evidence, updated: nowStamp(),
       }],
@@ -311,8 +319,9 @@ export const usePlannerStore = create<PlannerStore>((set, get) => ({
     const chapters = bookChapters(useBookStore.getState().book)
     const fromNote = s.importFromNoteId
     const noteId = fromNote ?? newId('note')
+    const codex = codexPeople(useBookStore.getState().book)
     const cards: PlannerCard[] = accepted.map(q => ({
-      id: newId('card'), source_id: noteId, title: q.title, synopsis: q.synopsis, lines: [q.laneId], who: q.who, changes: '', stakes: '',
+      id: newId('card'), source_id: noteId, title: q.title, synopsis: q.synopsis, lines: [q.laneId], who: q.who, who_names: whoNames(q.who, codex), changes: '', stakes: '',
       chapter_id: chapters[q.chapterNum - 1]?.id ?? '', status: 'planned', origin: 'outline', updated: nowStamp(),
     }))
     get().mutate(p => ({

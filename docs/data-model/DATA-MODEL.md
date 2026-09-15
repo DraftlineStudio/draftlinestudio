@@ -95,9 +95,12 @@ Automatic snapshots are activity-driven: editing marks the affected chapter, and
 
 `planner.json` is written once the Planner has been used for a book and holds
 the story-line timeline: `lanes` (main plot, subplots, character arcs keyed by
-`character_id`), `cards` (title, synopsis, `lines`, `who`, `changes`,
-`stakes`, `chapter_id`, optional scene `link`, `status`, `origin`, and for
-adopted cards revision-bound `evidence` anchors), `notes` (scratch notes; the
+`character_id`), `cards` (title, synopsis, `lines`, `who` with the matching
+`who_names`, `changes`, `stakes`, `chapter_id`, optional scene `link`,
+`status`, `origin`, and for adopted cards revision-bound `evidence` anchors —
+an anchor with `space: "chapter"` gives byte offsets into the chapter's
+stripped analysis text under the analysis content hash; one without a space
+is the older block-offset form), `notes` (scratch notes; the
 one with `system: "dead"` is the automatic Dead ideas note), per-chapter
 `synopsis` edits keyed by chapter ID, `beat_template`, `hidden_lanes`,
 `dismissed` proposal IDs, and the `plot_walker` and `compact` settings. Cards

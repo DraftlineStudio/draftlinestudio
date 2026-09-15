@@ -722,6 +722,7 @@ export namespace types {
 	    id: string;
 	    kind: string;
 	    summary: string;
+	    discourse?: string;
 	    basis: string[];
 	    entities?: NarrativeParticipant[];
 	    frame_ids: string[];
@@ -748,6 +749,7 @@ export namespace types {
 	        this.id = source["id"];
 	        this.kind = source["kind"];
 	        this.summary = source["summary"];
+	        this.discourse = source["discourse"];
 	        this.basis = source["basis"];
 	        this.entities = this.convertValues(source["entities"], NarrativeParticipant);
 	        this.frame_ids = source["frame_ids"];
@@ -2135,6 +2137,7 @@ export namespace types {
 	    start: number;
 	    end: number;
 	    quote: string;
+	    space?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new PlannerEvidence(source);
@@ -2150,6 +2153,7 @@ export namespace types {
 	        this.start = source["start"];
 	        this.end = source["end"];
 	        this.quote = source["quote"];
+	        this.space = source["space"];
 	    }
 	}
 	export class PlannerLink {
@@ -2173,6 +2177,7 @@ export namespace types {
 	    synopsis: string;
 	    lines: string[];
 	    who: string[];
+	    who_names?: string[];
 	    changes?: string;
 	    stakes?: string;
 	    chapter_id: string;
@@ -2195,6 +2200,7 @@ export namespace types {
 	        this.synopsis = source["synopsis"];
 	        this.lines = source["lines"];
 	        this.who = source["who"];
+	        this.who_names = source["who_names"];
 	        this.changes = source["changes"];
 	        this.stakes = source["stakes"];
 	        this.chapter_id = source["chapter_id"];

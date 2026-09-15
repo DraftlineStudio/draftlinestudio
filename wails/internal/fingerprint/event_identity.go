@@ -37,7 +37,7 @@ var routineActionVerbs = map[string]bool{
 // abstains from identity resolution entirely.
 func contentHead(text string, n int) string {
 	words := []string{}
-	for _, word := range strings.Fields(qualifierKey(text)) {
+	for _, word := range strings.Fields(QualifierKey(text)) {
 		if anchorStopWords[word] {
 			continue
 		}
@@ -71,10 +71,10 @@ func identityAnchor(frame types.NarrativeFrame) (identityKey, bool) {
 		// underlying event, whatever scope tells each version.
 		return identityKey{class: frame.Type, subject: subject, anchor: frame.Value}, true
 	case types.FrameInjury:
-		return identityKey{class: frame.Type, subject: subject, anchor: firstWords(qualifierKey(frame.Detail), 2)}, true
+		return identityKey{class: frame.Type, subject: subject, anchor: firstWords(QualifierKey(frame.Detail), 2)}, true
 	case types.FrameTransfer:
 		recipient := participantNamed(frame, "recipient")
-		item := qualifierKey(participantNamed(frame, "item"))
+		item := QualifierKey(participantNamed(frame, "item"))
 		return identityKey{class: frame.Type, subject: subject, anchor: item + "→" + recipient}, true
 	case types.FrameEvent:
 		// Same actor + same action/object head. The head is the first two

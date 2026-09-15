@@ -37,8 +37,9 @@ glyph hides the tools panel.
 ## Cards
 
 A card has a title, synopsis, one or more lines (the first is where it sits),
-who (confirmed codex characters), what changes, stakes, a chapter position,
-and an optional scene link. Linking a card to a scene marks it **drafted**;
+who (confirmed codex characters, stored with their names so the card still
+names its people after re-indexing reassigns codex IDs), what changes, stakes,
+a chapter position, and an optional scene link. Linking a card to a scene marks it **drafted**;
 otherwise it is **planned**. *What changes* and *stakes* are kept as separate
 fields so that a future reconciliation against extracted developments needs no
 data migration.
@@ -73,8 +74,11 @@ timeline, positioned by chapter and scene with the sentence that nominated them
 as evidence. *Adopt as card* turns one into an ordinary card that keeps its
 evidence; *Dismiss* sends it to Dead ideas. Detection runs when the Planner is
 opened with the toggle on and from the toolbar's *Refresh*, never per
-keystroke. Matching existing cards to developments (kept and drifted statuses)
-is the next Plot Walker milestone; the statuses are reserved in the model.
+keystroke. Scene numbers follow the same rule as the story analysis: a
+paragraph that is only `***`, `* * *`, `⁂`, `###`, `---`, `~ ~ ~` or `. . .`,
+or a horizontal rule, ends a scene. Matching existing cards to developments
+(kept and drifted statuses) is the next Plot Walker milestone; the statuses
+are reserved in the model.
 
 ## Storage
 

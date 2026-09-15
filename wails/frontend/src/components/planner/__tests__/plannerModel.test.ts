@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   bookChapters, codexPeople, columnConnectors, deadIdeaBlock, displayCards, emptyPlanner, ensurePlanner, generatedSynopsis,
-  laneRows, layoutMetrics, MAIN_LANE_ID, parseOutline, statusOf, synopsisMarkdown, type CodexPerson, type PlannerChapter,
+  laneRows, layoutMetrics, MAIN_LANE_ID, parseOutline, statusOf, synopsisMarkdown, whoNames, whoText, type CodexPerson, type PlannerChapter,
 } from '../plannerModel'
 import type { BookData, PlannerData, PlannerLane } from '../../../types/draftline'
 
@@ -178,5 +178,21 @@ describe('cards on screen', () => {
     const block = deadIdeaBlock(planner.cards[0], 'Deleted', chapters, lanes, codex)
     expect(block).toContain('## Beacon fails')
     expect(block).toContain('Deleted from Chapter 1 · The Beacon · Main plot · Rhea Marsh')
+  })
+})
+
+describe('who names survive re-indexing', () => {
+  const card = { id: 'w1', title: 'Watch', synopsis: '', lines: [MAIN_LANE_ID], who: ['c-rhea', 'c-old'], who_names: ['Rhea Marsh', 'Old Keeper'], chapter_id: 'ch-1', status: 'planned' }
+
+  it('names a person from the codex first, then from the names stored on the card, then by raw ID', () => {
+    expect(whoText(card, codex)).toBe('Rhea, Old')
+    expect(whoText({ ...card, who_names: undefined }, codex)).toBe('Rhea, c-old')
+    expect(whoText({ ...card, who: ['c-rhea', 'c-old', 'c-new'], who_names: ['Rhea Marsh', 'Old Keeper'] }, [])).toBe('Rhea, Old, c-new')
+  })
+
+  it('writes the names for a new who list, keeping a previously stored name for an ID the codex no longer knows', () => {
+    expect(whoNames(['c-tomas', 'c-old'], codex, card)).toEqual(['Tomas', 'Old Keeper'])
+    expect(whoNames(['c-gone'], codex)).toEqual(['c-gone'])
+    expect(whoNames([], codex, card)).toEqual([])
   })
 })

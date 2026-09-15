@@ -26,8 +26,9 @@ type narrativeUnit struct {
 }
 
 // sceneLocator maps a (global chapter index, stripped-text offset) pair to a
-// scene ordinal, using the same scene-break detection and StripHTML
-// coordinate space the evidence indexer uses.
+// 0-based scene ordinal, using the one scene-break rule of the indexing
+// package (indexing.SceneBreakOffsets over StripHTMLForAnalysis text), so
+// the development's scene index is indexing.SceneAt minus one.
 type sceneLocator struct {
 	breaks map[int][]int
 }
@@ -39,13 +40,7 @@ func newSceneLocator(book *types.BookData) *sceneLocator {
 		for _, chapter := range chapters {
 			text := indexing.StripHTMLForAnalysis(chapter.Content)
 			if strings.TrimSpace(text) != "" {
-				offsets := []int{}
-				for _, scene := range indexing.DetectScenes(text, global) {
-					if scene.SceneType == "scene_break" {
-						offsets = append(offsets, scene.StartOffset)
-					}
-				}
-				locator.breaks[global] = offsets
+				locator.breaks[global] = indexing.SceneBreakOffsets(text)
 			}
 			global++
 		}
@@ -114,7 +109,7 @@ var developmentStopWords = map[string]bool{
 	"understood": true, "wondered": true, "noticed": true, "believe": true,
 	"believed": true, "he": true, "she": true, "they": true, "him": true,
 	"her": true, "himself": true, "herself": true, "them": true,
-	// Contraction remnants after qualifierKey strips apostrophes.
+	// Contraction remnants after QualifierKey strips apostrophes.
 	"didnt": true, "dont": true, "doesnt": true, "wasnt": true,
 	"werent": true, "couldnt": true, "wouldnt": true, "shouldnt": true,
 	"isnt": true, "arent": true, "wont": true, "hadnt": true,
@@ -122,17 +117,35 @@ var developmentStopWords = map[string]bool{
 	"theyd": true, "hes": true, "shes": true, "youre": true,
 }
 
-// contentWords returns the normalized content-word set of a verbatim phrase,
-// the deterministic basis for relating a fact to an open question or goal.
+// ContentWords returns the normalized content-word set of a verbatim
+// phrase's six-word head (its QualifierKey): the proposition of the clause,
+// without the trailing adjuncts ("before night", "somewhere in the tower")
+// that an answer or a restatement legitimately drops. It is the
+// deterministic basis for relating a fact to an open question or goal.
+// Exported for the plotwalker evaluation harness, which must relate
+// developments to expectations with exactly the engine's own word rule.
 // The subject's own name tokens never count as content — a character's name
 // appearing in two phrases relates nothing about the story.
-func contentWords(text, subject string) map[string]bool {
+func ContentWords(text, subject string) map[string]bool {
+	return contentWordsOf(QualifierKey(text), subject)
+}
+
+// phraseWords is ContentWords over the whole phrase, not its head. It is
+// used only on the fact side of an acquisition or stake tie, where the
+// stake's object may be named late ("returned to the village with the key
+// and the ledger"); the stake side always keeps its head, so a tie can
+// never grow past the stake's own proposition.
+func phraseWords(text, subject string) map[string]bool {
+	return contentWordsOf(normalizePhrase(text), subject)
+}
+
+func contentWordsOf(normalized, subject string) map[string]bool {
 	nameTokens := map[string]bool{}
 	for _, token := range strings.Fields(strings.ToLower(subject)) {
 		nameTokens[nonKeyRe.ReplaceAllString(token, "")] = true
 	}
 	words := map[string]bool{}
-	for _, word := range strings.Fields(qualifierKey(text)) {
+	for _, word := range strings.Fields(normalized) {
 		if !anchorStopWords[word] && !developmentStopWords[word] && !nameTokens[word] {
 			words[word] = true
 		}
@@ -140,7 +153,8 @@ func contentWords(text, subject string) map[string]bool {
 	return words
 }
 
-func overlapWords(a, b map[string]bool) []string {
+// OverlapWords returns the sorted words two content-word sets share.
+func OverlapWords(a, b map[string]bool) []string {
 	shared := []string{}
 	for word := range a {
 		if b[word] {
@@ -152,9 +166,9 @@ func overlapWords(a, b map[string]bool) []string {
 }
 
 // covers reports whether the fact's content words include every content word
-// of the question — the question is fully addressed, not merely touched.
-// A question with fewer than two content words is too thin to ever declare
-// covered; it can only be matched by an identical key.
+// of the question's head — the question is fully addressed, not merely
+// touched. A question head with fewer than two content words is too thin
+// to ever declare covered; it can only be matched by an identical key.
 func covers(fact, question map[string]bool) bool {
 	if len(question) < 2 {
 		return false

@@ -130,8 +130,8 @@ func (s *developmentSynthesizer) recurringDiscoveryRule(ledger types.StateLedger
 	if frame.Value != "learned" && frame.Value != "knows" {
 		return
 	}
-	if len(contentWords(frame.Detail, ledger.EntityName)) < 2 {
-		return // "Hanlon tried to remember." carries nothing discovered
+	if len(ContentWords(frame.Detail, ledger.EntityName)) < 2 {
+		return // "Rhea tried to remember." carries nothing discovered
 	}
 	s.emit("major_discovery",
 		fmt.Sprintf("%s learns: “%s”", ledger.EntityName, first.Value),

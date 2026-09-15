@@ -14,9 +14,9 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"unicode/utf8"
 
 	"draftline/internal/narrative"
+	"draftline/internal/plotwalker"
 	"draftline/internal/types"
 )
 
@@ -60,7 +60,7 @@ func (a *App) PlannerDetectCards(book types.BookData) (result PlannerDetection) 
 	if len(book.Body) == 0 {
 		return PlannerDetection{Cards: []PlannerDetectedCard{}, Limitations: []string{}}
 	}
-	sourceID, err := plannerSourceID(book)
+	sourceID, err := plotwalker.SourceID(book)
 	if err != nil {
 		return PlannerDetection{Cards: []PlannerDetectedCard{}, Limitations: []string{}, Error: err.Error()}
 	}
@@ -97,7 +97,7 @@ func (a *App) PlannerDetectCards(book types.BookData) (result PlannerDetection) 
 		occurrences[identity]++
 		cards = append(cards, PlannerDetectedCard{
 			ID:            plannerCandidateIdentity(identity, strconv.Itoa(occurrence)),
-			Title:         plannerTitle(c.Title),
+			Title:         plotwalker.Title(c.Title),
 			Synopsis:      c.Description,
 			ChapterID:     chapterID,
 			Scene:         scene,
@@ -115,21 +115,6 @@ func (a *App) PlannerDetectCards(book types.BookData) (result PlannerDetection) 
 
 func plannerDetectionError(err error) PlannerDetection {
 	return PlannerDetection{Cards: []PlannerDetectedCard{}, Limitations: []string{}, Error: err.Error()}
-}
-
-func plannerSourceID(book types.BookData) (string, error) {
-	if book.Planner != nil && strings.TrimSpace(book.Planner.SourceID) != "" {
-		return strings.TrimSpace(book.Planner.SourceID), nil
-	}
-	if created := strings.TrimSpace(book.Metadata.Created); created != "" {
-		return "book-created:" + created, nil
-	}
-	for _, chapter := range book.Body {
-		if id := strings.TrimSpace(chapter.ID); id != "" {
-			return "book-chapter:" + id, nil
-		}
-	}
-	return "", fmt.Errorf("stable book or chapter identity required for Planner detection")
 }
 
 // plannerPosition resolves the engine's block and scene IDs
@@ -190,18 +175,4 @@ func plannerCandidateIdentity(parts ...string) string {
 	data, _ := json.Marshal(parts)
 	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:12])
-}
-
-// plannerTitle keeps a nominated sentence short enough to read as a card
-// title; the full sentence stays in the synopsis and evidence.
-func plannerTitle(sentence string) string {
-	title := strings.TrimSpace(sentence)
-	if utf8.RuneCountInString(title) <= 72 {
-		return title
-	}
-	cut := []rune(title)[:69]
-	if i := strings.LastIndexByte(string(cut), ' '); i > 30 {
-		cut = []rune(string(cut)[:i])
-	}
-	return string(cut) + "…"
 }

@@ -606,6 +606,10 @@ export interface PlannerLink {
   scene: number
 }
 
+// A revision-bound passage. `space: 'chapter'` means start/end are offsets
+// into the chapter's stripped analysis text under the analysis content hash
+// (block_id empty); no space is the legacy block-offset form of the
+// isolated narrative engine.
 export interface PlannerEvidence {
   source_id: string
   revision: string
@@ -615,6 +619,7 @@ export interface PlannerEvidence {
   start: number
   end: number
   quote: string
+  space?: 'chapter' | string
 }
 
 export type PlannerCardStatus = 'planned' | 'drafted'
@@ -629,6 +634,9 @@ export interface PlannerCard {
   synopsis: string
   lines: string[]
   who: string[]
+  // The names of `who` when it was set, so a card still names its people
+  // after re-indexing reassigns codex IDs.
+  who_names?: string[]
   changes?: string
   stakes?: string
   chapter_id: string
