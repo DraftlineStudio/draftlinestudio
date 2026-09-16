@@ -2,6 +2,15 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02648] - 2026-09-16
+
+### Fixed
+- EPUBs without an ISBN now get a random identifier, so two quick exports no longer share one.
+- ISBNs typed with hyphens are exported as plain digits.
+
+### Changed
+- The editions screen now notes which features are not connected to export yet.
+
 ## [0.20.02647] - 2026-09-16
 
 ### Added

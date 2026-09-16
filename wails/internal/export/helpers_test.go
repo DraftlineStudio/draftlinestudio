@@ -1,6 +1,7 @@
 package export
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -85,5 +86,24 @@ func TestEscapePDFStringEncodesPublishingPunctuationAsWinAnsi(t *testing.T) {
 func TestEscapePDFStringReplacesUnsupportedGlyphs(t *testing.T) {
 	if got := EscapePDFString("Latin \u03a9 CJK \u6f22"); got != "Latin ? CJK ?" {
 		t.Fatalf("unsupported glyph fallback = %q", got)
+	}
+}
+
+// An EPUB with no ISBN identifies itself by a UUID, and that identifier is how
+// a reading device decides whether the file it has been handed is the book it
+// already holds. The old one was cut out of a single nanosecond timestamp, so
+// two exports made in the same moment could carry the same identifier.
+func TestGenerateUUIDIsRandomAndConformant(t *testing.T) {
+	shape := regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
+	seen := map[string]bool{}
+	for i := 0; i < 2000; i++ {
+		id := GenerateUUID()
+		if !shape.MatchString(id) {
+			t.Fatalf("not an RFC 4122 version 4 UUID: %q", id)
+		}
+		if seen[id] {
+			t.Fatalf("two exports produced the same identifier: %q", id)
+		}
+		seen[id] = true
 	}
 }

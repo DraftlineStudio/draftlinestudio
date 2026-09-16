@@ -2,6 +2,7 @@
 package export
 
 import (
+	"crypto/rand"
 	"fmt"
 	"html"
 	"regexp"
@@ -131,12 +132,27 @@ func EscapeXML(s string) string {
 	return s
 }
 
-// GenerateUUID creates a simple UUID-like string for EPUB identifiers.
+// GenerateUUID returns a random RFC 4122 version 4 UUID, which is what an
+// EPUB with no ISBN identifies itself by.
+//
+// It used to be built out of the clock, slicing one nanosecond timestamp into
+// five fields. Two exports made in the same second therefore shared most of
+// their identifier and, on a fast machine, matched outright — and an
+// identifier is how a reading device decides whether the file it has been
+// handed is the book it already holds. Sixteen random bytes cost nothing and
+// do not collide in practice.
 func GenerateUUID() string {
-	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
-		time.Now().UnixNano()&0xFFFFFFFF,
-		time.Now().UnixNano()>>32&0xFFFF,
-		0x4000|(time.Now().UnixNano()>>48&0x0FFF),
-		0x8000|(time.Now().UnixNano()>>60&0x3FFF),
-		time.Now().UnixNano()&0xFFFFFFFFFFFF)
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		// crypto/rand does not fail on any platform Draftline runs on, but an
+		// export must not stop because of it: fall back to the clock, which is
+		// the identifier this used to carry every time.
+		now := time.Now().UnixNano()
+		for i := range b {
+			b[i] = byte(now >> (uint(i%8) * 8))
+		}
+	}
+	b[6] = (b[6] & 0x0f) | 0x40 // version 4
+	b[8] = (b[8] & 0x3f) | 0x80 // RFC 4122 variant
+	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
 }

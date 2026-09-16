@@ -260,6 +260,8 @@ function FormatPanel({ meta, index, edition, format, handEdited, advOpen, setAdv
         </div>
       </header>
 
+      <StandingNote />
+
       <CoverAndTextCard edition={edition} format={format} meta={meta} />
 
       {sections.map(section => (
@@ -342,6 +344,25 @@ function CoverAndTextCard({ edition, format, meta }: { edition: Edition; format:
   )
 }
 
+// ── What the record does today ─────────────────────────────────────────────
+
+// An edition record is kept with the book and comes back when the project is
+// reopened, but no exporter reads one yet. That gap belongs on the screen: an
+// author who fills this panel in and then exports would otherwise find out
+// from the file. It goes at the top of the panel, once, rather than as a
+// disclaimer hung on every field.
+function StandingNote() {
+  return (
+    <p className="bi-ed-standing">
+      <strong>Recorded, not printed yet.</strong> What you set here is kept with the book, but an
+      export does not read it: an EPUB still identifies itself by the eBook ISBN under Identifiers, a
+      printed book still takes its trim and margins from the export wizard, and the copyright page an
+      export prints is the Copyright Page under Front Pages. Exporting from an edition is the next
+      piece of this work.
+    </p>
+  )
+}
+
 // ── The generated copyright page ───────────────────────────────────────────
 
 function CopyrightCard({ meta, index, edition, format, handEdited }: {
@@ -364,12 +385,21 @@ function CopyrightCard({ meta, index, edition, format, handEdited }: {
           <span key={i} className="bi-ed-copyright-line">{line || ' '}</span>
         ))}
       </div>
-      {handEdited && (
-        <div className="bi-field-hint bi-ed-handwritten">
-          This book already has a copyright page you wrote yourself. Draftline keeps it: the page above
-          is what the fields would produce, and it does not replace what you wrote.
-        </div>
-      )}
+      <div className="bi-field-hint bi-ed-handwritten">
+        {handEdited ? (
+          <>
+            Shown here, not printed yet. What an exported book prints is the Copyright Page you wrote
+            yourself, under Front Pages; the page above is what the fields would produce, and it does not
+            replace what you wrote.
+          </>
+        ) : (
+          <>
+            Shown here, not printed yet. What an exported book prints is the Copyright Page under Front
+            Pages, and yours is empty — so an export carries no copyright page at all until you write one
+            there.
+          </>
+        )}
+      </div>
     </section>
   )
 }

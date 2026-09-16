@@ -28,9 +28,10 @@ export default function AuthorSection({
 
       <div className="settings-section-label">Copyright</div>
       <div className="settings-hint">
-        A book&apos;s copyright page is written from its own record — the copyright holder, the
-        edition, the publication date and the ISBN of the format being published. Open
-        Book &amp; Editions to see it and to change what it says.
+        A book&apos;s copyright page is the Copyright Page under Front Pages, and that is what an
+        export prints. Book &amp; Editions shows the page a book&apos;s own record would produce — the
+        copyright holder, the edition, the publication date and the ISBN of the format being
+        published — so you can see what yours should say.
       </div>
     </>
   )

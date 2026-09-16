@@ -8842,3 +8842,19 @@ html, body, #root {
 }
 .bi-ed-caret.open { transform: rotate(90deg); }
 .bi-ed-revision { margin-top: 14px; }
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   BOOK & EDITIONS · WHAT THE RECORD DOES TODAY
+   The standing note at the top of a format panel (components/dialogs/
+   EditionPane.tsx). An edition record is kept with the book, and no exporter
+   reads one yet; the panel says that once, at the top, rather than hanging a
+   disclaimer on every field. Muted like .bi-ed-note, with a rule down its left
+   edge so it reads as a condition of the whole panel rather than as a caption
+   on the field above it. Prefix: bi-ed-standing.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.bi-ed-standing {
+  margin: 0 0 2px; padding: 8px 0 8px 12px;
+  border-left: 2px solid var(--border);
+  font-size: 11px; line-height: 1.6; color: var(--text-muted); max-width: 66ch;
+}
+.bi-ed-standing strong { color: var(--text-secondary); font-weight: 600; }

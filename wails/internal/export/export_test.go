@@ -452,3 +452,56 @@ func TestDocumentLanguageFallsBackToEnglishOnly(t *testing.T) {
 		t.Errorf("a book with no language exports as English, got %q", got)
 	}
 }
+
+// opfOf pulls the package document out of a set of EPUB entries.
+func opfOf(t *testing.T, entries []epubEntry) string {
+	t.Helper()
+	for _, entry := range entries {
+		if entry.Name == "OEBPS/content.opf" {
+			return string(entry.Data)
+		}
+	}
+	t.Fatalf("no package document among %d entries", len(entries))
+	return ""
+}
+
+// The ISBN an exported EPUB declares is the plain number, not the hyphenated
+// grouping the author typed it in. The Editions screen shows the identifier a
+// format will carry; the screen and the file have to agree on it.
+func TestEPUBIdentifierDeclaresTheISBNWrittenPlainly(t *testing.T) {
+	book := sampleBook()
+	book.Metadata.ISBNs = []types.ISBNEntry{{Format: "ebook", Value: "978-1-9471345-1-5"}}
+	entries, _ := buildEPUBEntries(Document{Title: "A Lantern", Language: "en"}, book, types.EPUBOptions{}, time.Unix(0, 0).UTC())
+	if opf := opfOf(t, entries); !strings.Contains(opf, `<dc:identifier id="uid">urn:isbn:9781947134515</dc:identifier>`) {
+		t.Errorf("the ISBN is declared without its hyphens:\n%s", opf)
+	}
+}
+
+// A book with no ebook ISBN identifies itself by a UUID instead, and two
+// exports of it are two different files as far as a reading device is
+// concerned. They used to share an identifier when they were made in the same
+// moment, because it was cut out of the clock.
+func TestEPUBIdentifierDiffersBetweenExportsWithoutAnISBN(t *testing.T) {
+	book := sampleBook()
+	doc := Document{Title: "A Lantern", Language: "en"}
+	first, _ := buildEPUBEntries(doc, book, types.EPUBOptions{}, time.Unix(0, 0).UTC())
+	second, _ := buildEPUBEntries(doc, book, types.EPUBOptions{}, time.Unix(0, 0).UTC())
+	one, two := identifierOf(t, opfOf(t, first)), identifierOf(t, opfOf(t, second))
+	if !strings.HasPrefix(one, "urn:uuid:") {
+		t.Fatalf("a book with no ISBN identifies itself by a UUID, got %q", one)
+	}
+	if one == two {
+		t.Errorf("two exports carry the same identifier: %q", one)
+	}
+}
+
+var identifierPattern = regexp.MustCompile(`<dc:identifier id="uid">([^<]*)</dc:identifier>`)
+
+func identifierOf(t *testing.T, opf string) string {
+	t.Helper()
+	match := identifierPattern.FindStringSubmatch(opf)
+	if match == nil {
+		t.Fatalf("no identifier in package document:\n%s", opf)
+	}
+	return match[1]
+}

@@ -66,8 +66,11 @@ func buildEPUBEntries(doc Document, book types.BookData, options types.EPUBOptio
 		})
 	}
 
+	// An ISBN is declared as the plain number, without the hyphens an author
+	// groups it with. That is the form the Editions screen shows, and the screen
+	// and the file saying the same thing is the whole point of showing it.
 	identifier := "urn:uuid:" + GenerateUUID()
-	if isbn := strings.TrimSpace(book.Metadata.ISBNFor("ebook")); isbn != "" {
+	if isbn := types.NormalizeISBN(book.Metadata.ISBNFor("ebook")); isbn != "" {
 		identifier = "urn:isbn:" + isbn
 	}
 	entries := []epubEntry{
