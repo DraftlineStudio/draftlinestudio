@@ -2,6 +2,18 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02655] - 2026-09-16
+
+### Added
+- Exporting an edition now produces one zip with a folder per format, each holding its interior and artwork.
+- Stored covers and wraps can be saved back out to a file.
+- Added running head options for author, title, and chapter, plus top or bottom page numbers.
+- Scene break and chapter opening styles now apply to printed pages.
+
+### Fixed
+- Fixed print-ready wraps showing as broken images after reopening a book.
+- Fixed attaching a cover deleting stored wraps, and storing a wrap deleting the cover.
+
 ## [0.20.02654] - 2026-09-16
 
 ### Fixed

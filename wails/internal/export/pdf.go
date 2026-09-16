@@ -13,15 +13,9 @@ import (
 // which is one more reason a Draftline cover is a JPEG unless a PNG is
 // genuinely smaller.
 func PDF(path string, book types.BookData, options types.PDFOptions, cover *CoverArt) types.ExportResult {
-	doc, err := BuildDocument(book, options.ExportOptions)
+	data, err := PDFBytes(book, options, cover)
 	if err != nil {
 		return types.ExportResult{Success: false, Error: err.Error()}
-	}
-	spec := readingPDFSpec(options)
-	spec.Cover = cover
-	data, err := renderPublicationPDF(doc, spec)
-	if err != nil {
-		return types.ExportResult{Success: false, Error: fmt.Sprintf("failed to render PDF: %v", err)}
 	}
 	if err := writeExportFile(path, data); err != nil {
 		return types.ExportResult{Success: false, Error: fmt.Sprintf("failed to write file: %v", err)}

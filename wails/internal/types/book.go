@@ -182,6 +182,8 @@ type PlannerCard struct {
 	ID string `json:"id"`
 	// SourceID names the scratch note an imported outline card came from.
 	SourceID string `json:"source_id,omitempty"`
+	// SourceKey identifies the movement within that note across repeated imports.
+	SourceKey string `json:"source_key,omitempty"`
 	// Origin is how the card was made: by hand or from an imported outline.
 	Origin    string       `json:"origin,omitempty"`
 	Title     string       `json:"title"`

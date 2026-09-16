@@ -33,8 +33,11 @@ type publicationPDFSpec struct {
 	ChapterStartsRecto     bool
 	DropCap                bool
 	DropCapLines           int
+	SceneBreakStyle        string
+	ChapterStyle           string
 	RunningHeaders         bool
 	HeaderStyle            string
+	HeaderContent          string
 	PageNumberPosition     string
 	GenerateHalfTitle      bool
 	GenerateTOC            bool
@@ -185,8 +188,11 @@ func printPDFSpec(options types.PrintPDFOptions) publicationPDFSpec {
 		ChapterStartsRecto:     options.ChapterStartsRecto,
 		DropCap:                options.DropCap,
 		DropCapLines:           dropLines,
+		SceneBreakStyle:        options.SceneBreakStyle,
+		ChapterStyle:           options.ChapterStyle,
 		RunningHeaders:         options.RunningHeaders,
 		HeaderStyle:            options.HeaderStyle,
+		HeaderContent:          options.HeaderContent,
 		PageNumberPosition:     normalizedPageNumberPosition(options.PageNumberPosition),
 		GenerateHalfTitle:      options.GenerateHalfTitle,
 		GenerateTOC:            options.GenerateTOC,

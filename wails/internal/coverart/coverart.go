@@ -425,3 +425,32 @@ func humanBytes(n int64) string {
 		return fmt.Sprintf("%d bytes", n)
 	}
 }
+
+// PreviewBox is the size a wrap's preview is drawn at. A wrap is far wider
+// than a cover — it is back, spine and front in one piece — so it gets its own
+// box rather than the cover's portrait one.
+var PreviewBox = Box{W: 480, H: 320}
+
+// Preview makes a small copy of artwork for the screen to show, and nothing
+// else. It is not a derivative anybody publishes: the print-ready file is
+// untouched and is what an export hands over.
+//
+// It returns ok=false for a format Go cannot decode — a PDF, a PSD, an AI —
+// which is not a failure. Those are ordinary wrap formats and the screen shows
+// the file rather than a picture of it.
+func Preview(path string) (Derivative, bool) {
+	probe, err := Inspect(path)
+	if err != nil {
+		return Derivative{}, false
+	}
+	src, err := decodeImage(path, probe.Format)
+	if err != nil {
+		return Derivative{}, false
+	}
+	linear, _ := toLinear(src)
+	out, err := encodeBest(finish(resample(linear, PreviewBox), false), "wrap_preview", false)
+	if err != nil {
+		return Derivative{}, false
+	}
+	return out, true
+}

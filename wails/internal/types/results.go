@@ -76,3 +76,12 @@ type RecentProjectStats struct {
 	Chapters int  `json:"chapters"`
 	Words    int  `json:"words"`
 }
+
+// RevealResult is the answer to showing a file in the system file browser:
+// it either happened or it did not, and there is one sentence to say when
+// something was different from what the record expected.
+type RevealResult struct {
+	Success bool   `json:"success"`
+	Error   string `json:"error,omitempty"`
+	Note    string `json:"note,omitempty"`
+}

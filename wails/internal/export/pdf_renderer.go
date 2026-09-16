@@ -335,13 +335,49 @@ func (r *publicationPDFRenderer) renderHeadingText(text string, size float64, st
 	r.y += size + after
 }
 
+// runningHead is what the header says on this page.
+//
+// A verso and a recto carry different things, which is the whole point of a
+// running head: a reader who opens the book in the middle can see whose book
+// it is on one side and where they are on the other.
+func (r *publicationPDFRenderer) runningHead(page int) string {
+	verso := page%2 == 0
+	switch strings.ToLower(strings.TrimSpace(r.spec.HeaderContent)) {
+	case "chapter":
+		return r.chapter
+	case "title-chapter":
+		if verso {
+			return r.doc.Title
+		}
+		return r.chapter
+	default:
+		// author-title, and anything a later build writes that this one does
+		// not know: the author's own name is never the wrong thing to print.
+		if verso {
+			return r.doc.Author
+		}
+		return r.doc.Title
+	}
+}
+
 func (r *publicationPDFRenderer) renderSceneBreak() {
+	style := strings.ToLower(strings.TrimSpace(r.spec.SceneBreakStyle))
+	if style == "space" {
+		// A blank line is the break. Nothing is drawn, which is the point.
+		r.ensureSpace(r.spec.LineHeight * 2)
+		r.y += r.spec.LineHeight * 1.8
+		return
+	}
 	r.ensureSpace(r.spec.LineHeight * 2)
 	r.y += r.spec.LineHeight * 0.35
+	mark := "*  *  *"
+	if style == "rule" {
+		mark = "———"
+	}
 	// ASCII asterisks are intentionally used rather than U+2042. Not every
 	// author-selected body face contains the asterism glyph, which produced a
 	// visible .notdef box in otherwise valid PDFs.
-	r.centeredText("*  *  *", r.spec.FontSize, "", r.y+r.spec.FontSize)
+	r.centeredText(mark, r.spec.FontSize, "", r.y+r.spec.FontSize)
 	r.y += r.spec.LineHeight * 1.45
 }
 
@@ -669,16 +705,33 @@ func takeDropCap(runs []DocumentRun) (string, string, []DocumentRun) {
 	return "", "", runs
 }
 
+// drawFurniture puts the running head and the folio on the page.
+//
+// The two can share a line. With folios set top-outside they sit on the same
+// baseline at the same outside edge, so the head is indented inside the folio
+// by its own width plus a space — otherwise the page number is printed on top
+// of the author's name, which is what happened before this measured anything.
 func (r *publicationPDFRenderer) drawFurniture() {
 	page := r.pdf.PageNo()
 	leftMargin, rightMargin := r.margins(page)
 	left := r.trimX + leftMargin
 	width := r.spec.TrimWidth - leftMargin - rightMargin
+	recto := page%2 == 1
+	headerY := r.trimY + r.spec.TopMargin*0.48
+	furnitureSize := r.spec.FontSize * 0.72
+
+	// The folio first, because the head has to know how much room it left.
+	folio := ""
+	folioWidth := 0.0
+	if r.spec.PageNumberPosition != "" {
+		r.pdf.SetFont(r.spec.FurnitureFont.ID, "", furnitureSize)
+		folio = strconv.Itoa(page)
+		folioWidth = r.pdf.GetStringWidth(folio)
+	}
+	sharesTheLine := folio != "" && r.spec.PageNumberPosition == "top-outside"
+
 	if r.spec.RunningHeaders && r.pageKind == pageSection {
-		header := r.chapter
-		if page%2 == 0 {
-			header = r.doc.Title
-		}
+		header := r.runningHead(page)
 		style := ""
 		if strings.EqualFold(r.spec.HeaderStyle, "italic") {
 			style = "I"
@@ -686,33 +739,38 @@ func (r *publicationPDFRenderer) drawFurniture() {
 		if strings.EqualFold(r.spec.HeaderStyle, "smallcaps") {
 			header = strings.ToUpper(header)
 		}
-		r.pdf.SetFont(r.spec.FurnitureFont.ID, style, r.spec.FontSize*0.72)
-		w := r.pdf.GetStringWidth(header)
-		x := left
-		if page%2 == 1 {
-			x = left + width - w
+		if header != "" {
+			r.pdf.SetFont(r.spec.FurnitureFont.ID, style, furnitureSize)
+			inset := 0.0
+			if sharesTheLine {
+				inset = folioWidth + r.pdf.GetStringWidth("  ")
+			}
+			w := r.pdf.GetStringWidth(header)
+			x := left + inset
+			if recto {
+				x = left + width - inset - w
+			}
+			r.pdf.Text(x, headerY, header)
 		}
-		r.pdf.Text(x, r.trimY+r.spec.TopMargin*0.48, header)
 	}
-	if r.spec.PageNumberPosition == "" {
+
+	if folio == "" {
 		return
 	}
-	r.pdf.SetFont(r.spec.FurnitureFont.ID, "", r.spec.FontSize*0.72)
-	text := strconv.Itoa(page)
-	w := r.pdf.GetStringWidth(text)
-	x := left + (width-w)/2
+	r.pdf.SetFont(r.spec.FurnitureFont.ID, "", furnitureSize)
+	x := left + (width-folioWidth)/2
 	y := r.trimY + r.spec.TrimHeight - r.spec.BottomMargin*0.4
 	if r.spec.PageNumberPosition == "bottom-outside" || r.spec.PageNumberPosition == "top-outside" {
-		if page%2 == 1 {
-			x = r.trimX + r.spec.TrimWidth - rightMargin - w
+		if recto {
+			x = r.trimX + r.spec.TrimWidth - rightMargin - folioWidth
 		} else {
 			x = r.trimX + leftMargin
 		}
 	}
 	if r.spec.PageNumberPosition == "top-outside" {
-		y = r.trimY + r.spec.TopMargin*0.48
+		y = headerY
 	}
-	r.pdf.Text(x, y, text)
+	r.pdf.Text(x, y, folio)
 }
 
 func (r *publicationPDFRenderer) drawCropMarks() {

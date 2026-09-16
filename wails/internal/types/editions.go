@@ -119,11 +119,25 @@ type EditionFormat struct {
 	RightsNotice    string `json:"rights_notice,omitempty"`
 	LCCN            string `json:"lccn,omitempty"`
 
+	// Typesetting is "standard" or "custom", and it is stored rather than
+	// worked out.
+	//
+	// Comparing the settings against the defaults to decide which one a format
+	// is on cannot work: applying the standard and then reading it back gave
+	// different answers, and a format whose standard happens to equal the
+	// defaults could never be moved off it. It is a choice the author makes,
+	// so it is a field they set. Empty means standard.
+	Typesetting string `json:"typesetting,omitempty"`
+
 	// ExportSettings is the export wizard's options, frozen onto the format so
 	// that exporting this edition twice produces the same file. Nothing writes
 	// or reads it yet; it is carried through a save untouched so that the
 	// milestone which fills it in does not have to migrate anything.
 	ExportSettings map[string]any `json:"export_settings,omitempty"`
+
+	// Wrap is the print-ready wraparound artwork for this printed object.
+	// Absent on an ebook or an audiobook, which have no wrap.
+	Wrap *EditionWrap `json:"wrap,omitempty"`
 	// SnapshotID names the frozen manuscript this format was exported from,
 	// so that exporting the first edition after writing the second produces
 	// the first edition's text. It is set when the format is first exported,

@@ -16,6 +16,10 @@ export function AttachCover(arg1:string,arg2:string,arg3:boolean):Promise<types.
 
 export function AttachCoverDialog(arg1:string,arg2:boolean):Promise<types.CoverResult>;
 
+export function AttachWrap(arg1:string,arg2:string,arg3:string):Promise<types.WrapResult>;
+
+export function AttachWrapDialog(arg1:string,arg2:string):Promise<types.WrapResult>;
+
 export function BrowseForDirectory():Promise<string>;
 
 export function BuildContinuityReport(arg1:types.BookData):Promise<types.ContinuityReport>;
@@ -52,9 +56,13 @@ export function ExportDOCX(arg1:types.BookData,arg2:types.ExportOptions):Promise
 
 export function ExportEPUB(arg1:types.BookData,arg2:types.EPUBOptions):Promise<types.ExportResult>;
 
+export function ExportEditionBundle(arg1:types.BookData,arg2:types.BundleRequest):Promise<types.ExportResult>;
+
 export function ExportPDF(arg1:types.BookData,arg2:types.PDFOptions):Promise<types.ExportResult>;
 
 export function ExportPrintPDF(arg1:types.BookData,arg2:types.PrintPDFOptions):Promise<types.ExportResult>;
+
+export function ExportStoredArtwork(arg1:string,arg2:string,arg3:string):Promise<types.ExportResult>;
 
 export function FreezeSnapshot(arg1:types.BookData,arg2:string):Promise<types.SnapshotResult>;
 
@@ -120,6 +128,8 @@ export function RemoveRecentProject(arg1:string):Promise<void>;
 
 export function RestoreBackup(arg1:number):Promise<types.SaveResult>;
 
+export function RevealInFileManager(arg1:string):Promise<types.RevealResult>;
+
 export function RewriteText(arg1:string,arg2:string,arg3:string,arg4:string):Promise<types.AIRewriteResult>;
 
 export function RewriteTextCustom(arg1:string,arg2:string,arg3:string):Promise<types.AIRewriteResult>;
@@ -135,6 +145,8 @@ export function SaveSettings(arg1:types.AppSettings):Promise<void>;
 export function SearchStory(arg1:types.BookData,arg2:types.StorySearchRequest):Promise<types.StorySearchResult>;
 
 export function SetAPIKey(arg1:string):Promise<void>;
+
+export function SetWrapStored(arg1:string,arg2:string,arg3:types.EditionWrap,arg4:boolean):Promise<types.WrapResult>;
 
 export function SetupClaudeCode():Promise<types.ClaudeCodeStatus>;
 

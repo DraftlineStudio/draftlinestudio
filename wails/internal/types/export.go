@@ -57,9 +57,23 @@ type PrintPDFOptions struct {
 	ChapterStartsRecto bool `json:"chapterStartsRecto"`
 	DropCap            bool `json:"dropCap"`
 	DropCapLines       int  `json:"dropCapLines"` // 2, 3, 4
+	// SceneBreakStyle and ChapterStyle are the same two choices an ebook
+	// offers, asked of a printed page. They are preferences rather than
+	// deviations: a book set with a short rule instead of an asterism is still
+	// set the industry-standard way.
+	SceneBreakStyle string `json:"sceneBreakStyle"` // asterism, rule, space
+	ChapterStyle    string `json:"chapterStyle"`    // classic, compact
 	// Headers & footers
-	RunningHeaders     bool   `json:"runningHeaders"`
-	HeaderStyle        string `json:"headerStyle"`        // smallcaps, italic, normal
+	RunningHeaders bool   `json:"runningHeaders"`
+	HeaderStyle    string `json:"headerStyle"` // smallcaps, italic, normal
+	// HeaderContent is what the running head says on each side of the spread:
+	//
+	//   author-title   the author on the verso, the book on the recto — which,
+	//                  with folios set top-outside, reads across the spread as
+	//                  "137 | A. Marsh        Wide Water | 138"
+	//   title-chapter  the book on the verso, the chapter on the recto
+	//   chapter        the chapter on both
+	HeaderContent      string `json:"headerContent"`
 	PageNumberPosition string `json:"pageNumberPosition"` // bottom-center, bottom-outside, top-outside
 	// Front matter
 	GenerateHalfTitle bool `json:"generateHalfTitle"`

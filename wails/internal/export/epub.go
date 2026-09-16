@@ -17,13 +17,9 @@ import (
 // parameter rather than a field on book because cover bytes never go on
 // types.BookData: that struct crosses the Wails bridge as JSON on every save.
 func EPUB(path string, book types.BookData, options types.EPUBOptions, cover *CoverArt) types.ExportResult {
-	doc, err := BuildDocument(book, options.ExportOptions)
+	data, err := EPUBBytes(book, options, cover)
 	if err != nil {
 		return types.ExportResult{Success: false, Error: err.Error()}
-	}
-	data, err := renderEPUB(doc, book, normalizeEPUBOptions(options), cover, time.Now().UTC())
-	if err != nil {
-		return types.ExportResult{Success: false, Error: fmt.Sprintf("failed to render EPUB: %v", err)}
 	}
 	if err := writeExportFile(path, data); err != nil {
 		return types.ExportResult{Success: false, Error: fmt.Sprintf("failed to write file: %v", err)}

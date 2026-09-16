@@ -111,3 +111,59 @@ func TestPrintPDFXrefOffsets(t *testing.T) {
 		}
 	}
 }
+
+// A running head and a top-outside folio share a line. The head is indented
+// inside the folio so the page number is not printed over the author's name.
+func TestTopOutsideFoliosRenderBesideTheRunningHead(t *testing.T) {
+	book := types.BookData{
+		Metadata: types.Metadata{Title: "Wide Water", Author: "A. Marsh"},
+		Body: []types.ChapterItem{
+			{Title: "Chapter One", Type: "chapter", Content: "<p>" +
+				strings.Repeat("Words enough to run past the foot of the page and onto the next. ", 60) + "</p>"},
+		},
+	}
+	options := types.PrintPDFOptions{
+		PDFOptions: types.PDFOptions{
+			ExportOptions: types.ExportOptions{IncludeCopyright: true},
+			FontSize:      11,
+		},
+		TrimSize:       "6x9",
+		RunningHeaders: true,
+		HeaderContent:  "author-title",
+	}
+
+	// Both positions have to render, because they are a toggle and neither may
+	// depend on the other having been chosen.
+	for _, position := range []string{"top-outside", "bottom-center", "bottom-outside"} {
+		options.PageNumberPosition = position
+		data, err := PrintPDFBytes(book, options)
+		if err != nil {
+			t.Fatalf("rendering with %s folios: %v", position, err)
+		}
+		if len(data) == 0 {
+			t.Fatalf("%s folios produced no PDF", position)
+		}
+	}
+}
+
+// The scene-break mark is a preference a printed page honours, not an ebook
+// setting borrowed for one.
+func TestPrintSceneBreakStylesAllRender(t *testing.T) {
+	book := types.BookData{
+		Metadata: types.Metadata{Title: "Wide Water", Author: "A. Marsh"},
+		Body: []types.ChapterItem{
+			{Title: "Chapter One", Type: "chapter",
+				Content: "<p>Before the break.</p><hr /><p>After the break.</p>"},
+		},
+	}
+	for _, style := range []string{"asterism", "rule", "space", ""} {
+		options := types.PrintPDFOptions{
+			PDFOptions:      types.PDFOptions{FontSize: 11},
+			TrimSize:        "6x9",
+			SceneBreakStyle: style,
+		}
+		if _, err := PrintPDFBytes(book, options); err != nil {
+			t.Fatalf("rendering with the %q scene break: %v", style, err)
+		}
+	}
+}

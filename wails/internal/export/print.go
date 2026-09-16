@@ -24,16 +24,9 @@ func PrintPDF(path string, book types.BookData, options types.PrintPDFOptions) t
 	// arrive from a stored edition record rather than being typed in this
 	// session, and a page ninety-nine inches tall is a file nobody can print
 	// and nobody would notice until a printer refused it.
-	if err := validateTrim(options); err != nil {
-		return types.ExportResult{Success: false, Error: err.Error()}
-	}
-	doc, err := BuildDocument(book, options.ExportOptions)
+	data, err := PrintPDFBytes(book, options)
 	if err != nil {
 		return types.ExportResult{Success: false, Error: err.Error()}
-	}
-	data, err := renderPublicationPDF(doc, printPDFSpec(options))
-	if err != nil {
-		return types.ExportResult{Success: false, Error: fmt.Sprintf("failed to render print PDF: %v", err)}
 	}
 	if err := writeExportFile(path, data); err != nil {
 		return types.ExportResult{Success: false, Error: fmt.Sprintf("failed to write file: %v", err)}

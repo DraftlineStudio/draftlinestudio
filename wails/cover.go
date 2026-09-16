@@ -47,16 +47,32 @@ import (
 // so this only limits what has been read back out of the archive for display.
 const maxCachedCoverBytes = 24 << 20
 
+// coverNamePrefix is every member an edition's cover owns: cover.jpg,
+// cover_thumb.jpg, cover_large.jpg, and the .png forms of each.
+const coverNamePrefix = "cover"
+
 type coverFiles map[string][]byte
 
 type coverEntry struct {
 	files coverFiles
-	// dirty means these bytes are not in the project file yet.
-	dirty bool
-	// version rises on every attach, so a save that started before a second
+	// unsaved names the members whose bytes are not in the project file yet.
+	// It is a set rather than a flag on the whole edition because an edition
+	// holds several independent things — a cover, a preview of each printed
+	// format's wrap, the wrap itself — and attaching one of them must not
+	// claim authorship of the others.
+	unsaved map[string]bool
+	// dropped names edition-relative prefixes the next save must not carry
+	// forward: the old cover when a new one replaces it, the stored wrap when
+	// the author stops keeping a copy. Superseding the whole edition here
+	// would take the wraps with the cover, which is exactly the bug this
+	// replaced.
+	dropped []string
+	// version rises on every hold, so a save that started before a second
 	// attach cannot mark the newer bytes as written.
 	version uint64
 }
+
+func (e *coverEntry) dirty() bool { return len(e.unsaved) > 0 || len(e.dropped) > 0 }
 
 // coverCache is usable as a zero value: its map is built on first use. That
 // matters because App is constructed bare in places, and a cover cache that
@@ -74,17 +90,46 @@ func (c *coverCache) ensure() {
 	}
 }
 
-// put replaces everything cached for one edition and marks it unsaved.
-func (c *coverCache) put(editionID string, files coverFiles) {
+// hold stores unsaved bytes for one edition and, optionally, names the
+// members they replace.
+//
+// superseded are edition-relative name prefixes: "cover" takes cover.jpg,
+// cover_thumb.jpg and a cover.png that a previous attach left behind;
+// "wrap-f1." takes the stored wrap without touching wrap-f1-preview.jpg. They
+// are prefixes rather than exact names because the extension changes with the
+// artwork and the old member has to go either way.
+func (c *coverCache) hold(editionID string, files coverFiles, superseded ...string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.ensure()
 	c.nextVer++
-	c.entries[editionID] = &coverEntry{files: files, dirty: true, version: c.nextVer}
+	entry := c.entries[editionID]
+	if entry == nil {
+		entry = &coverEntry{files: coverFiles{}, unsaved: map[string]bool{}}
+		c.entries[editionID] = entry
+	}
+	if entry.unsaved == nil {
+		entry.unsaved = map[string]bool{}
+	}
+	for name, data := range files {
+		entry.files[name] = data
+		entry.unsaved[name] = true
+	}
+	for _, prefix := range superseded {
+		entry.dropped = append(entry.dropped, prefix)
+		// Anything already cached under a superseded prefix is the old
+		// artwork, and holding on to it would serve it back to the screen.
+		for name := range entry.files {
+			if strings.HasPrefix(name, prefix) && !entry.unsaved[name] {
+				delete(entry.files, name)
+			}
+		}
+	}
+	entry.version = c.nextVer
 }
 
 // cache stores bytes read back out of the archive. They are already saved, so
-// they are not dirty and must not be written again.
+// they are not unsaved work and must not be written again.
 func (c *coverCache) cache(editionID, name string, data []byte) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -94,7 +139,7 @@ func (c *coverCache) cache(editionID, name string, data []byte) {
 		entry = &coverEntry{files: coverFiles{}}
 		c.entries[editionID] = entry
 	}
-	if entry.dirty {
+	if entry.unsaved[name] {
 		// Never overwrite unsaved work with what is on disk.
 		return
 	}
@@ -126,13 +171,15 @@ func (c *coverCache) pending() (book.Assets, map[string]uint64) {
 	assets := book.Assets{Files: map[string][]byte{}}
 	marks := map[string]uint64{}
 	for editionID, entry := range c.entries {
-		if !entry.dirty {
+		if !entry.dirty() {
 			continue
 		}
 		marks[editionID] = entry.version
-		assets.Superseded = append(assets.Superseded, book.CoverPrefix(editionID))
-		for name, data := range entry.files {
-			assets.Files[book.CoverMember(editionID, name)] = data
+		for _, prefix := range entry.dropped {
+			assets.Superseded = append(assets.Superseded, book.CoverMember(editionID, prefix))
+		}
+		for name := range entry.unsaved {
+			assets.Files[book.CoverMember(editionID, name)] = entry.files[name]
 		}
 	}
 	// An edition with no files and a dirty flag is a cover that was removed.
@@ -153,7 +200,8 @@ func (c *coverCache) settled(marks map[string]uint64) {
 	defer c.mu.Unlock()
 	for editionID, version := range marks {
 		if entry := c.entries[editionID]; entry != nil && entry.version == version {
-			entry.dirty = false
+			entry.unsaved = map[string]bool{}
+			entry.dropped = nil
 		}
 	}
 }
@@ -179,7 +227,7 @@ func (c *coverCache) residentBytes() int {
 
 func (c *coverCache) dropClean() {
 	for editionID, entry := range c.entries {
-		if !entry.dirty {
+		if !entry.dirty() {
 			delete(c.entries, editionID)
 		}
 	}
@@ -277,14 +325,17 @@ func (a *App) AttachCover(editionID, sourcePath string, large bool) (result type
 		record.LargeBytes = prepared.Large.Bytes
 	}
 
-	a.covers.put(editionID, files)
+	// "cover" takes cover.jpg, cover_thumb.jpg and a cover.png a previous
+	// attach left behind. It deliberately does not take the wraps: replacing an
+	// edition's cover has nothing to do with a paperback's print artwork.
+	a.covers.hold(editionID, files, coverNamePrefix)
 	return types.CoverResult{Success: true, Cover: record}
 }
 
 // RemoveCover drops an edition's artwork. The record is the frontend's to
 // clear; this releases the bytes so the next save stops carrying them.
 func (a *App) RemoveCover(editionID string) {
-	a.covers.put(strings.TrimSpace(editionID), coverFiles{})
+	a.covers.hold(strings.TrimSpace(editionID), coverFiles{}, coverNamePrefix)
 }
 
 // CheckCoverSource answers whether the print-ready original is still where it

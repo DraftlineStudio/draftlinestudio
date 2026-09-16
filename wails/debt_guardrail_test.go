@@ -31,7 +31,6 @@ var debtRatchet = map[string]int{
 	"import.go":                            780,  // 722 at 02468; EPUB+DOCX importers (backlog: internal/importer)
 	"frontend/src/store/bookStore.ts":      930,  // raised 02490: continuity review decisions; extract decision writers if this needs a 4th raise
 	"frontend/src/store/readAloudStore.ts": 930,  // added 02531: player redesign cast/progress/preview glue around the module-scope pipeline singletons; extract castSession.ts if this needs a raise
-	"frontend/src/components/dialogs/ExportWizard.tsx":      860, // 833; oldest open backlog item
 	"frontend/src/components/characters/CharactersView.tsx": 840, // 811; five components in one file
 	"frontend/src/components/tools/AIStudio/index.tsx":      780, // 748
 }

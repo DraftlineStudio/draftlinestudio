@@ -26,6 +26,14 @@ export function AttachCoverDialog(arg1, arg2) {
   return window['go']['main']['App']['AttachCoverDialog'](arg1, arg2);
 }
 
+export function AttachWrap(arg1, arg2, arg3) {
+  return window['go']['main']['App']['AttachWrap'](arg1, arg2, arg3);
+}
+
+export function AttachWrapDialog(arg1, arg2) {
+  return window['go']['main']['App']['AttachWrapDialog'](arg1, arg2);
+}
+
 export function BrowseForDirectory() {
   return window['go']['main']['App']['BrowseForDirectory']();
 }
@@ -98,12 +106,20 @@ export function ExportEPUB(arg1, arg2) {
   return window['go']['main']['App']['ExportEPUB'](arg1, arg2);
 }
 
+export function ExportEditionBundle(arg1, arg2) {
+  return window['go']['main']['App']['ExportEditionBundle'](arg1, arg2);
+}
+
 export function ExportPDF(arg1, arg2) {
   return window['go']['main']['App']['ExportPDF'](arg1, arg2);
 }
 
 export function ExportPrintPDF(arg1, arg2) {
   return window['go']['main']['App']['ExportPrintPDF'](arg1, arg2);
+}
+
+export function ExportStoredArtwork(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ExportStoredArtwork'](arg1, arg2, arg3);
 }
 
 export function FreezeSnapshot(arg1, arg2) {
@@ -234,6 +250,10 @@ export function RestoreBackup(arg1) {
   return window['go']['main']['App']['RestoreBackup'](arg1);
 }
 
+export function RevealInFileManager(arg1) {
+  return window['go']['main']['App']['RevealInFileManager'](arg1);
+}
+
 export function RewriteText(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['RewriteText'](arg1, arg2, arg3, arg4);
 }
@@ -264,6 +284,10 @@ export function SearchStory(arg1, arg2) {
 
 export function SetAPIKey(arg1) {
   return window['go']['main']['App']['SetAPIKey'](arg1);
+}
+
+export function SetWrapStored(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['SetWrapStored'](arg1, arg2, arg3, arg4);
 }
 
 export function SetupClaudeCode() {

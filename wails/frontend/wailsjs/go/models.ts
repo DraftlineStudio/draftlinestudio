@@ -1170,6 +1170,44 @@ export namespace types {
 	        this.bytes = source["bytes"];
 	    }
 	}
+	export class EditionWrap {
+	    file_name: string;
+	    bytes?: number;
+	    width?: number;
+	    height?: number;
+	    size_label?: string;
+	    stored: boolean;
+	    stored_label?: string;
+	    member?: string;
+	    source_path?: string;
+	    source_checksum?: string;
+	    attached?: string;
+	    preview_file?: string;
+	    preview_width?: number;
+	    preview_height?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new EditionWrap(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.file_name = source["file_name"];
+	        this.bytes = source["bytes"];
+	        this.width = source["width"];
+	        this.height = source["height"];
+	        this.size_label = source["size_label"];
+	        this.stored = source["stored"];
+	        this.stored_label = source["stored_label"];
+	        this.member = source["member"];
+	        this.source_path = source["source_path"];
+	        this.source_checksum = source["source_checksum"];
+	        this.attached = source["attached"];
+	        this.preview_file = source["preview_file"];
+	        this.preview_width = source["preview_width"];
+	        this.preview_height = source["preview_height"];
+	    }
+	}
 	export class EditionFormat {
 	    id: string;
 	    kind: string;
@@ -1196,7 +1234,9 @@ export namespace types {
 	    territory_rights?: string;
 	    rights_notice?: string;
 	    lccn?: string;
+	    typesetting?: string;
 	    export_settings?: Record<string, any>;
+	    wrap?: EditionWrap;
 	    snapshot_id?: string;
 	
 	    static createFrom(source: any = {}) {
@@ -1230,9 +1270,29 @@ export namespace types {
 	        this.territory_rights = source["territory_rights"];
 	        this.rights_notice = source["rights_notice"];
 	        this.lccn = source["lccn"];
+	        this.typesetting = source["typesetting"];
 	        this.export_settings = source["export_settings"];
+	        this.wrap = this.convertValues(source["wrap"], EditionWrap);
 	        this.snapshot_id = source["snapshot_id"];
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class EditionCover {
 	    id: string;
@@ -1417,6 +1477,7 @@ export namespace types {
 	export class PlannerCard {
 	    id: string;
 	    source_id?: string;
+	    source_key?: string;
 	    origin?: string;
 	    title: string;
 	    synopsis: string;
@@ -1438,6 +1499,7 @@ export namespace types {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.source_id = source["source_id"];
+	        this.source_key = source["source_key"];
 	        this.origin = source["origin"];
 	        this.title = source["title"];
 	        this.synopsis = source["synopsis"];
@@ -1960,6 +2022,248 @@ export namespace types {
 		    return a;
 		}
 	}
+	export class PrintPDFOptions {
+	    includeCopyright: boolean;
+	    includeFrontMatter: boolean;
+	    includeBackMatter: boolean;
+	    editionID?: string;
+	    formatID?: string;
+	    pageSize: string;
+	    fontFamily: string;
+	    fontSize: number;
+	    lineHeight: number;
+	    paragraphIndent: string;
+	    textAlign: string;
+	    trimSize: string;
+	    customWidth: string;
+	    customHeight: string;
+	    bleed: string;
+	    gutterMargin: string;
+	    outerMargin: string;
+	    topMargin: string;
+	    bottomMargin: string;
+	    includeCropMarks: boolean;
+	    chapterStartsRecto: boolean;
+	    dropCap: boolean;
+	    dropCapLines: number;
+	    sceneBreakStyle: string;
+	    chapterStyle: string;
+	    runningHeaders: boolean;
+	    headerStyle: string;
+	    headerContent: string;
+	    pageNumberPosition: string;
+	    generateHalfTitle: boolean;
+	    generateTOC: boolean;
+	    mirroredMargins: boolean;
+	    headingFont: string;
+	    furnitureFont: string;
+	    titlePageFont: string;
+	    titlePageStyle: string;
+	    titlePageShowAuthor: boolean;
+	    titlePageShowPublisher: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new PrintPDFOptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.includeCopyright = source["includeCopyright"];
+	        this.includeFrontMatter = source["includeFrontMatter"];
+	        this.includeBackMatter = source["includeBackMatter"];
+	        this.editionID = source["editionID"];
+	        this.formatID = source["formatID"];
+	        this.pageSize = source["pageSize"];
+	        this.fontFamily = source["fontFamily"];
+	        this.fontSize = source["fontSize"];
+	        this.lineHeight = source["lineHeight"];
+	        this.paragraphIndent = source["paragraphIndent"];
+	        this.textAlign = source["textAlign"];
+	        this.trimSize = source["trimSize"];
+	        this.customWidth = source["customWidth"];
+	        this.customHeight = source["customHeight"];
+	        this.bleed = source["bleed"];
+	        this.gutterMargin = source["gutterMargin"];
+	        this.outerMargin = source["outerMargin"];
+	        this.topMargin = source["topMargin"];
+	        this.bottomMargin = source["bottomMargin"];
+	        this.includeCropMarks = source["includeCropMarks"];
+	        this.chapterStartsRecto = source["chapterStartsRecto"];
+	        this.dropCap = source["dropCap"];
+	        this.dropCapLines = source["dropCapLines"];
+	        this.sceneBreakStyle = source["sceneBreakStyle"];
+	        this.chapterStyle = source["chapterStyle"];
+	        this.runningHeaders = source["runningHeaders"];
+	        this.headerStyle = source["headerStyle"];
+	        this.headerContent = source["headerContent"];
+	        this.pageNumberPosition = source["pageNumberPosition"];
+	        this.generateHalfTitle = source["generateHalfTitle"];
+	        this.generateTOC = source["generateTOC"];
+	        this.mirroredMargins = source["mirroredMargins"];
+	        this.headingFont = source["headingFont"];
+	        this.furnitureFont = source["furnitureFont"];
+	        this.titlePageFont = source["titlePageFont"];
+	        this.titlePageStyle = source["titlePageStyle"];
+	        this.titlePageShowAuthor = source["titlePageShowAuthor"];
+	        this.titlePageShowPublisher = source["titlePageShowPublisher"];
+	    }
+	}
+	export class PDFOptions {
+	    includeCopyright: boolean;
+	    includeFrontMatter: boolean;
+	    includeBackMatter: boolean;
+	    editionID?: string;
+	    formatID?: string;
+	    pageSize: string;
+	    fontFamily: string;
+	    fontSize: number;
+	    lineHeight: number;
+	    paragraphIndent: string;
+	    textAlign: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PDFOptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.includeCopyright = source["includeCopyright"];
+	        this.includeFrontMatter = source["includeFrontMatter"];
+	        this.includeBackMatter = source["includeBackMatter"];
+	        this.editionID = source["editionID"];
+	        this.formatID = source["formatID"];
+	        this.pageSize = source["pageSize"];
+	        this.fontFamily = source["fontFamily"];
+	        this.fontSize = source["fontSize"];
+	        this.lineHeight = source["lineHeight"];
+	        this.paragraphIndent = source["paragraphIndent"];
+	        this.textAlign = source["textAlign"];
+	    }
+	}
+	export class EPUBOptions {
+	    includeCopyright: boolean;
+	    includeFrontMatter: boolean;
+	    includeBackMatter: boolean;
+	    editionID?: string;
+	    formatID?: string;
+	    fontFamily: string;
+	    paragraphStyle: string;
+	    textAlign: string;
+	    chapterStyle: string;
+	    sceneBreakStyle: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new EPUBOptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.includeCopyright = source["includeCopyright"];
+	        this.includeFrontMatter = source["includeFrontMatter"];
+	        this.includeBackMatter = source["includeBackMatter"];
+	        this.editionID = source["editionID"];
+	        this.formatID = source["formatID"];
+	        this.fontFamily = source["fontFamily"];
+	        this.paragraphStyle = source["paragraphStyle"];
+	        this.textAlign = source["textAlign"];
+	        this.chapterStyle = source["chapterStyle"];
+	        this.sceneBreakStyle = source["sceneBreakStyle"];
+	    }
+	}
+	export class ExportOptions {
+	    includeCopyright: boolean;
+	    includeFrontMatter: boolean;
+	    includeBackMatter: boolean;
+	    editionID?: string;
+	    formatID?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ExportOptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.includeCopyright = source["includeCopyright"];
+	        this.includeFrontMatter = source["includeFrontMatter"];
+	        this.includeBackMatter = source["includeBackMatter"];
+	        this.editionID = source["editionID"];
+	        this.formatID = source["formatID"];
+	    }
+	}
+	export class BundleItem {
+	    format_id: string;
+	    output: string;
+	    shared: ExportOptions;
+	    epub: EPUBOptions;
+	    pdf: PDFOptions;
+	    print: PrintPDFOptions;
+	
+	    static createFrom(source: any = {}) {
+	        return new BundleItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.format_id = source["format_id"];
+	        this.output = source["output"];
+	        this.shared = this.convertValues(source["shared"], ExportOptions);
+	        this.epub = this.convertValues(source["epub"], EPUBOptions);
+	        this.pdf = this.convertValues(source["pdf"], PDFOptions);
+	        this.print = this.convertValues(source["print"], PrintPDFOptions);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class BundleRequest {
+	    edition_id: string;
+	    include_artwork: boolean;
+	    items: BundleItem[];
+	
+	    static createFrom(source: any = {}) {
+	        return new BundleRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.edition_id = source["edition_id"];
+	        this.include_artwork = source["include_artwork"];
+	        this.items = this.convertValues(source["items"], BundleItem);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	
 	export class ChapterHistoryEntry {
 	    id: string;
@@ -2314,36 +2618,6 @@ export namespace types {
 	        this.path = source["path"];
 	    }
 	}
-	export class EPUBOptions {
-	    includeCopyright: boolean;
-	    includeFrontMatter: boolean;
-	    includeBackMatter: boolean;
-	    editionID?: string;
-	    formatID?: string;
-	    fontFamily: string;
-	    paragraphStyle: string;
-	    textAlign: string;
-	    chapterStyle: string;
-	    sceneBreakStyle: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new EPUBOptions(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.includeCopyright = source["includeCopyright"];
-	        this.includeFrontMatter = source["includeFrontMatter"];
-	        this.includeBackMatter = source["includeBackMatter"];
-	        this.editionID = source["editionID"];
-	        this.formatID = source["formatID"];
-	        this.fontFamily = source["fontFamily"];
-	        this.paragraphStyle = source["paragraphStyle"];
-	        this.textAlign = source["textAlign"];
-	        this.chapterStyle = source["chapterStyle"];
-	        this.sceneBreakStyle = source["sceneBreakStyle"];
-	    }
-	}
 	
 	
 	
@@ -2356,26 +2630,9 @@ export namespace types {
 	
 	
 	
-	export class ExportOptions {
-	    includeCopyright: boolean;
-	    includeFrontMatter: boolean;
-	    includeBackMatter: boolean;
-	    editionID?: string;
-	    formatID?: string;
 	
-	    static createFrom(source: any = {}) {
-	        return new ExportOptions(source);
-	    }
 	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.includeCopyright = source["includeCopyright"];
-	        this.includeFrontMatter = source["includeFrontMatter"];
-	        this.includeBackMatter = source["includeBackMatter"];
-	        this.editionID = source["editionID"];
-	        this.formatID = source["formatID"];
-	    }
-	}
+	
 	export class ExportResult {
 	    success: boolean;
 	    file_path?: string;
@@ -2511,123 +2768,13 @@ export namespace types {
 	
 	
 	
-	export class PDFOptions {
-	    includeCopyright: boolean;
-	    includeFrontMatter: boolean;
-	    includeBackMatter: boolean;
-	    editionID?: string;
-	    formatID?: string;
-	    pageSize: string;
-	    fontFamily: string;
-	    fontSize: number;
-	    lineHeight: number;
-	    paragraphIndent: string;
-	    textAlign: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new PDFOptions(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.includeCopyright = source["includeCopyright"];
-	        this.includeFrontMatter = source["includeFrontMatter"];
-	        this.includeBackMatter = source["includeBackMatter"];
-	        this.editionID = source["editionID"];
-	        this.formatID = source["formatID"];
-	        this.pageSize = source["pageSize"];
-	        this.fontFamily = source["fontFamily"];
-	        this.fontSize = source["fontSize"];
-	        this.lineHeight = source["lineHeight"];
-	        this.paragraphIndent = source["paragraphIndent"];
-	        this.textAlign = source["textAlign"];
-	    }
-	}
 	
 	
 	
 	
 	
-	export class PrintPDFOptions {
-	    includeCopyright: boolean;
-	    includeFrontMatter: boolean;
-	    includeBackMatter: boolean;
-	    editionID?: string;
-	    formatID?: string;
-	    pageSize: string;
-	    fontFamily: string;
-	    fontSize: number;
-	    lineHeight: number;
-	    paragraphIndent: string;
-	    textAlign: string;
-	    trimSize: string;
-	    customWidth: string;
-	    customHeight: string;
-	    bleed: string;
-	    gutterMargin: string;
-	    outerMargin: string;
-	    topMargin: string;
-	    bottomMargin: string;
-	    includeCropMarks: boolean;
-	    chapterStartsRecto: boolean;
-	    dropCap: boolean;
-	    dropCapLines: number;
-	    runningHeaders: boolean;
-	    headerStyle: string;
-	    pageNumberPosition: string;
-	    generateHalfTitle: boolean;
-	    generateTOC: boolean;
-	    mirroredMargins: boolean;
-	    headingFont: string;
-	    furnitureFont: string;
-	    titlePageFont: string;
-	    titlePageStyle: string;
-	    titlePageShowAuthor: boolean;
-	    titlePageShowPublisher: boolean;
 	
-	    static createFrom(source: any = {}) {
-	        return new PrintPDFOptions(source);
-	    }
 	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.includeCopyright = source["includeCopyright"];
-	        this.includeFrontMatter = source["includeFrontMatter"];
-	        this.includeBackMatter = source["includeBackMatter"];
-	        this.editionID = source["editionID"];
-	        this.formatID = source["formatID"];
-	        this.pageSize = source["pageSize"];
-	        this.fontFamily = source["fontFamily"];
-	        this.fontSize = source["fontSize"];
-	        this.lineHeight = source["lineHeight"];
-	        this.paragraphIndent = source["paragraphIndent"];
-	        this.textAlign = source["textAlign"];
-	        this.trimSize = source["trimSize"];
-	        this.customWidth = source["customWidth"];
-	        this.customHeight = source["customHeight"];
-	        this.bleed = source["bleed"];
-	        this.gutterMargin = source["gutterMargin"];
-	        this.outerMargin = source["outerMargin"];
-	        this.topMargin = source["topMargin"];
-	        this.bottomMargin = source["bottomMargin"];
-	        this.includeCropMarks = source["includeCropMarks"];
-	        this.chapterStartsRecto = source["chapterStartsRecto"];
-	        this.dropCap = source["dropCap"];
-	        this.dropCapLines = source["dropCapLines"];
-	        this.runningHeaders = source["runningHeaders"];
-	        this.headerStyle = source["headerStyle"];
-	        this.pageNumberPosition = source["pageNumberPosition"];
-	        this.generateHalfTitle = source["generateHalfTitle"];
-	        this.generateTOC = source["generateTOC"];
-	        this.mirroredMargins = source["mirroredMargins"];
-	        this.headingFont = source["headingFont"];
-	        this.furnitureFont = source["furnitureFont"];
-	        this.titlePageFont = source["titlePageFont"];
-	        this.titlePageStyle = source["titlePageStyle"];
-	        this.titlePageShowAuthor = source["titlePageShowAuthor"];
-	        this.titlePageShowPublisher = source["titlePageShowPublisher"];
-	    }
-	}
 	
 	export class RecentProjectStats {
 	    books?: number;
@@ -2726,6 +2873,22 @@ export namespace types {
 	}
 	
 	
+	export class RevealResult {
+	    success: boolean;
+	    error?: string;
+	    note?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RevealResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.error = source["error"];
+	        this.note = source["note"];
+	    }
+	}
 	export class SaveResult {
 	    success: boolean;
 	    file_path: string;
@@ -3275,6 +3438,42 @@ export namespace types {
 		}
 	}
 	
+	export class WrapResult {
+	    success: boolean;
+	    error?: string;
+	    wrap?: EditionWrap;
+	    cancelled?: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new WrapResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.error = source["error"];
+	        this.wrap = this.convertValues(source["wrap"], EditionWrap);
+	        this.cancelled = source["cancelled"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	
 
 }

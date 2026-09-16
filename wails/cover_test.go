@@ -498,3 +498,71 @@ func TestLeavingAProjectLetsGoOfItsUnsavedCover(t *testing.T) {
 		})
 	}
 }
+
+// A wrap's preview is the picture the Book & Editions screen shows instead of
+// loading a print-resolution file. It used to be stored the way bytes read
+// back OUT of the archive are stored, which meant it never went in: closing
+// the book and opening the format again showed a broken image. It is unsaved
+// work like any other artwork, and a save has to carry it.
+func TestWrapPreviewIsWrittenByTheNextSave(t *testing.T) {
+	app := &App{}
+	app.covers.hold("ed-1", coverFiles{"wrap-f1-preview.jpg": []byte("preview bytes")}, previewPrefix("f1"))
+
+	assets, marks := app.covers.pending()
+	if len(marks) != 1 {
+		t.Fatalf("a held preview left %d editions pending, wanted 1", len(marks))
+	}
+	if _, ok := assets.Files["editions/ed-1/wrap-f1-preview.jpg"]; !ok {
+		t.Fatalf("the preview was not handed to the save: %v", assets.Files)
+	}
+}
+
+// Attaching a cover must not take the paperback's wrap with it. The cache used
+// to supersede the whole edition prefix on every put, so replacing a cover
+// silently deleted every stored wrap under that edition.
+func TestReplacingACoverLeavesTheWrapsAlone(t *testing.T) {
+	app := &App{}
+	app.covers.hold("ed-1", coverFiles{
+		"wrap-f1.tif":         []byte("the print artwork"),
+		"wrap-f1-preview.jpg": []byte("preview bytes"),
+	}, storedWrapPrefix("f1"), previewPrefix("f1"))
+	app.covers.hold("ed-1", coverFiles{
+		"cover.jpg":       []byte("new cover"),
+		"cover_thumb.jpg": []byte("new thumb"),
+	}, coverNamePrefix)
+
+	assets, _ := app.covers.pending()
+	for _, name := range assets.Superseded {
+		if strings.HasPrefix(name, "editions/ed-1/wrap-") && !strings.Contains(name, "f1.") && !strings.Contains(name, "f1-preview.") {
+			t.Fatalf("attaching a cover superseded %q", name)
+		}
+		if name == "editions/ed-1/" {
+			t.Fatal("attaching a cover superseded the whole edition")
+		}
+	}
+	for _, want := range []string{"editions/ed-1/wrap-f1.tif", "editions/ed-1/cover.jpg"} {
+		if _, ok := assets.Files[want]; !ok {
+			t.Errorf("%s was not handed to the save", want)
+		}
+	}
+}
+
+// Dropping the stored copy of a wrap keeps the preview: the screen still shows
+// the artwork whether or not its bytes live in the project.
+func TestDroppingAStoredWrapKeepsItsPreview(t *testing.T) {
+	app := &App{}
+	app.covers.hold("ed-1", coverFiles{
+		"wrap-f1.tif":         []byte("the print artwork"),
+		"wrap-f1-preview.jpg": []byte("preview bytes"),
+	})
+	app.covers.settled(map[string]uint64{"ed-1": app.covers.entries["ed-1"].version})
+
+	app.covers.hold("ed-1", coverFiles{}, storedWrapPrefix("f1"))
+	assets, _ := app.covers.pending()
+	if len(assets.Superseded) != 1 || assets.Superseded[0] != "editions/ed-1/wrap-f1." {
+		t.Fatalf("superseded %v, wanted only the stored wrap", assets.Superseded)
+	}
+	if _, ok := app.covers.lookup("ed-1", "wrap-f1-preview.jpg"); !ok {
+		t.Fatal("dropping the stored wrap threw away its preview")
+	}
+}

@@ -10,13 +10,9 @@ import (
 
 // DOCX exports an editable Word edition from the shared publication document.
 func DOCX(path string, book types.BookData, options types.ExportOptions) types.ExportResult {
-	doc, err := BuildDocument(book, options)
+	data, err := DOCXBytes(book, options)
 	if err != nil {
 		return types.ExportResult{Success: false, Error: err.Error()}
-	}
-	data, err := renderDOCX(doc)
-	if err != nil {
-		return types.ExportResult{Success: false, Error: fmt.Sprintf("failed to render DOCX: %v", err)}
 	}
 	if err := writeExportFile(path, data); err != nil {
 		return types.ExportResult{Success: false, Error: fmt.Sprintf("failed to write file: %v", err)}
