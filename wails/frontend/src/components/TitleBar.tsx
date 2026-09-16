@@ -275,7 +275,7 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
           <line x1="6.5" y1="5.5" x2="6.5" y2="10" />
           <circle cx="6.5" cy="3.5" r="0.6" fill="currentColor" stroke="none" />
         </svg>
-        <span>Book Info…</span>
+        <span>Book &amp; Editions…</span>
       </button>
 
       <button className="titlebar-dropdown-item" onClick={() => run(openExportWizard)} disabled={!book}>

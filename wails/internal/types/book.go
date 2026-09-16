@@ -14,13 +14,37 @@ type ISBNEntry struct {
 
 // Metadata contains book metadata information.
 type Metadata struct {
-	Title     string      `json:"title"`
-	Author    string      `json:"author"`
-	ISBN      string      `json:"isbn"`
-	ISBNs     []ISBNEntry `json:"isbns,omitempty"`
-	Publisher string      `json:"publisher"`
-	Created   string      `json:"created"`
-	Modified  string      `json:"modified"`
+	Title    string `json:"title"`
+	Subtitle string `json:"subtitle,omitempty"`
+	Author   string `json:"author"`
+	// SeriesName and SeriesNumber place the book in a series. The number is a
+	// string because series numbers are not always integers: "2", "2.5", and
+	// "Book Two" are all things a storefront prints.
+	SeriesName   string      `json:"series_name,omitempty"`
+	SeriesNumber string      `json:"series_number,omitempty"`
+	ISBN         string      `json:"isbn"`
+	ISBNs        []ISBNEntry `json:"isbns,omitempty"`
+	Publisher    string      `json:"publisher"`
+	// Imprint is the publishing line a book appears under, which may differ
+	// from the publisher that owns it.
+	Imprint string `json:"imprint,omitempty"`
+	// Language is a BCP 47 tag ("en-US"). Empty means the export falls back
+	// to "en", which is what every book got before this field existed.
+	Language string `json:"language,omitempty"`
+	// CopyrightHolder is the name the copyright line is made out to, which is
+	// not always the author.
+	CopyrightHolder string `json:"copyright_holder,omitempty"`
+	// Catalogue: what a storefront needs and an exporter can declare.
+	BISAC1           string `json:"bisac_1,omitempty"`
+	BISAC2           string `json:"bisac_2,omitempty"`
+	Audience         string `json:"audience,omitempty"`
+	Keywords         string `json:"keywords,omitempty"`
+	ShortDescription string `json:"short_description,omitempty"`
+	// Contributors is free text ("Cover: Mara Quist · Copy edit: A. Feld").
+	// Roles are not modelled until something reads them.
+	Contributors string `json:"contributors,omitempty"`
+	Created      string `json:"created"`
+	Modified     string `json:"modified"`
 	// WordCount is the manuscript word count, computed in Go on open and
 	// save so the frontend never re-counts a whole book on its main thread.
 	// Additive field; older readers of the format ignore it.

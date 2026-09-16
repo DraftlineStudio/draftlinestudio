@@ -1596,10 +1596,22 @@ export namespace types {
 	}
 	export class Metadata {
 	    title: string;
+	    subtitle?: string;
 	    author: string;
+	    series_name?: string;
+	    series_number?: string;
 	    isbn: string;
 	    isbns?: ISBNEntry[];
 	    publisher: string;
+	    imprint?: string;
+	    language?: string;
+	    copyright_holder?: string;
+	    bisac_1?: string;
+	    bisac_2?: string;
+	    audience?: string;
+	    keywords?: string;
+	    short_description?: string;
+	    contributors?: string;
 	    created: string;
 	    modified: string;
 	    word_count?: number;
@@ -1611,10 +1623,22 @@ export namespace types {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.title = source["title"];
+	        this.subtitle = source["subtitle"];
 	        this.author = source["author"];
+	        this.series_name = source["series_name"];
+	        this.series_number = source["series_number"];
 	        this.isbn = source["isbn"];
 	        this.isbns = this.convertValues(source["isbns"], ISBNEntry);
 	        this.publisher = source["publisher"];
+	        this.imprint = source["imprint"];
+	        this.language = source["language"];
+	        this.copyright_holder = source["copyright_holder"];
+	        this.bisac_1 = source["bisac_1"];
+	        this.bisac_2 = source["bisac_2"];
+	        this.audience = source["audience"];
+	        this.keywords = source["keywords"];
+	        this.short_description = source["short_description"];
+	        this.contributors = source["contributors"];
 	        this.created = source["created"];
 	        this.modified = source["modified"];
 	        this.word_count = source["word_count"];

@@ -2,6 +2,17 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02644] - 2026-09-15
+
+### Added
+- Renamed Book Info to Book & Editions.
+- ISBNs are now validated as you type.
+
+### Changed
+- Exports now declare the book's language instead of always using English.
+- Exports print the imprint when set, and the publisher otherwise.
+- EPUB packages now declare only the content the book actually includes.
+
 ## [0.20.02643] - 2026-09-15
 
 ### Fixed

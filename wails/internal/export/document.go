@@ -15,11 +15,23 @@ import (
 // Source IDs and section roles survive conversion so layout and navigation can
 // be traced back to the manuscript without interpreting presentation markup.
 type Document struct {
-	Title     string
-	Author    string
+	Title    string
+	Subtitle string
+	Author   string
+	// Publisher is the imprint the book appears under when the book names
+	// one, and the publisher otherwise.
 	Publisher string
-	Language  string
-	Sections  []DocumentSection
+	// Language is a BCP 47 tag; never empty by the time a renderer sees it.
+	Language string
+	// Catalogue fields a package format can declare. Each is empty when the
+	// book does not carry it, and a renderer must leave the element out
+	// rather than emit an empty one.
+	SeriesName   string
+	SeriesNumber string
+	Description  string
+	Subjects     []string
+	Contributors string
+	Sections     []DocumentSection
 }
 
 // SectionRole describes where a section came from in the Draftline archive.
@@ -95,13 +107,51 @@ func (b DocumentBlock) PlainText() string {
 }
 
 // BuildDocument selects the requested archive sections and parses their
+// documentSubjects are the book's subject headings, in the order the author
+// listed them, with blanks left out.
+func documentSubjects(m types.Metadata) []string {
+	out := []string{}
+	for _, value := range []string{m.BISAC1, m.BISAC2} {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
+}
+
+// documentPublisher is the imprint a book appears under when it names one,
+// and the publisher that owns the imprint otherwise. A title page prints the
+// imprint; the publisher is the company behind it.
+func documentPublisher(m types.Metadata) string {
+	if imprint := strings.TrimSpace(m.Imprint); imprint != "" {
+		return imprint
+	}
+	return strings.TrimSpace(m.Publisher)
+}
+
+// documentLanguage is the book's language tag, or "en" when the book carries
+// none. Every book written before the field existed is English by default,
+// which is what the exporters declared unconditionally until now.
+func documentLanguage(tag string) string {
+	if trimmed := strings.TrimSpace(tag); trimmed != "" {
+		return trimmed
+	}
+	return "en"
+}
+
 // editor HTML into a single renderer-neutral document.
 func BuildDocument(book types.BookData, options types.ExportOptions) (Document, error) {
 	doc := Document{
-		Title:     strings.TrimSpace(book.Metadata.Title),
-		Author:    strings.TrimSpace(book.Metadata.Author),
-		Publisher: strings.TrimSpace(book.Metadata.Publisher),
-		Language:  "en",
+		Title:        strings.TrimSpace(book.Metadata.Title),
+		Subtitle:     strings.TrimSpace(book.Metadata.Subtitle),
+		Author:       strings.TrimSpace(book.Metadata.Author),
+		Publisher:    documentPublisher(book.Metadata),
+		Language:     documentLanguage(book.Metadata.Language),
+		SeriesName:   strings.TrimSpace(book.Metadata.SeriesName),
+		SeriesNumber: strings.TrimSpace(book.Metadata.SeriesNumber),
+		Description:  strings.TrimSpace(book.Metadata.ShortDescription),
+		Subjects:     documentSubjects(book.Metadata),
+		Contributors: strings.TrimSpace(book.Metadata.Contributors),
 	}
 
 	appendSection := func(ch types.ChapterItem, role SectionRole, sourceIndex int) error {

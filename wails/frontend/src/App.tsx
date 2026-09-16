@@ -22,7 +22,7 @@ import ToolsPanel from './components/ToolsPanel'
 import StatusBar from './components/StatusBar'
 import AnalysisCoordinator from './components/AnalysisCoordinator'
 import StorySearchToolWindow from './components/StorySearchToolWindow'
-import MetadataDialog from './components/dialogs/MetadataDialog'
+import BookInfoDialog from './components/dialogs/BookInfoDialog'
 import NewChapterDialog from './components/dialogs/NewChapterDialog'
 import NewBookWizard from './components/dialogs/NewBookWizard'
 import NewUniverseWizard from './components/dialogs/NewUniverseWizard'
@@ -321,7 +321,7 @@ export default function App() {
       {bottomToolOpen && viewMode === 'editor' && <StorySearchToolWindow />}
       <StatusBar />
       <AnalysisCoordinator />
-      {showMetadata && <MetadataDialog />}
+      {showMetadata && <BookInfoDialog />}
       {showNewChapter && newChapterSection && (
         <NewChapterDialog section={newChapterSection} />
       )}

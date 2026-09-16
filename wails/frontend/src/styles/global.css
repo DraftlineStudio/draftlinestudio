@@ -8033,28 +8033,78 @@ html, body, #root {
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════
-   METADATA DIALOG · PER-FORMAT ISBN LIST
+   BOOK & EDITIONS · the record a book carries and the editions published from
+   it (components/dialogs/BookInfoDialog.tsx). Prefix: bi-.
    ═══════════════════════════════════════════════════════════════════════════ */
-.metadata-isbn-row {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 6px;
-  align-items: center;
+.bi-dialog {
+  width: min(1040px, 94vw); height: min(760px, 92vh); max-width: none;
+  padding: 0; display: flex; flex-direction: column; overflow: hidden;
 }
-.metadata-isbn-format {
-  flex: 0 0 118px;
+.bi-header {
+  height: 44px; flex: none; display: flex; align-items: center; gap: 10px;
+  padding: 0 14px; background: var(--bg-toolbar); border-bottom: 1px solid var(--border);
 }
-.metadata-isbn-row .dialog-input {
-  flex: 1;
-  min-width: 0;
+.bi-mark {
+  width: 22px; height: 22px; border-radius: 4px; background: var(--app-accent);
+  color: #fff; font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; flex: none;
 }
-.metadata-isbn-remove {
-  flex-shrink: 0;
-  padding: 0 9px;
+.bi-header-title { font-size: 13px; font-weight: 600; white-space: nowrap; }
+.bi-header-sub { font-size: 12px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bi-header-stamp { margin-left: auto; font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+.bi-close {
+  width: 24px; height: 24px; flex: none; border: 0; border-radius: 4px;
+  background: transparent; color: var(--text-secondary); font: inherit; cursor: pointer;
 }
-.metadata-isbn-add {
-  margin-top: 2px;
+.bi-close:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+.bi-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 248px 1fr; }
+.bi-rail { border-right: 1px solid var(--border); background: var(--bg-panel); overflow-y: auto; }
+.bi-rail-head { padding: 10px 12px 4px; }
+.bi-rail-divider { border-top: 1px solid var(--border-subtle); margin-top: 6px; }
+.bi-rail-row {
+  display: flex; flex-direction: column; gap: 2px; width: 100%;
+  padding: 7px 12px; border: 0; border-left: 2px solid transparent;
+  background: transparent; text-align: left; font: inherit; cursor: pointer;
 }
+.bi-rail-row:hover { background: var(--bg-hover); }
+.bi-rail-row.active { background: var(--bg-active); border-left-color: var(--app-accent); }
+.bi-rail-row-name { font-size: 12.5px; color: var(--text-primary); }
+.bi-rail-row-sub { font-size: 11px; color: var(--text-muted); }
+.bi-rail-empty { padding: 4px 12px 12px; font-size: 11px; color: var(--text-muted); line-height: 1.55; }
+
+.bi-pane { overflow-y: auto; padding: 18px 22px 24px; min-width: 0; }
+.bi-pane-intro { margin: 0 0 18px; font-size: 12px; color: var(--text-secondary); line-height: 1.6; max-width: 62ch; }
+.bi-section { margin-bottom: 22px; }
+.bi-section-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 9px; }
+.bi-section-note { font-size: 11px; color: var(--text-muted); }
+.bi-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 18px; }
+.bi-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.bi-field-wide { grid-column: 1 / -1; }
+.bi-field-label { font-size: 11px; color: var(--text-secondary); }
+.bi-field-hint { font-size: 10.5px; color: var(--text-muted); line-height: 1.5; }
+.bi-textarea { height: auto; min-height: 76px; padding: 8px 9px; line-height: 1.6; resize: vertical; }
+.dialog-input.invalid, .dialog-select.invalid { border-color: var(--status-error, #E06C75); }
+
+.bi-isbn-row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+.bi-isbn-format { flex: 0 0 118px; }
+.bi-isbn-row .dialog-input { flex: 1; min-width: 0; }
+.bi-isbn-mark { flex: none; width: 14px; text-align: center; font-size: 12px; color: transparent; }
+.bi-isbn-mark.ok { color: #57A874; }
+.bi-isbn-mark.bad { color: #E5C07B; cursor: help; }
+.bi-isbn-remove, .bi-isbn-add {
+  flex-shrink: 0; height: 26px; padding: 0 9px;
+  border: 1px solid var(--border); border-radius: 4px;
+  background: var(--bg-input); color: var(--text-secondary); font: inherit; cursor: pointer;
+}
+.bi-isbn-remove:hover, .bi-isbn-add:hover { background: var(--bg-hover); color: var(--text-primary); }
+.bi-isbn-add { margin-top: 2px; }
+
+.bi-footer {
+  flex: none; display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; background: var(--bg-toolbar); border-top: 1px solid var(--border);
+}
+.bi-footer-note { flex: 1; min-width: 0; font-size: 11px; color: var(--text-muted); line-height: 1.5; }
 
 /* ═════════════════════════════════════════════════════════════════════════════
    TITLEBAR UPDATE-AVAILABLE CHIP

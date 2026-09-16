@@ -550,11 +550,29 @@ export interface ISBNEntry {
 
 export interface Metadata {
   title: string
+  subtitle?: string
   author: string
+  // A series number is a string: "2", "2.5" and "Book Two" are all printed.
+  series_name?: string
+  series_number?: string
   // Legacy single ISBN; mirrors isbns[0] and is kept for format compatibility.
   isbn: string
   isbns?: ISBNEntry[]
   publisher: string
+  // The line a book appears under, which may differ from the publisher that
+  // owns it. Exports print the imprint when there is one.
+  imprint?: string
+  // A BCP 47 tag. Empty exports as "en", which is what every book got before
+  // this field existed.
+  language?: string
+  copyright_holder?: string
+  // Catalogue: what a storefront needs and an exporter can declare.
+  bisac_1?: string
+  bisac_2?: string
+  audience?: string
+  keywords?: string
+  short_description?: string
+  contributors?: string
   created: string
   modified: string
   // Manuscript word count, computed by the Go backend on open and save.

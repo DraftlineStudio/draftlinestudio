@@ -99,20 +99,56 @@ func renderEPUBPackage(doc Document, identifier string, sections []epubSection, 
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid" xml:lang="%s">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
-    <dc:identifier id="uid">%s</dc:identifier>
-    <dc:title>%s</dc:title>
-    <dc:creator>%s</dc:creator>
-    <dc:publisher>%s</dc:publisher>
-    <dc:language>%s</dc:language>
-    <meta property="dcterms:modified">%s</meta>
-  </metadata>
+%s  </metadata>
   <manifest>
     <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
     <item id="css" href="styles/book.css" media-type="text/css"/>
 %s%s  </manifest>
   <spine>
 %s  </spine>
-</package>`, EscapeXML(doc.Language), EscapeXML(identifier), EscapeXML(doc.Title), EscapeXML(doc.Author), EscapeXML(doc.Publisher), EscapeXML(doc.Language), modified.Format("2006-01-02T15:04:05Z"), manifest.String(), epubFontManifest(options.FontFamily), spine.String())
+</package>`, EscapeXML(doc.Language), epubMetadata(doc, identifier, modified), manifest.String(), epubFontManifest(options.FontFamily), spine.String())
+}
+
+// epubMetadata writes only the Dublin Core a book actually carries. An empty
+// element is not neutral: EPUBCheck reports it, and a reader can show a blank
+// author line where it would otherwise show nothing at all.
+func epubMetadata(doc Document, identifier string, modified time.Time) string {
+	var b strings.Builder
+	line := func(format string, args ...any) { fmt.Fprintf(&b, "    "+format+"\n", args...) }
+
+	line(`<dc:identifier id="uid">%s</dc:identifier>`, EscapeXML(identifier))
+	line(`<dc:title id="title">%s</dc:title>`, EscapeXML(doc.Title))
+	if doc.Subtitle != "" {
+		line(`<meta refines="#title" property="title-type">main</meta>`)
+		line(`<dc:title id="subtitle">%s</dc:title>`, EscapeXML(doc.Subtitle))
+		line(`<meta refines="#subtitle" property="title-type">subtitle</meta>`)
+	}
+	if doc.Author != "" {
+		line(`<dc:creator id="creator">%s</dc:creator>`, EscapeXML(doc.Author))
+		line(`<meta refines="#creator" property="role" scheme="marc:relators">aut</meta>`)
+	}
+	if doc.Contributors != "" {
+		line(`<dc:contributor>%s</dc:contributor>`, EscapeXML(doc.Contributors))
+	}
+	if doc.Publisher != "" {
+		line(`<dc:publisher>%s</dc:publisher>`, EscapeXML(doc.Publisher))
+	}
+	if doc.Description != "" {
+		line(`<dc:description>%s</dc:description>`, EscapeXML(doc.Description))
+	}
+	for _, subject := range doc.Subjects {
+		line(`<dc:subject>%s</dc:subject>`, EscapeXML(subject))
+	}
+	if doc.SeriesName != "" {
+		line(`<meta property="belongs-to-collection" id="series">%s</meta>`, EscapeXML(doc.SeriesName))
+		line(`<meta refines="#series" property="collection-type">series</meta>`)
+		if doc.SeriesNumber != "" {
+			line(`<meta refines="#series" property="group-position">%s</meta>`, EscapeXML(doc.SeriesNumber))
+		}
+	}
+	line(`<dc:language>%s</dc:language>`, EscapeXML(doc.Language))
+	line(`<meta property="dcterms:modified">%s</meta>`, modified.Format("2006-01-02T15:04:05Z"))
+	return b.String()
 }
 
 func renderEPUBNav(doc Document, sections []epubSection) string {

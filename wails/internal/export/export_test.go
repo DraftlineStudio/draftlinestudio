@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"draftline/internal/types"
+	"time"
 )
 
 // entityAt reports whether s starting at the '&' in position i forms a valid
@@ -233,7 +234,7 @@ func TestEPUBExportStructureAndEscaping(t *testing.T) {
 
 	// content.opf must exist and carry escaped metadata.
 	opf := string(readZipPart(t, path, "OEBPS/content.opf"))
-	if !strings.Contains(opf, "<dc:title>Smith &amp; Sons: &lt;Tales&gt;</dc:title>") {
+	if !strings.Contains(opf, `<dc:title id="title">Smith &amp; Sons: &lt;Tales&gt;</dc:title>`) {
 		t.Errorf("content.opf missing correctly escaped title, got:\n%s", opf)
 	}
 	if !strings.Contains(opf, "<dc:publisher>Books &amp; More</dc:publisher>") {
@@ -393,4 +394,61 @@ func TestPrintPDFExportStructure(t *testing.T) {
 		t.Fatalf("read print pdf: %v", err)
 	}
 	assertParseablePDF(t, pdf)
+}
+
+// The package document declares what the book carries and leaves out what it
+// does not. An empty Dublin Core element is reported by EPUBCheck and can
+// show a reader a blank author line where it would otherwise show nothing.
+func TestEPUBPackageOmitsMetadataTheBookDoesNotCarry(t *testing.T) {
+	bare := Document{Title: "A Lantern", Language: "en"}
+	opf := renderEPUBPackage(bare, "urn:uuid:test", nil, types.EPUBOptions{}, time.Unix(0, 0).UTC())
+	for _, element := range []string{"<dc:creator", "<dc:publisher", "<dc:description", "<dc:subject", "<dc:contributor", "belongs-to-collection"} {
+		if strings.Contains(opf, element) {
+			t.Errorf("a book with no %s should not declare one:\n%s", element, opf)
+		}
+	}
+	if !strings.Contains(opf, `<dc:title id="title">A Lantern</dc:title>`) || !strings.Contains(opf, "<dc:language>en</dc:language>") {
+		t.Errorf("title and language are always declared:\n%s", opf)
+	}
+}
+
+// Everything the book does carry reaches the package document, including the
+// series position, which a storefront reads to shelve the book in order.
+func TestEPUBPackageDeclaresEveryMetadataFieldTheBookCarries(t *testing.T) {
+	full := Document{
+		Title: "A Lantern", Subtitle: "A Novel", Author: "R. Vance", Publisher: "Echo Press",
+		Language: "en-GB", SeriesName: "The Harbour Books", SeriesNumber: "2",
+		Description: "A keeper counts the oil.", Subjects: []string{"FIC031000", "FIC028000"},
+		Contributors: "Cover: M. Quist",
+	}
+	opf := renderEPUBPackage(full, "urn:isbn:9780306406157", nil, types.EPUBOptions{}, time.Unix(0, 0).UTC())
+	for _, want := range []string{
+		`<dc:title id="subtitle">A Novel</dc:title>`,
+		`<dc:creator id="creator">R. Vance</dc:creator>`,
+		`scheme="marc:relators">aut</meta>`,
+		`<dc:contributor>Cover: M. Quist</dc:contributor>`,
+		`<dc:publisher>Echo Press</dc:publisher>`,
+		`<dc:description>A keeper counts the oil.</dc:description>`,
+		`<dc:subject>FIC031000</dc:subject>`,
+		`<dc:subject>FIC028000</dc:subject>`,
+		`<meta property="belongs-to-collection" id="series">The Harbour Books</meta>`,
+		`<meta refines="#series" property="group-position">2</meta>`,
+		`<dc:language>en-GB</dc:language>`,
+	} {
+		if !strings.Contains(opf, want) {
+			t.Errorf("package document is missing %s:\n%s", want, opf)
+		}
+	}
+}
+
+// The language a book declares is the language it exports as. Books written
+// before the field existed have none and stay English, which is what every
+// export declared unconditionally until now.
+func TestDocumentLanguageFallsBackToEnglishOnly(t *testing.T) {
+	if got := documentLanguage("de-DE"); got != "de-DE" {
+		t.Errorf("a declared language is used verbatim, got %q", got)
+	}
+	if got := documentLanguage("  "); got != "en" {
+		t.Errorf("a book with no language exports as English, got %q", got)
+	}
 }
