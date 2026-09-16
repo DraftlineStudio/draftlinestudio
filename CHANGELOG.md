@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02642] - 2026-09-15
+
+### Fixed
+- Centered the Planner's empty timeline message.
+
 ## [0.20.02640] - 2026-09-15
 
 ### Fixed

@@ -8537,10 +8537,12 @@ html, body, #root {
 .pl-add-col:hover { background: var(--bg-hover); color: var(--text-primary); }
 .pl-add-col-label { font-size: 12px; font-weight: 500; }
 .pl-add-col-hint { font-size: 11px; color: var(--text-muted); text-align: center; max-width: 130px; line-height: 1.5; }
-/* Centred in the space between the pinned story-line gutter and the right
-   edge. No horizontal padding: padding shrinks the box the content centres
-   in, which pushes the message off to one side. */
-.pl-empty { position: absolute; left: 156px; right: 0; bottom: 0; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 0; pointer-events: none; }
+/* Centred on the timeline panel itself, so it reads as the middle of the
+   view. Inset from one side only (or any horizontal padding) shifts the
+   box the content centres in and throws the message off to one side; the
+   message is far narrower than the story-line gutter is wide, so it never
+   reaches it. */
+.pl-empty { position: absolute; left: 0; right: 0; bottom: 0; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 0; pointer-events: none; }
 .pl-empty-tag { font-family: var(--editor-font, Merriweather), serif; font-style: italic; font-size: 15px; color: var(--text-muted); text-align: center; max-width: 360px; line-height: 1.6; }
 .pl-empty-actions { display: flex; gap: 10px; pointer-events: auto; }
 .pl-empty-hint { font-size: 11px; color: var(--text-muted); }
