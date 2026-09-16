@@ -177,11 +177,11 @@ func unreadableSource(err error) error { return sourceReadError{err: err} }
 // prefixes is not copied, and because every save rebuilds the archive from
 // scratch, not copying a member destroys it.
 func copyPreservedEntries(w *archiveWriter, sourcePath string, prefixes []string) error {
-	return copyPreservedEntriesExcept(w, sourcePath, prefixes, nil)
+	return copyPreservedEntriesExcept(w, sourcePath, prefixes, nil, nil)
 }
 
 // copyPreservedEntriesExcept is the same, with a list of prefixes this save is
-// replacing outright.
+// replacing outright and the set of editions it still has.
 //
 // The exception exists because a replaced member does not always keep its
 // name. Cover art is kept as a JPEG or, for flat artwork, as a PNG; attaching
@@ -189,7 +189,10 @@ func copyPreservedEntries(w *archiveWriter, sourcePath string, prefixes []string
 // would otherwise carry forward for ever. Naming the prefix drops the whole
 // old set, and the assets written before this call have already claimed the
 // names that survive.
-func copyPreservedEntriesExcept(w *archiveWriter, sourcePath string, prefixes, superseded []string) error {
+//
+// liveEditions is the other half of the same problem, for the case where it is
+// not the artwork that went but the edition: see orphanedEditionMember.
+func copyPreservedEntriesExcept(w *archiveWriter, sourcePath string, prefixes, superseded []string, liveEditions map[string]bool) error {
 	if strings.TrimSpace(sourcePath) == "" || len(prefixes) == 0 {
 		return nil
 	}
@@ -206,6 +209,9 @@ func copyPreservedEntriesExcept(w *archiveWriter, sourcePath string, prefixes, s
 	}
 	for _, file := range r.File {
 		if !hasAnyPrefix(file.Name, prefixes) || hasAnyPrefix(file.Name, superseded) {
+			continue
+		}
+		if orphanedEditionMember(file.Name, liveEditions) {
 			continue
 		}
 		if err := w.copyEntry(file); err != nil {

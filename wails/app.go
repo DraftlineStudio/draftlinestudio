@@ -43,7 +43,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.20.02649"
+const AppVersion = "0.20.02650"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -131,6 +131,21 @@ func (a *App) setCurrentFile(path string) {
 	a.stateMu.Lock()
 	a.currentFile = path
 	a.stateMu.Unlock()
+}
+
+// leaveOpenProject is what every path that stops working on the open book has
+// to do: forget the save target, and forget the covers held for it.
+//
+// The two have to move together. Cover art is the one thing the backend holds
+// that is not on BookData, so it does not travel with the book across the
+// bridge and nothing on screen would show that it is still there. A cover
+// attached but not yet saved, left in the cache while the author imports a
+// DOCX or goes back to the launch screen, would be written into whatever book
+// is saved next - another book's artwork, inside a project file, invisible,
+// and carried forward by the editions passthrough on every save after that.
+func (a *App) leaveOpenProject() {
+	a.setCurrentFile("")
+	a.covers.reset()
 }
 
 // setLegacyAPIKey writes the plaintext fallback key under the API-key lock.
@@ -338,9 +353,8 @@ func (a *App) startup(ctx context.Context) {
 // NewBook returns an empty types.BookData struct with defaults.
 func (a *App) NewBook() types.BookData {
 	now := time.Now().Format(time.RFC3339)
-	a.setCurrentFile("")
+	a.leaveOpenProject()
 	a.releaseBookLock()
-	a.covers.reset()
 	newBook := types.BookData{
 		Version: "2.2",
 		Metadata: types.Metadata{

@@ -143,6 +143,57 @@ func CoverMember(editionID, file string) string {
 	return CoverPrefix(editionID) + file
 }
 
+// editionFolder names the edition an archive member is filed under, for
+// members that live in an edition's own folder.
+//
+// editions/index.json belongs to no edition and answers false, which is what
+// keeps the publishing record itself from being read as an orphan and swept
+// away by the reaping below.
+func editionFolder(name string) (string, bool) {
+	rest, ok := strings.CutPrefix(name, editionsPrefix)
+	if !ok {
+		return "", false
+	}
+	id, _, ok := strings.Cut(rest, "/")
+	if !ok || id == "" {
+		return "", false
+	}
+	return id, true
+}
+
+// orphanedEditionMember reports whether a member belongs to an edition the
+// book no longer has.
+//
+// Everything under editions/ survives a save by passthrough, byte for byte,
+// which is what keeps cover art alive through the five-second autosave. The
+// same mechanism means that deleting an edition would otherwise leave its
+// artwork in the project file for ever: nothing on screen refers to it, no
+// screen can see it, and every later save and every backup copies it again. An
+// author who reworks an edition - and the screen tells them a changed trim or
+// publisher means a NEW edition record, so that is the expected way to work -
+// would leave a megabyte behind each time.
+//
+// live is the set of edition identifiers the save is writing. A nil set means
+// this save does not know them and must not reap: a book saved with no
+// publishing record at all does not rewrite editions/index.json either, so the
+// old index is still carried across and the editions it names are still real.
+func orphanedEditionMember(name string, live map[string]bool) bool {
+	if live == nil {
+		return false
+	}
+	id, ok := editionFolder(name)
+	return ok && !live[id]
+}
+
+// liveEditionIDs is the set of editions a prepared publishing record names.
+func liveEditionIDs(index types.EditionIndex) map[string]bool {
+	live := map[string]bool{}
+	for _, edition := range index.Editions {
+		live[edition.ID] = true
+	}
+	return live
+}
+
 // prepareCoverRecord tidies an edition's cover record and refuses one that
 // could not be filed.
 //

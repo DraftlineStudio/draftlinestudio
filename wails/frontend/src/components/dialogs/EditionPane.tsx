@@ -11,6 +11,7 @@
 
 import { useState } from 'react'
 import CoverCard from './CoverCard'
+import { RemoveCover } from '../../../wailsjs/go/main/App'
 import { useBookStore } from '../../store/bookStore'
 import type { Edition, EditionFormat, EditionIndex, Metadata } from '../../types/draftline'
 import {
@@ -109,6 +110,16 @@ export default function EditionPane({ meta, index, editionID, formatID, handEdit
     if (created) onSelect(created)
   }
 
+  // Deleting an edition lets go of its artwork too. The save itself no longer
+  // carries the cover of an edition the book does not have, so the project
+  // file would come out right either way; this is so the megabyte stops being
+  // held in memory the moment the author says the edition is gone.
+  const remove = () => {
+    void RemoveCover(edition.id)
+    removeEdition(edition.id)
+    onSelect('')
+  }
+
   return (
     <div className="bi-ed-pane">
       {format
@@ -124,7 +135,7 @@ export default function EditionPane({ meta, index, editionID, formatID, handEdit
             meta={meta} index={index} edition={edition} handEdited={handEdited}
             onEdition={patch => updateEdition(edition.id, patch)}
             onDuplicate={duplicate}
-            onRemove={() => { removeEdition(edition.id); onSelect('') }}
+            onRemove={remove}
           />}
     </div>
   )

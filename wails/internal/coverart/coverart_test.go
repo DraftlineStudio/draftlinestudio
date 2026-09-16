@@ -3,6 +3,7 @@ package coverart
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"hash/crc32"
 	"image"
 	"image/color"
@@ -451,6 +452,62 @@ func TestFlatArtworkKeepsAPNGWhenItIsSmaller(t *testing.T) {
 	}
 	if looksFlat(finishFor(paintCover(700, 1120, coverPaint{grainAmount: 0.05}))) {
 		t.Error("the flatness test called grainy artwork flat, which would cost a wasted PNG encode on every cover")
+	}
+}
+
+// A smooth gradient is not flat artwork, and an author with an ordinary
+// painted cover must not pay for a PNG that loses.
+//
+// This is the regression the colour ceiling was added for. Counting only runs
+// of identical pixels, a vertical gradient read as flat - each tone repeats
+// several times along a row - and every such cover bought a full
+// BestCompression PNG encode that came out many times larger than the JPEG and
+// was thrown away. On the artwork below that turned a three-second attach into
+// a ten-second one.
+//
+// The timing is asserted as a ratio against grainy artwork of the same size
+// rather than as a number of seconds, so it means the same thing on a slow
+// machine as on a fast one. The two differ only in their grain: any large gap
+// between them is work one of them is doing and the other is not.
+func TestSmoothArtworkDoesNotPayForAPNGThatLoses(t *testing.T) {
+	dir := t.TempDir()
+	smooth := paintCover(2000, 3200, coverPaint{})
+	if looksFlat(finishFor(smooth)) {
+		t.Fatal("a smooth gradient cover was called flat artwork; that buys a PNG encode which cannot win")
+	}
+
+	smoothRes, err := Prepare(writePNG(t, dir, "smooth.png", smooth), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	grainyRes, err := Prepare(writePNG(t, dir, "grainy.png", paintCover(2000, 3200, coverPaint{grainAmount: 0.05})), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if smoothRes.Cover.Encoding != "jpeg" {
+		t.Errorf("a smooth gradient cover was kept as %s", smoothRes.Cover.Encoding)
+	}
+	if smoothRes.Elapsed <= 0 || grainyRes.Elapsed <= 0 {
+		t.Fatalf("the pipeline did not report how long it took: smooth %v, grainy %v", smoothRes.Elapsed, grainyRes.Elapsed)
+	}
+	if smoothRes.Elapsed > 2*grainyRes.Elapsed {
+		t.Errorf("smooth artwork took %v against %v for grainy artwork of the same size; the smooth cover is paying for work it throws away",
+			smoothRes.Elapsed, grainyRes.Elapsed)
+	}
+}
+
+// The budget is the guard rail under the flatness gate: a PNG that has already
+// written more bytes than the JPEG it competes against is abandoned where it
+// stands, so a misjudged cover costs part of a losing encode and not all of it.
+func TestAPNGThatHasAlreadyLostIsAbandoned(t *testing.T) {
+	grainy := finishFor(paintCover(1200, 1920, coverPaint{grainAmount: 0.06}))
+	budget := &budgetWriter{limit: 4096}
+	enc := png.Encoder{CompressionLevel: png.BestCompression}
+	if err := enc.Encode(budget, grainy); !errors.Is(err, errPNGOverBudget) {
+		t.Fatalf("encoding grainy artwork into a 4 KB budget returned %v; it should have been stopped", err)
+	}
+	if budget.buf.Len() > 4096 {
+		t.Errorf("the budget writer kept %d bytes against a limit of 4096", budget.buf.Len())
 	}
 }
 

@@ -451,3 +451,50 @@ func namesOf(entries map[string]archiveEntry) []string {
 	}
 	return names
 }
+
+// ── Whose cover it is ──────────────────────────────────────────────────────
+
+// An unsaved cover belongs to the project it was attached to, and to no other.
+//
+// The cache is the one thing the backend holds that is not on BookData, so it
+// does not travel with the book across the bridge and no screen in the app
+// could ever show that it is still there. Every path that stops working on the
+// open book has to empty it: starting a new book, opening another, importing
+// one, and going back to the launch screen. Miss one and the next project
+// saved gets another book's artwork inside it, invisible, and kept there for
+// ever by the editions passthrough.
+func TestLeavingAProjectLetsGoOfItsUnsavedCover(t *testing.T) {
+	for _, leave := range []struct {
+		name string
+		do   func(app *App)
+	}{
+		{"closing the book", func(app *App) { app.CloseBookFile() }},
+		{"starting a new book", func(app *App) { app.NewBook() }},
+		// ImportEPUB and ImportDOCX both end by calling leaveOpenProject for
+		// exactly this reason; calling it directly is what they do, without
+		// needing an EPUB on disk to do it with.
+		{"importing another book", func(app *App) { app.leaveOpenProject() }},
+	} {
+		t.Run(leave.name, func(t *testing.T) {
+			app, _ := openedProject(t)
+			attachTestCover(t, app, "ed-1", 1600, 2560, 1.0, false)
+			if _, ok := app.covers.lookup("ed-1", "cover.jpg"); !ok {
+				t.Fatal("the cover was not attached in the first place")
+			}
+
+			leave.do(app)
+			if _, ok := app.covers.lookup("ed-1", "cover.jpg"); ok {
+				t.Error("the cover of the project that was left is still held")
+			}
+
+			// The next book saved must come out with nothing of it in.
+			next := filepath.Join(t.TempDir(), "next.draftline")
+			if result := app.writeBook(bookWithEdition(nil), next); !result.Success {
+				t.Fatal(result.Error)
+			}
+			if got := editionEntries(t, next); len(got) != 0 {
+				t.Errorf("the next book saved carries %v from the project before it", namesOf(got))
+			}
+		})
+	}
+}

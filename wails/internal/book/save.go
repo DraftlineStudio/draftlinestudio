@@ -254,11 +254,17 @@ func WriteArchive(sourcePath, destPath string, book types.BookData, appVersion s
 	// member under that prefix this save rebuilds, so it claims its own name
 	// first and the passthrough then skips the copy in the old file. Written
 	// after, it would collide with the carried-over copy and fail the save.
+	//
+	// liveEditions is nil until the publishing record has been read, and stays
+	// nil for a book that has none. Nil means "do not reap"; see
+	// orphanedEditionMember for why that distinction has to be kept.
+	var liveEditions map[string]bool
 	if book.Editions != nil {
 		editions, err := prepareEditionsData(*book.Editions)
 		if err != nil {
 			return types.SaveResult{Success: false, Error: err.Error()}
 		}
+		liveEditions = liveEditionIDs(editions)
 		editionsJSON, err := json.MarshalIndent(editions, "", "  ")
 		if err != nil {
 			return types.SaveResult{Success: false, Error: fmt.Sprintf("failed to encode editions: %v", err)}
@@ -271,7 +277,16 @@ func WriteArchive(sourcePath, destPath string, book types.BookData, appVersion s
 	// Binary assets go in before the passthrough, for the same reason the
 	// editions index does: they claim their names first, so the passthrough
 	// skips the copies in the old file instead of colliding with them.
+	//
+	// An asset filed under an edition this book does not have is not written
+	// at all. The cover of an edition deleted a moment ago is the honest case;
+	// a cover still held in memory from a project that was closed or replaced
+	// is the dangerous one, because there is no screen in the app that could
+	// ever show the author that another book's artwork is inside their file.
 	for name, data := range assets.Files {
+		if orphanedEditionMember(name, liveEditions) {
+			continue
+		}
 		if err := aw.addBytes(name, data); err != nil {
 			return types.SaveResult{Success: false, Error: err.Error()}
 		}
@@ -283,7 +298,7 @@ func WriteArchive(sourcePath, destPath string, book types.BookData, appVersion s
 	if len(snapshots) > 0 {
 		preserved = preservedPrefixesExcept(historyPrefix)
 	}
-	if err := copyPreservedEntriesExcept(aw, sourcePath, preserved, assets.Superseded); err != nil {
+	if err := copyPreservedEntriesExcept(aw, sourcePath, preserved, assets.Superseded, liveEditions); err != nil {
 		note, tolerated := toleratedSourceFailure(err, sourcePath, destPath)
 		if !tolerated {
 			return types.SaveResult{Success: false, Error: err.Error()}

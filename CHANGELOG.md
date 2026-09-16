@@ -2,6 +2,13 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02650] - 2026-09-16
+
+### Fixed
+- Attaching a painted cover is about three times faster.
+- Deleting an edition now removes its cover art from the project file.
+- Unsaved cover art no longer carries over into the next book after an import or returning to the launch screen.
+
 ## [0.20.02649] - 2026-09-16
 
 ### Added

@@ -80,6 +80,6 @@ func (a *App) releaseBookLock() {
 // screen: the current book is no longer open here, so its lock is freed for
 // other instances.
 func (a *App) CloseBookFile() {
-	a.setCurrentFile("")
+	a.leaveOpenProject()
 	a.releaseBookLock()
 }

@@ -47,6 +47,24 @@ has changed since the last save is in `Assets.Files`. `Assets.Superseded` names
 the prefixes this save replaces, which is what lets a `cover.jpg` be replaced by
 a `cover.png` without the old one living for ever beside it.
 
+Passthrough cuts the other way too, so the save reaps. A member filed under
+`editions/<id>/` for an edition the book does not have is neither carried
+across nor written, because the same mechanism that keeps a cover alive would
+otherwise keep a deleted edition's cover alive for ever — invisible on every
+screen, copied again by every save and every backup. The screen tells authors
+that a changed trim or publisher means a NEW edition record, so reworking
+editions is the expected way to work, not an edge case. The rule is in
+`orphanedEditionMember`, and it does **not** apply when `BookData.Editions` is
+nil: a save with no publishing record does not rewrite `editions/index.json`
+either, so the old index is still carried across and the editions it names are
+still real.
+
+The session half of the same rule is `App.leaveOpenProject`: every path that
+stops working on the open book — new, open, import, close — empties the cover
+cache along with the save target. The cache is the one thing the backend holds
+that is not on `BookData`, so nothing on screen could show that another book's
+unsaved artwork is still in it.
+
 The edition identifier becomes a folder name and a URL segment, so
 `prepareEditionsData` refuses one that could not be either.
 
@@ -79,8 +97,19 @@ In order, in `internal/coverart`:
 8. **Choose a quality by search.** A fixed ladder of five JPEG probes, scored by
    multi-scale SSIM on the linear luma plane; the smallest that clears the
    threshold ships. The ladder and the budget are in `quality.go`; the
-   format decision — JPEG or PNG — is in `encode.go` and is made by measuring
-   how flat the artwork is, so the PNG encode never runs on a photograph.
+   format decision — JPEG or PNG — is in `encode.go`.
+
+   The PNG is only attempted on artwork that is flat in both senses: long runs
+   of identical pixels **and** few distinct colours. Runs alone were not enough
+   and the way that failed is worth remembering — a smooth vertical gradient
+   repeats each tone several times along a row, so it read as flat, and every
+   gradient cover bought a full `BestCompression` PNG that came out many times
+   larger than the JPEG and was thrown away. On invented artwork that turned a
+   three-second attach into a ten-second one. Distinct colours separate the
+   cases outright: a poster-style cover holds three of them, a gradient 29,510,
+   a grainy photographic wrap 67,559. Under the gate there is a budget: a PNG
+   that has already written more bytes than the JPEG it competes against cannot
+   win, and is abandoned where it stands.
 
 Always sRGB. DPI is ignored throughout: Go's encoders cannot write density
 metadata, no ebook reader consults it, and 72 dpi submissions are accepted.

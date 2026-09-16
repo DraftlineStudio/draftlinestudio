@@ -373,3 +373,127 @@ func TestRescueSaveKeepsTheSnapshotsTakenNow(t *testing.T) {
 		t.Fatal("the snapshot taken during the rescue was not written")
 	}
 }
+
+// Deleting an edition takes its cover art with it.
+//
+// Everything under editions/ survives a save by passthrough, which is what
+// keeps a cover alive through the five-second autosave. Without a reaping rule
+// the same mechanism made a deleted edition's artwork permanent: nothing on
+// screen referred to it, no screen could see it, and every later save and every
+// backup copied it again. The screen tells authors that a changed trim or
+// publisher means a NEW edition record, so reworking editions is the expected
+// way to work and this would have accumulated a megabyte each time.
+func TestDeletingAnEditionTakesItsCoverWithIt(t *testing.T) {
+	isolateConfigDir(t)
+	path := filepath.Join(t.TempDir(), "book.draftline")
+	b := testBook()
+	b.Editions = twoEditionsFiveFormats()
+
+	cover := bytes.Repeat([]byte("invented-artwork"), 4096)
+	assets := Assets{Files: map[string][]byte{
+		CoverMember("ed-1", "cover.jpg"):       cover,
+		CoverMember("ed-1", "cover_thumb.jpg"): cover[:2048],
+		CoverMember("ed-2", "cover.jpg"):       cover,
+	}}
+	if res := WriteArchive("", path, b, "v1", nil, assets); !res.Success {
+		t.Fatalf("first save failed: %s", res.Error)
+	}
+	if !archiveNames(t, path)[CoverMember("ed-1", "cover.jpg")] {
+		t.Fatal("the cover was not written in the first place")
+	}
+
+	// The author deletes the first edition. Nothing is handed to the writer
+	// this time: the bytes are already in the file, carried by passthrough.
+	kept := *b.Editions
+	kept.Editions = kept.Editions[1:]
+	b.Editions = &kept
+	for i := 0; i < 3; i++ {
+		if res := Write(path, path, b, "v1"); !res.Success {
+			t.Fatalf("save %d after the deletion failed: %s", i+1, res.Error)
+		}
+	}
+
+	entries := archiveEntries(t, path)
+	for name := range entries {
+		if strings.HasPrefix(name, CoverPrefix("ed-1")) {
+			t.Errorf("%s belongs to a deleted edition and is still in the project file", name)
+		}
+	}
+	if entries[CoverMember("ed-2", "cover.jpg")] == nil {
+		t.Error("the surviving edition lost its cover")
+	}
+	if entries[editionsIndexFile] == nil {
+		t.Error("the publishing record itself was reaped")
+	}
+}
+
+// A cover held for a book that is no longer open is not written into the book
+// that is.
+//
+// This is the writer's half of the rule; the session's half is that closing or
+// replacing a book empties the cache. Both matter, because the cost of getting
+// it wrong is another book's artwork inside a project file, invisible on every
+// screen and permanent once the passthrough has it.
+func TestACoverForAnEditionTheBookDoesNotHaveIsNotWritten(t *testing.T) {
+	isolateConfigDir(t)
+	path := filepath.Join(t.TempDir(), "book.draftline")
+	b := testBook()
+	b.Editions = &types.EditionIndex{Version: 1, Editions: []types.Edition{}}
+
+	assets := Assets{Files: map[string][]byte{
+		CoverMember("ed-1", "cover.jpg"): bytes.Repeat([]byte("someone-elses-artwork"), 1024),
+	}}
+	if res := WriteArchive("", path, b, "v1", nil, assets); !res.Success {
+		t.Fatalf("save failed: %s", res.Error)
+	}
+	for name := range archiveNames(t, path) {
+		if strings.HasPrefix(name, CoverPrefix("ed-1")) {
+			t.Fatalf("%s was written into a book that has no editions at all", name)
+		}
+	}
+}
+
+// A book with no publishing record does not reap, because it does not rewrite
+// the record either: the index it cannot see is carried across by the same
+// passthrough, and the editions it names are still real.
+func TestABookWithNoEditionsRecordReapsNothing(t *testing.T) {
+	isolateConfigDir(t)
+	path := filepath.Join(t.TempDir(), "book.draftline")
+	b := testBook()
+	b.Editions = twoEditionsFiveFormats()
+	assets := Assets{Files: map[string][]byte{
+		CoverMember("ed-1", "cover.jpg"): bytes.Repeat([]byte("artwork"), 1024),
+	}}
+	if res := WriteArchive("", path, b, "v1", nil, assets); !res.Success {
+		t.Fatalf("first save failed: %s", res.Error)
+	}
+
+	b.Editions = nil
+	if res := Write(path, path, b, "v1"); !res.Success {
+		t.Fatalf("second save failed: %s", res.Error)
+	}
+	entries := archiveEntries(t, path)
+	if entries[CoverMember("ed-1", "cover.jpg")] == nil {
+		t.Error("a save that could not see the publishing record threw away the cover it names")
+	}
+	if entries[editionsIndexFile] == nil {
+		t.Error("the publishing record was lost by a save that did not rewrite it")
+	}
+}
+
+// archiveNames lists an archive's members and closes it again straight away.
+// archiveEntries holds its reader open until the test ends, which on Windows
+// stops the next save from replacing the file underneath it.
+func archiveNames(t *testing.T, path string) map[string]bool {
+	t.Helper()
+	r, err := zip.OpenReader(path)
+	if err != nil {
+		t.Fatalf("cannot open archive %s: %v", filepath.Base(path), err)
+	}
+	defer func() { _ = r.Close() }()
+	names := map[string]bool{}
+	for _, file := range r.File {
+		names[file.Name] = true
+	}
+	return names
+}

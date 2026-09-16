@@ -246,10 +246,11 @@ func (a *App) importEPUB(path string) types.ImportResult {
 		book.Metadata.Title = strings.TrimSuffix(filepath.Base(path), ".epub")
 	}
 
-	// The imported book is a NEW, unsaved project. Clear the session's current
-	// file so Save cannot silently overwrite whatever project was open before
-	// the import — Ctrl+S on an imported book must go through Save As.
-	a.setCurrentFile("")
+	// The imported book is a NEW, unsaved project. Let go of the one that was
+	// open so Save cannot silently overwrite it — Ctrl+S on an imported book
+	// must go through Save As — and so its unsaved cover art does not ride
+	// into the imported book's first save.
+	a.leaveOpenProject()
 
 	return types.ImportResult{Success: true, Book: book, Warnings: warnings}
 }
@@ -553,8 +554,8 @@ func (a *App) importDOCX(path string) types.ImportResult {
 	}
 
 	// See ImportEPUB: an imported book must never inherit the previous
-	// project's save target.
-	a.setCurrentFile("")
+	// project's save target, nor anything else held for it.
+	a.leaveOpenProject()
 
 	return types.ImportResult{Success: true, Book: book}
 }
