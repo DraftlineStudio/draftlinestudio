@@ -14,6 +14,7 @@ import (
 type pdfPageKind string
 
 const (
+	pageCover     pdfPageKind = "cover"
 	pageTitle     pdfPageKind = "title"
 	pageHalfTitle pdfPageKind = "half-title"
 	pageTOC       pdfPageKind = "toc"
@@ -106,6 +107,7 @@ func newPublicationPDFRenderer(doc Document, spec publicationPDFSpec) *publicati
 }
 
 func (r *publicationPDFRenderer) render() error {
+	r.renderCoverPage()
 	if r.spec.GenerateHalfTitle {
 		r.addPage(pageHalfTitle, "")
 		r.centeredTextWithFont(r.doc.Title, r.spec.TitlePageFont, r.spec.FontSize*1.7, "B", r.trimY+r.spec.TrimHeight*0.42)
@@ -132,6 +134,44 @@ func (r *publicationPDFRenderer) render() error {
 		r.fillTOC()
 	}
 	return r.pdf.Error()
+}
+
+// renderCoverPage puts the edition's artwork on a page of its own, before
+// everything else.
+//
+// The image is fitted inside the trim and centred rather than stretched to
+// fill it: Draftline's cover derivative is 1600 by 2560, which is 1 to 1.6,
+// and a 6 by 9 page is 1 to 1.5. Stretching would distort the artist's work to
+// hide a band of white, which is the wrong trade.
+//
+// This is the same front-cover derivative the ebook carries, and it is not a
+// print cover: no spine, no back, no bleed. The interior PDF a printer wants
+// does not carry a cover at all, and the screen says so — this page is for the
+// reading copy an author sends to a reviewer.
+func (r *publicationPDFRenderer) renderCoverPage() {
+	cover := r.spec.Cover
+	if !cover.Usable() {
+		return
+	}
+	name := "edition-cover"
+	r.pdf.RegisterImageOptionsReader(name, fpdf.ImageOptions{ImageType: cover.ImageType()}, bytes.NewReader(cover.Data))
+	if r.pdf.Err() {
+		// A cover that will not decode must not cost the author the book. The
+		// error is cleared and the export goes on without the page.
+		r.pdf.ClearError()
+		return
+	}
+
+	r.addPage(pageCover, "")
+	width, height := r.spec.TrimWidth, r.spec.TrimHeight
+	if cover.Width > 0 && cover.Height > 0 {
+		scale := math.Min(width/float64(cover.Width), height/float64(cover.Height))
+		width = float64(cover.Width) * scale
+		height = float64(cover.Height) * scale
+	}
+	x := r.trimX + (r.spec.TrimWidth-width)/2
+	y := r.trimY + (r.spec.TrimHeight-height)/2
+	r.pdf.ImageOptions(name, x, y, width, height, false, fpdf.ImageOptions{ImageType: cover.ImageType()}, 0, "")
 }
 
 func (r *publicationPDFRenderer) addPage(kind pdfPageKind, chapter string) {

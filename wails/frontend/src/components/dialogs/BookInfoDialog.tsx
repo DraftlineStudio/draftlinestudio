@@ -300,9 +300,9 @@ export default function BookInfoDialog() {
                 })}
                 <button className="bi-isbn-add" onClick={() => setIsbns(l => [...l, { format: '', value: '' }])}>+ Add ISBN</button>
                 <div className="bi-field-hint">
-                  The eBook ISBN here becomes the EPUB identifier: this list is the one exports read,
-                  while an ISBN recorded against an edition belongs to that edition&apos;s record. The
-                  last digit of an ISBN checks the ones before it, so a mistyped digit is caught here.
+                  The eBook ISBN here is the fallback: an export made from a registered edition uses
+                  that edition&apos;s number, and an export made from scratch uses this one. The last
+                  digit of an ISBN checks the ones before it, so a mistyped digit is caught here.
                 </div>
               </div>
             </Section>

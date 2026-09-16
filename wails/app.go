@@ -43,7 +43,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.20.02650"
+const AppVersion = "0.20.02651"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -508,7 +508,7 @@ func (a *App) ExportEPUB(book types.BookData, options types.EPUBOptions) types.E
 		path += ".epub"
 	}
 
-	return export.EPUB(path, book, options)
+	return export.EPUB(path, book, options, a.exportCover(book, options.ExportOptions))
 }
 
 // ExportDOCX exports the book to DOCX format.
@@ -558,7 +558,7 @@ func (a *App) ExportPDF(book types.BookData, options types.PDFOptions) types.Exp
 		path += ".pdf"
 	}
 
-	return export.PDF(path, book, options)
+	return export.PDF(path, book, options, a.exportCover(book, options.ExportOptions))
 }
 
 // ExportPrintPDF exports the book to print-ready PDF format.

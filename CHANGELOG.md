@@ -2,6 +2,18 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02651] - 2026-09-16
+
+### Added
+- The export wizard now lists registered editions and fills in their trim, margins, and identifiers.
+- EPUBs exported from an edition carry its ISBN, cover, copyright page, publication date, and rights notice.
+- Export settings are saved to the edition and used as the starting point next time.
+- Exports made from scratch can have an ISBN attached afterward, which registers a new edition.
+- EPUB 2.0.1 formats now export real EPUB 2 files.
+
+### Fixed
+- Custom trim sizes are now limited to 3 to 12 inches.
+
 ## [0.20.02650] - 2026-09-16
 
 ### Fixed

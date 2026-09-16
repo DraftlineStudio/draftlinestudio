@@ -300,9 +300,9 @@ export function sectionsFor(edition: Edition, format: EditionFormat): EditionSec
   if (format.kind === 'print') {
     out.push({
       label: 'Specification',
-      // Future tense on purpose: these are recorded here, and nothing reads
-      // them at export yet. The panel says so in full at the top.
-      note: 'The margins, folios and cover wrap an export of this edition will use.',
+      // Read by an export of this edition, which is the first step of the
+      // export wizard. Draftline lays out the interior, never the wrap.
+      note: 'The trim and gutter an export of this edition uses. Draftline exports the interior, not the cover wrap.',
       rows: [
         { label: 'Trim size', kind: 'select', field: 'trim', value: text(format.trim), options: TRIMS },
         { label: 'Page count', kind: 'text', field: 'page_count', value: text(format.page_count), mono: true, hint: 'From the last typeset pass.' },
@@ -322,13 +322,13 @@ export function sectionsFor(edition: Edition, format: EditionFormat): EditionSec
     const digits = normalizeISBN(format.isbn13 ?? '')
     out.push({
       label: 'Specification',
-      note: 'What an export of this edition will apply.',
+      note: 'What an export of this edition applies.',
       rows: [
         { label: 'EPUB version', kind: 'select', field: 'epub_version', value: text(format.epub_version), options: EPUB_VERSIONS },
         {
           label: 'Unique identifier', kind: 'static', mono: true,
           value: digits ? `urn:isbn:${digits}` : 'Set an ISBN',
-          hint: 'What the package document will declare. Today an export declares the eBook ISBN under Identifiers.',
+          hint: 'What the package document declares when this edition is exported.',
         },
       ],
     })

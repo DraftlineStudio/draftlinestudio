@@ -8,12 +8,18 @@ import (
 
 // PDF exports a fixed-layout reading edition using the shared publication
 // document and embedded Unicode fonts.
-func PDF(path string, book types.BookData, options types.PDFOptions) types.ExportResult {
+//
+// cover is the edition's artwork, or nil. fpdf embeds PNG, JPEG and GIF only,
+// which is one more reason a Draftline cover is a JPEG unless a PNG is
+// genuinely smaller.
+func PDF(path string, book types.BookData, options types.PDFOptions, cover *CoverArt) types.ExportResult {
 	doc, err := BuildDocument(book, options.ExportOptions)
 	if err != nil {
 		return types.ExportResult{Success: false, Error: err.Error()}
 	}
-	data, err := renderPublicationPDF(doc, readingPDFSpec(options))
+	spec := readingPDFSpec(options)
+	spec.Cover = cover
+	data, err := renderPublicationPDF(doc, spec)
 	if err != nil {
 		return types.ExportResult{Success: false, Error: fmt.Sprintf("failed to render PDF: %v", err)}
 	}

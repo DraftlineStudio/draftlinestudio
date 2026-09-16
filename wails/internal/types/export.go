@@ -5,6 +5,15 @@ type ExportOptions struct {
 	IncludeCopyright   bool `json:"includeCopyright"`
 	IncludeFrontMatter bool `json:"includeFrontMatter"`
 	IncludeBackMatter  bool `json:"includeBackMatter"`
+	// EditionID and FormatID name the registered format this export is made
+	// against. They travel in the options rather than as a separate argument
+	// so that everything the wizard decided about one export arrives in one
+	// object — which is also what gets frozen onto the format record.
+	//
+	// An export that names no format is the export Draftline has always made:
+	// the book alone, no ISBN beyond the book's own identifier list, no cover.
+	EditionID string `json:"editionID,omitempty"`
+	FormatID  string `json:"formatID,omitempty"`
 }
 
 // EPUBOptions controls semantic, reflowable ebook presentation. The reader

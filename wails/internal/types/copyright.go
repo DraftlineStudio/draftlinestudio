@@ -41,7 +41,7 @@ func CopyrightLines(meta Metadata, edition Edition, format EditionFormat, priorY
 			head = append(head, "Copyright © "+years+" by "+holder)
 		}
 	}
-	head = append(head, rightsSentence(format))
+	head = append(head, RightsSentence(format))
 
 	var body []string
 	if statement := editionStatement(edition, format); statement != "" {
@@ -103,10 +103,11 @@ func copyrightYears(prior []string, year string) string {
 	return strings.Join(years, ", ")
 }
 
-// rightsSentence is the rights line, punctuated. The record holds the notice
+// RightsSentence is the rights line, punctuated. The record holds the notice
 // as a phrase ("All rights reserved"), because that is how a rights list reads
-// in a dropdown; the page needs it as a sentence.
-func rightsSentence(format EditionFormat) string {
+// in a dropdown; the page needs it as a sentence, and so does the dc:rights an
+// exported package declares.
+func RightsSentence(format EditionFormat) string {
 	notice := strings.TrimSpace(format.RightsNotice)
 	if notice == "" {
 		notice = "All rights reserved"

@@ -1,6 +1,7 @@
 package export
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -40,6 +41,53 @@ type publicationPDFSpec struct {
 	TitlePageStyle         string
 	TitlePageShowAuthor    bool
 	TitlePageShowPublisher bool
+	// Cover is the edition's artwork, placed on a page of its own before the
+	// half title. Nil for an export made from no edition, and for an edition
+	// with no cover attached.
+	Cover *CoverArt
+}
+
+// The bounds a custom trim has to fall inside, in inches.
+//
+// The lower bound is a little under the smallest mass-market paperback; the
+// upper is a little over the largest page any print-on-demand service will
+// bind — 8.5 by 11.69 at Amazon, 8.5 by 11 at Ingram. Between them sits every
+// book anybody prints. Outside them sits a typing mistake: "99" in a width
+// field is a ninety-nine inch page, which Draftline used to typeset in full
+// and hand over without a word.
+const (
+	minTrimInches = 3.0
+	maxTrimInches = 12.0
+)
+
+// validateTrim refuses a custom trim that is not a printable page.
+//
+// Only a custom trim can be wrong: the named sizes are Draftline's own. The
+// message names the field and the bounds, because the author has to change a
+// number and needs to know which one and to what.
+func validateTrim(options types.PrintPDFOptions) error {
+	if strings.ToLower(strings.TrimSpace(options.TrimSize)) != "custom" {
+		return nil
+	}
+	if err := checkTrimSide("width", options.CustomWidth); err != nil {
+		return err
+	}
+	return checkTrimSide("height", options.CustomHeight)
+}
+
+func checkTrimSide(side, value string) error {
+	trimmed := strings.TrimSpace(value)
+	parsed, err := strconv.ParseFloat(trimmed, 64)
+	if err != nil {
+		if trimmed == "" {
+			return fmt.Errorf("this export has no trim %s. Give one between %g and %g inches", side, minTrimInches, maxTrimInches)
+		}
+		return fmt.Errorf("%q is not a trim %s. Give a measurement in inches, between %g and %g", trimmed, side, minTrimInches, maxTrimInches)
+	}
+	if parsed < minTrimInches || parsed > maxTrimInches {
+		return fmt.Errorf("a trim %s of %g inches cannot be printed. Give one between %g and %g inches", side, parsed, minTrimInches, maxTrimInches)
+	}
+	return nil
 }
 
 func readingPDFSpec(options types.PDFOptions) publicationPDFSpec {
@@ -173,9 +221,23 @@ func trimPageSize(name, customWidth, customHeight string) (float64, float64) {
 	case "6x9":
 		return 6 * pointsPerInch, 9 * pointsPerInch
 	case "custom":
-		return parseInches(customWidth, 5.5), parseInches(customHeight, 8.5)
+		// A backstop, not the check. PrintPDF refuses an out-of-range trim
+		// outright and says so; this only keeps a renderer that is reached
+		// some other way from being handed a page it cannot lay out.
+		return clampTrim(parseInches(customWidth, 5.5)), clampTrim(parseInches(customHeight, 8.5))
 	default:
 		return 5.5 * pointsPerInch, 8.5 * pointsPerInch
+	}
+}
+
+func clampTrim(points float64) float64 {
+	switch {
+	case points < minTrimInches*pointsPerInch:
+		return minTrimInches * pointsPerInch
+	case points > maxTrimInches*pointsPerInch:
+		return maxTrimInches * pointsPerInch
+	default:
+		return points
 	}
 }
 

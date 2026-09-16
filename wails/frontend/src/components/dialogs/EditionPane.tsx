@@ -323,19 +323,17 @@ function FormatPanel({ meta, index, edition, format, handEdited, advOpen, setAdv
 
 // ── What the record does today ─────────────────────────────────────────────
 
-// An edition record is kept with the book and comes back when the project is
-// reopened, but no exporter reads one yet. That gap belongs on the screen: an
-// author who fills this panel in and then exports would otherwise find out
-// from the file. It goes at the top of the panel, once, rather than as a
-// disclaimer hung on every field.
+// What an export does with this panel, said once at the top rather than as a
+// disclaimer hung on every field. The one thing it still does not do is freeze
+// the text: an edition holds no copy of the manuscript, so exporting a first
+// edition after writing a second one exports the second one's words.
 function StandingNote() {
   return (
     <p className="bi-ed-standing">
-      <strong>Recorded, not printed yet.</strong> What you set here is kept with the book, but an
-      export does not read it: an EPUB still identifies itself by the eBook ISBN under Identifiers, a
-      printed book still takes its trim and margins from the export wizard, and the copyright page an
-      export prints is the Copyright Page under Front Pages. Exporting from an edition is the next
-      piece of this work.
+      <strong>Read by an export.</strong> Choose this edition on the first step of the export wizard
+      and the file carries it: its ISBN as the book's identifier, its cover art, its trim and gutter,
+      and the copyright page below. The manuscript is the one thing it does not hold — an export
+      always uses your text as it stands today.
     </p>
   )
 }
@@ -363,17 +361,16 @@ function CopyrightCard({ meta, index, edition, format, handEdited }: {
         ))}
       </div>
       <div className="bi-field-hint bi-ed-handwritten">
-        {handEdited ? (
+{handEdited ? (
           <>
-            Shown here, not printed yet. What an exported book prints is the Copyright Page you wrote
-            yourself, under Front Pages; the page above is what the fields would produce, and it does not
-            replace what you wrote.
+            This is the page an export of this edition prints. The Copyright Page you wrote yourself,
+            under Front Pages, follows underneath it — a copyright page carries more than the notice,
+            and nothing you wrote there is dropped.
           </>
         ) : (
           <>
-            Shown here, not printed yet. What an exported book prints is the Copyright Page under Front
-            Pages, and yours is empty — so an export carries no copyright page at all until you write one
-            there.
+            This is the page an export of this edition prints. You have written nothing under Front
+            Pages, so this is the whole of it.
           </>
         )}
       </div>

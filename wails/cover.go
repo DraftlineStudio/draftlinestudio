@@ -35,6 +35,7 @@ import (
 
 	"draftline/internal/book"
 	"draftline/internal/coverart"
+	"draftline/internal/export"
 	"draftline/internal/types"
 	"draftline/internal/ziputil"
 
@@ -294,6 +295,42 @@ func (a *App) RemoveCover(editionID string) {
 func (a *App) CheckCoverSource(sourcePath, checksum string) types.CoverSourceReport {
 	report := coverart.CheckSource(coverart.Fingerprint{Path: sourcePath, Checksum: checksum})
 	return types.CoverSourceReport{Status: report.Status, Message: report.Message, Path: report.Path}
+}
+
+// ── Export ─────────────────────────────────────────────────────────────────
+
+// exportCover is the artwork an export should carry, or nil.
+//
+// The bytes are fetched here, in the application, and handed to the exporter
+// as a parameter. They never travel on types.BookData and they never cross the
+// bridge: the frontend asks for an export of a named format, and this reads
+// the image for that format's edition straight out of the cache or the open
+// project file.
+//
+// An export that names no format, or names one whose edition has no cover,
+// gets nil and produces the file Draftline has always produced. A cover that
+// cannot be read is nil too, for the same reason a missing font is: an author
+// who asked for an ebook should get an ebook.
+func (a *App) exportCover(bookData types.BookData, options types.ExportOptions) *export.CoverArt {
+	formatID := strings.TrimSpace(options.FormatID)
+	if formatID == "" || bookData.Editions == nil {
+		return nil
+	}
+	edition, _, ok := bookData.Editions.FindFormat(formatID)
+	if !ok || edition.Cover == nil || strings.TrimSpace(edition.Cover.File) == "" {
+		return nil
+	}
+	data, err := a.coverBytes(edition.ID, edition.Cover.File)
+	if err != nil || len(data) == 0 {
+		return nil
+	}
+	return &export.CoverArt{
+		Data:      data,
+		MediaType: coverContentType(edition.Cover.File),
+		FileName:  edition.Cover.File,
+		Width:     edition.Cover.Width,
+		Height:    edition.Cover.Height,
+	}
 }
 
 // ── Display ────────────────────────────────────────────────────────────────

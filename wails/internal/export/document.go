@@ -31,7 +31,13 @@ type Document struct {
 	Description  string
 	Subjects     []string
 	Contributors string
-	Sections     []DocumentSection
+	// Edition is the registered format this export was made against, or nil
+	// when the author exported from scratch. When it is set, the identifier,
+	// the imprint, the rights line, the date and the copyright page all come
+	// from it rather than from the book, so that everything in the file agrees
+	// with the ISBN printed on its cover.
+	Edition  *DocumentEdition
+	Sections []DocumentSection
 }
 
 // SectionRole describes where a section came from in the Draftline archive.
@@ -152,6 +158,12 @@ func BuildDocument(book types.BookData, options types.ExportOptions) (Document, 
 		Description:  strings.TrimSpace(book.Metadata.ShortDescription),
 		Subjects:     documentSubjects(book.Metadata),
 		Contributors: strings.TrimSpace(book.Metadata.Contributors),
+		Edition:      selectEdition(book, options),
+	}
+	// A format's own imprint of record outranks the book's, because that is
+	// what the copyright page of this particular object says.
+	if doc.Edition != nil && doc.Edition.Imprint != "" {
+		doc.Publisher = doc.Edition.Imprint
 	}
 
 	appendSection := func(ch types.ChapterItem, role SectionRole, sourceIndex int) error {
@@ -170,14 +182,15 @@ func BuildDocument(book types.BookData, options types.ExportOptions) (Document, 
 		return nil
 	}
 
-	if options.IncludeCopyright && strings.TrimSpace(book.Copyright) != "" {
-		if err := appendSection(types.ChapterItem{
-			ID:      "copyright",
-			Title:   "Copyright",
-			Type:    "copyright",
-			Content: book.Copyright,
-		}, SectionCopyright, 0); err != nil {
+	if options.IncludeCopyright {
+		blocks, err := copyrightSectionBlocks(doc.Edition, book.Copyright)
+		if err != nil {
 			return Document{}, err
+		}
+		if len(blocks) > 0 {
+			doc.Sections = append(doc.Sections, DocumentSection{
+				ID: "copyright", Title: "Copyright", Role: SectionCopyright, Blocks: blocks,
+			})
 		}
 	}
 	if options.IncludeFrontMatter {
@@ -201,6 +214,52 @@ func BuildDocument(book types.BookData, options types.ExportOptions) (Document, 
 	}
 
 	return doc, nil
+}
+
+// copyrightSectionBlocks builds the copyright page of the exported book.
+//
+// Exporting from a registered edition generates it: the title, the cumulative
+// copyright years, the rights line, the edition and its month, the imprint and
+// the ISBN of the format in hand all live in the record already, and typing
+// them a second time is how a book ends up with the paperback's ISBN on the
+// ebook's copyright page.
+//
+// Whatever the author wrote on their own copyright page then follows
+// underneath, because a copyright page carries more than the notice —
+// permissions, a designer's credit, a disclaimer — and an export that silently
+// dropped it would be throwing away work. An export that names no edition is
+// the author's page alone, exactly as before.
+func copyrightSectionBlocks(edition *DocumentEdition, authored string) ([]DocumentBlock, error) {
+	var blocks []DocumentBlock
+	if edition != nil {
+		blocks = append(blocks, generatedCopyrightBlocks(edition.Copyright)...)
+	}
+	if strings.TrimSpace(authored) == "" {
+		return blocks, nil
+	}
+	parsed, err := ParseDocumentHTML(authored)
+	if err != nil {
+		return nil, fmt.Errorf("parse copyright page: %w", err)
+	}
+	return append(blocks, parsed...), nil
+}
+
+// generatedCopyrightBlocks turns the generated lines into paragraphs. The
+// blank line the generator uses to separate the notice from the publication
+// details is not a paragraph and is left out; paragraph spacing does that job
+// in every renderer Draftline has.
+func generatedCopyrightBlocks(lines []string) []DocumentBlock {
+	blocks := make([]DocumentBlock, 0, len(lines))
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		blocks = append(blocks, DocumentBlock{
+			Kind: BlockParagraph,
+			Runs: []DocumentRun{{Text: line}},
+		})
+	}
+	return blocks
 }
 
 // ParseDocumentHTML converts a TipTap HTML fragment to semantic export blocks.

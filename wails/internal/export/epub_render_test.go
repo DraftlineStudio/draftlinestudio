@@ -30,7 +30,7 @@ func TestEPUBUsesSharedDocumentAndWellFormedXHTML(t *testing.T) {
 	data, err := renderEPUB(doc, book, normalizeEPUBOptions(types.EPUBOptions{
 		FontFamily: "reader", ParagraphStyle: "indented", TextAlign: "reader",
 		ChapterStyle: "classic", SceneBreakStyle: "asterism",
-	}), time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC))
+	}), nil, time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestEPUBOptionsChangeResponsiveStylesAndEmbeddedFonts(t *testing.T) {
 		FontFamily: "lato", ParagraphStyle: "spaced", TextAlign: "justify",
 		ChapterStyle: "minimal", SceneBreakStyle: "rule",
 	})
-	data, err := renderEPUB(doc, book, options, time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC))
+	data, err := renderEPUB(doc, book, options, nil, time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestEPUBReaderTypographyDoesNotEmbedFonts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := renderEPUB(doc, book, options, time.Now().UTC())
+	data, err := renderEPUB(doc, book, options, nil, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
 	}

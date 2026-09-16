@@ -200,7 +200,7 @@ func TestEPUBExportStructureAndEscaping(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "book.epub")
 
-	res := EPUB(path, sampleBook(), types.EPUBOptions{ExportOptions: defaultExportOptions()})
+	res := EPUB(path, sampleBook(), types.EPUBOptions{ExportOptions: defaultExportOptions()}, nil)
 	if !res.Success {
 		t.Fatalf("EPUB export failed: %s", res.Error)
 	}
@@ -359,7 +359,7 @@ func TestPDFExportStructure(t *testing.T) {
 		PageSize:      "letter",
 		FontSize:      12,
 	}
-	res := PDF(path, sampleBook(), opts)
+	res := PDF(path, sampleBook(), opts, nil)
 	if !res.Success {
 		t.Fatalf("PDF export failed: %s", res.Error)
 	}
@@ -401,7 +401,7 @@ func TestPrintPDFExportStructure(t *testing.T) {
 // show a reader a blank author line where it would otherwise show nothing.
 func TestEPUBPackageOmitsMetadataTheBookDoesNotCarry(t *testing.T) {
 	bare := Document{Title: "A Lantern", Language: "en"}
-	opf := renderEPUBPackage(bare, "urn:uuid:test", nil, types.EPUBOptions{}, time.Unix(0, 0).UTC())
+	opf := renderEPUBPackage(bare, "urn:uuid:test", nil, types.EPUBOptions{}, nil, time.Unix(0, 0).UTC())
 	for _, element := range []string{"<dc:creator", "<dc:publisher", "<dc:description", "<dc:subject", "<dc:contributor", "belongs-to-collection"} {
 		if strings.Contains(opf, element) {
 			t.Errorf("a book with no %s should not declare one:\n%s", element, opf)
@@ -421,7 +421,7 @@ func TestEPUBPackageDeclaresEveryMetadataFieldTheBookCarries(t *testing.T) {
 		Description: "A keeper counts the oil.", Subjects: []string{"FIC031000", "FIC028000"},
 		Contributors: "Cover: M. Quist",
 	}
-	opf := renderEPUBPackage(full, "urn:isbn:9780306406157", nil, types.EPUBOptions{}, time.Unix(0, 0).UTC())
+	opf := renderEPUBPackage(full, "urn:isbn:9780306406157", nil, types.EPUBOptions{}, nil, time.Unix(0, 0).UTC())
 	for _, want := range []string{
 		`<dc:title id="subtitle">A Novel</dc:title>`,
 		`<dc:creator id="creator">R. Vance</dc:creator>`,
@@ -471,7 +471,7 @@ func opfOf(t *testing.T, entries []epubEntry) string {
 func TestEPUBIdentifierDeclaresTheISBNWrittenPlainly(t *testing.T) {
 	book := sampleBook()
 	book.Metadata.ISBNs = []types.ISBNEntry{{Format: "ebook", Value: "978-1-9471345-1-5"}}
-	entries, _ := buildEPUBEntries(Document{Title: "A Lantern", Language: "en"}, book, types.EPUBOptions{}, time.Unix(0, 0).UTC())
+	entries, _ := buildEPUBEntries(Document{Title: "A Lantern", Language: "en"}, book, types.EPUBOptions{}, nil, time.Unix(0, 0).UTC())
 	if opf := opfOf(t, entries); !strings.Contains(opf, `<dc:identifier id="uid">urn:isbn:9781947134515</dc:identifier>`) {
 		t.Errorf("the ISBN is declared without its hyphens:\n%s", opf)
 	}
@@ -484,8 +484,8 @@ func TestEPUBIdentifierDeclaresTheISBNWrittenPlainly(t *testing.T) {
 func TestEPUBIdentifierDiffersBetweenExportsWithoutAnISBN(t *testing.T) {
 	book := sampleBook()
 	doc := Document{Title: "A Lantern", Language: "en"}
-	first, _ := buildEPUBEntries(doc, book, types.EPUBOptions{}, time.Unix(0, 0).UTC())
-	second, _ := buildEPUBEntries(doc, book, types.EPUBOptions{}, time.Unix(0, 0).UTC())
+	first, _ := buildEPUBEntries(doc, book, types.EPUBOptions{}, nil, time.Unix(0, 0).UTC())
+	second, _ := buildEPUBEntries(doc, book, types.EPUBOptions{}, nil, time.Unix(0, 0).UTC())
 	one, two := identifierOf(t, opfOf(t, first)), identifierOf(t, opfOf(t, second))
 	if !strings.HasPrefix(one, "urn:uuid:") {
 		t.Fatalf("a book with no ISBN identifies itself by a UUID, got %q", one)
