@@ -60,39 +60,22 @@ retrieval, indexing, review, and refactoring must not depend on generative AI.
 - [ ] Chapter-history provenance where snapshots can prove when a passage
       changed; never invent edit history that predates available snapshots.
 
-## Story Fingerprint and Evidence Archive
+## Evidence Archive and future story modelling
 
 - [ ] Keep the complete raw evidence browser as an **Evidence Archive**. It is
       intentionally not a primary writing surface; a small archive-folder
       action in Detail Search, Timeline, Continuity, Storyboard, and other
       derived views opens everything Draftline's heuristics know about the
       book, including mundane and low-confidence records.
-- [x] Derive a versioned **Story Fingerprint** from the manuscript's reviewed
-      entities, aliases, relationships, appearances, interactions, notable
-      quotes, facts, events, explicit times, character knowledge, locations,
-      objects, recurring concepts, plot threads, pacing, and structural
-      metrics. Every conclusion remains traceable to source evidence.
-- [x] Present the useful fingerprint through ranked editorial views while
-      retaining the full archive for transparency, debugging, author review,
-      and the possibility that an apparently mundane detail matters later.
-- [x] Track fingerprint schema, analysis-engine version, source content hash,
-      generation time, and review provenance so Draftline can distinguish
-      current, stale, partially upgraded, and source-unavailable fingerprints.
-- [ ] Treat fingerprints as local derived intellectual property: portable and
-      user-owned, never uploaded or submitted to AI without explicit action.
-- [x] Preserve the complete manuscript-memory fingerprint corpus beneath every
-      author-facing structural projection. Incidental evidence remains
-      searchable regardless of narrative significance.
-- [x] Separate contextual `NarrativeDevelopment` records from fingerprints so
-      objectives, discoveries, relationship changes, obstacles, threats,
-      setup/payoff, contradiction, and resolution can be synthesized without
-      turning memory records into roadmap nodes.
-- [ ] Rebuild scenes, sequences, threads, arcs, and the narrative graph only
-      after the development diagnostic is trustworthy across unrelated prose.
-      Those projections must consume NarrativeDevelopments, never fingerprint
-      counts or fixed manuscript partitions.
-- [x] Keep separate manuscript-order and partial story-time projections;
-      uncertain chronology remains visibly floating instead of being invented.
+- [ ] Design a trustworthy story model above the evidence index before
+      rebuilding scenes, sequences, threads, arcs, or a narrative graph.
+      The experimental Story Fingerprint and `NarrativeDevelopment` layers
+      were removed in 0.20; future work must not treat their contracts or
+      projections as current application architecture.
+- [ ] Keep any future derived story model local, portable, user-owned, and
+      traceable to source evidence. It must never be uploaded or submitted to
+      AI without explicit action, and uncertain chronology must remain visibly
+      uncertain instead of being invented.
 - [ ] Extend the initial per-chapter evidence cache to paragraph-granular Prose
       processing and persist EPUB spine/block provenance separately from story
       structure.

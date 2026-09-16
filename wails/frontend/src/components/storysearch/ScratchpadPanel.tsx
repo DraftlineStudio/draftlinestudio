@@ -65,7 +65,8 @@ export default function ScratchpadPanel({ book }: Props) {
                 className="scratchpad-dock-title"
                 value={note.title}
                 placeholder="Untitled note"
-                onChange={e => updateNote(note.id, { title: e.target.value })}
+                readOnly={!!note.system}
+                onChange={e => { if (!note.system) updateNote(note.id, { title: e.target.value }) }}
               />
               <button
                 type="button"

@@ -8581,6 +8581,11 @@ html, body, #root {
 .pl-syn-meta { font-size: 10px; color: var(--text-muted); white-space: nowrap; margin-left: auto; }
 .pl-syn-text { width: 100%; box-sizing: border-box; overflow: hidden; background: transparent; border: 1px solid transparent; border-radius: 3px; padding: 4px 6px; margin: 0 -6px; outline: none; resize: none; color: var(--text-primary); font-family: var(--editor-font, Merriweather), serif; font-size: 14px; line-height: 1.85; text-wrap: pretty; user-select: text; }
 .pl-syn-text:focus { border-color: var(--border); background: var(--bg-hover); }
+.pl-synopsis-traces { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.pl-synopsis-trace {
+  font-size: 10.5px; color: var(--text-muted); border-bottom: 1.5px solid transparent;
+  padding-bottom: 1px; cursor: help; white-space: nowrap;
+}
 
 /* Right panel + inspector */
 .pl-right { display: flex; flex-shrink: 0; }

@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02643] - 2026-09-15
+
+### Fixed
+- Fixed styling on synopsis traces.
+- The Dead ideas note keeps its name.
+
 ## [0.20.02642] - 2026-09-15
 
 ### Fixed

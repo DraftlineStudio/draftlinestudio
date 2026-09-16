@@ -4,12 +4,11 @@
 
 import { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { useAppStore } from '../../store/appStore'
 import { useBookStore } from '../../store/bookStore'
 import { usePlannerStore, type PlannerView } from '../../store/plannerStore'
 import type { BeatTemplateId } from '../../types/draftline'
 import {
-  BEAT_NAMES, bookChapters, chapterLabel, codexPeople, countWords, displayCards, ensurePlanner, firstName, parseOutline,
+  BEAT_NAMES, bookChapters, chapterLabel, codexPeople, countWords, displayCards, ensurePlanner, parseOutline,
   STATUS_COLORS, whoIncludes, whoPerson, type CardStatus,
 } from './plannerModel'
 import { synopsisEntries, synopsisMarkdown, synopsisTrace } from './plannerSynopsis'
@@ -239,7 +238,7 @@ function Inspector({ id }: { id: string }) {
         {card.link ? (
           <div className="pl-link-box">
             <span>{linkLabel}</span>
-            {<button className="pl-link-unlink" onClick={() => linkCard(card.id, null)}>Unlink</button>}
+            <button className="pl-link-unlink" onClick={() => linkCard(card.id, null)}>Unlink</button>
           </div>
         ) : linkOpen ? (
           <div className="pl-link-picker">
@@ -258,13 +257,9 @@ function Inspector({ id }: { id: string }) {
           </>
         )}
       </div>
-
-
-      {(
-        <div className="pl-insp-foot">
-          <button className="pl-delete-btn" onClick={() => deleteCard(card.id)}>Delete Card</button>
-        </div>
-      )}
+      <div className="pl-insp-foot">
+        <button className="pl-delete-btn" onClick={() => deleteCard(card.id)}>Delete Card</button>
+      </div>
     </div>
   )
 }
