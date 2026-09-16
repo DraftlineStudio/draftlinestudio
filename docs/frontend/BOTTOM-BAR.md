@@ -4,8 +4,9 @@ The bottom tool window (`components/StorySearchToolWindow.tsx`, mounted in
 `App.tsx` above the status bar, resizable 170–560px) is where the manuscript
 is questioned rather than written.
 
-Two tabs, **Continuity** and **Ask Draftline**, plus an icon button for the
-**Evidence index**. It opens on Ask Draftline. The shell owns the 38px header
+The window is called **Plot Inspections**. It holds two tabs, **Continuity**
+and **Ask Draftline**, plus an icon button for the **Evidence index**. It opens
+on Continuity, the tab that finds things without being asked. The shell owns the 38px header
 (tabs with an accent underline, a per-tab subtitle, continuity badges, and the
 evidence/expand/close buttons); each panel lives under
 `components/storysearch/` and takes

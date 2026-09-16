@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02638] - 2026-09-15
+
+### Changed
+- Renamed the bottom tool window to Plot Inspections and made it open on Continuity.
+- Plot Inspections and Character Map have their own status bar buttons.
+
 ## [0.20.02637] - 2026-09-15
 
 ### Changed

@@ -25,7 +25,7 @@ export default function StorySearchToolWindow() {
   })))
   const [panelHeight, setPanelHeight] = useState(height)
   const [restoreHeight, setRestoreHeight] = useState(height)
-  const [activeView, setActiveView] = useState<ToolView>('search')
+  const [activeView, setActiveView] = useState<ToolView>('continuity')
   const [continuityCounts, setContinuityCounts] = useState<{ review: number; info: number } | null>(null)
   // Stable identities: the panels report counts from effects, so a new
   // function each render would loop.
@@ -83,7 +83,7 @@ export default function StorySearchToolWindow() {
   const evidenceCount = book?.analysis?.evidence?.records.length ?? 0
 
   return (
-    <section className="story-search-window" style={{ height: panelHeight }} aria-label="Story tools">
+    <section className="story-search-window" style={{ height: panelHeight }} aria-label="Plot Inspections">
       <div className="story-search-resizer" onPointerDown={beginResize} />
       <header className="story-search-header">
         <Tab view="continuity" active={activeView} onSelect={setActiveView} label="Continuity">
@@ -110,7 +110,7 @@ export default function StorySearchToolWindow() {
         <button
           type="button"
           className={`story-search-icon-btn ${activeView === 'evidence' ? 'active' : ''}`}
-          onClick={() => setActiveView(activeView === 'evidence' ? 'search' : 'evidence')}
+          onClick={() => setActiveView(activeView === 'evidence' ? 'continuity' : 'evidence')}
           title={`All deterministic detections${evidenceCount ? ` · ${evidenceCount} records` : ''}`}
           aria-label="Open all deterministic detections"
         >

@@ -2684,19 +2684,37 @@ html, body, #root {
 }
 .statusbar-left { display: flex; align-items: center; gap: 8px; }
 .statusbar-right { display: flex; align-items: center; gap: 8px; }
-.statusbar-story-search {
+/* The two entries that open a surface from the status bar read as controls,
+   not as labels: a real edge, a lit ground, and a pressed state. They are the
+   only things down here a writer is meant to click. */
+.statusbar-tool {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 1px 5px;
-  border: 0;
-  border-radius: 3px;
-  background: transparent;
-  color: var(--text-muted);
+  gap: 5px;
+  height: 17px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg-input);
+  color: var(--text-secondary);
   font: inherit;
+  line-height: 1;
   cursor: pointer;
+  transition: background 90ms ease, border-color 90ms ease, color 90ms ease;
 }
-.statusbar-story-search:hover { background: var(--bg-hover); color: var(--text-secondary); }
+.statusbar-tool svg { opacity: .85; }
+.statusbar-tool:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+.statusbar-tool:hover svg { opacity: 1; }
+.statusbar-tool:active { background: var(--bg-active); }
+.statusbar-tool:focus-visible {
+  outline: none;
+  border-color: var(--app-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--app-accent) 30%, transparent);
+}
 .statusbar-analysis-progress {
   position: absolute;
   left: 50%;

@@ -10,7 +10,10 @@ export default function StatusBar() {
     isAutoSaving: s.isAutoSaving,
     setViewMode: s.setViewMode,
   })))
-  const statusMessage = useAppStore(s => s.statusMessage)
+  const { statusMessage, openStorySearch } = useAppStore(useShallow(s => ({
+    statusMessage: s.statusMessage,
+    openStorySearch: s.openStorySearch,
+  })))
   const filePath = book?.file_path || null
   const fileName = filePath ? filePath.split(/[\\/]/).pop() : null
   const analysis = useAnalysisStore(useShallow(s => ({
@@ -49,10 +52,21 @@ export default function StatusBar() {
         </div>
       )}
       <div className="statusbar-right">
-        {/* The Ask Draftline entry is hidden while the bottom bar is reworked;
-            the flow stays reachable via Ctrl+Shift+F and the title bar menu. */}
         {book && (
-          <button className="statusbar-story-search" onClick={() => setViewMode('cast')} title="Open the character codex">
+          <button
+            className="statusbar-tool"
+            onClick={() => { setViewMode('editor'); openStorySearch() }}
+            title="Open Plot Inspections (Ctrl+Shift+F)"
+          >
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.25">
+              <circle cx="5" cy="5" r="3.4" />
+              <path d="M7.6 7.6 10.6 10.6" strokeLinecap="round" />
+            </svg>
+            Plot Inspections
+          </button>
+        )}
+        {book && (
+          <button className="statusbar-tool" onClick={() => setViewMode('cast')} title="Open the character codex">
             <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.25">
               <circle cx="4.5" cy="3.5" r="2" />
               <path d="M1.5 10.5v-1a3 3 0 0 1 3-3h.5a3 3 0 0 1 3 3v1" />

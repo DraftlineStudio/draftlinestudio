@@ -146,8 +146,10 @@ The bundled feature catalog lives in `features/registry.ts`. Stable IDs, capabil
 
 ## Bottom Bar
 
-The resizable bottom tool window has two tabs, Continuity and Ask Draftline,
-plus an icon button for the Evidence index. It opens on Ask Draftline.
+The resizable bottom tool window is called Plot Inspections. It has two tabs,
+Continuity and Ask Draftline, plus an icon button for the Evidence index. It
+opens on Continuity. The status bar carries the button that opens it, beside
+the one that opens the character codex.
 See `docs/frontend/BOTTOM-BAR.md`.
 
 ## State Management
