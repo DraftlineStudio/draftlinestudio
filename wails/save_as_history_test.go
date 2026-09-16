@@ -174,3 +174,70 @@ func TestSaveAsOverAnotherProjectDoesNotInheritItsHistory(t *testing.T) {
 		t.Fatalf("Save As left the current file at %q", app.getCurrentFile())
 	}
 }
+
+// A project file that has gone unreadable — a dropped network share, a backup
+// tool holding it open, a half-written copy — must not trap the text in memory.
+// Save As is the escape: it leaves the damaged file alone, writes the book
+// somewhere else, moves the author onto the new file, and says what it could
+// not carry across.
+func TestSaveAsRescuesABookWhoseProjectFileWentUnreadable(t *testing.T) {
+	config := t.TempDir()
+	t.Setenv("APPDATA", config)
+	t.Setenv("XDG_CONFIG_HOME", config)
+
+	dir := t.TempDir()
+	source := filepath.Join(dir, "source.draftline")
+	b := bookWithChapter("<p>The lamp-lighter worked the west quay first.</p>")
+	if result := book.Write("", source, b, "test-version"); !result.Success {
+		t.Fatal(result.Error)
+	}
+
+	app := &App{}
+	if _, err := app.openBook(source); err != nil {
+		t.Fatal(err)
+	}
+	defer app.releaseBookLock()
+
+	intact, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(source, intact[:len(intact)/2], 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	b.Body[0].Content = "<p>He had written another page before the file went bad.</p>"
+	// An ordinary save writes over the damaged file itself, which is where the
+	// unread history still is, so it still refuses rather than destroying it.
+	if result := app.writeBook(b, source); result.Success {
+		t.Fatal("saving over the damaged file destroyed what could not be read")
+	}
+
+	dest := filepath.Join(dir, "rescue.draftline")
+	result := app.writeBook(b, dest)
+	if !result.Success {
+		t.Fatalf("the book could not be saved anywhere: %s", result.Error)
+	}
+	if len(result.Warnings) == 0 {
+		t.Fatal("the rescue carried nothing across without saying so")
+	}
+	if app.getCurrentFile() != dest {
+		t.Fatalf("the author was left on the damaged file: %q", app.getCurrentFile())
+	}
+
+	reopened := &App{}
+	rescued, err := reopened.openBook(dest)
+	if err != nil {
+		t.Fatalf("the rescue file does not open: %v", err)
+	}
+	defer reopened.releaseBookLock()
+	if len(rescued.Body) != 1 || !strings.Contains(rescued.Body[0].Content, "another page") {
+		t.Fatal("the rescue file does not hold the text that was in memory")
+	}
+
+	// The rescue file is a healthy project: saving into it from now on is
+	// ordinary and silent.
+	if result := reopened.SaveBook(rescued); !result.Success || len(result.Warnings) != 0 {
+		t.Fatalf("saving the rescued project reported %v: %s", result.Warnings, result.Error)
+	}
+}

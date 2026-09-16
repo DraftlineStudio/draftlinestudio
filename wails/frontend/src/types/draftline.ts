@@ -656,6 +656,10 @@ export interface SaveResult {
   success: boolean
   file_path: string
   error?: string
+  /** What the save could not do without failing, such as data it could not read
+   *  out of the project it saved from. A successful save with warnings wrote the
+   *  book but left something behind. */
+  warnings?: string[]
 }
 
 export const FRONT_MATTER_TYPES = [

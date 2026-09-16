@@ -72,8 +72,8 @@ let bookSession = 0
 let saveChain: Promise<unknown> = Promise.resolve()
 
 export type SaveOutcome =
-  | { status: 'saved'; filePath: string }
-  | { status: 'stale'; filePath: string }
+  | { status: 'saved'; filePath: string; warning?: string }
+  | { status: 'stale'; filePath: string; warning?: string }
   | { status: 'superseded' }
   | { status: 'cancelled' }
   | { status: 'error'; message: string }
@@ -117,13 +117,17 @@ function performSave(kind: 'save' | 'saveAs'): Promise<SaveOutcome> {
       const result = kind === 'saveAs' ? await SaveBookAs(book as any) : await SaveBook(book as any)
       if (bookSession !== session) return { status: 'superseded' }
       if (result.success) {
+        // A save that wrote the book but could not carry everything across says
+        // so, in place of the usual "Saved" line. Losing that quietly is how an
+        // author finds out weeks later.
+        const warning = result.warnings?.[0]
         if (saveRevision === rev) {
           useBookStore.setState(s => ({ isDirty: false, book: s.book ? { ...s.book, file_path: result.file_path } : null }))
-          return { status: 'saved', filePath: result.file_path }
+          return { status: 'saved', filePath: result.file_path, warning }
         } else {
           // Edited while saving: keep isDirty so the re-armed autosave persists the newer state.
           useBookStore.setState(s => ({ book: s.book ? { ...s.book, file_path: result.file_path } : null }))
-          return { status: 'stale', filePath: result.file_path }
+          return { status: 'stale', filePath: result.file_path, warning }
         }
       }
       if (result.error === 'cancelled') return { status: 'cancelled' }
@@ -489,7 +493,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
     if (!get().book) return
     const outcome = await performSave('save')
     if (outcome.status === 'saved') {
-      setStatus(`Saved: ${outcome.filePath}`)
+      setStatus(outcome.warning || `Saved: ${outcome.filePath}`)
     } else if (outcome.status === 'stale') {
       setStatus('Newer edits were made while saving — save again')
     } else if (outcome.status === 'error') {
@@ -501,7 +505,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
     if (!get().book) return
     const outcome = await performSave('saveAs')
     if (outcome.status === 'saved') {
-      setStatus(`Saved: ${outcome.filePath}`)
+      setStatus(outcome.warning || `Saved: ${outcome.filePath}`)
     } else if (outcome.status === 'stale') {
       setStatus('Newer edits were made while saving — save again')
     } else if (outcome.status === 'error') {

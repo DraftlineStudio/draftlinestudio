@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02646] - 2026-09-15
+
+### Fixed
+- A project file that can no longer be opened can now be saved to a new location.
+- Fixed a project that opened normally but failed on every save.
+
 ## [0.20.02645] - 2026-09-15
 
 ### Fixed

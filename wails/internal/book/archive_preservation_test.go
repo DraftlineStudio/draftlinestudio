@@ -251,3 +251,125 @@ func TestRequireArchiveVersionRefusesUnknownVersions(t *testing.T) {
 		t.Fatal("unversioned data was accepted")
 	}
 }
+
+// A source archive that cannot be read must not trap the author's text in
+// memory. Saving over the same file still refuses, because the unreadable
+// history is still in that file and overwriting it would destroy it; saving to
+// a different file carries nothing across and says so, leaving the original
+// where it is.
+func TestSaveAsWritesEvenWhenTheSourceArchiveCannotBeRead(t *testing.T) {
+	isolateConfigDir(t)
+	dir := t.TempDir()
+	source := filepath.Join(dir, "source.draftline")
+	if res := Write("", source, testBook(), "v1"); !res.Success {
+		t.Fatalf("Write failed: %s", res.Error)
+	}
+	original, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatalf("cannot read fixture: %v", err)
+	}
+	if err := os.WriteFile(source, original[:len(original)/2], 0o600); err != nil {
+		t.Fatalf("cannot truncate fixture: %v", err)
+	}
+
+	dest := filepath.Join(dir, "rescue.draftline")
+	res := Write(source, dest, testBook(), "v1")
+	if !res.Success {
+		t.Fatalf("Save As to a fresh path was refused because the source is damaged: %s", res.Error)
+	}
+	if len(res.Warnings) == 0 {
+		t.Fatal("the rescued save carried nothing across and did not say so")
+	}
+	if _, err := os.Stat(dest); err != nil {
+		t.Fatalf("no rescue file was written: %v", err)
+	}
+	if archiveEntries(t, dest)["manifest.json"] == nil {
+		t.Fatal("the rescue file is not a readable project")
+	}
+
+	if res := Write(source, source, testBook(), "v1"); res.Success {
+		t.Fatal("saving over the damaged file itself destroyed what could not be read")
+	}
+}
+
+// An archive that holds one preserved name twice still opens, so it must still
+// save. Keeping the first copy is what every reader of the file already does.
+func TestDuplicatePreservedMemberDoesNotBlockTheSave(t *testing.T) {
+	for _, name := range []string{"editions/probe.bin", historyIndexFile} {
+		t.Run(name, func(t *testing.T) {
+			isolateConfigDir(t)
+			dir := t.TempDir()
+			path := filepath.Join(dir, "book.draftline")
+			if res := Write("", path, testBook(), "v1"); !res.Success {
+				t.Fatalf("Write failed: %s", res.Error)
+			}
+			injectStoredEntry(t, path, name, []byte("first copy"))
+			injectStoredEntry(t, path, name, []byte("second copy"))
+
+			if res := Write(path, path, testBook(), "v1"); !res.Success {
+				t.Fatalf("a book that opens could not be saved: %s", res.Error)
+			}
+			rescue := filepath.Join(dir, "rescue.draftline")
+			if res := Write(path, rescue, testBook(), "v1"); !res.Success {
+				t.Fatalf("Save As was refused as well, leaving no route to disk: %s", res.Error)
+			}
+
+			r, err := zip.OpenReader(path)
+			if err != nil {
+				t.Fatalf("cannot open saved archive: %v", err)
+			}
+			defer func() { _ = r.Close() }()
+			var copies int
+			var kept []byte
+			for _, f := range r.File {
+				if f.Name == name {
+					copies++
+					if copies == 1 {
+						kept = entryBytes(t, f)
+					}
+				}
+			}
+			if copies != 1 {
+				t.Fatalf("the saved archive holds %d copies of the duplicated name, wanted 1", copies)
+			}
+			if string(kept) != "first copy" {
+				t.Fatalf("the save kept %q, but a reader takes the first copy", kept)
+			}
+		})
+	}
+}
+
+// The rescue still keeps this session's writing: snapshots taken now owe
+// nothing to the file that cannot be read.
+func TestRescueSaveKeepsTheSnapshotsTakenNow(t *testing.T) {
+	isolateConfigDir(t)
+	dir := t.TempDir()
+	source := filepath.Join(dir, "source.draftline")
+	b := testBook()
+	b.Body[0].ID = "ch-one"
+	if res := WriteWithSnapshots("", source, b, "v1", []types.ChapterSnapshotRequest{writingSnapshot()}); !res.Success {
+		t.Fatalf("Write failed: %s", res.Error)
+	}
+	original, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatalf("cannot read fixture: %v", err)
+	}
+	if err := os.WriteFile(source, original[:len(original)/2], 0o600); err != nil {
+		t.Fatalf("cannot truncate fixture: %v", err)
+	}
+
+	fresh := writingSnapshot()
+	fresh.Content = "<p>Mirren wrote the last of it while the tide went out.</p>"
+	dest := filepath.Join(dir, "rescue.draftline")
+	res := WriteWithSnapshots(source, dest, b, "v1", []types.ChapterSnapshotRequest{fresh})
+	if !res.Success {
+		t.Fatalf("a snapshot save to a fresh path was refused: %s", res.Error)
+	}
+	if len(res.Warnings) != 1 {
+		t.Fatalf("the rescue reported %d warnings, wanted one: %v", len(res.Warnings), res.Warnings)
+	}
+	entries := archiveEntries(t, dest)
+	if entries[historyIndexFile] == nil {
+		t.Fatal("the snapshot taken during the rescue was not written")
+	}
+}

@@ -5,6 +5,10 @@ type SaveResult struct {
 	Success  bool   `json:"success"`
 	FilePath string `json:"file_path"`
 	Error    string `json:"error,omitempty"`
+	// Warnings lists what the save could not do without failing, such as
+	// preserved data it could not read out of the project it saved from. A
+	// successful save with warnings wrote the book but left something behind.
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 // ExportResult contains the result of an export operation.
@@ -72,4 +76,3 @@ type RecentProjectStats struct {
 	Chapters int  `json:"chapters"`
 	Words    int  `json:"words"`
 }
-

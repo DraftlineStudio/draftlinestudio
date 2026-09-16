@@ -103,26 +103,26 @@ func loadHistory(sourcePath string) (historyArchive, error) {
 		return state, nil // A first save has no archive to preserve.
 	}
 	if err != nil {
-		return state, fmt.Errorf("cannot preserve chapter history: %w", err)
+		return state, unreadableSource(fmt.Errorf("cannot preserve chapter history: %w", err))
 	}
 	defer func() { _ = r.Close() }()
 	if err := ziputil.CheckArchive(r.File); err != nil {
-		return state, fmt.Errorf("cannot preserve chapter history: %w", err)
+		return state, unreadableSource(fmt.Errorf("cannot preserve chapter history: %w", err))
 	}
 	entries, err := readHistoryIndex(r.File)
 	if err != nil {
-		return state, err
+		return state, unreadableSource(err)
 	}
 	state.Entries = entries
 	var total int64
 	for _, entry := range state.Entries {
 		content, err := ziputil.ReadNamed(r.File, entry.File, false)
 		if err != nil {
-			return state, fmt.Errorf("cannot read chapter history snapshot %q: %w", entry.ID, err)
+			return state, unreadableSource(fmt.Errorf("cannot read chapter history snapshot %q: %w", entry.ID, err))
 		}
 		total += int64(len(content))
 		if total > ziputil.MaxTotalSize {
-			return state, fmt.Errorf("chapter history expands beyond %d bytes", ziputil.MaxTotalSize)
+			return state, unreadableSource(fmt.Errorf("chapter history expands beyond %d bytes", ziputil.MaxTotalSize))
 		}
 		state.Contents[entry.File] = content
 	}
@@ -154,6 +154,20 @@ func readHistoryIndex(files []*zip.File) ([]types.ChapterHistoryEntry, error) {
 	return index.Entries, nil
 }
 
+// sourceReadError marks a failure to read the project a save is reading
+// preserved data OUT of, as opposed to a failure to write the file it is
+// saving INTO. The distinction decides whether a save may carry on: during a
+// Save As the source is left untouched, so whatever could not be read is still
+// sitting in it, and refusing the save would strand the author's text in memory
+// with no route to disk at all. The original message is kept unchanged, so a
+// save that still refuses says exactly what it always said.
+type sourceReadError struct{ err error }
+
+func (e sourceReadError) Error() string { return e.err.Error() }
+func (e sourceReadError) Unwrap() error { return e.err }
+
+func unreadableSource(err error) error { return sourceReadError{err: err} }
+
 // copyPreservedEntries carries members of the source archive into the archive
 // being written, byte for byte and without inflating or recompressing them.
 // This is the hot path for ordinary autosaves.
@@ -171,11 +185,11 @@ func copyPreservedEntries(w *archiveWriter, sourcePath string, prefixes []string
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("cannot preserve archived data: %w", err)
+		return unreadableSource(fmt.Errorf("cannot preserve archived data: %w", err))
 	}
 	defer func() { _ = r.Close() }()
 	if err := ziputil.CheckArchive(r.File); err != nil {
-		return fmt.Errorf("cannot preserve archived data: %w", err)
+		return unreadableSource(fmt.Errorf("cannot preserve archived data: %w", err))
 	}
 	for _, file := range r.File {
 		if !hasAnyPrefix(file.Name, prefixes) {

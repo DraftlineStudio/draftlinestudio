@@ -426,6 +426,22 @@ describe('finding 1 — failed or cancelled saves block transitions', () => {
     expect(appStoreMod.useAppStore.getState().statusMessage).toBe('Ready') // user dismissed the picker: no error banner
     expect(store().isDirty).toBe(true)
   })
+
+  // Saving out of a project file that has gone unreadable writes the book but
+  // cannot bring its chapter history along. That has to show, not read "Saved".
+  it('saveBookAs reports what a rescued save could not carry across', async () => {
+    bookStoreMod.useBookStore.setState({ book: makeBook(), isDirty: true })
+    mocks.SaveBookAs.mockResolvedValue({
+      success: true,
+      file_path: 'C:/tmp/rescue.draftline',
+      warnings: ['old.draftline could not be read, so its chapter history and anything else stored in it did not come across. That file still holds them.'],
+    })
+
+    await store().saveBookAs()
+    expect(appStoreMod.useAppStore.getState().statusMessage).toContain('did not come across')
+    expect(store().book?.file_path).toBe('C:/tmp/rescue.draftline')
+    expect(store().isDirty).toBe(false)
+  })
 })
 
 // OS file associations (0.16.02475): a specific file path must survive the

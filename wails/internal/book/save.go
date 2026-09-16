@@ -4,7 +4,11 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"draftline/internal/backup"
@@ -69,7 +73,19 @@ func (a *archiveWriter) addBytes(name string, data []byte) error {
 
 // copyEntry carries one member over from the source archive without inflating
 // or recompressing it.
+//
+// A name already written is skipped rather than refused. The collision guard is
+// there to catch this program writing one name twice, but the source archive
+// was not necessarily written by this program — the format is shared with the
+// Python-era app — and a ZIP holding the same name twice still opens. Refusing
+// it would turn a book that loads, and accepts edits, into a book that no save
+// and no Save As can ever write again. A reader takes the first copy of a
+// repeated name, so the save keeps the first copy too, and the file comes out
+// of the save without the repeat.
 func (a *archiveWriter) copyEntry(f *zip.File) error {
+	if a.written[f.Name] {
+		return nil
+	}
 	if err := a.claim(f.Name); err != nil {
 		return err
 	}
@@ -77,6 +93,42 @@ func (a *archiveWriter) copyEntry(f *zip.File) error {
 		return fmt.Errorf("cannot preserve archived entry %q: %w", f.Name, err)
 	}
 	return nil
+}
+
+// toleratedSourceFailure decides what an unreadable source means for this save.
+//
+// Saving over the source itself still refuses: the data that could not be read
+// is in the file about to be overwritten, and overwriting it is exactly what
+// would destroy it. Saving anywhere else leaves the source where it is, so the
+// save carries nothing across, says so, and writes the book — an author whose
+// project file has gone unreadable, because a network share dropped or a backup
+// tool has it open, needs a route to disk more than a tidy archive.
+func toleratedSourceFailure(err error, sourcePath, destPath string) (string, bool) {
+	var unreadable sourceReadError
+	if !errors.As(err, &unreadable) || sameArchiveFile(sourcePath, destPath) {
+		return "", false
+	}
+	return fmt.Sprintf("%s could not be read, so its chapter history and anything else stored in it did not come across. That file still holds them.", filepath.Base(sourcePath)), true
+}
+
+// sameArchiveFile reports whether two paths name one file on disk, so that a
+// save spelled differently from the open project is not mistaken for a Save As.
+func sameArchiveFile(a, b string) bool {
+	if strings.TrimSpace(a) == "" || strings.TrimSpace(b) == "" {
+		return false
+	}
+	if a == b {
+		return true
+	}
+	ai, err := os.Stat(a)
+	if err != nil {
+		return false
+	}
+	bi, err := os.Stat(b)
+	if err != nil {
+		return false
+	}
+	return os.SameFile(ai, bi)
 }
 
 // Write saves a BookData to a .draftline file at destPath. sourcePath is the
@@ -91,13 +143,32 @@ func Write(sourcePath, destPath string, book types.BookData, appVersion string) 
 // history and optionally appending changed chapter snapshots. History is read
 // from sourcePath and written to destPath.
 func WriteWithSnapshots(sourcePath, destPath string, book types.BookData, appVersion string, snapshots []types.ChapterSnapshotRequest) types.SaveResult {
+	// warnings record what the save could not do without failing outright. The
+	// same unreadable source is reported once however many reads it defeats.
+	var warnings []string
+	warn := func(note string) {
+		for _, existing := range warnings {
+			if existing == note {
+				return
+			}
+		}
+		warnings = append(warnings, note)
+	}
+
 	history := historyArchive{Entries: []types.ChapterHistoryEntry{}, Contents: map[string][]byte{}}
 	if len(snapshots) > 0 {
-		var err error
-		history, err = loadHistory(sourcePath)
+		loaded, err := loadHistory(sourcePath)
 		if err != nil {
-			return types.SaveResult{Success: false, Error: err.Error()}
+			note, tolerated := toleratedSourceFailure(err, sourcePath, destPath)
+			if !tolerated {
+				return types.SaveResult{Success: false, Error: err.Error()}
+			}
+			warn(note)
+		} else {
+			history = loaded
 		}
+		// The snapshots in hand are this session's writing and owe nothing to
+		// the old file, so they are kept even when none of it could be read.
 		addHistorySnapshots(&history, snapshots)
 	}
 	EnsureBookChapterIDs(&book)
@@ -160,7 +231,11 @@ func WriteWithSnapshots(sourcePath, destPath string, book types.BookData, appVer
 		preserved = preservedPrefixesExcept(historyPrefix)
 	}
 	if err := copyPreservedEntries(aw, sourcePath, preserved); err != nil {
-		return types.SaveResult{Success: false, Error: err.Error()}
+		note, tolerated := toleratedSourceFailure(err, sourcePath, destPath)
+		if !tolerated {
+			return types.SaveResult{Success: false, Error: err.Error()}
+		}
+		warn(note)
 	}
 	if len(snapshots) > 0 {
 		for _, historyEntry := range history.Entries {
@@ -301,5 +376,5 @@ func WriteWithSnapshots(sourcePath, destPath string, book types.BookData, appVer
 		return types.SaveResult{Success: false, Error: err.Error()}
 	}
 
-	return types.SaveResult{Success: true, FilePath: destPath}
+	return types.SaveResult{Success: true, FilePath: destPath, Warnings: warnings}
 }
