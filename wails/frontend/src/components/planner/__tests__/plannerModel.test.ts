@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
-  bookChapters, codexPeople, columnConnectors, deadIdeaBlock, displayCards, emptyPlanner, ensurePlanner, generatedSynopsis,
-  laneRows, layoutMetrics, MAIN_LANE_ID, parseOutline, statusOf, synopsisMarkdown, whoNames, whoText, type CodexPerson, type PlannerChapter,
+  bookChapters, codexPeople, columnConnectors, deadIdeaBlock, displayCards, emptyPlanner, ensurePlanner,
+  laneRows, layoutMetrics, MAIN_LANE_ID, parseOutline, rebindWho, statusOf,
+  whoIncludes, whoNames, whoText, type CodexPerson, type PlannerChapter,
 } from '../plannerModel'
+import { generatedSynopsis, synopsisMarkdown } from '../plannerSynopsis'
 import type { BookData, PlannerData, PlannerLane } from '../../../types/draftline'
 
 // All prose here is invented for these tests.
@@ -127,38 +129,52 @@ describe('Planner data invariants', () => {
     ])
     expect(codexPeople(book)).toEqual([{ id: 'x', name: 'Rhea', aliases: ['Rhea', 'R.'] }])
   })
+
+  it('counts a centred break paragraph as a scene break', () => {
+    const book = {
+      body: [{ id: 'a', title: 'One', type: 'chapter', content: '<p>Some words here.</p><p>* * *</p><p>More words.</p><hr/><p>And more.</p>' }],
+      story_bible: { characters: [] },
+    } as unknown as BookData
+    expect(bookChapters(book)[0].scenes).toBe(3)
+  })
+
+  // Every marker form the backend's scene rule accepts
+  // (internal/indexing/scenes.go sceneBreakMarker) counts here too, so the
+  // Planner's count before the first analysis is the count after it.
+  it('counts every scene-break marker form the backend counts', () => {
+    const chapterWith = (marker: string) => ({
+      body: [{ id: 'a', title: 'One', type: 'chapter', content: `<p>Rhea waited.</p><p>${marker}</p><p>Tomas answered.</p>` }],
+      story_bible: { characters: [] },
+    } as unknown as BookData)
+    for (const marker of ['* * *', '***', '****', '⁂', '# # #', '###', '####', '- - -', '---', '----', '~ ~ ~', '. . .']) {
+      expect([marker, bookChapters(chapterWith(marker))[0].scenes]).toEqual([marker, 2])
+    }
+    // A paragraph that is not only a marker is prose, not a break.
+    expect(bookChapters(chapterWith('*** and then'))[0].scenes).toBe(1)
+  })
 })
 
 describe('cards on screen', () => {
   const planner: PlannerData = {
-    ...emptyPlanner(), lanes, plot_walker: true, dismissed: ['det-2'],
+    ...emptyPlanner(), lanes,
     cards: [
       { id: 'k1', title: 'Beacon fails', synopsis: 'The light dies.', lines: [MAIN_LANE_ID, 'lane-rhea'], who: ['c-rhea'], chapter_id: 'ch-1', link: { chapter_id: 'ch-1', scene: 1 }, status: 'drafted' },
       { id: 'k2', title: 'Landfall', synopsis: 'They land.', lines: [MAIN_LANE_ID], who: [], chapter_id: 'ch-3', status: 'planned' },
-      { id: 'adopt-det-3', title: 'Adopted', synopsis: '', lines: [MAIN_LANE_ID], who: [], chapter_id: 'ch-1', status: 'drafted', origin: 'adopted' },
+      { id: 'k3', title: 'Second on the main line', synopsis: '', lines: [MAIN_LANE_ID], who: [], chapter_id: 'ch-1', status: 'drafted', link: { chapter_id: 'ch-1', scene: 2 } },
     ],
   }
-  const detected = ['det-1', 'det-2', 'det-3'].map(id => ({
-    id, title: `Found ${id}`, synopsis: 'x', chapter_id: 'ch-1', scene: 1, who: [], kind: 'development',
-    evidence: [{ source_id: 's', revision: 'r', chapter_id: 'ch-1', scene: 1, block_id: 'b', start: 0, end: 1, quote: 'q' }],
-    status: 'detected_candidate' as const, support: 'candidate' as const, discourse_mode: 'current_narration', selection_rule: 'rule',
-  }))
 
-  it('derives status from the scene link and shows only undismissed, unadopted detections as unplanned', () => {
+  it('derives a card’s status from its scene link', () => {
     expect(statusOf(planner.cards[0])).toBe('drafted')
     expect(statusOf(planner.cards[1])).toBe('planned')
-    const shown = displayCards(planner, detected)
-    expect(shown.filter(c => c.unplanned).map(c => c.id)).toEqual(['det-1'])
-    expect(shown.find(c => c.id === 'det-1')).toMatchObject({ status: 'planned', unplanned: true })
-    expect(shown.find(c => c.id === 'det-1')).not.toHaveProperty('origin')
-    expect(displayCards({ ...planner, plot_walker: false }, detected).some(c => c.unplanned)).toBe(false)
+    expect(displayCards(planner).map(c => [c.id, c.st])).toEqual([['k1', 'drafted'], ['k2', 'planned'], ['k3', 'drafted']])
   })
 
   it('sizes lane rows by the busiest cell and draws one crossing per multi-line card', () => {
     const m = layoutMetrics(true, false)
-    const cards = displayCards(planner, [])
+    const cards = displayCards(planner)
     const rows = laneRows(lanes, cards, ['ch-1', 'ch-3', ''], m)
-    // Two cards sit on the main line in chapter 1 (k1 and the adopted one).
+    // Two cards sit on the main line in chapter 1.
     expect(rows[0].height).toBe(m.pad * 2 + 2 * m.cardH + m.gap)
     expect(rows[1].height).toBe(m.pad * 2 + m.cardH)
     expect(rows[1].top).toBe(m.headerH + rows[0].height)
@@ -170,8 +186,20 @@ describe('cards on screen', () => {
   it('builds the synopsis from card synopses in lane order and leaves empty chapters out', () => {
     expect(generatedSynopsis(planner, 'ch-1')).toBe('The light dies.')
     expect(generatedSynopsis(planner, 'ch-2')).toBe('')
+    // A generated paragraph carries a trace per sentence; a chapter the
+    // writer edited by hand is their own text and carries none.
     const md = synopsisMarkdown({ ...planner, synopsis: { 'ch-3': 'Edited landing.' } }, chapters)
-    expect(md).toBe('## Chapter 1 — The Beacon\n\nThe light dies.\n\n## Chapter 3 — Landfall\n\nEdited landing.')
+    expect(md).toBe([
+      '## Chapter 1 — The Beacon',
+      '',
+      'The light dies.',
+      '',
+      '- The light dies. [Chapter 1 · Scene 1]',
+      '',
+      '## Chapter 3 — Landfall',
+      '',
+      'Edited landing.',
+    ].join('\n'))
   })
 
   it('writes a deleted card into Dead Ideas with where it came from', () => {
@@ -194,5 +222,32 @@ describe('who names survive re-indexing', () => {
     expect(whoNames(['c-tomas', 'c-old'], codex, card)).toEqual(['Tomas', 'Old Keeper'])
     expect(whoNames(['c-gone'], codex)).toEqual(['c-gone'])
     expect(whoNames([], codex, card)).toEqual([])
+  })
+
+  // Re-indexing reassigned the positional IDs: c-old is Eloise now and the
+  // Old Keeper moved to c-keeper; c-rhea is still Rhea.
+  const reindexed: CodexPerson[] = [
+    { id: 'c-rhea', name: 'Rhea Marsh', aliases: ['Rhea Marsh', 'Rhea'] },
+    { id: 'c-old', name: 'Eloise Dane', aliases: ['Eloise Dane', 'Eloise'] },
+    { id: 'c-keeper', name: 'Old Keeper', aliases: ['Old Keeper', 'the keeper'] },
+  ]
+
+  it('keeps naming the person the stored name means when the ID now belongs to someone else', () => {
+    expect(whoText(card, reindexed)).toBe('Rhea, Old')
+    expect(whoNames(['c-rhea', 'c-old'], reindexed, card)).toEqual(['Rhea Marsh', 'Old Keeper'])
+    // With no stored name there is nothing to check the ID against.
+    expect(whoText({ ...card, who_names: undefined }, reindexed)).toBe('Rhea, Eloise')
+    // A stored name the codex no longer has anywhere still wins over the stranger under its ID.
+    expect(whoText({ ...card, who_names: ['Rhea Marsh', 'Night Warden'] }, reindexed)).toBe('Rhea, Night')
+    // A stored alias still counts as the person under the ID.
+    expect(whoText({ ...card, who_names: ['Rhea', 'Old Keeper'] }, reindexed)).toBe('Rhea, Old')
+  })
+
+  it('re-binds who to the current IDs of the people the stored names mean, each once', () => {
+    expect(rebindWho(['c-rhea', 'c-old'], reindexed, card)).toEqual({ who: ['c-rhea', 'c-keeper'], who_names: ['Rhea Marsh', 'Old Keeper'] })
+    expect(rebindWho(['c-old', 'c-keeper'], reindexed, card)).toEqual({ who: ['c-keeper'], who_names: ['Old Keeper'] })
+    expect(rebindWho(['c-gone'], reindexed)).toEqual({ who: ['c-gone'], who_names: ['c-gone'] })
+    expect(whoIncludes(card, reindexed[2], reindexed)).toBe(true)
+    expect(whoIncludes(card, reindexed[1], reindexed)).toBe(false)
   })
 })

@@ -1,3 +1,5 @@
+import type { PlannerData } from './planner'
+
 export type Section = 'copyright' | 'front_matter' | 'body' | 'back_matter'
 
 export type ProjectType = 'book' | 'universe'
@@ -283,10 +285,6 @@ export interface AnalysisData {
   story?: StoryAnalysisData
   evidence?: EvidenceData
   continuity?: ContinuityData
-  // Story Fingerprint v2 — full contract lives in the generated bindings
-  // (wailsjs/go/models.ts types.StoryFingerprint); typed there to avoid
-  // hand-mirroring a large evolving surface.
-  fingerprint?: import('../../wailsjs/go/models').types.StoryFingerprint
   // Future analysis types:
   // plot_analysis?: PlotAnalysisData
   // theme_analysis?: ThemeAnalysisData
@@ -590,113 +588,7 @@ export interface ChapterHistorySnapshot {
 
 // ── Planner (planner.json) ──────────────────────────────────────────────────
 
-export type PlannerLaneKind = 'main' | 'subplot' | 'character'
-
-export interface PlannerLane {
-  id: string
-  name: string
-  kind: PlannerLaneKind | string
-  color: string
-  character_id?: string
-}
-
-// A card's scene link: the chapter's stable ID and a 1-based scene number.
-export interface PlannerLink {
-  chapter_id: string
-  scene: number
-}
-
-// A revision-bound passage. `space: 'chapter'` means start/end are offsets
-// into the chapter's stripped analysis text under the analysis content hash
-// (block_id empty); no space is the legacy block-offset form of the
-// isolated narrative engine.
-export interface PlannerEvidence {
-  source_id: string
-  revision: string
-  chapter_id: string
-  scene: number
-  block_id: string
-  start: number
-  end: number
-  quote: string
-  space?: 'chapter' | string
-}
-
-export type PlannerCardStatus = 'planned' | 'drafted'
-
-// A plot card. It sits on lines[0] at chapter_id ('' = Later, not yet pinned);
-// the other lines are drawn as crossings. `changes` and `stakes` are the
-// promise the card makes, kept separate so reconciliation needs no migration.
-export interface PlannerCard {
-  id: string
-  source_id?: string
-  title: string
-  synopsis: string
-  lines: string[]
-  who: string[]
-  // The names of `who` when it was set, so a card still names its people
-  // after re-indexing reassigns codex IDs.
-  who_names?: string[]
-  changes?: string
-  stakes?: string
-  chapter_id: string
-  link?: PlannerLink
-  status: PlannerCardStatus | string
-  origin?: 'manual' | 'outline' | 'adopted' | string
-  dev_kind?: string
-  evidence?: PlannerEvidence[]
-  updated?: string
-}
-
-export interface PlannerNote {
-  id: string
-  title: string
-  body: string
-  updated?: string
-  excluded?: boolean
-  system?: 'dead' | string
-}
-
-export type BeatTemplateId = 'none' | 'three-act' | 'save-the-cat'
-
-export interface PlannerData {
-  version: number
-  source_id?: string
-  lanes: PlannerLane[]
-  cards: PlannerCard[]
-  notes: PlannerNote[]
-  synopsis?: Record<string, string>
-  beat_template?: BeatTemplateId | string
-  hidden_lanes?: string[]
-  dismissed?: string[]
-  plot_walker?: boolean
-  compact?: boolean
-}
-
-// A development the narrative engine found in the text, offered as an
-// unplanned card. Proposals only; the writer adopts or dismisses them.
-export interface PlannerDetectedCard {
-  id: string
-  title: string
-  synopsis: string
-  chapter_id: string
-  scene: number
-  who: string[]
-  evidence: PlannerEvidence[]
-  kind: string
-  status: string
-  support: string
-  discourse_mode: string
-  selection_rule: string
-}
-
-export interface PlannerDetection {
-  revision: string
-  source_id: string
-  cards: PlannerDetectedCard[]
-  limitations: string[]
-  error?: string
-}
+export * from './planner'
 
 export interface BookData {
   version: string

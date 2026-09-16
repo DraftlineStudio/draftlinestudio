@@ -4,22 +4,23 @@
 
 import { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+import { useAppStore } from '../../store/appStore'
 import { useBookStore } from '../../store/bookStore'
 import { usePlannerStore, type PlannerView } from '../../store/plannerStore'
 import type { BeatTemplateId } from '../../types/draftline'
 import {
-  BEAT_NAMES, bookChapters, chapterLabel, codexPeople, countWords, displayCards, ensurePlanner, evidenceText, parseOutline,
-  STATUS_COLORS, synopsisMarkdown, type CardStatus,
+  BEAT_NAMES, bookChapters, chapterLabel, codexPeople, countWords, displayCards, ensurePlanner, firstName, parseOutline,
+  STATUS_COLORS, whoIncludes, whoPerson, type CardStatus,
 } from './plannerModel'
+import { synopsisEntries, synopsisMarkdown, synopsisTrace } from './plannerSynopsis'
 
+// What each status means on the card.
 const STATUS_NOTES: Record<CardStatus, string> = {
   planned: 'not yet linked to a scene',
   drafted: 'linked to a scene',
-  kept: 'the linked scene fulfils the promise',
-  drifted: 'scene exists, promised development not found',
-  unplanned: 'found in the text, no card',
-  found: 'found in the text',
 }
+
+const statusNote = (status: CardStatus): string => STATUS_NOTES[status]
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -74,7 +75,7 @@ function ScratchTools() {
           <div className="pl-stat-row"><span>Would propose</span><span>{proposals.length} {proposals.length === 1 ? 'card' : 'cards'}</span></div>
           <div className="pl-stat-row"><span>Names found</span><span>{names}</span></div>
           <div className="pl-toggle-row divided">
-            <span>Include in analysis</span>
+            <span>Available to Propose Cards</span>
             <Toggle checked={!note.excluded} onChange={v => updateNote(note.id, { excluded: !v })} />
           </div>
           <div className="pl-hint" style={{ marginTop: 4 }}>
@@ -88,7 +89,7 @@ function ScratchTools() {
       )}
       {note?.system === 'dead' && (
         <Section title="Dead Ideas">
-          <div className="pl-copy">Every card deleted from the timeline or board, and every dismissed unplanned development, is written here automatically. Turn analysis on and propose cards to bring one back.</div>
+          <div className="pl-copy">Every card deleted from the timeline or board is written here automatically, with where it came from, so nothing is lost by deleting it.</div>
         </Section>
       )}
     </div>
@@ -96,14 +97,13 @@ function ScratchTools() {
 }
 
 function SynopsisTools() {
-  const book = useBookStore(s => s.book)
   const newNote = usePlannerStore(s => s.newNote)
-  const setStatus = useBookStore(s => s.book) // placeholder to keep hook order stable
-  void setStatus
+  const book = useBookStore(s => s.book)
   const planner = ensurePlanner(book)
   const chapters = bookChapters(book)
   const markdown = () => synopsisMarkdown(planner, chapters)
   const words = chapters.reduce((a, ch) => a + countWords(planner.synopsis?.[ch.id] ?? ''), 0)
+  const traced = chapters.reduce((a, ch) => a + synopsisEntries(planner, ch.id).length, 0)
   return (
     <div className="pl-panel-body">
       <Section title="Export">
@@ -114,34 +114,20 @@ function SynopsisTools() {
         <div className="pl-hint" style={{ marginTop: 8 }}>{words ? `${words.toLocaleString()} edited words · ` : ''}one paragraph per chapter, chapters without cards left out.</div>
       </Section>
       <Section title="Source">
-        <div className="pl-copy">Each paragraph joins the synopses of that chapter's cards in timeline order. Chapters without cards are left blank rather than invented.</div>
+        <div className="pl-copy">Each paragraph joins the synopses of that chapter's cards in timeline order. A chapter whose cards carry no synopsis is left blank rather than invented.</div>
+        <div className="pl-hint" style={{ marginTop: 8 }}>{traced} {traced === 1 ? 'sentence traces' : 'sentences trace'} back to a card or a passage; the export lists each one with its chapter and scene.</div>
       </Section>
     </div>
   )
 }
 
 function Overview() {
+  const setBeatTemplate = usePlannerStore(s => s.setBeatTemplate)
   const book = useBookStore(s => s.book)
-  const { detected, detectError, setPlotWalker, setBeatTemplate } = usePlannerStore(useShallow(s => ({
-    detected: s.detected, detectError: s.detectError, setPlotWalker: s.setPlotWalker, setBeatTemplate: s.setBeatTemplate,
-  })))
   const planner = ensurePlanner(book)
-  const cards = displayCards(planner, detected)
-  const counts: Record<string, number> = {}
-  cards.forEach(c => { counts[c.st] = (counts[c.st] ?? 0) + 1 })
-  const order: CardStatus[] = planner.plot_walker ? ['planned', 'drafted', 'unplanned'] : ['planned', 'drafted']
+  const counts = displayCards(planner).reduce<Record<string, number>>((acc, c) => ({ ...acc, [c.st]: (acc[c.st] ?? 0) + 1 }), {})
   return (
     <div className="pl-panel-body">
-      <Section title="Plot Walker">
-        <div className="pl-toggle-row">
-          <span>Reconcile cards with the text</span>
-          <Toggle checked={!!planner.plot_walker} onChange={setPlotWalker} />
-        </div>
-        {planner.plot_walker
-          ? <div className="pl-copy" style={{ marginTop: 8 }}>Developments the narrative engine finds in the text appear as <span style={{ color: STATUS_COLORS.unplanned }}>unplanned</span> cards to adopt or dismiss. Matching them to your cards as <span style={{ color: STATUS_COLORS.kept }}>kept</span> or <span style={{ color: STATUS_COLORS.drifted }}>drifted</span> arrives with the next Plot Walker milestone.</div>
-          : <div className="pl-hint" style={{ marginTop: 8 }}>Off. Linking a card to a scene marks it drafted; nothing is checked against the text.</div>}
-        {planner.plot_walker && detectError && <div className="pl-hint" style={{ color: 'var(--status-error, #E06C75)' }}>{detectError}</div>}
-      </Section>
       <Section title="Beat Template">
         <select className="dialog-select" value={planner.beat_template ?? 'none'} onChange={e => setBeatTemplate(e.target.value as BeatTemplateId)}>
           {(Object.keys(BEAT_NAMES) as BeatTemplateId[]).map(k => <option key={k} value={k}>{BEAT_NAMES[k]}</option>)}
@@ -149,7 +135,7 @@ function Overview() {
         <div className="pl-hint">Beat marks sit at manuscript percentages across the chapter axis.</div>
       </Section>
       <Section title="Cards by Status">
-        {order.map(k => (
+        {(['planned', 'drafted'] as CardStatus[]).map(k => (
           <div key={k} className="pl-status-row">
             <span className="pl-card-dot" style={{ background: STATUS_COLORS[k] }} />
             <span>{k}</span>
@@ -163,15 +149,15 @@ function Overview() {
 }
 
 function Inspector({ id }: { id: string }) {
-  const book = useBookStore(s => s.book)
-  const { detected, linkOpen, setLinkOpen, updateCard, linkCard, deleteCard, adoptDetected, dismissDetected } = usePlannerStore(useShallow(s => ({
-    detected: s.detected, linkOpen: s.linkOpen, setLinkOpen: s.setLinkOpen, updateCard: s.updateCard, linkCard: s.linkCard,
-    deleteCard: s.deleteCard, adoptDetected: s.adoptDetected, dismissDetected: s.dismissDetected,
+  const { linkOpen, setLinkOpen, updateCard, linkCard, deleteCard } = usePlannerStore(useShallow(s => ({
+    linkOpen: s.linkOpen, setLinkOpen: s.setLinkOpen, updateCard: s.updateCard, linkCard: s.linkCard,
+    deleteCard: s.deleteCard,
   })))
+  const book = useBookStore(s => s.book)
   const planner = ensurePlanner(book)
-  const chapters = useMemo(() => bookChapters(book), [book])
-  const codex = useMemo(() => codexPeople(book), [book])
-  const card = displayCards(planner, detected).find(c => c.id === id)
+  const chapters = bookChapters(book)
+  const codex = codexPeople(book)
+  const card = displayCards(planner).find(c => c.id === id)
   if (!card) return <div className="pl-panel-body"><div className="pl-hint">This card is no longer on the timeline.</div></div>
   const color = STATUS_COLORS[card.st]
   const linkedChapter = card.link ? chapters.find(ch => ch.id === card.link!.chapter_id) : undefined
@@ -179,8 +165,6 @@ function Inspector({ id }: { id: string }) {
   const scenes = chapters.filter(ch => ch.drafted).flatMap(ch => Array.from({ length: ch.scenes }, (_, i) => ({
     chapter_id: ch.id, scene: i + 1, label: `${chapterLabel(ch)}${ch.scenes > 1 ? ` · Scene ${i + 1}` : ''}`,
   })))
-  const evidence = evidenceText(card)
-  const locked = !!card.unplanned
   const setField = (key: 'title' | 'synopsis' | 'changes' | 'stakes') => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => updateCard(card.id, { [key]: e.target.value })
 
   return (
@@ -188,26 +172,17 @@ function Inspector({ id }: { id: string }) {
       <div className="pl-insp-status">
         <span className="pl-card-dot" style={{ background: color }} />
         <span className="pl-insp-status-label" style={{ color }}>{card.st}</span>
-        <span className="pl-insp-note">{STATUS_NOTES[card.st]}</span>
+        <span className="pl-insp-note">{statusNote(card.st)}</span>
       </div>
 
-      {card.unplanned && (
-        <div className="pl-callout">
-          <div className="pl-copy">Plot Walker found this <span style={{ color: 'var(--text-primary)' }}>{card.dev_kind || 'development'}</span> in the text with no card promising it.</div>
-          <div className="pl-callout-actions">
-            <button className="dialog-btn primary" onClick={() => adoptDetected(card.id)}>Adopt as card</button>
-            <button className="dialog-btn" onClick={() => dismissDetected(card.id)}>Dismiss</button>
-          </div>
-        </div>
-      )}
 
       <div className="pl-field">
         <span className="pl-field-label">Title</span>
-        <input className="dialog-input" value={card.title} readOnly={locked} onChange={setField('title')} />
+        <input className="dialog-input" value={card.title}  onChange={setField('title')} />
       </div>
       <div className="pl-field">
         <span className="pl-field-label">Synopsis</span>
-        <textarea className="dialog-input" value={card.synopsis} readOnly={locked} onChange={setField('synopsis')} />
+        <textarea className="dialog-input" value={card.synopsis}  onChange={setField('synopsis')} />
       </div>
 
       <div className="pl-field">
@@ -218,7 +193,7 @@ function Inspector({ id }: { id: string }) {
             return (
               <button
                 key={l.id} className={`pl-chip-btn${on ? ' on' : ''}`} style={on ? { borderColor: l.color } : undefined}
-                onClick={() => { if (locked) return; const lines = on ? card.lines.filter(x => x !== l.id) : [...card.lines, l.id]; if (lines.length) updateCard(card.id, { lines }) }}
+                onClick={() => { const lines = on ? card.lines.filter(x => x !== l.id) : [...card.lines, l.id]; if (lines.length) updateCard(card.id, { lines }) }}
               >
                 <span className="pl-chip-swatch" style={{ background: l.color }} />{l.name}
               </button>
@@ -233,9 +208,9 @@ function Inspector({ id }: { id: string }) {
         <div className="pl-chips">
           {codex.length === 0 && <span className="pl-hint" style={{ marginTop: 0 }}>Confirm characters in the codex to name them here.</span>}
           {codex.map(c => {
-            const on = card.who.includes(c.id)
+            const on = whoIncludes(card, c, codex)
             return (
-              <button key={c.id} className={`pl-chip-btn${on ? ' on' : ''}`} onClick={() => { if (!locked) updateCard(card.id, { who: on ? card.who.filter(x => x !== c.id) : [...card.who, c.id] }) }}>
+              <button key={c.id} className={`pl-chip-btn${on ? ' on' : ''}`} onClick={() => updateCard(card.id, { who: on ? card.who.filter((x, i) => whoPerson(x, card.who_names?.[i], codex)?.id !== c.id) : [...card.who, c.id] })}>
                 {c.name}
               </button>
             )
@@ -245,15 +220,15 @@ function Inspector({ id }: { id: string }) {
 
       <div className="pl-field">
         <span className="pl-field-label">What changes</span>
-        <textarea className="dialog-input short" value={card.changes ?? ''} readOnly={locked} placeholder="The development this card promises" onChange={setField('changes')} />
+        <textarea className="dialog-input short" value={card.changes ?? ''}  placeholder="The development this card promises" onChange={setField('changes')} />
       </div>
       <div className="pl-field">
         <span className="pl-field-label">Stakes</span>
-        <input className="dialog-input" value={card.stakes ?? ''} readOnly={locked} placeholder="What is at risk" onChange={setField('stakes')} />
+        <input className="dialog-input" value={card.stakes ?? ''}  placeholder="What is at risk" onChange={setField('stakes')} />
       </div>
       <div className="pl-field">
         <span className="pl-field-label">Position</span>
-        <select className="dialog-select" value={card.chapter_id} disabled={locked} onChange={e => updateCard(card.id, { chapter_id: e.target.value })}>
+        <select className="dialog-select" value={card.chapter_id}  onChange={e => updateCard(card.id, { chapter_id: e.target.value })}>
           {chapters.map(ch => <option key={ch.id} value={ch.id}>{chapterLabel(ch)}</option>)}
           <option value="">Later</option>
         </select>
@@ -264,7 +239,7 @@ function Inspector({ id }: { id: string }) {
         {card.link ? (
           <div className="pl-link-box">
             <span>{linkLabel}</span>
-            {!locked && <button className="pl-link-unlink" onClick={() => linkCard(card.id, null)}>Unlink</button>}
+            {<button className="pl-link-unlink" onClick={() => linkCard(card.id, null)}>Unlink</button>}
           </div>
         ) : linkOpen ? (
           <div className="pl-link-picker">
@@ -284,15 +259,8 @@ function Inspector({ id }: { id: string }) {
         )}
       </div>
 
-      {evidence && (
-        <div className="pl-field">
-          <span className="pl-field-label">Plot Walker · {card.dev_kind || 'development'}</span>
-          <div className="pl-evidence" style={{ borderLeftColor: color }}>{evidence}</div>
-          <div className="pl-hint" style={{ marginTop: 5 }}>Evidence span in {linkLabel || chapterLabel(chapters.find(ch => ch.id === card.chapter_id))}.</div>
-        </div>
-      )}
 
-      {!locked && (
+      {(
         <div className="pl-insp-foot">
           <button className="pl-delete-btn" onClick={() => deleteCard(card.id)}>Delete Card</button>
         </div>

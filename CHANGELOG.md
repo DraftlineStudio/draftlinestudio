@@ -2,6 +2,16 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.19.02636] - 2026-09-15
+
+### Removed
+- Removed the Story Map, Threads, and Review tabs from the bottom window.
+- Removed card reconciliation from the Planner. Cards are now planned, or drafted once linked to a scene.
+- Removed the Developments row from the Characters view.
+
+### Changed
+- Manuscript analysis runs faster and saves a smaller analysis file.
+
 ## [0.19.02619] - 2026-09-15
 
 ### Changed

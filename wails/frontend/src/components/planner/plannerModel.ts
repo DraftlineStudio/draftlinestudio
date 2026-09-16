@@ -8,17 +8,19 @@
 // deterministic rules in parseOutline; nothing is committed until accepted.
 
 import type {
-  BeatTemplateId, BookData, Character, PlannerCard, PlannerData, PlannerDetectedCard, PlannerLane, PlannerNote,
+  BeatTemplateId, BookData, Character, PlannerCard, PlannerData, PlannerLane, PlannerNote,
 } from '../../types/draftline'
 
 export const MAIN_LANE_ID = 'main'
 export const MAIN_LANE_COLOR = '#5aafe0'
+// The Later column: a card that belongs to no chapter of the book's body.
+export const LATER_COLUMN_ID = ''
 export const LANE_PALETTE = ['#98C379', '#61AFEF', '#FABF73', '#2DD4BF', '#F87171', '#A3E635', '#818CF8', '#FB923C']
 export const DEAD_NOTE_ID = 'dead-ideas'
 
-export type CardStatus = 'planned' | 'drafted' | 'kept' | 'drifted' | 'unplanned' | 'found'
+export type CardStatus = 'planned' | 'drafted'
 export const STATUS_COLORS: Record<CardStatus, string> = {
-  planned: '#868C96', drafted: '#5aafe0', kept: '#57A874', drifted: '#E5C07B', unplanned: '#A07ACA', found: '#2DD4BF',
+  planned: '#868C96', drafted: '#5aafe0',
 }
 
 export interface Beat { name: string; pct: number }
@@ -92,8 +94,6 @@ export function emptyPlanner(): PlannerData {
     synopsis: {},
     beat_template: 'none',
     hidden_lanes: [],
-    dismissed: [],
-    plot_walker: false,
     compact: true,
   }
 }
@@ -108,7 +108,7 @@ export function ensurePlanner(book: BookData | null): PlannerData {
     ? baseLanes
     : [{ id: MAIN_LANE_ID, name: 'Main plot', kind: 'main' as const, color: MAIN_LANE_COLOR }, ...baseLanes]
   const notes = baseNotes.some(n => n.system === 'dead') ? baseNotes : [...baseNotes, deadNote()]
-  return { ...base, lanes, cards: base.cards ?? [], notes, synopsis: base.synopsis ?? {}, hidden_lanes: base.hidden_lanes ?? [], dismissed: base.dismissed ?? [] }
+  return { ...base, lanes, cards: base.cards ?? [], notes, synopsis: base.synopsis ?? {}, hidden_lanes: base.hidden_lanes ?? [] }
 }
 
 // ── The manuscript, as the Planner sees it ─────────────────────────────────
@@ -122,15 +122,30 @@ export interface PlannerChapter {
   drafted: boolean
 }
 
-// Body chapters in manuscript order. Scenes are counted from scene breaks;
-// an empty chapter has no scenes and is drawn dimmed on the timeline.
+// Body chapters in manuscript order. Scene breaks are counted here with the
+// same rule the backend applies, so a chapter with words always has at least
+// one scene to link a card to.
 export function bookChapters(book: BookData | null): PlannerChapter[] {
   if (!book) return []
   return book.body.map((ch, i) => {
     const words = countWords(stripHtml(ch.content || ''))
-    const breaks = (ch.content.match(/<hr\b[^>]*>/gi) ?? []).length
-    return { id: ch.id ?? `body/${i}`, num: i + 1, title: ch.title || '', words, scenes: words > 0 ? breaks + 1 : 0, drafted: words > 0 }
+    const id = ch.id ?? `body/${i}`
+    const scenes = words > 0 ? sceneBreaks(ch.content || '') + 1 : 0
+    return { id, num: i + 1, title: ch.title || '', words, scenes: words > 0 ? scenes : 0, drafted: words > 0 }
   })
+}
+
+// Scene breaks in a chapter's HTML: a horizontal rule, or a paragraph whose
+// whole text is a centred break marker. The marker list is the one the
+// backend applies (internal/indexing/scenes.go sceneBreakMarker), form for
+// form, so the count before the first analysis is the count after it.
+const BREAK_MARKERS = /^(?:\*\s*\*\s*\*|\*{3,}|⁂|#\s*#\s*#|#{3,}|-\s*-\s*-|-{3,}|~\s*~\s*~|\.\s*\.\s*\.)$/
+function sceneBreaks(html: string): number {
+  const rules = (html.match(/<hr\b[^>]*>/gi) ?? []).length
+  const paragraphs = (html.match(/<p\b[^>]*>[\s\S]*?<\/p>/gi) ?? [])
+    .filter(p => BREAK_MARKERS.test(stripHtml(p).replace(/\s+/g, ' ').trim()))
+    .length
+  return rules + paragraphs
 }
 
 export interface CodexPerson {
@@ -155,57 +170,89 @@ export function firstName(name: string): string {
 
 // ── Cards on screen ────────────────────────────────────────────────────────
 
-// A card as the views draw it: the persisted card plus its derived status,
-// or an unplanned proposal from the narrative engine standing in as a card.
+// A card as the views draw it: the persisted card plus its derived status.
 export interface DisplayCard extends PlannerCard {
   st: CardStatus
-  unplanned?: boolean
-  scene?: number
 }
 
+// The status the Planner shows for a card: drafted once it is linked to a
+// scene, planned until then.
 export function statusOf(card: PlannerCard): CardStatus {
   return card.link ? 'drafted' : 'planned'
 }
 
-export const adoptedId = (detectedId: string) => `adopt-${detectedId}`
-
-// Planner cards plus, when Plot Walker is on, the engine's unplanned
-// proposals that have been neither adopted nor dismissed.
-export function displayCards(planner: PlannerData, detected: PlannerDetectedCard[]): DisplayCard[] {
-  const cards: DisplayCard[] = planner.cards.map(c => ({ ...c, st: statusOf(c) }))
-  if (!planner.plot_walker) return cards
-  const dismissed = new Set(planner.dismissed ?? [])
-  const adopted = new Set(planner.cards.map(c => c.id))
-  for (const d of detected) {
-    if (dismissed.has(d.id) || adopted.has(adoptedId(d.id))) continue
-    cards.push({
-      id: d.id, title: d.title, synopsis: d.synopsis, lines: [MAIN_LANE_ID], who: d.who, chapter_id: d.chapter_id,
-      link: { chapter_id: d.chapter_id, scene: d.scene }, status: 'planned', dev_kind: d.kind, evidence: d.evidence,
-      st: 'unplanned', unplanned: true, scene: d.scene,
-    })
-  }
-  return cards
+// Every card the canvas draws, with its derived status.
+export function displayCards(planner: PlannerData): DisplayCard[] {
+  return planner.cards.map(c => ({ ...c, st: statusOf(c) }))
 }
+
 
 export function laneChips(card: PlannerCard, lanes: PlannerLane[]): PlannerLane[] {
   return card.lines.map(id => lanes.find(l => l.id === id)).filter((l): l is PlannerLane => !!l)
 }
 
-// The names to store beside a card's `who`: the codex name for each ID, else
-// the name the card already recorded for that ID, else the ID itself.
+const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
+
+// The codex person a card's `who` entry means now. Codex IDs are positional
+// and reassigned by re-indexing, so the name stored beside the ID is the
+// durable key: the person under the ID counts only while that name is still
+// theirs (their name or an alias); otherwise the person now carrying the
+// stored name, if any. With no stored name the ID alone decides.
+export function whoPerson(id: string, stored: string | undefined, codex: CodexPerson[]): CodexPerson | undefined {
+  const byId = codex.find(c => c.id === id)
+  if (!stored) return byId
+  if (byId && byId.aliases.some(a => sameName(a, stored))) return byId
+  return codex.find(c => c.aliases.some(a => sameName(a, stored)))
+}
+
+// The name previously stored beside an ID on a card, if any.
+const storedName = (id: string, previous?: Pick<PlannerCard, 'who' | 'who_names'>): string | undefined => {
+  const at = previous?.who.indexOf(id) ?? -1
+  return at >= 0 ? previous?.who_names?.[at] : undefined
+}
+
+// The names to store beside a card's `who`: the current codex name of the
+// person each ID means (see whoPerson), else the name the card already
+// recorded for that ID, else the ID itself.
 export function whoNames(who: string[], codex: CodexPerson[], previous?: Pick<PlannerCard, 'who' | 'who_names'>): string[] {
   return who.map(id => {
-    const known = codex.find(c => c.id === id)?.name
-    if (known) return known
-    const at = previous?.who.indexOf(id) ?? -1
-    return (at >= 0 ? previous?.who_names?.[at] : undefined) ?? id
+    const stored = storedName(id, previous)
+    return whoPerson(id, stored, codex)?.name ?? stored ?? id
   })
 }
 
-// A card's people by first name: the codex name for each ID, else the name
-// recorded on the card when the ID was set, else the raw ID.
+// A card's `who` and `who_names` as they should be written now: every ID
+// re-bound to the codex person its stored name means (an ID reassigned to
+// someone else is replaced by the right person's current ID), names aligned
+// beside them, each person once.
+export function rebindWho(who: string[], codex: CodexPerson[], previous?: Pick<PlannerCard, 'who' | 'who_names'>): Pick<PlannerCard, 'who' | 'who_names'> {
+  const bound: string[] = []
+  const names: string[] = []
+  for (const id of who) {
+    const stored = storedName(id, previous)
+    const person = whoPerson(id, stored, codex)
+    const next = person?.id ?? id
+    if (bound.includes(next)) continue
+    bound.push(next)
+    names.push(person?.name ?? stored ?? id)
+  }
+  return { who: bound, who_names: names }
+}
+
+// A card's people by first name: the current codex name of the person each
+// ID means, else the name recorded on the card when the ID was set, else the
+// raw ID.
 export function whoText(card: PlannerCard, codex: CodexPerson[]): string {
-  return card.who.map((id, i) => firstName(codex.find(c => c.id === id)?.name ?? card.who_names?.[i] ?? id)).join(', ')
+  return card.who.map((id, i) => {
+    const stored = card.who_names?.[i]
+    return firstName(whoPerson(id, stored, codex)?.name ?? stored ?? id)
+  }).join(', ')
+}
+
+// Whether a card's `who` includes a codex person, by what its entries mean
+// now rather than by raw ID.
+export function whoIncludes(card: Pick<PlannerCard, 'who' | 'who_names'>, person: CodexPerson, codex: CodexPerson[]): boolean {
+  return card.who.some((id, i) => whoPerson(id, card.who_names?.[i], codex)?.id === person.id)
 }
 
 export function chapterLabel(ch: PlannerChapter | undefined, fallback = 'Later'): string {
@@ -274,32 +321,6 @@ export function columnConnectors(cardsInColumn: DisplayCard[], rows: LaneRow[], 
 export function beatMarks(template: string | undefined, gridWidth: number): { name: string; left: number }[] {
   if (!template || !(template in BEATS)) return []
   return BEATS[template as Exclude<BeatTemplateId, 'none'>].map(b => ({ name: b.name, left: Math.round(b.pct * gridWidth) }))
-}
-
-// ── Synopsis ───────────────────────────────────────────────────────────────
-
-// Each chapter's paragraph is its cards' synopses in timeline order (lane
-// order, then card order). Chapters without cards stay blank, never invented.
-export function generatedSynopsis(planner: PlannerData, chapterId: string): string {
-  const laneOrder = new Map(planner.lanes.map((l, i) => [l.id, i]))
-  return planner.cards
-    .filter(c => c.chapter_id === chapterId && c.synopsis.trim())
-    .sort((a, b) => (laneOrder.get(a.lines[0]) ?? 99) - (laneOrder.get(b.lines[0]) ?? 99))
-    .map(c => c.synopsis.trim())
-    .join(' ')
-}
-
-export function synopsisText(planner: PlannerData, chapterId: string): string {
-  const edited = planner.synopsis?.[chapterId]
-  return edited !== undefined ? edited : generatedSynopsis(planner, chapterId)
-}
-
-export function synopsisMarkdown(planner: PlannerData, chapters: PlannerChapter[]): string {
-  return chapters
-    .map(ch => ({ ch, text: synopsisText(planner, ch.id) }))
-    .filter(r => r.text.trim())
-    .map(r => `## Chapter ${r.ch.num}${r.ch.title ? ` — ${r.ch.title}` : ''}\n\n${r.text}`)
-    .join('\n\n')
 }
 
 // ── Dead ideas ─────────────────────────────────────────────────────────────
@@ -461,10 +482,4 @@ export function parseOutline(text: string, chapters: PlannerChapter[], codex: Co
     return { proposals: grouped, titles }
   }
   return { proposals: out, titles }
-}
-
-// The quoted passages behind a card, for the inspector. Adopted cards carry
-// revision-bound anchors from the narrative engine; hand-made cards have none.
-export function evidenceText(card: PlannerCard | { evidence?: { quote: string }[] }): string {
-  return (card.evidence ?? []).map(e => e.quote).filter(Boolean).join(' ')
 }

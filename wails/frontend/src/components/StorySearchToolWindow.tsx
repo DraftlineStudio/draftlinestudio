@@ -6,11 +6,8 @@ import type { Section } from '../types/draftline'
 import AskPanel from './storysearch/AskPanel'
 import ContinuityPanel from './storysearch/ContinuityPanel'
 import EvidenceIndexPanel from './storysearch/EvidenceIndexPanel'
-import StoryMapPanel from './storysearch/StoryMapPanel'
-import ThreadsPanel from './storysearch/ThreadsPanel'
-import ReviewDeskPanel from './storysearch/ReviewDeskPanel'
 
-type ToolView = 'map' | 'threads' | 'review' | 'continuity' | 'search' | 'evidence'
+type ToolView = 'continuity' | 'search' | 'evidence'
 
 /** Collapsed height of the bar; the expand toggle swaps between this and tall. */
 const TALL_HEIGHT = 560
@@ -28,27 +25,14 @@ export default function StorySearchToolWindow() {
   })))
   const [panelHeight, setPanelHeight] = useState(height)
   const [restoreHeight, setRestoreHeight] = useState(height)
-  const [activeView, setActiveView] = useState<ToolView>('map')
+  const [activeView, setActiveView] = useState<ToolView>('search')
   const [continuityCounts, setContinuityCounts] = useState<{ review: number; info: number } | null>(null)
-  const [reviewUndecided, setReviewUndecided] = useState<number | null>(null)
   // Stable identities: the panels report counts from effects, so a new
   // function each render would loop.
   const reportCounts = useCallback((counts: { review: number; info: number } | null) => setContinuityCounts(counts), [])
-  const reportReviewCount = useCallback((undecided: number) => setReviewUndecided(undecided), [])
-  const openThreadsTab = useCallback(() => setActiveView('threads'), [])
-
-  // The Story Graph, Threads, and Review surfaces are disconnected while the
-  // manuscript-memory engine (v5) is rebuilt; their badges stay quiet.
-  const reviewBadge = reviewUndecided ?? 0
 
   const subtitle = useMemo(() => {
     switch (activeView) {
-      case 'map':
-        return 'story time · rebuilding on the v5 narrative engine'
-      case 'threads':
-        return 'obligations the story has opened · rebuilding'
-      case 'review':
-        return 'detections · rebuilding on the v5 narrative engine'
       case 'continuity':
         return 'review questions · paired sources'
       case 'search':
@@ -102,22 +86,6 @@ export default function StorySearchToolWindow() {
     <section className="story-search-window" style={{ height: panelHeight }} aria-label="Story tools">
       <div className="story-search-resizer" onPointerDown={beginResize} />
       <header className="story-search-header">
-        <Tab view="map" active={activeView} onSelect={setActiveView} label="Story Map">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 12h4l2-7 4 14 2-7h6" />
-          </svg>
-        </Tab>
-        <Tab view="threads" active={activeView} onSelect={setActiveView} label="Threads">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 4v13M5 6h11l-2 3.5L16 13H5" />
-          </svg>
-        </Tab>
-        <Tab view="review" active={activeView} onSelect={setActiveView} label="Review">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 3l9 5-9 5-9-5 9-5M3 13l9 5 9-5" />
-          </svg>
-          {reviewBadge > 0 && <small className="story-search-tab-badge">{reviewBadge > 99 ? '99+' : reviewBadge}</small>}
-        </Tab>
         <Tab view="continuity" active={activeView} onSelect={setActiveView} label="Continuity">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="9" /><path d="M8.5 12l2.5 2.5 4.5-5" />
@@ -142,7 +110,7 @@ export default function StorySearchToolWindow() {
         <button
           type="button"
           className={`story-search-icon-btn ${activeView === 'evidence' ? 'active' : ''}`}
-          onClick={() => setActiveView(activeView === 'evidence' ? 'map' : 'evidence')}
+          onClick={() => setActiveView(activeView === 'evidence' ? 'search' : 'evidence')}
           title={`All deterministic detections${evidenceCount ? ` · ${evidenceCount} records` : ''}`}
           aria-label="Open all deterministic detections"
         >
@@ -183,9 +151,6 @@ export default function StorySearchToolWindow() {
         </button>
       </header>
 
-      {activeView === 'map' && book && <StoryMapPanel book={book} onNavigate={navigateSource} />}
-      {activeView === 'threads' && book && <ThreadsPanel book={book} onNavigate={navigateSource} />}
-      {activeView === 'review' && book && <ReviewDeskPanel book={book} onNavigate={navigateSource} onCount={reportReviewCount} onOpenThreads={openThreadsTab} />}
       {activeView === 'continuity' && book && <ContinuityPanel book={book} onNavigate={navigateSource} onCounts={reportCounts} />}
       {activeView === 'search' && book && <AskPanel book={book} onNavigate={navigateSource} />}
       {activeView === 'evidence' && book && <EvidenceIndexPanel book={book} onNavigate={navigateSource} />}

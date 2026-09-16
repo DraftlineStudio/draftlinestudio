@@ -58,8 +58,6 @@ export function GetCharacterTimeline(arg1:types.BookData,arg2:string):Promise<ty
 
 export function GetCurrentFile():Promise<string>;
 
-export function GetFingerprintTextDiagnostics(arg1:types.BookData):Promise<types.FingerprintTextDiagnostics>;
-
 export function GetRecentProjects():Promise<Array<types.RecentProject>>;
 
 export function HasAPIKey():Promise<boolean>;
@@ -93,8 +91,6 @@ export function OpenCodexAuth():Promise<void>;
 export function OpenRecentProject(arg1:string):Promise<types.BookData>;
 
 export function PickBookPath():Promise<string>;
-
-export function PlannerDetectCards(arg1:types.BookData):Promise<main.PlannerDetection>;
 
 export function PluginInvoke(arg1:string,arg2:string,arg3:string):Promise<string>;
 
@@ -145,7 +141,5 @@ export function StopReadAloudMemLog():Promise<void>;
 export function TakePendingOpenPath():Promise<string>;
 
 export function TestLocalAI(arg1:string):Promise<types.AIRewriteResult>;
-
-export function UpdateStoryAuthorModel(arg1:types.BookData,arg2:types.StoryAuthorModel):Promise<types.FullAnalysisResult>;
 
 export function VerifyReadAloudModel():Promise<readaloud.VerifyResult>;

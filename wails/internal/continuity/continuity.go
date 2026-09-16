@@ -34,8 +34,9 @@ var conceptStop = map[string]bool{
 	"you": true, "your": true,
 }
 
-// Build derives review prompts from the current evidence, character, and
-// timeline fingerprints. It does not persist conclusions or modify the book.
+// Build derives review prompts from the current evidence index, the
+// character index, and the source-backed timeline. It does not persist
+// conclusions or modify the book.
 func Build(book types.BookData) types.ContinuityReport {
 	report := types.ContinuityReport{Success: true, Engine: engine, Signals: []types.ContinuitySignal{}, Categories: []types.ContinuityFacet{}, Characters: []types.ContinuityFacet{}}
 	if book.Analysis.Evidence == nil {
@@ -46,7 +47,6 @@ func Build(book types.BookData) types.ContinuityReport {
 	report.Signals = append(report.Signals, characterSignals(book)...)
 	report.Signals = append(report.Signals, knowledgeSignals(book)...)
 	report.Signals = append(report.Signals, attributeSignals(book)...)
-	report.Signals = append(report.Signals, fingerprintSignals(book)...)
 	timeline := storytimeline.Build(book)
 	if timeline.Success {
 		report.Signals = append(report.Signals, clockSignals(timeline)...)
@@ -55,37 +55,6 @@ func Build(book types.BookData) types.ContinuityReport {
 	sortSignals(report.Signals)
 	finishReport(&report, book)
 	return report
-}
-
-// fingerprintSignals projects manuscript-memory inspections (v5) into
-// continuity signals. Cross-scope divergences are reported as informational
-// so deliberate flashbacks, dreams, and simulations are not flagged as
-// errors.
-func fingerprintSignals(book types.BookData) []types.ContinuitySignal {
-	if book.Analysis.Fingerprint == nil {
-		return nil
-	}
-	result := []types.ContinuitySignal{}
-	records := map[string]types.EvidenceRecord{}
-	for _, record := range book.Analysis.Evidence.Records {
-		records[record.ID] = record
-	}
-	for _, item := range book.Analysis.Fingerprint.Inspections {
-		sources := []types.ContinuitySource{}
-		for _, side := range item.Sides {
-			for _, span := range side.EvidenceSpans {
-				if record, ok := records[span.EvidenceID]; ok {
-					sources = append(sources, sourceFromRecord(book, record))
-				}
-			}
-		}
-		severity := item.Severity
-		if item.ScopeAssessment == "cross_scope_divergence" {
-			severity = "info"
-		}
-		result = append(result, signal("memory-"+item.Kind, "story", severity, item.Title, item.Detail, nil, nil, sources, item.Confidence))
-	}
-	return result
 }
 
 func characterSignals(book types.BookData) []types.ContinuitySignal {

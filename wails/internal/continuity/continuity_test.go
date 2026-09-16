@@ -186,3 +186,30 @@ func TestDecisionsForUnknownOrInvalidSignalsAreIgnored(t *testing.T) {
 		t.Fatal("counts changed despite no valid decision being applied")
 	}
 }
+
+
+// Every signal family the panel still has, with no story fingerprint on the
+// book at all. The experimental narrative inspections used to add rows here;
+// their removal must not take the evidence-based checks with them.
+func TestBuildProducesEveryEvidenceSignalWithoutAFingerprint(t *testing.T) {
+	book := testBook()
+	book.StoryBible.Characters = []types.Character{
+		{ID: "ruiz", Name: "Ruiz", EntityKind: "person", IsAutoDetected: true, DetectionStatus: "accepted", DetectionScore: .99, Aliases: []string{"Detective Ruiz"}, MentionCount: 12, ChapterMentions: map[int]int{0: 4, 1: 8}},
+	}
+	book.Analysis.Evidence.Records = []types.EvidenceRecord{
+		evidence("ruiz-source", 0, 10, "Ruiz entered the station.", "fact", "state", []string{"ruiz"}, []string{"Ruiz"}),
+	}
+
+	report := Build(book)
+	if !report.Success {
+		t.Fatalf("continuity report failed: %s", report.Error)
+	}
+	// The one family that needs no extra fixture: a character named only by
+	// a surname while a fuller form exists in the aliases.
+	assertSignal(t, report, "missing-given-name")
+	for _, signal := range report.Signals {
+		if strings.HasPrefix(signal.Kind, "memory-") {
+			t.Fatalf("narrative inspection rows should be gone, found %q", signal.Kind)
+		}
+	}
+}

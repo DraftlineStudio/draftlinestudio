@@ -1,7 +1,8 @@
 # Analysis Sidebars
 
-The analysis sidebar suite replaces the retired Story Bible / Plot Walker planning
-panes (removed in 0.16.02449) and the old single Story Analysis pane. Each tool has
+The analysis sidebar suite replaces the retired Story Bible and manual plotting
+panes (beat sheet, foreshadowing ledger, knowledge matrix; removed in
+0.16.02449) and the old single Story Analysis pane. Each tool has
 one glyph on the rail and one focused panel, following the suite's design reference
 (sections 3a–3g). Panels: Signals (hub overview), Prose, Pacing, Chapters,
 Worth Reviewing, and AI Analysis — plus the redesigned Writing Dashboard (documented

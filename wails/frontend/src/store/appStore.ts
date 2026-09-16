@@ -24,7 +24,6 @@ export interface AppSettings {
   grammar_check_enabled: boolean
   cast_enabled: boolean
   story_bible_enabled: boolean
-  plot_walker_enabled: boolean
   analysis_enabled: boolean
   analysis_cpu_profile: 'adaptive' | 'gentle' | 'balanced' | 'fast'
   // Read Aloud (opt-in local TTS)
@@ -142,7 +141,6 @@ const DEFAULT_SETTINGS: AppSettings = {
   grammar_check_enabled: true,
   cast_enabled: true,
   story_bible_enabled: true,
-  plot_walker_enabled: true,
   analysis_enabled: true,
   analysis_cpu_profile: 'adaptive',
   read_aloud_enabled: false,

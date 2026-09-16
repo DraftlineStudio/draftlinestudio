@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 
-	"draftline/internal/fingerprint"
 	"draftline/internal/indexing"
 	"draftline/internal/types"
 
@@ -52,7 +51,6 @@ func (a *App) AnalyzeBook(bookData types.BookData) types.FullAnalysisResult {
 	}
 	bookData.Analysis.Relationships = relationships
 	bookData.Analysis.Evidence = indexing.AnalyzeEvidenceWithOptions(&bookData, a.emitAnalysisProgress, pool)
-	bookData.Analysis.Fingerprint = fingerprint.Build(&bookData, a.emitAnalysisProgress)
 	bookData.Analysis.Story = indexing.AnalyzeStory(&bookData, a.emitAnalysisProgress)
 	if bookData.Analysis.Version < 6 {
 		bookData.Analysis.Version = 6

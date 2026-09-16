@@ -12,6 +12,7 @@ const NAME_WIDTH = 208
 /** Chapter column widths, narrow → wide. */
 const CHAPTER_WIDTHS = [46, 78, 128, 210] as const
 
+
 const KEY_BEAT_TYPES = new Set(['turning_point', 'conflict', 'resolution', 'discovery'])
 const NOTABLE_BEAT_TYPES = new Set(['introduction', 'first_interaction', 'time_reference'])
 const BEAT_TYPE_COLORS: Record<string, string> = {
@@ -40,6 +41,7 @@ type Hover =
   | { kind: 'beat'; x: number; y: number; event: StoryTimelineEvent }
   | { kind: 'cross'; x: number; y: number; a: string; b: string; chapter: number; interactions: number }
   | null
+
 
 /**
  * The Character Center's large-format weave: a manuscript-order view of
@@ -137,6 +139,7 @@ export default function CharacterInterweave({ book, characters, relationships, s
       }),
     )
   }, [relationships, position, showCrossings, chapterWidth, chapterCount, characters])
+
 
   const nameOf = (id: string) => characters[position.get(id) ?? -1]?.name ?? 'Unknown'
   const relatedToSelection = useMemo(() => {
@@ -347,6 +350,12 @@ export default function CharacterInterweave({ book, characters, relationships, s
       </div>
     </div>
   )
+}
+
+/** Even placement of the nth of `total` marks inside one chapter column. */
+export function spread(index: number, total: number): number {
+  if (total <= 1) return 0.5
+  return 0.15 + (index / (total - 1)) * 0.7
 }
 
 /**

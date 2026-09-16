@@ -27,9 +27,8 @@ var (
 	sceneBreakLineRe = regexp.MustCompile(`\n\s*` + sceneBreakMarker + `\s*\n`)
 
 	// sceneBreakParagraphRe matches a whole paragraph that is nothing but a
-	// marker: the one scene-break rule shared by scene detection, the
-	// manuscript memory's scene index, the isolated narrative engine's block
-	// scenes, and the Planner's scene numbers.
+	// marker: the one scene-break rule shared by scene detection and the
+	// Planner's scene numbers.
 	sceneBreakParagraphRe = regexp.MustCompile(`^\s*` + sceneBreakMarker + `\s*$`)
 
 	// leadingSceneBreakRe matches a marker line at the start of a sentence.
@@ -117,7 +116,11 @@ func SceneAt(text string, offset int) int {
 }
 
 // SceneCount returns how many scenes stripped chapter text has: zero for a
-// chapter with no prose, otherwise one more than its scene breaks.
+// chapter with no prose, otherwise one more than its scene breaks. Every
+// marker paragraph opens a scene, including one at the top of a chapter
+// and each of two in a row, so a chapter that opens with a marker has an
+// empty first scene; the writer's marker is the rule, not the prose around
+// it.
 func SceneCount(text string) int {
 	if strings.TrimSpace(text) == "" {
 		return 0

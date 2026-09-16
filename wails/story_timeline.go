@@ -6,7 +6,8 @@ import (
 )
 
 // BuildStoryTimeline returns a deterministic, source-backed manuscript
-// timeline without resolving ambiguous prose into invented calendar dates.
+// timeline built from the evidence index, without resolving ambiguous prose
+// into invented calendar dates.
 func (a *App) BuildStoryTimeline(book types.BookData) types.StoryTimelineResult {
 	return storytimeline.Build(book)
 }

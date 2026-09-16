@@ -110,10 +110,6 @@ export function GetCurrentFile() {
   return window['go']['main']['App']['GetCurrentFile']();
 }
 
-export function GetFingerprintTextDiagnostics(arg1) {
-  return window['go']['main']['App']['GetFingerprintTextDiagnostics'](arg1);
-}
-
 export function GetRecentProjects() {
   return window['go']['main']['App']['GetRecentProjects']();
 }
@@ -180,10 +176,6 @@ export function OpenRecentProject(arg1) {
 
 export function PickBookPath() {
   return window['go']['main']['App']['PickBookPath']();
-}
-
-export function PlannerDetectCards(arg1) {
-  return window['go']['main']['App']['PlannerDetectCards'](arg1);
 }
 
 export function PluginInvoke(arg1, arg2, arg3) {
@@ -284,10 +276,6 @@ export function TakePendingOpenPath() {
 
 export function TestLocalAI(arg1) {
   return window['go']['main']['App']['TestLocalAI'](arg1);
-}
-
-export function UpdateStoryAuthorModel(arg1, arg2) {
-  return window['go']['main']['App']['UpdateStoryAuthorModel'](arg1, arg2);
 }
 
 export function VerifyReadAloudModel() {

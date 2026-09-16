@@ -18,7 +18,6 @@ type AppSettings struct {
 	GrammarCheckEnabled     bool     `json:"grammar_check_enabled"`
 	CastEnabled             bool     `json:"cast_enabled"`
 	StoryBibleEnabled       bool     `json:"story_bible_enabled"`
-	PlotWalkerEnabled       bool     `json:"plot_walker_enabled"`
 	AnalysisEnabled         bool     `json:"analysis_enabled"`
 	// Read Aloud is opt-in: enabling it offers a one-time local voice-model
 	// download; synthesis then runs entirely offline in the webview.

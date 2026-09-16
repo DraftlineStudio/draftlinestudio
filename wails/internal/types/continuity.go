@@ -40,7 +40,7 @@ type ContinuityFacet struct {
 	Count int    `json:"count"`
 }
 
-// ContinuityReport is rebuilt on demand from the current story fingerprint.
+// ContinuityReport is rebuilt on demand from the current evidence index.
 type ContinuityReport struct {
 	Success         bool               `json:"success"`
 	Error           string             `json:"error,omitempty"`
@@ -65,7 +65,7 @@ type ContinuityDecision struct {
 }
 
 // ContinuityData persists author decisions across sessions. The report itself
-// is always rebuilt from the current fingerprint and never stored.
+// is always rebuilt from the current evidence index and never stored.
 type ContinuityData struct {
 	Decisions []ContinuityDecision `json:"decisions,omitempty"`
 	Version   int                  `json:"version,omitempty"`

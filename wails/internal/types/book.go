@@ -148,56 +148,29 @@ type PlannerLink struct {
 	Scene     int    `json:"scene"`
 }
 
-// PlannerEvidence keeps an adopted card tied to the exact manuscript revision
-// and passage that proposed it. A stale reference remains useful provenance but
-// must not be presented as evidence from the current manuscript.
-//
-// Space names the coordinate space of Start and End. "chapter" means byte
-// offsets into the chapter's stripped analysis text (the space the story
-// analysis, its evidence, and scene numbers share; Revision is then the
-// analysis content hash and BlockID is empty). An empty Space is the legacy
-// form: byte offsets into one block of the isolated narrative engine's
-// document, identified by BlockID under that engine's own revision.
-type PlannerEvidence struct {
-	SourceID  string `json:"source_id"`
-	Revision  string `json:"revision"`
-	ChapterID string `json:"chapter_id"`
-	Scene     int    `json:"scene"`
-	BlockID   string `json:"block_id"`
-	Start     int    `json:"start"`
-	End       int    `json:"end"`
-	Quote     string `json:"quote"`
-	Space     string `json:"space,omitempty"`
-}
-
-// PlannerEvidenceChapterSpace is the Space of an anchor whose offsets index
-// the chapter's stripped analysis text.
-const PlannerEvidenceChapterSpace = "chapter"
-
 // PlannerCard is one plot card. It sits on the first line in Lines at the
 // chapter in ChapterID (empty = "Later", not yet pinned to a chapter); other
 // lines are drawn as crossings. Who are character IDs; WhoNames are the same
 // people's names at the time Who was set, so a card still names its people
 // after re-indexing reassigns entity IDs. Changes and Stakes are the promise
-// the card makes, kept as separate fields so a future reconciliation against
-// extracted developments needs no migration.
+// the card makes, kept as separate fields.
 type PlannerCard struct {
-	ID        string            `json:"id"`
-	SourceID  string            `json:"source_id,omitempty"`
-	Title     string            `json:"title"`
-	Synopsis  string            `json:"synopsis"`
-	Lines     []string          `json:"lines"`
-	Who       []string          `json:"who"`
-	WhoNames  []string          `json:"who_names,omitempty"`
-	Changes   string            `json:"changes,omitempty"`
-	Stakes    string            `json:"stakes,omitempty"`
-	ChapterID string            `json:"chapter_id"`
-	Link      *PlannerLink      `json:"link,omitempty"`
-	Status    string            `json:"status"` // planned | drafted
-	Origin    string            `json:"origin,omitempty"`
-	DevKind   string            `json:"dev_kind,omitempty"`
-	Evidence  []PlannerEvidence `json:"evidence,omitempty"`
-	Updated   string            `json:"updated,omitempty"`
+	ID string `json:"id"`
+	// SourceID names the scratch note an imported outline card came from.
+	SourceID string `json:"source_id,omitempty"`
+	// Origin is how the card was made: by hand or from an imported outline.
+	Origin    string       `json:"origin,omitempty"`
+	Title     string       `json:"title"`
+	Synopsis  string       `json:"synopsis"`
+	Lines     []string     `json:"lines"`
+	Who       []string     `json:"who"`
+	WhoNames  []string     `json:"who_names,omitempty"`
+	Changes   string       `json:"changes,omitempty"`
+	Stakes    string       `json:"stakes,omitempty"`
+	ChapterID string       `json:"chapter_id"`
+	Link      *PlannerLink `json:"link,omitempty"`
+	Status    string       `json:"status"` // planned | drafted
+	Updated   string       `json:"updated,omitempty"`
 }
 
 // PlannerNote is a scratch note. System "dead" marks the automatic Dead Ideas
@@ -217,15 +190,12 @@ type PlannerNote struct {
 // chapter ID; chapters without an entry are generated from their cards.
 type PlannerData struct {
 	Version      int               `json:"version"`
-	SourceID     string            `json:"source_id,omitempty"`
 	Lanes        []PlannerLane     `json:"lanes"`
 	Cards        []PlannerCard     `json:"cards"`
 	Notes        []PlannerNote     `json:"notes"`
 	Synopsis     map[string]string `json:"synopsis,omitempty"`
 	BeatTemplate string            `json:"beat_template,omitempty"`
 	HiddenLanes  []string          `json:"hidden_lanes,omitempty"`
-	Dismissed    []string          `json:"dismissed,omitempty"`
-	PlotWalker   bool              `json:"plot_walker,omitempty"`
 	Compact      bool              `json:"compact,omitempty"`
 }
 

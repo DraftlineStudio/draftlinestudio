@@ -5,10 +5,11 @@ subplots, and character arcs, crossed with the manuscript's chapters, with plot
 cards where a line meets a chapter. It is opened from the **Planner** tab at
 the top of the left panel and closed from the **Manuscript** tab.
 
-It is dual-facet by design. A card can be typed by hand, proposed from an
-outline, or adopted from a development the narrative engine found in the text;
-however it arrived, it is the same kind of card with the same fields, so
-anything the engine can suggest a writer can also plan.
+It is a manual outliner. Every card on it was typed by the writer or proposed
+from an outline the writer pasted in and accepted. The Planner reads the codex
+for the people a card can name and the manuscript for the chapters and scenes
+a card can sit in; it does not read the prose and it never writes a card by
+itself.
 
 ## Views
 
@@ -26,10 +27,10 @@ glyph hides the tools panel.
 - **Board** — the same cards as index cards, grouped by chapter or by story
   line. Drag onto a column to move; drop onto a card to order before it.
 - **Scratchpad** — free-text notes. The *Dead ideas* note is automatic: every
-  card deleted from the timeline or board, and every dismissed unplanned
-  development, is written there as an outline entry so *Propose Cards* can
-  bring it back. A note can be excluded from analysis.
-- **Synopsis** — one paragraph per chapter, generated from that chapter's card
+  card deleted from the timeline or board is written there as an outline entry
+  so *Propose Cards* can bring it back. A note can be excluded from Propose
+  Cards.
+- **Synopsis** — one paragraph per chapter, made of that chapter's card
   synopses in timeline order. Paragraphs are editable; *Rebuild from Cards*
   discards edits. Chapters without cards stay blank rather than being
   invented. Export copies Markdown or saves it as a Scratchpad note.
@@ -37,12 +38,28 @@ glyph hides the tools panel.
 ## Cards
 
 A card has a title, synopsis, one or more lines (the first is where it sits),
-who (confirmed codex characters, stored with their names so the card still
-names its people after re-indexing reassigns codex IDs), what changes, stakes,
-a chapter position, and an optional scene link. Linking a card to a scene marks it **drafted**;
-otherwise it is **planned**. *What changes* and *stakes* are kept as separate
-fields so that a future reconciliation against extracted developments needs no
-data migration.
+who (confirmed codex characters, stored with their names; the stored name is
+what the card goes by, so it still names its people after re-indexing
+reassigns codex IDs, and choosing a person again re-binds the card to their
+current ID), what changes, stakes, a chapter position, and an optional scene
+link.
+
+A card has two statuses and nothing else decides them:
+
+| Status | What it means |
+| --- | --- |
+| **planned** | No scene link yet. |
+| **drafted** | Linked to a scene. |
+
+*What changes* and *stakes* are the promise the card makes. They are the
+writer's own note about the card, not something Draftline checks against the
+manuscript.
+
+Scene numbers follow the manuscript's scene breaks: a paragraph that is only
+`***`, `* * *`, `⁂`, `###`, `# # #`, `---`, `- - -`, `~ ~ ~` or `. . .`, or a
+horizontal rule, ends a scene. Every marker starts a scene, so a marker at the
+very top of a chapter, or two markers in a row, each open one (the first of
+them empty).
 
 ## Import Outline
 
@@ -59,45 +76,36 @@ accepted:
 - Names the codex knows pick the card's *who*; the first of them with a
   character lane picks the lane, otherwise the main line.
 - Unstructured text with many paragraphs, a short story for instance, is
-  clustered into scene-sized proposals across the drafted chapters.
+  clustered into scene-sized proposals across the drafted chapters. Headings,
+  beats, and lists always keep their explicit shape instead.
 
 The proposal view lets each card be retitled, re-laned, re-chaptered, or
 dropped. Accepting adds planned cards, creates any chapters the outline reaches
 past the end of the manuscript (empty, titled from the outline), and keeps the
 pasted text as a Scratchpad note.
 
-## Plot Walker
-
-With **Reconcile cards with the text** on, the narrative engine reads the
-manuscript and its proposals appear as dashed **unplanned** cards on the
-timeline, positioned by chapter and scene with the sentence that nominated them
-as evidence. *Adopt as card* turns one into an ordinary card that keeps its
-evidence; *Dismiss* sends it to Dead ideas. Detection runs when the Planner is
-opened with the toggle on and from the toolbar's *Refresh*, never per
-keystroke. Scene numbers follow the same rule as the story analysis: a
-paragraph that is only `***`, `* * *`, `⁂`, `###`, `---`, `~ ~ ~` or `. . .`,
-or a horizontal rule, ends a scene. Matching existing cards to developments
-(kept and drifted statuses) is the next Plot Walker milestone; the statuses
-are reserved in the model.
-
 ## Storage
 
 Planner data is stored in the `.draftline` archive as `planner.json`, written
 once the Planner has been used for a book: lanes, cards, notes, per-chapter
-synopsis edits, the beat template, hidden lanes, dismissed proposals, and the
-Plot Walker and density settings. Cards reference chapters by their stable
-chapter IDs, so reordering or renaming chapters does not move cards. See
-`docs/data-model/DATA-MODEL.md`.
+synopsis edits, the beat template, hidden lanes, and the compact view setting.
+Cards reference chapters by their stable chapter IDs, so reordering or renaming
+chapters does not move cards. Nothing derived from the manuscript is stored
+there. See `docs/data-model/DATA-MODEL.md`.
 
 ## Code
 
 - `components/planner/plannerModel.ts` — pure model: outline rules, layout,
-  synopsis generation, Dead ideas entries. Unit-tested.
+  card status, lane rows and crossings, Dead ideas entries. Unit-tested.
+- `components/planner/plannerSynopsis.ts` — the chapter synopsis a book's own
+  cards make, and its Markdown export with one trace line per card.
+  Unit-tested.
 - `store/plannerStore.ts` — view state and every mutation of the persisted
   data, written through the book store so changes ride the normal save and
   autosave path.
 - `components/planner/PlannerView.tsx`, `PlannerSidebar.tsx`,
   `PlannerPanel.tsx`, `PlannerDialogs.tsx` — the views, the left panel body,
   the tools panel with card inspector and glyph rail, and the dialogs.
-- Backend: `wails/planner.go` (detection binding over the narrative engine),
-  `internal/book` (archive read/write), `internal/types` (data types).
+- Backend: `internal/book/planner.go` (archive read/write and version check),
+  `internal/types/book.go` (the Planner records). The Planner has no Wails
+  binding of its own; it rides the book save path.

@@ -21,7 +21,7 @@ book.draftline (ZIP)
 │   └── ...
 │
 ├── analysis.json           # Rebuildable characters, relationships, story metrics, evidence
-├── planner.json            # Planner: story lines, cards, notes (optional)
+├── planner.json            # Planner: story lines, cards, notes, synopsis (optional)
 ├── history/                # Chapter snapshot history (format 2.2+)
 │   ├── index.json          # Snapshot metadata
 │   └── snapshots/          # Deduplicated chapter versions
@@ -55,6 +55,7 @@ interface BookData {
   is_indexed?: boolean
   last_indexed?: string  // ISO timestamp
   read_aloud_cast?: ReadAloudCast  // per-book voice casting
+  planner?: PlannerData            // Planner story lines, cards, notes
   analysis?: AnalysisData          // entity resolution + other analysis results
 }
 ```
@@ -93,21 +94,29 @@ Automatic snapshots are activity-driven: editing marks the affected chapter, and
 
 ### Planner
 
-`planner.json` is written once the Planner has been used for a book and holds
-the story-line timeline: `lanes` (main plot, subplots, character arcs keyed by
-`character_id`), `cards` (title, synopsis, `lines`, `who` with the matching
-`who_names`, `changes`, `stakes`, `chapter_id`, optional scene `link`,
-`status`, `origin`, and for adopted cards revision-bound `evidence` anchors —
-an anchor with `space: "chapter"` gives byte offsets into the chapter's
-stripped analysis text under the analysis content hash; one without a space
-is the older block-offset form), `notes` (scratch notes; the
-one with `system: "dead"` is the automatic Dead ideas note), per-chapter
-`synopsis` edits keyed by chapter ID, `beat_template`, `hidden_lanes`,
-`dismissed` proposal IDs, and the `plot_walker` and `compact` settings. Cards
-reference chapters by their stable IDs, never by index, so reordering
-chapters does not move cards; a card with an empty `chapter_id` sits in
-*Later*. A book that never opened the Planner has no `planner.json`. See
-`docs/frontend/PLANNER.md`.
+`planner.json` (version 1) is written once the Planner has been used for a
+book and holds everything the writer typed there:
+
+- `lanes`: the story lines (the main plot, typed subplots, and character arcs
+  keyed by `character_id`).
+- `cards`: `title`, `synopsis`, `lines`, `who` with the matching `who_names`,
+  `changes`, `stakes`, `chapter_id`, an optional scene `link`, `status`
+  (`planned` or `drafted`), `origin` (`manual` or `outline`), and `source_id`
+  for a card proposed from an imported outline note.
+- `notes`: scratch notes; the one with `system: "dead"` is the automatic
+  Dead ideas note, and a note may be `excluded` from Propose Cards.
+- `synopsis`: per-chapter synopsis edits keyed by chapter ID. A chapter with
+  no entry is generated from its cards instead.
+- `beat_template`, `hidden_lanes`, and `compact`: view settings.
+
+Cards reference chapters by their stable IDs, never by index, so reordering or
+renaming chapters does not move cards; a card with an empty `chapter_id` sits
+in *Later*. A book that never opened the Planner has no `planner.json`. An
+unknown version is refused rather than overwritten, so a file written by a
+newer Draftline is safe. See `docs/frontend/PLANNER.md`.
+
+The Planner stores no analysis results. Nothing in `planner.json` is derived
+from the manuscript.
 
 ### Derived Story Analysis
 
@@ -354,7 +363,7 @@ interface AppSettings {
 }
 ```
 
-(The full struct is `AppSettings` in `wails/internal/types/settings.go`; a few legacy keys — `dark_mode`, `story_bible_enabled`, `plot_walker_enabled`, `read_aloud_device`, `read_aloud_threads` — are retained for settings-file compatibility.)
+(The full struct is `AppSettings` in `wails/internal/types/settings.go`; a few legacy keys — `dark_mode`, `story_bible_enabled`, `read_aloud_device`, `read_aloud_threads` — are retained for settings-file compatibility.)
 
 ## File Format Version
 

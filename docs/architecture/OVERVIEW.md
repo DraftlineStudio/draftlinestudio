@@ -35,10 +35,10 @@ Draftline is a **desktop application** built on [Wails](https://wails.io/), whic
         +------------------+              +------------------+
 ```
 
-The diagram is simplified: the root Go files are a thin facade over 17
+The diagram is simplified: the root Go files are a thin facade over 18
 packages under `wails/internal/` (ai, ai/providers, backup, book, continuity,
-entityresolution, export, fingerprint, fsutil, indexing, logging, platform,
-readaloud, storysearch, storytimeline, types, ziputil).
+entityresolution, export, fsutil, indexing, instancelock, logging, platform,
+plugins, readaloud, storysearch, storytimeline, types, ziputil).
 
 ## Component Communication
 
@@ -131,7 +131,7 @@ Frontend shows diff for review
 | `analysis.go` | Local-analysis pipeline orchestration + progress events |
 | `ai_dispatch.go` | Routes AI requests to the configured provider |
 | `claude_cli.go` / `codex_auth.go` | Claude Code and Codex CLI drivers/auth |
-| `continuity.go` / `fingerprint.go` | Thin Wails delegates for the analysis engines |
+| `continuity.go` | Thin Wails delegate for the continuity engine |
 | `story_search.go` / `story_timeline.go` | Thin Wails delegates for search/timeline |
 | `readaloud.go` | Read Aloud bindings (native TTS) |
 | `fileopen.go` | OS file-open plumbing |
@@ -196,6 +196,7 @@ book.draftline (ZIP)
 │   └── ...
 ├── story_bible.json      # Characters, plot notes
 ├── analysis.json         # Rebuildable analysis (entities, evidence, metrics)
+├── planner.json          # Planner story lines, cards, notes (optional)
 ├── history/
 │   ├── index.json        # Chapter snapshot metadata
 │   └── snapshots/        # Deduplicated chapter versions

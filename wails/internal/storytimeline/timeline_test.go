@@ -145,3 +145,4 @@ func locationRecord(id, text, term, label string) types.EvidenceRecord {
 	record.NamedEntities = []types.EvidenceTerm{{Text: term, Label: label}}
 	return record
 }
+

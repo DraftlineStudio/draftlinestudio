@@ -26,6 +26,26 @@ func TestSceneBreakMarkerCountsOnce(t *testing.T) {
 	}
 }
 
+// Every marker paragraph opens a scene, including one at the top of a
+// chapter and each of two in a row: the writer's marker is the rule, so
+// the Planner, the story analysis, and the manuscript memory all count the
+// same scenes.
+func TestLeadingAndConsecutiveMarkersEachOpenAScene(t *testing.T) {
+	text := StripHTMLForAnalysis("<p>***</p><p>First.</p><p>***</p><p>* * *</p><p>Second.</p>")
+	if got := SceneCount(text); got != 4 {
+		t.Fatalf("SceneCount = %d, want 4 (an empty first scene, First, an empty scene, Second)", got)
+	}
+	if got := SceneAt(text, strings.Index(text, "First.")); got != 2 {
+		t.Fatalf("First. is in scene %d, want 2", got)
+	}
+	if got := SceneAt(text, strings.Index(text, "Second.")); got != 4 {
+		t.Fatalf("Second. is in scene %d, want 4", got)
+	}
+	if got := SceneCount(StripHTMLForAnalysis("<p>Only prose.</p>")); got != 1 {
+		t.Fatalf("SceneCount without markers = %d, want 1", got)
+	}
+}
+
 // The first sentence after a scene break must be indexed without the
 // marker attached, and its offsets must still locate the text — whether the
 // segmenter glued the marker to the front of that sentence or, when the
@@ -94,5 +114,21 @@ func TestSplitAtSceneBreaksLocatesEveryPiece(t *testing.T) {
 	}
 	if pieces[0].text != "Rhea walked into the tower" || pieces[2].text != "Tomas waited." {
 		t.Fatalf("unexpected pieces: %+v", pieces)
+	}
+}
+
+// Every marker form this rule accepts is mirrored by the Planner, which
+// counts scenes itself before the first analysis
+// (frontend/src/components/planner/plannerModel.ts BREAK_MARKERS). The two
+// lists are one list; a form added here is added there.
+func TestEverySceneBreakMarkerFormCountsOneBreak(t *testing.T) {
+	for _, marker := range []string{"* * *", "***", "****", "⁂", "# # #", "###", "####", "- - -", "---", "----", "~ ~ ~", ". . ."} {
+		text := "Rhea waited.\n\n" + marker + "\n\nTomas answered."
+		if got := SceneCount(text); got != 2 {
+			t.Fatalf("marker %q counted %d scenes, want 2", marker, got)
+		}
+	}
+	if got := SceneCount("Rhea waited.\n\n*** and then\n\nTomas answered."); got != 1 {
+		t.Fatalf("a paragraph that is not only a marker counted %d scenes, want 1", got)
 	}
 }

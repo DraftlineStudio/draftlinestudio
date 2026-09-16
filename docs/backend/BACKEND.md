@@ -14,7 +14,8 @@ wails/
 ├── claude_cli.go              # Claude Code CLI driver
 ├── codex_auth.go              # Codex CLI login flow
 ├── continuity.go              # Thin Continuity Wails delegate
-├── fingerprint.go             # Thin Story Fingerprint Wails delegate
+├── locking.go                 # Per-book open locks (multi-instance)
+├── plugins.go                 # Plugin discovery and sidecar bindings
 ├── story_search.go            # Thin Story Search Wails binding
 ├── story_timeline.go          # Thin Story Timeline Wails delegate
 ├── readaloud.go               # Read Aloud bindings (native TTS)
@@ -37,7 +38,6 @@ wails/
     │   ├── evidence.go        # Persistent source-located fact/event records
     │   ├── entities.go        # Entity resolution records and decisions
     │   ├── relationships.go   # Scene records, relationship graph
-    │   ├── fingerprint.go     # Story fingerprint (typed frames, ledgers)
     │   ├── continuity.go      # Continuity signals and sources
     │   ├── storyanalysis.go   # Rebuildable manuscript metrics
     │   ├── storysearch.go     # Story/Detail Search requests and results
@@ -93,13 +93,14 @@ wails/
     │   └── analysis_pool.go   # Stage-local worker pools + memory gate
     │
     ├── entityresolution/      # Mention → entity resolution engine
-    ├── fingerprint/           # Story fingerprint (frames, ledgers, developments)
     ├── continuity/            # Read-only continuity comparison engine
     ├── storytimeline/         # Evidence → manuscript-order timeline projection
     ├── readaloud/             # Native TTS synthesis engine
+    ├── instancelock/          # Per-book open locks (multi-instance)
+    ├── plugins/               # Plugin discovery and sidecar supervision
     │
     ├── storysearch/           # Local detail trails + confirmed alias expansion
-    │   ├── insight.go          # Query intent, fingerprint summaries, signals
+    │   ├── insight.go          # Query intent, chapter summaries, signals
     │   └── search.go           # Wails-independent source search engine
     │
     ├── fsutil/                # Atomic file writes
@@ -173,11 +174,6 @@ See [Analysis Concurrency and Performance](ANALYSIS-PERFORMANCE.md) for the
 stage-local pool design, large-manuscript memory gate, and measured 12-thread
 responsiveness results.
 
-See [Narrative Fingerprint Pipeline](NARRATIVE-FINGERPRINT.md) for the
-evidence/assertion/fingerprint/development boundary, epistemic and
-reality-scope model, and the three plain-text quality diagnostics used before
-higher-level visualization.
-
 Build 02476 adds author-owned review provenance without modifying source
 evidence. Confirm/reject status, a separate author interpretation, notes, pins,
 and review timestamps follow stable evidence IDs through reanalysis. The
@@ -192,10 +188,6 @@ local grammatical position; Draftline does not resolve pronouns or distant
 clause subjects by guesswork. Existing evidence classifications remain stable
 so the upgrade does not orphan compatible author review decisions.
 
-### [Story Structure](STORY-STRUCTURE.md)
-The rebuildable semantic hierarchy over the lossless fingerprint, including
-fixture-gated significant-event aggregation and durable author decisions.
-
 ### storytimeline/
 Deterministic projection of the persistent evidence index into a manuscript-
 order event trail. It merges classifications from the same source sentence,
@@ -205,10 +197,11 @@ explicit, relative, or manuscript-only timing without guessing dates.
 `story_timeline.go` is the thin Wails-facing delegate.
 
 ### continuity/
-Read-only comparison engine over the current story fingerprint. The first
-version emits explainable review prompts for confirmed-character identity and
-appearance gaps, paired knowledge states, a narrow set of physical attributes,
-nearby clock references, and chapter event density. Signals retain exact source
+Read-only comparison engine over the evidence index, the character index, and
+the source-backed timeline. It emits explainable review prompts in five
+families: a confirmed character with no established given name, knowledge
+states that arrive out of order, conflicting physical facts, clock references
+that run backwards, and thin chapters. Signals retain exact source
 coordinates and never mutate manuscript or evidence data. `continuity.go` is
 the thin Wails-facing delegate.
 

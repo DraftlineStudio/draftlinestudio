@@ -2,19 +2,20 @@
 // timeline, the card board, scratch notes, or the synopsis. Persisted data
 // comes from the book (planner.json); transient view state from plannerStore.
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useBookStore } from '../../store/bookStore'
 import { usePlannerStore } from '../../store/plannerStore'
 import type { PlannerLane } from '../../types/draftline'
 import {
-  BEAT_NAMES, beatMarks, bookChapters, chapterLabel, codexPeople, columnConnectors, countWords, displayCards, ensurePlanner,
-  generatedSynopsis, laneChips, laneRows, layoutMetrics, MAIN_LANE_ID, relativeStamp, STATUS_COLORS, synopsisText, whoText,
+  BEAT_NAMES, beatMarks, bookChapters, chapterLabel, codexPeople, columnConnectors, countWords, displayCards,
+  ensurePlanner, laneChips, laneRows, LATER_COLUMN_ID, layoutMetrics, MAIN_LANE_ID, relativeStamp, STATUS_COLORS, whoText,
   type CodexPerson, type DisplayCard, type PlannerChapter,
 } from './plannerModel'
+import { generatedSynopsis, synopsisEntries, synopsisText, synopsisTrace } from './plannerSynopsis'
 import PlannerDialogs from './PlannerDialogs'
 
-const LATER_ID = ''
+const LATER_ID = LATER_COLUMN_ID
 
 interface Column {
   id: string
@@ -48,9 +49,9 @@ function CardTile({ card, lane, codex, selected, compact, onSelect, onDragStart,
   const color = STATUS_COLORS[card.st]
   return (
     <div
-      className={`pl-card${selected ? ' selected' : ''}${card.unplanned ? ' unplanned' : ''}`}
+      className={`pl-card${selected ? ' selected' : ''}`}
       style={{ height: compact ? 66 : 92, borderLeftColor: lane?.color }}
-      draggable={!card.unplanned}
+      draggable
       onDragStart={onDragStart}
       onDragOver={onDropBefore ? e => e.preventDefault() : undefined}
       onDrop={onDropBefore}
@@ -70,15 +71,15 @@ function CardTile({ card, lane, codex, selected, compact, onSelect, onDragStart,
 }
 
 function TimelineView() {
-  const book = useBookStore(s => s.book)
-  const { selected, drag, detected, select, setDrag, moveCard, addCard, openLineDialog, openChapterDialog, openImport } = usePlannerStore(useShallow(s => ({
-    selected: s.selected, drag: s.drag, detected: s.detected, select: s.select, setDrag: s.setDrag, moveCard: s.moveCard,
+  const { selected, drag, select, setDrag, moveCard, addCard, openLineDialog, openChapterDialog, openImport } = usePlannerStore(useShallow(s => ({
+    selected: s.selected, drag: s.drag, select: s.select, setDrag: s.setDrag, moveCard: s.moveCard,
     addCard: s.addCard, openLineDialog: s.openLineDialog, openChapterDialog: s.openChapterDialog, openImport: s.openImport,
   })))
+  const book = useBookStore(s => s.book)
   const planner = ensurePlanner(book)
-  const chapters = useMemo(() => bookChapters(book), [book])
-  const codex = useMemo(() => codexPeople(book), [book])
-  const cards = displayCards(planner, detected)
+  const chapters = bookChapters(book)
+  const codex = codexPeople(book)
+  const cards = displayCards(planner)
   const compact = planner.compact !== false
   const hasBeats = !!planner.beat_template && planner.beat_template !== 'none'
   const m = layoutMetrics(compact, hasBeats)
@@ -140,7 +141,7 @@ function TimelineView() {
                       <CardTile
                         key={c.id} card={c} lane={planner.lanes.find(l => l.id === c.lines[0])} codex={codex} selected={selected === c.id} compact={compact}
                         onSelect={() => select(c.id)}
-                        onDragStart={e => { if (c.unplanned) { e.preventDefault(); return } e.dataTransfer.effectAllowed = 'move'; setDrag(c.id) }}
+                        onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; setDrag(c.id) }}
                       />
                     ))}
                   </div>
@@ -184,15 +185,14 @@ function TimelineView() {
 }
 
 function BoardView() {
-  const book = useBookStore(s => s.book)
-  const { selected, drag, detected, boardBy, select, setDrag, moveCard, addCard, openLineDialog, openChapterDialog } = usePlannerStore(useShallow(s => ({
-    selected: s.selected, drag: s.drag, detected: s.detected, boardBy: s.boardBy, select: s.select, setDrag: s.setDrag,
+  const { selected, drag, boardBy, select, setDrag, moveCard, addCard, openLineDialog, openChapterDialog } = usePlannerStore(useShallow(s => ({
+    selected: s.selected, drag: s.drag, boardBy: s.boardBy, select: s.select, setDrag: s.setDrag,
     moveCard: s.moveCard, addCard: s.addCard, openLineDialog: s.openLineDialog, openChapterDialog: s.openChapterDialog,
   })))
+  const book = useBookStore(s => s.book)
   const planner = ensurePlanner(book)
-  const chapters = useMemo(() => bookChapters(book), [book])
-  const codex = useMemo(() => codexPeople(book), [book])
-  const cards = displayCards(planner, detected)
+  const chapters = bookChapters(book)
+  const cards = displayCards(planner)
   const hidden = new Set(planner.hidden_lanes ?? [])
   const lanes = planner.lanes.filter(l => !hidden.has(l.id))
   const chapterOrder = new Map(chapters.map((c, i) => [c.id, i]))
@@ -233,9 +233,9 @@ function BoardView() {
                 return (
                   <div
                     key={c.id}
-                    className={`pl-board-card${selected === c.id ? ' selected' : ''}${c.unplanned ? ' unplanned' : ''}`}
-                    draggable={!c.unplanned}
-                    onDragStart={e => { if (c.unplanned) { e.preventDefault(); return } e.dataTransfer.effectAllowed = 'move'; setDrag(c.id) }}
+                    className={`pl-board-card${selected === c.id ? ' selected' : ''}`}
+                    draggable
+                    onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; setDrag(c.id) }}
                     onDragOver={e => e.preventDefault()}
                     onDrop={e => {
                       e.preventDefault(); e.stopPropagation()
@@ -247,7 +247,7 @@ function BoardView() {
                   >
                     <div className="pl-card-top">
                       <span className="pl-card-title">{c.title}</span>
-                      <span className="pl-card-dot" style={{ background: color }} />
+                      <span className="pl-card-dot" title={c.st} style={{ background: color }} />
                     </div>
                     <div className="pl-card-syn">{c.synopsis || '—'}</div>
                     <div className="pl-board-card-foot">
@@ -271,8 +271,8 @@ function BoardView() {
 }
 
 function ScratchView() {
-  const book = useBookStore(s => s.book)
   const { noteId, noteMono, updateNote, newNote } = usePlannerStore(useShallow(s => ({ noteId: s.noteId, noteMono: s.noteMono, updateNote: s.updateNote, newNote: s.newNote })))
+  const book = useBookStore(s => s.book)
   const planner = ensurePlanner(book)
   const note = planner.notes.find(n => n.id === noteId) ?? null
   if (!note) {
@@ -299,10 +299,11 @@ function ScratchView() {
 }
 
 function SynopsisView() {
-  const book = useBookStore(s => s.book)
   const setSynopsis = usePlannerStore(s => s.setSynopsis)
+  const book = useBookStore(s => s.book)
   const planner = ensurePlanner(book)
-  const chapters = useMemo(() => bookChapters(book), [book])
+  const chapters = bookChapters(book)
+  const cards = displayCards(planner)
   const refs = useRef<Record<string, HTMLTextAreaElement | null>>({})
   const grow = (el: HTMLTextAreaElement | null) => { if (!el) return; el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px` }
   useEffect(() => { Object.values(refs.current).forEach(grow) })
@@ -311,7 +312,8 @@ function SynopsisView() {
       <div className="pl-synopsis-inner">
         {chapters.map(ch => {
           const text = synopsisText(planner, ch.id)
-          const n = planner.cards.filter(c => c.chapter_id === ch.id).length
+          const entries = synopsisEntries(planner, ch.id)
+          const n = cards.filter(c => c.chapter_id === ch.id).length
           const edited = planner.synopsis?.[ch.id] !== undefined
           return (
             <div key={ch.id} className="pl-syn-row" id={`pl-syn-${ch.id}`}>
@@ -330,6 +332,15 @@ function SynopsisView() {
                 placeholder="No cards in this chapter."
                 spellCheck={false}
               />
+              {!edited && entries.length > 0 && (
+                <div className="pl-synopsis-traces">
+                  {entries.map((entry, i) => (
+                    <span key={`${entry.cardId}-${i}`} className="pl-synopsis-trace" title={entry.text}>
+                      {synopsisTrace(entry, chapters)}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           )
         })}
@@ -339,30 +350,23 @@ function SynopsisView() {
 }
 
 export default function PlannerView() {
-  const book = useBookStore(s => s.book)
-  const analysisRevision = useBookStore(s => s.analysisRevision)
-  const { view, boardBy, noteId, noteMono, detected, detecting, detectedRevision, setBoardBy, addCard, openLineDialog, setCompact, updateNote, askDeleteNote, toggleNoteMono, resetSynopsis, refreshDetected } = usePlannerStore(useShallow(s => ({
-    view: s.view, boardBy: s.boardBy, noteId: s.noteId, noteMono: s.noteMono, detected: s.detected, detecting: s.detecting, detectedRevision: s.detectedRevision,
+  const { view, boardBy, noteId, noteMono, setBoardBy, addCard, openLineDialog, setCompact, updateNote, askDeleteNote, toggleNoteMono, resetSynopsis } = usePlannerStore(useShallow(s => ({
+    view: s.view, boardBy: s.boardBy, noteId: s.noteId, noteMono: s.noteMono,
     setBoardBy: s.setBoardBy, addCard: s.addCard, openLineDialog: s.openLineDialog, setCompact: s.setCompact, updateNote: s.updateNote,
-    askDeleteNote: s.askDeleteNote, toggleNoteMono: s.toggleNoteMono, resetSynopsis: s.resetSynopsis, refreshDetected: s.refreshDetected,
+    askDeleteNote: s.askDeleteNote, toggleNoteMono: s.toggleNoteMono, resetSynopsis: s.resetSynopsis,
   })))
+  const book = useBookStore(s => s.book)
   const planner = ensurePlanner(book)
-  const chapters = useMemo(() => bookChapters(book), [book])
-  const cards = displayCards(planner, detected)
+  const chapters = bookChapters(book)
+  const cards = displayCards(planner)
   const note = planner.notes.find(n => n.id === noteId) ?? null
   const isCards = view === 'timeline' || view === 'board'
   const titles = { timeline: 'Timeline', board: 'Board', scratch: 'Scratchpad', synopsis: 'Synopsis' }
 
-  // Detection runs when Plot Walker is on and the text has changed since the
-  // last pass — on entering the Planner, never per keystroke.
-  useEffect(() => {
-    if (planner.plot_walker && detectedRevision !== analysisRevision && !detecting) void refreshDetected()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [planner.plot_walker, view])
-
-  const counts: Record<string, number> = {}
-  cards.forEach(c => { counts[c.st] = (counts[c.st] ?? 0) + 1 })
-  const statusSummary = (planner.plot_walker ? ['planned', 'drafted', 'unplanned'] : ['planned', 'drafted'])
+  // One derivation for the toolbar counts, so the toolbar, the overview and
+  // the sidebar cannot disagree.
+  const counts = cards.reduce<Record<string, number>>((acc, c) => ({ ...acc, [c.st]: (acc[c.st] ?? 0) + 1 }), {})
+  const statusSummary = (['planned', 'drafted'] as const)
     .filter(k => counts[k]).map(k => `${counts[k]} ${k}`).join(' · ')
   const synWords = chapters.reduce((a, ch) => a + countWords(synopsisText(planner, ch.id)), 0)
   const synChapters = chapters.filter(ch => generatedSynopsis(planner, ch.id)).length
@@ -381,11 +385,6 @@ export default function PlannerView() {
           <span className="pl-tool-sep" />
           <button className="toolbar-btn" title="New card on the main line" onClick={() => addCard(chapters[0]?.id ?? LATER_ID, MAIN_LANE_ID)}>+ New Card</button>
           <button className="toolbar-btn" title="New story line" onClick={openLineDialog}>+ New Line</button>
-          {planner.plot_walker && (
-            <button className="toolbar-btn" title="Read the manuscript again for unplanned developments" onClick={() => void refreshDetected()} disabled={detecting}>
-              {detecting ? 'Reading…' : 'Refresh'}
-            </button>
-          )}
           <span className="pl-tool-spacer" />
           <span className="pl-tool-status">{statusSummary}</span>
           <label className="settings-toggle">

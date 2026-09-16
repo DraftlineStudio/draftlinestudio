@@ -5,13 +5,15 @@
 // book and rides the normal save pipeline; this store holds no second copy.
 
 import { create } from 'zustand'
-import { PlannerDetectCards } from '../../wailsjs/go/main/App'
-import type { BeatTemplateId, PlannerCard, PlannerData, PlannerDetectedCard, PlannerLane, PlannerLink, PlannerNote } from '../types/draftline'
+import type {
+  BeatTemplateId, PlannerCard, PlannerData, PlannerLane,
+  PlannerLink, PlannerNote,
+} from '../types/draftline'
 import { useBookStore } from './bookStore'
 import { useAppStore } from './appStore'
 import {
-  adoptedId, bookChapters, codexPeople, deadIdeaBlock, ensurePlanner, LANE_PALETTE, MAIN_LANE_ID, newId, nowStamp,
-  parseOutline, whoNames, type ParsedOutline, type Proposal,
+  bookChapters, codexPeople, deadIdeaBlock, ensurePlanner, LANE_PALETTE, MAIN_LANE_ID, newId, nowStamp,
+  parseOutline, rebindWho, whoNames, type ParsedOutline, type Proposal,
 } from '../components/planner/plannerModel'
 
 export type PlannerView = 'timeline' | 'board' | 'scratch' | 'synopsis'
@@ -31,11 +33,6 @@ interface PlannerStore {
   importText: string
   importFromNoteId: string | null
   proposals: ParsedOutline | null
-  // Unplanned proposals from the narrative engine (Plot Walker on).
-  detected: PlannerDetectedCard[]
-  detecting: boolean
-  detectError: string
-  detectedRevision: number
 
   // View state
   pick: (view: PlannerView) => void
@@ -60,13 +57,10 @@ interface PlannerStore {
   moveCard: (id: string, chapterId: string, laneId: string | null, beforeId: string | null) => void
   deleteCard: (id: string) => void
   linkCard: (id: string, link: PlannerLink | null) => void
-  adoptDetected: (id: string) => void
-  dismissDetected: (id: string) => void
   addSubplot: (name: string) => void
   addCharacterLane: (characterId: string) => void
   toggleLaneHidden: (laneId: string) => void
   setBeatTemplate: (t: BeatTemplateId) => void
-  setPlotWalker: (on: boolean) => void
   setCompact: (compact: boolean) => void
   createChapter: (title: string) => void
 
@@ -92,16 +86,12 @@ interface PlannerStore {
   dropProposal: (id: string) => void
   backToPaste: () => void
   acceptProposals: () => void
-
-  // Detection
-  refreshDetected: () => Promise<void>
 }
 
 const initialUI = {
   view: 'timeline' as PlannerView, panelOpen: true, selected: null, drag: null, boardBy: 'chapter' as const,
   noteId: null, noteMono: false, linkOpen: false, chapterDialog: null, lineDialog: null, noteDeleteId: null as string | null,
   importOpen: false, importText: '', importFromNoteId: null, proposals: null,
-  detected: [] as PlannerDetectedCard[], detecting: false, detectError: '', detectedRevision: -1,
 }
 
 function newChapterId(): string {
@@ -145,13 +135,14 @@ export const usePlannerStore = create<PlannerStore>((set, get) => ({
     set({ selected: id, linkOpen: false })
   },
 
-  // Whenever `who` changes, the people's names are written beside it so the
-  // card survives re-indexing reassigning codex IDs.
+  // Whenever `who` changes, each ID is re-bound to the person its stored
+  // name means and the people's names are written beside it, so the card
+  // survives re-indexing reassigning codex IDs.
   updateCard: (id, patch) => {
     const codex = patch.who ? codexPeople(useBookStore.getState().book) : []
     get().mutate(p => ({
       ...p, cards: p.cards.map(c => (c.id === id
-        ? { ...c, ...patch, ...(patch.who ? { who_names: whoNames(patch.who, codex, c) } : {}), updated: nowStamp() }
+        ? { ...c, ...patch, ...(patch.who ? rebindWho(patch.who, codex, c) : {}), updated: nowStamp() }
         : c)),
     }))
   },
@@ -188,35 +179,6 @@ export const usePlannerStore = create<PlannerStore>((set, get) => ({
 
   linkCard: (id, link) => get().updateCard(id, { link: link ?? undefined, status: link ? 'drafted' : 'planned' }),
 
-  adoptDetected: (detectedId) => {
-    const d = get().detected.find(x => x.id === detectedId)
-    if (!d) return
-    const id = adoptedId(d.id)
-    const codex = codexPeople(useBookStore.getState().book)
-    get().mutate(p => ({
-      ...p, cards: p.cards.some(c => c.id === id) ? p.cards : [...p.cards, {
-        id, source_id: d.evidence[0]?.source_id, title: d.title, synopsis: d.synopsis, lines: [MAIN_LANE_ID], who: d.who, who_names: whoNames(d.who, codex), changes: '', stakes: '',
-        chapter_id: d.chapter_id, link: { chapter_id: d.chapter_id, scene: d.scene }, status: 'drafted', origin: 'adopted',
-        dev_kind: d.kind, evidence: d.evidence, updated: nowStamp(),
-      }],
-    }))
-    set({ selected: id })
-  },
-
-  dismissDetected: (detectedId) => {
-    const d = get().detected.find(x => x.id === detectedId)
-    const book = useBookStore.getState().book
-    get().mutate(p => {
-      const notes = d
-        ? p.notes.map(n => (n.system === 'dead'
-          ? { ...n, body: n.body + deadIdeaBlock({ id: d.id, title: d.title, synopsis: d.synopsis, lines: [MAIN_LANE_ID], who: d.who, chapter_id: d.chapter_id, status: 'drafted' }, 'Dismissed', bookChapters(book), p.lanes, codexPeople(book)), updated: nowStamp() }
-          : n))
-        : p.notes
-      return { ...p, notes, dismissed: [...new Set([...(p.dismissed ?? []), detectedId])] }
-    })
-    set(s => (s.selected === detectedId ? { selected: null } : {}))
-  },
-
   addSubplot: (name) => {
     const trimmed = name.trim()
     if (!trimmed) return
@@ -239,12 +201,6 @@ export const usePlannerStore = create<PlannerStore>((set, get) => ({
   }),
 
   setBeatTemplate: (beat_template) => get().mutate(p => ({ ...p, beat_template })),
-
-  setPlotWalker: (on) => {
-    get().mutate(p => ({ ...p, plot_walker: on }))
-    if (on) void get().refreshDetected()
-  },
-
   setCompact: (compact) => get().mutate(p => ({ ...p, compact })),
 
   createChapter: (title) => {
@@ -331,26 +287,5 @@ export const usePlannerStore = create<PlannerStore>((set, get) => ({
     }))
     set({ importOpen: false, proposals: null, importFromNoteId: null, noteId, view: 'timeline', panelOpen: true })
     useAppStore.getState().setStatusMessage(`${cards.length} card${cards.length === 1 ? '' : 's'} added to the Planner`)
-  },
-
-  refreshDetected: async () => {
-    const { book, analysisRevision } = useBookStore.getState()
-    if (!book || get().detecting) return
-    set({ detecting: true, detectError: '' })
-    try {
-      const result = await PlannerDetectCards(book as any)
-      const current = useBookStore.getState()
-      if (current.book !== book || current.analysisRevision !== analysisRevision) return
-      if (!result.error && result.source_id && get().planner().source_id !== result.source_id) {
-        get().mutate(p => ({ ...p, source_id: result.source_id }))
-      }
-      set({ detected: result.error ? [] : (result.cards ?? []), detectError: result.error ?? '', detectedRevision: analysisRevision })
-    } catch (e) {
-      const current = useBookStore.getState()
-      if (current.book !== book || current.analysisRevision !== analysisRevision) return
-      set({ detected: [], detectError: String(e) })
-    } finally {
-      set({ detecting: false })
-    }
   },
 }))

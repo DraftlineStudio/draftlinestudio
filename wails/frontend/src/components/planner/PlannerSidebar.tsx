@@ -2,24 +2,29 @@
 // characters for the timeline and board, notes for scratch, chapters for the
 // synopsis. The Manuscript | Planner tabs above it live in ChapterPanel.
 
-import { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { useBookStore } from '../../store/bookStore'
 import { usePlannerStore } from '../../store/plannerStore'
+import { useBookStore } from '../../store/bookStore'
 import { bookChapters, codexPeople, countWords, displayCards, ensurePlanner, relativeStamp } from './plannerModel'
 
 export default function PlannerSidebar() {
-  const book = useBookStore(s => s.book)
-  const { view, noteId, detected, setNoteId, newNote, toggleLaneHidden, addCharacterLane, openLineDialog } = usePlannerStore(useShallow(s => ({
-    view: s.view, noteId: s.noteId, detected: s.detected, setNoteId: s.setNoteId, newNote: s.newNote,
+  const { view, noteId, setNoteId, newNote, toggleLaneHidden, addCharacterLane, openLineDialog } = usePlannerStore(useShallow(s => ({
+    view: s.view, noteId: s.noteId, setNoteId: s.setNoteId, newNote: s.newNote,
     toggleLaneHidden: s.toggleLaneHidden, addCharacterLane: s.addCharacterLane, openLineDialog: s.openLineDialog,
   })))
+  // Counts come from one derivation, so the footer and the per-chapter and
+  // per-line tallies read the same cards the canvas draws.
+  const book = useBookStore(s => s.book)
   const planner = ensurePlanner(book)
-  const chapters = useMemo(() => bookChapters(book), [book])
-  const codex = useMemo(() => codexPeople(book), [book])
-  const cards = displayCards(planner, detected)
+  const chapters = bookChapters(book)
+  const codex = codexPeople(book)
+  const cards = displayCards(planner)
   const hidden = new Set(planner.hidden_lanes ?? [])
-  const linked = planner.cards.filter(c => c.link).length
+  // One basis for every tally on this panel: the cards the canvas draws.
+  const linked = cards.filter(c => c.link).length
+  const counts = cards.reduce<Record<string, number>>((acc, c) => ({ ...acc, [c.st]: (acc[c.st] ?? 0) + 1 }), {})
+  const summary = (['planned', 'drafted'] as const)
+    .filter(k => counts[k]).map(k => `${counts[k]} ${k}`).join(' · ')
 
   let body: React.ReactNode
   if (view === 'scratch') {
@@ -36,7 +41,7 @@ export default function PlannerSidebar() {
             <div key={n.id} className={`pl-note-row${n.id === noteId ? ' active' : ''}${n.excluded ? ' excluded' : ''}`} onClick={() => setNoteId(n.id)}>
               <div className="pl-note-row-top">
                 <span className="pl-note-title">{n.title || 'Untitled note'}</span>
-                {n.excluded && <span className="pl-note-off" title="Not included in analysis">off</span>}
+                {n.excluded && <span className="pl-note-off" title="Not available to Propose Cards">off</span>}
               </div>
               <div className="pl-note-snippet">{snippet}</div>
               <div className="pl-note-meta">{countWords(n.body)} words · {relativeStamp(n.updated)}</div>
@@ -50,7 +55,7 @@ export default function PlannerSidebar() {
       <div className="pl-sidebar">
         <div className="pl-side-head"><span className="chapter-section-label">Chapters</span></div>
         {chapters.map(ch => {
-          const n = planner.cards.filter(c => c.chapter_id === ch.id).length
+          const n = cards.filter(c => c.chapter_id === ch.id).length
           return (
             <div
               key={ch.id} className="chapter-item"
@@ -100,7 +105,7 @@ export default function PlannerSidebar() {
   return (
     <>
       {body}
-      <div className="pl-side-footer">{planner.cards.length} cards · {linked} linked to scenes</div>
+      <div className="pl-side-footer" title={summary}>{cards.length} cards · {linked} linked to scenes{summary ? ` · ${summary}` : ''}</div>
     </>
   )
 }

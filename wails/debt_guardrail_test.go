@@ -124,6 +124,11 @@ func TestNoProseDocumentsInsideGoPackages(t *testing.T) {
 		"internal/export/fonts/SOURCES.md": true,
 	}
 	for _, root := range []string{"internal", "cmd"} {
+		// cmd/ comes and goes with the diagnostic commands; a missing root is
+		// not a failure, only an empty one.
+		if _, statErr := os.Stat(root); os.IsNotExist(statErr) {
+			continue
+		}
 		err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 			if err != nil {
 				return err

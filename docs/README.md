@@ -23,6 +23,7 @@ Draftline is a desktop writing application for novelists, built with Go (Wails) 
 | [Frontend Guide](frontend/FRONTEND.md) | React components and state management |
 | [Analysis Sidebars](frontend/ANALYSIS-SIDEBARS.md) | The analysis panel suite |
 | [Bottom Bar](frontend/BOTTOM-BAR.md) | Bottom tool window and its panels |
+| [Planner](frontend/PLANNER.md) | Story-line timeline, board, scratchpad, synopsis |
 | [Read Aloud](frontend/READ-ALOUD.md) | Text-to-speech plugin |
 | [Data Model](data-model/DATA-MODEL.md) | File format and data structures |
 | [AI Rewriting](ai/AI-REWRITING.md) | AI rewriting system and providers |
@@ -62,7 +63,8 @@ A ZIP archive containing:
 - `copyright.html`, `front_matter/`, `body/`, `back_matter/` - Section content as HTML
 - `story_bible.json` - Characters, plot notes, timeline
 - `beat_sheet.json`, `foreshadowing.json`, `knowledge_matrix.json` - Story-structure data (persisted for format compatibility; no current UI writes them)
-- `analysis.json` - Persisted analysis results (evidence, fingerprint, structure)
+- `analysis.json` - Persisted analysis results (entities, relationships, evidence, manuscript metrics)
+- `planner.json` - Planner story lines, cards, and notes (optional)
 - `history/index.json` + `history/snapshots/` - Chapter history
 - `read_aloud_cast.json` - Read Aloud voice cast assignments
 
@@ -98,7 +100,7 @@ Layer 3: Backend Services (Go)
     - File I/O (open, save, export)
     - AI Integration (multiple providers)
     - Import/Export (EPUB, DOCX, PDF)
-    - Analysis engine (internal/fingerprint, indexing, continuity)
+    - Analysis engine (internal/indexing, continuity, storytimeline, storysearch)
 
 Layer 4: External Systems
     - Claude Code / Codex CLIs

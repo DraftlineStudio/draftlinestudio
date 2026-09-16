@@ -131,8 +131,8 @@ foreshadowing ledger, knowledge matrix) were retired from the sidebar in 0.16.02
 Their data model, the `storyBibleStore.ts` reducers, and `.draftline`
 file-format fields remain intact so existing project files round-trip unchanged
 (`plotStore.ts` itself was deleted in 0.16.02465 — see below);
-the Go settings keys `story_bible_enabled`/`plot_walker_enabled` are also retained
-for settings-file compatibility but no longer gate any UI.
+the Go settings key `story_bible_enabled` is also retained for settings-file
+compatibility but no longer gates any UI.
 
 ### Writing diagnostics and plugins
 
@@ -146,11 +146,9 @@ The bundled feature catalog lives in `features/registry.ts`. Stable IDs, capabil
 
 ## Bottom Bar
 
-The resizable bottom tool window is the Story Fingerprint UI — five tabs
-(Story Map, Threads, Review, Continuity, Ask Draftline) plus the Evidence
-index. Continuity, Ask, and the Evidence Index are the live panels; the
-Story Map, Threads, and Review tabs are currently placeholder stubs while
-the analysis engine is rebuilt. See `docs/frontend/BOTTOM-BAR.md`.
+The resizable bottom tool window has two tabs, Continuity and Ask Draftline,
+plus an icon button for the Evidence index. It opens on Ask Draftline.
+See `docs/frontend/BOTTOM-BAR.md`.
 
 ## State Management
 
