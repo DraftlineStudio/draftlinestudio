@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02637] - 2026-09-15
+
+### Changed
+- Moved to version 0.20 for the Planner.
+
 ## [0.19.02636] - 2026-09-15
 
 ### Removed

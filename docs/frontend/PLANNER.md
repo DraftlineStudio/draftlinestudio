@@ -79,6 +79,12 @@ accepted:
   clustered into scene-sized proposals across the drafted chapters. Headings,
   beats, and lists always keep their explicit shape instead.
 
+Import Outline reads nothing from the story analysis. It parses the text you
+give it, counts the book's chapters and scene breaks itself, and asks the codex
+only for accepted character names so it can fill in a card's *who*. A book that
+has never been analyzed imports an outline exactly the same way, minus the name
+matching.
+
 The proposal view lets each card be retitled, re-laned, re-chaptered, or
 dropped. Accepting adds planned cards, creates any chapters the outline reaches
 past the end of the manuscript (empty, titled from the outline), and keeps the
