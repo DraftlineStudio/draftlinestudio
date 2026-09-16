@@ -171,7 +171,7 @@ function TimelineView() {
         </div>
       </div>
       {cards.length === 0 && chapters.length > 0 && (
-        <div className="pl-empty" style={{ top: m.headerH, paddingRight: m.colW * 2 }}>
+        <div className="pl-empty" style={{ top: m.headerH, left: m.laneW }}>
           <div className="pl-empty-tag">Every line is empty. Add a card where a line meets a chapter, or import an outline.</div>
           <div className="pl-empty-actions">
             <button className="dialog-btn" onClick={() => addCard(chapters[0].id, MAIN_LANE_ID)}>New Card</button>
