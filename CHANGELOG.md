@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02640] - 2026-09-15
+
+### Fixed
+- The analysis progress bar no longer overlaps the status bar buttons.
+
+### Changed
+- The character codex now fills the whole window.
+
 ## [0.20.02639] - 2026-09-15
 
 ### Added

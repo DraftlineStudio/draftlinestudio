@@ -116,6 +116,9 @@ Contains:
 - Drag-and-drop reordering
 - Add/delete chapter controls
 - Chapter type indicators
+- Carries the Manuscript | Planner tabs at its head
+- Not mounted in the character codex: the rail does nothing there, so the
+  codex takes the full width. Escape or the Back to writing button returns.
 
 ### ToolsPanel.tsx
 Slim router that displays feature modules based on active glyph selection and the persisted plugin feature flags.

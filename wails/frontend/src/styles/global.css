@@ -2732,8 +2732,9 @@ html, body, #root {
   flex-shrink: 0;
   position: relative;
 }
-.statusbar-left { display: flex; align-items: center; gap: 8px; }
-.statusbar-right { display: flex; align-items: center; gap: 8px; }
+.statusbar-left { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
+.statusbar-right { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.statusbar-file, .statusbar-message { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* The two entries that open a surface from the status bar read as controls,
    not as labels: a real edge, a lit ground, and a pressed state. They are the
    only things down here a writer is meant to click. */
@@ -2765,17 +2766,19 @@ html, body, #root {
   border-color: var(--app-accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--app-accent) 30%, transparent);
 }
+/* In the flex row, not floating above it: with three buttons on the right
+   an absolutely centred progress bar sat on top of them. It takes the space
+   that is free and gives it back as the status bar fills up. */
 .statusbar-analysis-progress {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(560px, 42vw);
+  flex: 0 1 min(560px, 42vw);
+  margin: 0 16px;
   display: grid;
-  grid-template-columns: minmax(120px, auto) minmax(80px, 1fr) 28px;
+  grid-template-columns: minmax(0, auto) minmax(56px, 1fr) 28px;
   align-items: center;
   gap: 8px;
   color: var(--text-secondary);
   min-width: 0;
+  overflow: hidden;
 }
 .statusbar-analysis-progress > span:first-child {
   overflow: hidden;

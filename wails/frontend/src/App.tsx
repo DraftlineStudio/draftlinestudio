@@ -301,7 +301,9 @@ export default function App() {
       <ThemeTransitionOverlay isTransitioning={isTransitioning} targetTheme={targetTheme} nonce={transitionNonce} />
       <TitleBar />
       <div className="main-layout">
-        <ChapterPanel />
+        {/* The character codex is its own workspace: the manuscript rail does
+            nothing there, so it gives the codex the width instead. */}
+        {viewMode !== 'cast' && <ChapterPanel />}
         {viewMode === 'cast' ? (
           <CharactersView />
         ) : viewMode === 'planner' ? (
