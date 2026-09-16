@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   bookChapters, codexPeople, columnConnectors, deadIdeaBlock, displayCards, emptyPlanner, ensurePlanner,
-  laneRows, layoutMetrics, MAIN_LANE_ID, parseOutline, rebindWho, statusOf,
+  laneRows, layoutMetrics, MAIN_LANE_ID, onlyNewOutlineProposals, parseOutline, rebindWho, statusOf,
   whoIncludes, whoNames, whoText, type CodexPerson, type PlannerChapter,
 } from '../plannerModel'
 import { generatedSynopsis, synopsisMarkdown } from '../plannerSynopsis'
@@ -24,52 +24,87 @@ const chapters: PlannerChapter[] = [
 ]
 
 describe('Import Outline rules', () => {
-  it('turns headings into chapter positions and list items into cards, naming the chapter from the heading', () => {
-    const { proposals, titles } = parseOutline(
-      '# Chapter 1 — The Beacon\n- Rhea climbs the tower. The lamp is dark.\n- Tomas wakes the keeper.\n\n# Chapter 3\n1. The boat lands at dawn.\n',
-      chapters, codex, lanes,
+  it('uses heading hierarchy for story-line groups and substantial cards', () => {
+    const { proposals } = parseOutline(
+      '# Harbour trouble\n## The beacon fails\n1. Rhea climbs the tower.\n2. The gears have stopped.\n## The keeper returns\n- Tomas brings the missing key.\n\n# The crossing\n## The boat leaves\nThe crew sails before dawn.\n',
+      codex, lanes,
     )
-    expect(titles).toEqual({ 1: 'The Beacon' })
-    expect(proposals.map(p => [p.chapterNum, p.title, p.synopsis, p.laneId, p.who])).toEqual([
-      [1, 'Rhea climbs the tower.', 'The lamp is dark.', 'lane-rhea', ['c-rhea']],
-      [1, 'Tomas wakes the keeper.', '', MAIN_LANE_ID, ['c-tomas']],
-      [3, 'The boat lands at dawn.', '', MAIN_LANE_ID, []],
+    expect(proposals.map(p => [p.groupName, p.title, p.who])).toEqual([
+      ['Harbour trouble', 'The beacon fails', ['c-rhea']],
+      ['Harbour trouble', 'The keeper returns', ['c-tomas']],
+      ['The crossing', 'The boat leaves', []],
     ])
+    expect(proposals[0].synopsis).toBe('Rhea climbs the tower. The gears have stopped.')
+    expect(proposals[0].groupId).toBe(proposals[1].groupId)
+    expect(proposals[2].groupId).not.toBe(proposals[0].groupId)
+    expect(proposals[0].laneId).toBe(`new:${proposals[0].groupId}`)
+    expect(proposals[1].laneId).toBe(`new:${proposals[0].groupId}`)
+    expect(proposals[2].laneId).toBe(`new:${proposals[2].groupId}`)
     expect(proposals.every(p => p.accepted)).toBe(true)
   })
 
-  it('reaches past the last chapter and lets the reviewer create the missing ones', () => {
-    const { proposals } = parseOutline('Chapter 5: Reckoning\n- The keeper confesses.', chapters, codex, lanes)
-    expect(proposals[0].chapterNum).toBe(5)
+  it('keeps detailed source material in the note instead of packing it into a card', () => {
+    const details = Array.from({ length: 20 }, (_, i) => `- Supporting detail ${i + 1} explains another consequence for the harbour.`)
+    const { proposals } = parseOutline(`# The storm\n## The warning\n${details.join('\n')}`, codex, lanes)
+    expect(proposals).toHaveLength(1)
+    expect(Array.from(proposals[0].synopsis).length).toBeLessThanOrEqual(280)
+    expect(proposals[0].synopsis.endsWith('…')).toBe(true)
   })
 
-  it('lands recognised beat names at their manuscript percentage on the main line', () => {
-    const many = Array.from({ length: 10 }, (_, i) => ({ ...chapters[0], id: `ch-${i + 1}`, num: i + 1 }))
-    const { proposals } = parseOutline('Midpoint: Rhea learns who lit the beacon.\nClimax — the tower falls.', many, codex, lanes)
-    expect(proposals.map(p => [p.title, p.chapterNum])).toEqual([
-      ['Midpoint — Rhea learns who lit the beacon.', 5],
-      ['Climax — the tower falls.', 9],
+  it('proposes people from an explicit character section instead of turning their profiles into cards', () => {
+    const parsed = parseOutline(
+      '# Harbour story\n## Characters\n### Nessa Vale / Nessa\nA cartographer who distrusts the harbourmaster.\n### Bram Holt\nThe keeper of the eastern signal.\n## The warning arrives\n- Nessa finds a coded flag above the pier.',
+      codex, lanes,
+    )
+    expect(parsed.characters.map(character => [character.name, character.aliases, character.createLane])).toEqual([
+      ['Nessa Vale', ['Nessa'], true],
+      ['Bram Holt', ['Bram'], true],
     ])
+    expect(parsed.proposals).toHaveLength(1)
+    expect(parsed.proposals[0].title).toBe('The warning arrives')
+    expect(parsed.proposals[0].who).toContain(parsed.characters[0].id)
+    expect(parsed.proposals.some(proposal => proposal.title === 'Characters')).toBe(false)
   })
 
-  it('clusters an unstructured short story into scene-sized proposals across the drafted chapters', () => {
-    // The design brief: a short story pasted as the bones of a novel should
-    // land as a few scene-sized cards, not one card per paragraph.
-    const paragraphs = Array.from({ length: 20 }, (_, i) => `Paragraph ${i + 1} tells what happened next. Rhea kept walking.`)
-    const { proposals } = parseOutline(paragraphs.join('\n\n'), chapters, codex, lanes)
+  it('does not propose a duplicate for a character already in the codex', () => {
+    const parsed = parseOutline('# Story\n## Characters\n### Rhea Marsh\nThe lighthouse engineer.\n## The return\nRhea reaches the quay.', codex, lanes)
+    expect(parsed.characters).toEqual([])
+    expect(parsed.proposals[0].who).toEqual(['c-rhea'])
+  })
+
+  it('shows only new movements when a Scratchpad outline grows', () => {
+    const first = parseOutline('# Storm\n## The warning\n- The bell rings once.\n## The crossing\n- The ferry leaves.', codex, lanes)
+    const accepted = first.proposals.map((proposal, index) => ({
+      id: `card-${index}`, source_id: 'note-outline', source_key: proposal.sourceKey,
+      title: index === 0 ? 'A writer-edited title' : proposal.title, synopsis: proposal.synopsis,
+      lines: [MAIN_LANE_ID], who: [], chapter_id: '', status: 'planned', origin: 'outline',
+    }))
+    const changed = parseOutline('# Storm\n## The warning\n- The bell now rings twice.\n## The crossing\n- The ferry leaves later.\n## The wreck\n- Rhea finds an empty boat.', codex, lanes)
+    const incremental = onlyNewOutlineProposals(changed, accepted, 'note-outline')
+    expect(incremental.proposals.map(proposal => proposal.title)).toEqual(['The wreck'])
+  })
+
+  it('treats chapter, part, and act labels as outline hierarchy rather than manuscript instructions', () => {
+    const { proposals } = parseOutline('Part Two\nChapter 8: Reckoning\n- The keeper confesses.', codex, lanes)
+    expect(proposals).toHaveLength(1)
+    expect(proposals[0].groupName).toBe('Part Two')
+    expect(proposals[0].title).toBe('Chapter 8: Reckoning')
+    expect(proposals[0]).not.toHaveProperty('chapterNum')
+  })
+
+  it('compacts long freeform lists and prose instead of making one tiny card per line', () => {
+    const details = Array.from({ length: 80 }, (_, i) => `${i + 1}. Detail ${i + 1} changes the situation. Rhea keeps moving.`)
+    const { proposals } = parseOutline(details.join('\n'), codex, lanes)
     expect(proposals.length).toBeGreaterThan(1)
     expect(proposals.length).toBeLessThan(20)
-    expect(proposals[0].chapterNum).toBe(1)
     expect(proposals[0].who).toEqual(['c-rhea'])
-    // Structured text is never clustered, however long.
-    const listed = parseOutline(paragraphs.map(p => `- ${p}`).join('\n'), chapters, codex, lanes)
-    expect(listed.proposals).toHaveLength(20)
+    expect(proposals.every(p => p.synopsis.length > 0)).toBe(true)
   })
 
-  it('keeps nested list details with their parent card', () => {
+  it('keeps short lists as separate cards and nested details with their parent', () => {
     const { proposals } = parseOutline(
       '- Rhea enters the tower.\n  - She hears the gears stop.\n  - The stairwell goes dark.\n- Tomas waits below.\n',
-      chapters, codex, lanes,
+      codex, lanes,
     )
     expect(proposals.map(p => [p.title, p.synopsis])).toEqual([
       ['Rhea enters the tower.', 'She hears the gears stop. The stairwell goes dark.'],
@@ -78,7 +113,7 @@ describe('Import Outline rules', () => {
   })
 
   it('shortens long first sentences into titles without cutting words in half', () => {
-    const { proposals } = parseOutline(`- ${'longword '.repeat(20)}ends here.`, chapters, codex, lanes)
+    const { proposals } = parseOutline(`- ${'longword '.repeat(20)}ends here.`, codex, lanes)
     expect(proposals[0].title.length).toBeLessThanOrEqual(72)
     expect(proposals[0].title.endsWith('…')).toBe(true)
   })
@@ -86,7 +121,7 @@ describe('Import Outline rules', () => {
   it('matches non-ASCII aliases and shortens Unicode titles on character boundaries', () => {
     const people: CodexPerson[] = [{ id: 'c-eloise', name: 'Éloise', aliases: ['Éloise'] }]
     const text = `- Éloise ${'🌊 '.repeat(40)}crosses the channel.`
-    const { proposals } = parseOutline(text, chapters, people, lanes)
+    const { proposals } = parseOutline(text, people, lanes)
     expect(proposals[0].who).toEqual(['c-eloise'])
     expect(proposals[0].title).not.toMatch(/[\uD800-\uDBFF]$/)
     expect(Array.from(proposals[0].title).length).toBeLessThanOrEqual(72)

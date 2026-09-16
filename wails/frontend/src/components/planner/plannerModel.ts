@@ -35,13 +35,6 @@ export const BEATS: Record<Exclude<BeatTemplateId, 'none'>, Beat[]> = {
   ],
 }
 export const BEAT_NAMES: Record<BeatTemplateId, string> = { none: 'None', 'three-act': 'Three-Act', 'save-the-cat': 'Save the Cat' }
-// Every beat name the importer recognises, including the Save the Cat beats
-// that are not drawn as marks.
-export const BEATS_ALL: Beat[] = [
-  ...BEATS['three-act'], ...BEATS['save-the-cat'],
-  { name: 'Theme stated', pct: 0.05 }, { name: 'Debate', pct: 0.15 }, { name: 'B story', pct: 0.22 }, { name: 'Fun and games', pct: 0.3 },
-  { name: 'Bad guys close in', pct: 0.6 }, { name: 'Dark night of the soul', pct: 0.78 }, { name: 'Finale', pct: 0.9 },
-]
 
 export function newId(prefix: string): string {
   const rand = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -339,9 +332,11 @@ export function deadIdeaBlock(card: PlannerCard, why: 'Deleted' | 'Dismissed', c
 
 export interface Proposal {
   id: string
+  sourceKey: string
   title: string
   synopsis: string
-  chapterNum: number
+  groupId: string
+  groupName: string
   laneId: string
   who: string[]
   accepted: boolean
@@ -349,8 +344,37 @@ export interface Proposal {
 
 export interface ParsedOutline {
   proposals: Proposal[]
-  // Chapter titles the outline supplied ("# Chapter 3 — The Alarm"), by number.
-  titles: Record<number, string>
+  lanes: ProposalLane[]
+  characters: ProposalCharacter[]
+}
+
+export interface ProposalLane { id: string; name: string }
+export interface ProposalCharacter {
+  id: string
+  name: string
+  aliases: string[]
+  description: string
+  accepted: boolean
+  createLane: boolean
+}
+
+function sourceToken(value: string): string {
+  return cleanOutlineLine(value).normalize('NFKC').toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
+    .replace(/^-+|-+$/g, '') || 'untitled'
+}
+
+// A Scratchpad outline can be proposed repeatedly while it grows. Accepted
+// movements carry their source key on the card, so only genuinely new
+// movements return to the review screen. Title matching covers cards imported
+// before source keys existed; it is intentionally limited to the same note.
+export function onlyNewOutlineProposals(parsed: ParsedOutline, cards: PlannerCard[], sourceId: string): ParsedOutline {
+  const previous = cards.filter(card => card.origin === 'outline' && card.source_id === sourceId)
+  const keys = new Set(previous.map(card => card.source_key).filter((key): key is string => !!key))
+  const legacyTitles = new Set(previous.filter(card => !card.source_key).map(card => sourceToken(card.title)))
+  const proposals = parsed.proposals.filter(proposal => !keys.has(proposal.sourceKey) && !legacyTitles.has(sourceToken(proposal.title)))
+  const usedLanes = new Set(proposals.map(proposal => proposal.laneId))
+  return { ...parsed, proposals, lanes: parsed.lanes.filter(lane => usedLanes.has(lane.id)) }
 }
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -370,116 +394,271 @@ function splitSentences(text: string): string[] {
   return text.match(/[^.!?]+[.!?]+["'”’]?|[^.!?]+$/g) ?? [text]
 }
 
-// Deterministic rules, no engine and no AI:
-//  - '#' headings and "Chapter N" / "Part N" / "Act N" lines set the chapter
-//    position for everything under them and may name the chapter.
-//  - List items and paragraphs become cards; the first sentence is the title,
-//    the rest the synopsis.
-//  - A recognised beat name lands on the main line at its manuscript percent.
-//  - Names the codex knows pick the card's "who"; the first who that has a
-//    character lane picks the lane, otherwise the main line.
-//  - Unstructured text with many paragraphs is grouped into scene-sized
-//    proposals; headings, beats, and lists always retain their explicit shape.
-export function parseOutline(text: string, chapters: PlannerChapter[], codex: CodexPerson[], lanes: PlannerLane[]): ParsedOutline {
-  const out: Proposal[] = []
-  const titles: Record<number, string> = {}
-  let current: number | null = null
-  let index = 0
-  let para: string[] = []
-  let listIndent: number | null = null
-  let lastList: Proposal | null = null
-  let sawStructure = false
-  let seq = 0
+const MAX_OUTLINE_CARDS = 48
+const MAX_OUTLINE_SYNOPSIS = 280
+const OUTLINE_GROUP = 'Outline'
 
-  const make = (t: string): Proposal => {
-    const sentences = splitSentences(t)
-    let title = t.trim()
-    let synopsis = ''
-    if (sentences.length > 1) {
-      title = sentences[0].trim()
-      synopsis = sentences.slice(1).join(' ').trim()
-    }
-    title = shortenedTitle(title)
-    const who = codex.filter(c => c.aliases.some(a => hasAlias(t, a))).map(c => c.id)
-    const laneChar = who.map(w => lanes.find(l => l.character_id === w)).find(Boolean)
-    return { id: `p${++seq}`, title, synopsis, chapterNum: current ?? 1, laneId: laneChar ? laneChar.id : MAIN_LANE_ID, who, accepted: true }
-  }
+interface OutlineHeading { level: number; title: string }
+
+function cleanOutlineLine(value: string): string {
+  return value
+    .trim()
+    .replace(/^#{1,6}\s+/, '')
+    .replace(/^(?:[-*•]|\d+[.)])\s+/, '')
+    .replace(/^\*\*([^*]+)\*\*\s*[:—–-]?\s*/, '$1 — ')
+    .replace(/\*\*|__|`/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([,.;:!?])/g, '$1')
+    .trim()
+}
+
+function outlineHeading(raw: string): OutlineHeading | null {
+  const line = raw.trim()
+  const markdown = line.match(/^(#{1,6})\s+(.+)/)
+  if (markdown) return { level: markdown[1].length, title: cleanOutlineLine(markdown[2]) }
+  if (line.length < 100 && /^(?:part|act)\s+[\p{L}\p{N}]+\b/iu.test(line)) return { level: 1, title: cleanOutlineLine(line) }
+  if (line.length < 100 && /^chapter\s+[\p{L}\p{N}]+\b/iu.test(line)) return { level: 2, title: cleanOutlineLine(line) }
+  return null
+}
+
+function characterSection(title: string): boolean {
+  return /^(?:(?:principal|main|supporting|minor)\s+)?characters?$|^cast(?:\s+of\s+characters)?$|^dramatis\s+personae$/iu.test(title.trim())
+}
+
+function characterNames(title: string): string[] {
+  return title.split(/\s+(?:\/|aka|a\.k\.a\.)\s+/iu).map(cleanOutlineLine).filter(name => {
+    const words = name.split(/\s+/)
+    return name.length >= 2 && name.length <= 60 && words.length <= 5 && words.every(word => /^[\p{L}\p{N}'’.-]+$/u.test(word))
+  })
+}
+
+function outlineCharacters(text: string, codex: CodexPerson[]): { text: string; characters: ProposalCharacter[] } {
+  const kept: string[] = []
+  const characters: ProposalCharacter[] = []
+  const known = new Set(codex.flatMap(person => [person.name, ...person.aliases]).map(name => name.trim().toLocaleLowerCase()))
+  let sectionLevel: number | null = null
+  let current: { names: string[]; details: string[] } | null = null
+  let seq = 0
   const flush = () => {
-    if (!para.length) return
-    const t = para.join(' ').trim()
-    para = []
-    if (t) out.push(make(t))
+    if (!current?.names.length) { current = null; return }
+    const names = current.names.some(name => known.has(name.toLocaleLowerCase())) ? [] : current.names
+    if (names.length) {
+      const canonical = names[0]
+      const first = canonical.split(/\s+/)[0]
+      const aliases = [...new Set([...names.slice(1), ...(canonical.includes(' ') ? [first] : [])])]
+      characters.push({
+        id: `pc:${++seq}`, name: canonical, aliases,
+        description: shortenedCharacterDescription(current.details.map(cleanOutlineLine).filter(Boolean).join(' ')),
+        accepted: true, createLane: true,
+      })
+      for (const name of [canonical, ...aliases]) known.add(name.toLocaleLowerCase())
+    }
+    current = null
   }
 
   for (const raw of text.split(/\r?\n/)) {
-    const line = raw.trim()
-    const isHeading = /^#{1,6}\s+/.test(line) || (line.length < 60 && /^(chapter|part|act)\s+\w+/i.test(line))
-    if (isHeading) {
-      flush()
-      sawStructure = true
-      listIndent = null
-      lastList = null
-      const m = line.match(/(?:chapter|part|act)\s+(\d+)/i)
-      current = m ? Math.max(1, +m[1]) : index + 1
-      index = current
-      const rest = line.replace(/^#{1,6}\s+/, '').replace(/^(chapter|part|act)\s+\w+\s*[—:–-]?\s*/i, '').trim()
-      if (rest && rest.length < 60) titles[current] = rest
-      continue
-    }
-    const beat = BEATS_ALL.find(b => new RegExp(`^${escapeRe(b.name)}\\b`, 'i').test(line))
-    if (beat) {
-      flush()
-      sawStructure = true
-      listIndent = null
-      lastList = null
-      const p = make(line.replace(/^[^:—-]+[:—-]\s*/, '') || line)
-      p.title = beat.name + (p.title && p.title !== line ? ` — ${p.title}` : '')
-      p.chapterNum = Math.max(1, Math.round(beat.pct * (chapters.length || 12)))
-      out.push(p)
-      continue
-    }
-    const item = line.match(/^(?:[-*•]|\d+[.)])\s+(.*)/)
-    if (item) {
-      flush()
-      sawStructure = true
-      const indent = (raw.match(/^\s*/) ?? [''])[0].replace(/\t/g, '    ').length
-      if (listIndent !== null && indent > listIndent && lastList) {
-        lastList.synopsis = [lastList.synopsis, item[1].trim()].filter(Boolean).join(' ')
+    const heading = outlineHeading(raw)
+    if (sectionLevel !== null) {
+      if (heading && heading.level <= sectionLevel) {
+        flush()
+        sectionLevel = null
+      } else {
+        if (heading) {
+          flush()
+          current = { names: characterNames(heading.title), details: [] }
+        } else if (current && raw.trim()) current.details.push(raw)
         continue
       }
-      listIndent = indent
-      lastList = make(item[1])
-      out.push(lastList)
+    }
+    if (heading && characterSection(heading.title)) {
+      sectionLevel = heading.level
       continue
     }
-    if (!line || line === '⁂') {
-      flush()
-      listIndent = null
-      lastList = null
-      continue
-    }
-    if (lastList) {
-      lastList.synopsis = [lastList.synopsis, line].filter(Boolean).join(' ')
-      continue
-    }
-    para.push(line)
+    kept.push(raw)
   }
   flush()
+  return { text: kept.join('\n'), characters }
+}
 
-  if (!sawStructure && out.length > 12) {
-    const drafted = chapters.filter(c => c.drafted).length || chapters.length || 8
-    const per = Math.ceil(out.length / Math.min(12, drafted))
-    const grouped: Proposal[] = []
-    for (let i = 0; i < out.length; i += per) {
-      const chunk = out.slice(i, i + per)
-      const who = [...new Set(chunk.flatMap(c => c.who))]
-      const laneChar = who.map(w => lanes.find(l => l.character_id === w)).find(Boolean)
-      grouped.push({
-        id: `p${++seq}`, title: chunk[0].title, synopsis: chunk.slice(1).map(c => c.title).join(' '),
-        chapterNum: Math.floor(i / per) + 1, laneId: laneChar ? laneChar.id : MAIN_LANE_ID, who, accepted: true,
-      })
-    }
-    return { proposals: grouped, titles }
+function shortenedCharacterDescription(value: string): string {
+  const text = value.replace(/\s+/g, ' ').trim()
+  if (Array.from(text).length <= 500) return text
+  return Array.from(text).slice(0, 497).join('').replace(/\s+\S*$/, '') + '…'
+}
+
+function shortenedSynopsis(value: string): string {
+  const text = value.replace(/\s+/g, ' ').trim()
+  if (Array.from(text).length <= MAX_OUTLINE_SYNOPSIS) return text
+  const prefix = Array.from(text).slice(0, MAX_OUTLINE_SYNOPSIS - 3).join('')
+  return prefix.replace(/\s+\S*$/, '') + '…'
+}
+
+function proposalText(title: string, detailLines: string[]): { title: string; synopsis: string; source: string } {
+  const details = detailLines.map(cleanOutlineLine).filter(Boolean)
+  if (title) {
+    return { title: shortenedTitle(cleanOutlineLine(title)), synopsis: shortenedSynopsis(details.join(' ')), source: [title, ...details].join(' ') }
   }
-  return { proposals: out, titles }
+  const source = details.join(' ')
+  const sentences = splitSentences(source)
+  const first = sentences[0]?.trim() || 'Untitled card'
+  return { title: shortenedTitle(first), synopsis: shortenedSynopsis(sentences.slice(1).join(' ').trim()), source }
+}
+
+function flatOutlineUnits(text: string): string[] {
+  const units: string[] = []
+  let currentList: { indent: number; text: string[] } | null = null
+  let paragraph: string[] = []
+  const flushParagraph = () => {
+    if (paragraph.length) units.push(paragraph.join(' '))
+    paragraph = []
+  }
+  const flushList = () => {
+    if (currentList) units.push(currentList.text.join(' '))
+    currentList = null
+  }
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim()
+    if (!line || line === '⁂') {
+      flushParagraph()
+      flushList()
+      continue
+    }
+    const item = raw.match(/^(\s*)(?:[-*•]|\d+[.)])\s+(.*)/)
+    if (item) {
+      flushParagraph()
+      const indent = item[1].replace(/\t/g, '    ').length
+      const value = cleanOutlineLine(item[2])
+      if (currentList && indent > currentList.indent) currentList.text.push(value)
+      else {
+        flushList()
+        currentList = { indent, text: [value] }
+      }
+      continue
+    }
+    flushList()
+    paragraph.push(cleanOutlineLine(line))
+  }
+  flushParagraph()
+  flushList()
+  return units.filter(Boolean)
+}
+
+function compactUnits(units: string[]): string[][] {
+  if (units.length <= 12) return units.map(unit => [unit])
+  const total = units.reduce((sum, unit) => sum + unit.length, 0)
+  const target = Math.max(600, Math.ceil(total / MAX_OUTLINE_CARDS))
+  const chunks: string[][] = []
+  let chunk: string[] = []
+  let size = 0
+  for (const unit of units) {
+    if (chunk.length && size >= target) {
+      chunks.push(chunk)
+      chunk = []
+      size = 0
+    }
+    chunk.push(unit)
+    size += unit.length
+  }
+  if (chunk.length) chunks.push(chunk)
+  return chunks
+}
+
+// Freeform, deterministic outline import. Headings establish hierarchy, not
+// manuscript chapters: the second heading level becomes cards and the level
+// above it becomes an optional story-line group. Supporting headings, bullets,
+// and paragraphs are folded into each card's synopsis. Text without a useful
+// heading hierarchy is compacted into substantial adjacent blocks. Every card
+// is unpinned (Later) until the writer attaches it to a manuscript chapter.
+export function parseOutline(text: string, codex: CodexPerson[], lanes: PlannerLane[]): ParsedOutline {
+  let seq = 0
+  let groupSeq = 0
+  const proposals: Proposal[] = []
+  const sourceKeys = new Map<string, number>()
+  const prepared = outlineCharacters(text, codex)
+  const outlineText = prepared.text
+  const headings = outlineText.split(/\r?\n/).map(outlineHeading).filter((h): h is OutlineHeading => !!h)
+  const levels = [...new Set(headings.map(h => h.level))].sort((a, b) => a - b)
+  const cardLevel = levels.length > 1 ? levels[1] : levels[0]
+  const groups = new Map<string, string>()
+  const proposedLanes: ProposalLane[] = []
+  const groupID = (name: string) => {
+    const key = name.trim().toLocaleLowerCase() || OUTLINE_GROUP.toLocaleLowerCase()
+    if (!groups.has(key)) {
+      const id = `g${++groupSeq}`
+      groups.set(key, id)
+      if (name !== OUTLINE_GROUP) proposedLanes.push({ id: `new:${id}`, name })
+    }
+    return groups.get(key)!
+  }
+  const make = (title: string, details: string[], groupName: string) => {
+    const shaped = proposalText(title, details)
+    if (!shaped.source.trim()) return
+    const who = [
+      ...codex.filter(c => c.aliases.some(a => hasAlias(shaped.source, a))).map(c => c.id),
+      ...prepared.characters.filter(c => [c.name, ...c.aliases].some(a => hasAlias(shaped.source, a))).map(c => c.id),
+    ]
+    const laneChar = who.map(w => lanes.find(l => l.character_id === w)).find(Boolean)
+    const groupId = groupID(groupName)
+    const sourceBase = `${sourceToken(groupName)}::${sourceToken(shaped.title)}`
+    const sourceOccurrence = (sourceKeys.get(sourceBase) ?? 0) + 1
+    sourceKeys.set(sourceBase, sourceOccurrence)
+    proposals.push({
+      id: `p${++seq}`, sourceKey: sourceOccurrence === 1 ? sourceBase : `${sourceBase}::${sourceOccurrence}`,
+      title: shaped.title, synopsis: shaped.synopsis,
+      groupId, groupName,
+      laneId: groupName === OUTLINE_GROUP ? (laneChar?.id ?? MAIN_LANE_ID) : `new:${groupId}`,
+      who, accepted: true,
+    })
+  }
+
+  if (cardLevel !== undefined) {
+    let groupName = OUTLINE_GROUP
+    let current: { title: string; details: string[]; groupName: string } | null = null
+    let groupPrelude: string[] = []
+    const flush = () => {
+      if (current) make(current.title, current.details, current.groupName)
+      current = null
+    }
+    const flushPrelude = () => {
+      if (groupPrelude.length) make(groupName, groupPrelude, groupName)
+      groupPrelude = []
+    }
+    for (const raw of outlineText.split(/\r?\n/)) {
+      const heading = outlineHeading(raw)
+      if (heading) {
+        if (heading.level < cardLevel) {
+          flush()
+          flushPrelude()
+          groupName = heading.title || OUTLINE_GROUP
+        } else if (heading.level === cardLevel) {
+          flush()
+          current = { title: heading.title, details: groupPrelude, groupName }
+          groupPrelude = []
+        } else if (current) current.details.push(heading.title)
+        else groupPrelude.push(heading.title)
+        continue
+      }
+      if (!raw.trim() || raw.trim() === '⁂') continue
+      if (current) current.details.push(raw)
+      else groupPrelude.push(raw)
+    }
+    flush()
+    flushPrelude()
+  } else {
+    for (const chunk of compactUnits(flatOutlineUnits(outlineText))) make('', chunk, OUTLINE_GROUP)
+  }
+
+  if (proposals.length <= MAX_OUTLINE_CARDS) return { proposals, lanes: proposedLanes, characters: prepared.characters }
+  const stride = Math.ceil(proposals.length / MAX_OUTLINE_CARDS)
+  const compacted: Proposal[] = []
+  for (let i = 0; i < proposals.length; i += stride) {
+    const chunk = proposals.slice(i, i + stride)
+    const first = chunk[0]
+    compacted.push({
+      ...first,
+      synopsis: shortenedSynopsis([first.synopsis, ...chunk.slice(1).map(other => `${other.title}. ${other.synopsis}`)].filter(Boolean).join(' ')),
+      who: [...new Set(chunk.flatMap(p => p.who))],
+    })
+  }
+  return { proposals: compacted, lanes: proposedLanes, characters: prepared.characters }
 }

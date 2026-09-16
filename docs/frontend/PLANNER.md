@@ -20,10 +20,10 @@ glyph hides the tools panel.
   Drag a card to another chapter or lane; double-click a cell to add a card
   there. A card on several lines is drawn once, on its first line, with a
   bracket to a small diamond on each crossing lane. Empty chapters are dimmed.
-  The last column, *Later*, holds cards not yet pinned to a chapter, and the
-  *Add Chapter* column adds an empty chapter to the manuscript. Beat marks
-  (Three-Act or Save the Cat) sit at manuscript percentages across the chapter
-  axis when a template is chosen.
+  The last column, *Later*, holds cards not yet pinned to a chapter. The Planner
+  never creates manuscript chapters; chapters added in the manuscript appear
+  here automatically. Beat marks (Three-Act or Save the Cat) sit at manuscript
+  percentages across the chapter axis when a template is chosen.
 - **Board** — the same cards as index cards, grouped by chapter or by story
   line. Drag onto a column to move; drop onto a card to order before it.
 - **Scratchpad** — free-text notes. The *Dead ideas* note is automatic: every
@@ -63,32 +63,44 @@ them empty).
 
 ## Import Outline
 
-*Import Outline* takes pasted text or a Markdown or text file and proposes
-cards from deterministic rules; nothing is committed until the proposals are
-accepted:
+*Import Outline* takes freeform pasted text or a Markdown or text file and
+proposes a compact set of substantial cards; formatting is optional and
+nothing is committed until the proposals are accepted:
 
-- `#` headings and "Chapter N" / "Part N" / "Act N" lines set the chapter
-  position for everything under them and may name the chapter.
-- List items and paragraphs become cards: first sentence as the title, the
-  rest as the synopsis. Nested list items join their parent's synopsis.
-- A recognised beat name (from the Three-Act and Save the Cat templates) lands
-  on the main line at its manuscript percentage.
+- When text has a heading hierarchy, the larger headings become proposal
+  groups and the next heading level becomes cards. Deeper headings, bullets,
+  and paragraphs become supporting synopsis text instead of tiny cards.
+- Flat lists and loose prose are grouped into adjacent substantial movements;
+  a short list can still produce one card per item.
+- "Chapter N", "Part N", "Act N", and beat names describe the imported
+  outline only. They never create, rename, or assume manuscript chapters.
 - Names the codex knows pick the card's *who*; the first of them with a
   character lane picks the lane, otherwise the main line.
-- Unstructured text with many paragraphs, a short story for instance, is
-  clustered into scene-sized proposals across the drafted chapters. Headings,
-  beats, and lists always keep their explicit shape instead.
+- Each detected proposal group starts as a proposed story line named after the
+  group. It can instead be moved to the main plot or an existing story line
+  before acceptance. The proposal screen can also create and name a different
+  plot track for a group; it remains provisional until the import is accepted.
+- Explicit Characters, Cast, or Dramatis Personae sections produce reviewable
+  codex candidates instead of plot cards. Accepted candidates can create
+  character tracks immediately, before any manuscript chapters are drafted.
 
 Import Outline reads nothing from the story analysis. It parses the text you
-give it, counts the book's chapters and scene breaks itself, and asks the codex
-only for accepted character names so it can fill in a card's *who*. A book that
-has never been analyzed imports an outline exactly the same way, minus the name
-matching.
+give it and asks the codex only for accepted character names so it can fill in
+a card's *who*. A book that has never been analyzed imports an outline exactly
+the same way, minus the name matching.
 
-The proposal view lets each card be retitled, re-laned, re-chaptered, or
-dropped. Accepting adds planned cards, creates any chapters the outline reaches
-past the end of the manuscript (empty, titled from the outline), and keeps the
-pasted text as a Scratchpad note.
+The proposal view lets each card be retitled, re-laned, or dropped, lets a
+group create a named plot track in place, and lets detected characters be
+renamed, dropped, or added without a character track. Card synopses are kept
+brief; the complete imported outline remains in the Scratchpad note rather
+than being packed into every card. Accepting adds planned cards to *Later*.
+The writer can attach cards to existing or future manuscript chapters afterward.
+
+Running *Propose Cards* again on the same Scratchpad note is incremental.
+Movements already accepted from that note are omitted, even if their supporting
+details changed or the resulting card was retitled in the Planner; newly added
+movements are the only card proposals shown. Cards imported by older Draftline
+versions are matched by title the first time this incremental check runs.
 
 The same notes are reachable from the writing window: the Scratchpad tab in
 the bottom Plot Inspections dock reads and edits `planner.notes` directly, so a

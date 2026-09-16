@@ -2,6 +2,17 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02657] - 2026-09-16
+
+### Changed
+- Import Outline now groups pasted text, Markdown, and heading hierarchies into a smaller set of substantial cards.
+- Outline groups become proposed story lines, and a Characters or Cast section becomes codex candidates.
+- Re-importing an outline that has grown only offers the new material.
+- Chapter, part, act, and beat names in an outline no longer create or rename manuscript chapters.
+
+### Removed
+- Removed the New Universe button from the welcome screen until Storiverse is ready.
+
 ## [0.20.02656] - 2026-09-16
 
 ### Changed

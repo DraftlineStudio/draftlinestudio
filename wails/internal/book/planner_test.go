@@ -26,7 +26,7 @@ func TestPlannerRoundTrip(t *testing.T) {
 			{ID: "lane-1", Name: "Rhea", Kind: "character", Color: "#F472B6", CharacterID: "char-rhea"},
 		},
 		Cards: []types.PlannerCard{
-			{ID: "c1", Title: "The tower light goes out", Synopsis: "Rhea sees the beacon fail.", Lines: []string{"main", "lane-1"}, Who: []string{"char-rhea"},
+			{ID: "c1", SourceID: "note-outline", SourceKey: "storm::tower-light", Title: "The tower light goes out", Synopsis: "Rhea sees the beacon fail.", Lines: []string{"main", "lane-1"}, Who: []string{"char-rhea"},
 				Changes: "The town loses its warning.", ChapterID: "ch-planner", Link: &types.PlannerLink{ChapterID: "ch-planner", Scene: 1}, Status: "drafted"},
 			{ID: "c2", Title: "Tomas returns", Lines: []string{"main"}, Who: []string{}, ChapterID: "", Status: "planned"},
 		},
@@ -51,6 +51,9 @@ func TestPlannerRoundTrip(t *testing.T) {
 	}
 	if len(p.Cards) != 2 || p.Cards[0].Link == nil || p.Cards[0].Link.Scene != 1 || p.Cards[1].ChapterID != "" || p.Cards[1].Link != nil {
 		t.Fatalf("cards: %+v", p.Cards)
+	}
+	if p.Cards[0].SourceID != "note-outline" || p.Cards[0].SourceKey != "storm::tower-light" {
+		t.Fatalf("card source identity: %+v", p.Cards[0])
 	}
 	if p.Synopsis["ch-planner"] != "Edited paragraph." || p.BeatTemplate != "three-act" || len(p.HiddenLanes) != 1 {
 		t.Fatalf("settings: %+v", p)

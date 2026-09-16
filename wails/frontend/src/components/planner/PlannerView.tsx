@@ -71,9 +71,9 @@ function CardTile({ card, lane, codex, selected, compact, onSelect, onDragStart,
 }
 
 function TimelineView() {
-  const { selected, drag, select, setDrag, moveCard, addCard, openLineDialog, openChapterDialog, openImport } = usePlannerStore(useShallow(s => ({
+  const { selected, drag, select, setDrag, moveCard, addCard, openLineDialog, openImport } = usePlannerStore(useShallow(s => ({
     selected: s.selected, drag: s.drag, select: s.select, setDrag: s.setDrag, moveCard: s.moveCard,
-    addCard: s.addCard, openLineDialog: s.openLineDialog, openChapterDialog: s.openChapterDialog, openImport: s.openImport,
+    addCard: s.addCard, openLineDialog: s.openLineDialog, openImport: s.openImport,
   })))
   const book = useBookStore(s => s.book)
   const planner = ensurePlanner(book)
@@ -87,7 +87,6 @@ function TimelineView() {
   const lanes = planner.lanes.filter(l => !hidden.has(l.id))
   const columns = columnsFor(chapters, cards)
   const rows = laneRows(lanes, cards, columns.map(c => c.id), m)
-  const gridH = rows.reduce((a, r) => a + r.height, m.headerH)
   const gridW = chapters.length * m.colW
   const marks = beatMarks(planner.beat_template, gridW)
 
@@ -115,10 +114,10 @@ function TimelineView() {
               {marks.map(b => <div key={b.name} className="pl-beat" style={{ left: b.left }}><span>{b.name}</span></div>)}
             </div>
           )}
-          {columns.map((col, index) => {
+          {columns.map(col => {
             const inColumn = cards.filter(c => c.chapter_id === col.id)
             const { connectors, ties } = columnConnectors(inColumn, rows, planner.lanes, m)
-            const column = (
+            return (
               <div key={col.id || 'later'} className={`pl-col${col.dim ? ' dim' : ''}`} style={{ width: m.colW, minWidth: m.colW }}>
                 <div className="pl-col-head" style={{ height: m.headerH }}>
                   <div className="pl-kicker">{col.kicker}</div>
@@ -155,26 +154,14 @@ function TimelineView() {
                 ))}
               </div>
             )
-            // The "Add Chapter" column sits between the last chapter and Later.
-            if (index === columns.length - 1) {
-              return [
-                <div key="add" className="pl-add-col" style={{ width: m.colW, minWidth: m.colW, minHeight: gridH }} onClick={openChapterDialog} title="Add an empty chapter to the manuscript">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-                  <span className="pl-add-col-label">Add Chapter</span>
-                  {chapters.length === 0 && <span className="pl-add-col-hint">No chapters yet. Cards need a chapter to sit in.</span>}
-                </div>,
-                column,
-              ]
-            }
-            return column
           })}
         </div>
       </div>
-      {cards.length === 0 && chapters.length > 0 && (
+      {cards.length === 0 && (
         <div className="pl-empty" style={{ top: m.headerH }}>
-          <div className="pl-empty-tag">Every line is empty. Add a card where a line meets a chapter, or import an outline.</div>
+          <div className="pl-empty-tag">Every line is empty. Start a card in Later, place one on an existing chapter, or import an outline.</div>
           <div className="pl-empty-actions">
-            <button className="dialog-btn" onClick={() => addCard(chapters[0].id, MAIN_LANE_ID)}>New Card</button>
+            <button className="dialog-btn" onClick={() => addCard(LATER_ID, MAIN_LANE_ID)}>New Card</button>
             <button className="dialog-btn primary" onClick={() => openImport()}>Import Outline…</button>
           </div>
           <div className="pl-empty-hint">Double-click any cell to add a card there</div>
@@ -185,9 +172,9 @@ function TimelineView() {
 }
 
 function BoardView() {
-  const { selected, drag, boardBy, select, setDrag, moveCard, addCard, openLineDialog, openChapterDialog } = usePlannerStore(useShallow(s => ({
+  const { selected, drag, boardBy, select, setDrag, moveCard, addCard, openLineDialog } = usePlannerStore(useShallow(s => ({
     selected: s.selected, drag: s.drag, boardBy: s.boardBy, select: s.select, setDrag: s.setDrag,
-    moveCard: s.moveCard, addCard: s.addCard, openLineDialog: s.openLineDialog, openChapterDialog: s.openChapterDialog,
+    moveCard: s.moveCard, addCard: s.addCard, openLineDialog: s.openLineDialog,
   })))
   const book = useBookStore(s => s.book)
   const planner = ensurePlanner(book)
@@ -262,9 +249,7 @@ function BoardView() {
             </div>
           </div>
         ))}
-        {boardBy === 'chapter'
-          ? <div className="pl-board-add" onClick={openChapterDialog}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>Add Chapter</div>
-          : <div className="pl-board-add" onClick={openLineDialog}>+ Story line</div>}
+        {boardBy === 'line' && <div className="pl-board-add" onClick={openLineDialog}>+ Story line</div>}
       </div>
     </div>
   )
@@ -383,7 +368,7 @@ export default function PlannerView() {
         </>)}
         {isCards && (<>
           <span className="pl-tool-sep" />
-          <button className="toolbar-btn" title="New card on the main line" onClick={() => addCard(chapters[0]?.id ?? LATER_ID, MAIN_LANE_ID)}>+ New Card</button>
+          <button className="toolbar-btn" title="New unpinned card on the main line" onClick={() => addCard(LATER_ID, MAIN_LANE_ID)}>+ New Card</button>
           <button className="toolbar-btn" title="New story line" onClick={openLineDialog}>+ New Line</button>
           <span className="pl-tool-spacer" />
           <span className="pl-tool-status">{statusSummary}</span>
@@ -419,4 +404,3 @@ export default function PlannerView() {
     </div>
   )
 }
-

@@ -8,7 +8,7 @@ import { useBookStore } from '../../store/bookStore'
 import { usePlannerStore, type PlannerView } from '../../store/plannerStore'
 import type { BeatTemplateId } from '../../types/draftline'
 import {
-  BEAT_NAMES, bookChapters, chapterLabel, codexPeople, countWords, displayCards, ensurePlanner, parseOutline,
+  BEAT_NAMES, bookChapters, chapterLabel, codexPeople, countWords, displayCards, ensurePlanner, onlyNewOutlineProposals, parseOutline,
   STATUS_COLORS, whoIncludes, whoPerson, type CardStatus,
 } from './plannerModel'
 import { synopsisEntries, synopsisMarkdown, synopsisTrace } from './plannerSynopsis'
@@ -44,7 +44,11 @@ function ScratchTools() {
   const { noteId, openImport, updateNote } = usePlannerStore(useShallow(s => ({ noteId: s.noteId, openImport: s.openImport, updateNote: s.updateNote })))
   const planner = ensurePlanner(book)
   const note = planner.notes.find(n => n.id === noteId) ?? null
-  const proposals = useMemo(() => (note ? parseOutline(note.body, bookChapters(book), codexPeople(book), planner.lanes).proposals : []), [note, book, planner.lanes])
+  const proposals = useMemo(() => {
+    if (!note) return []
+    const parsed = parseOutline(note.body, codexPeople(book), planner.lanes)
+    return onlyNewOutlineProposals(parsed, planner.cards, note.id).proposals
+  }, [note, book, planner.lanes, planner.cards])
   const codex = codexPeople(book)
   const names = [...new Set(proposals.flatMap(p => p.who))].map(id => codex.find(c => c.id === id)?.name.split(' ')[0] ?? id).join(', ') || 'none'
   return (
