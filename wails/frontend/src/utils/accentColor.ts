@@ -7,7 +7,7 @@ export const AVATAR_PALETTE = [
 ]
 
 // The letter a title is filed under: a leading "The" is skipped so "The
-// Reset" and "a second reference manuscript" get the colors of R and U, not a shelf full of Ts.
+// Lantern" and "The Harbour" get the colors of L and H, not a shelf full of Ts.
 export function colorKeyLetter(title: string): string {
   const trimmed = title.trim()
   const rest = trimmed.replace(/^the\s+/i, '')
