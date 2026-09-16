@@ -35,6 +35,11 @@ type cachedSnapshot struct {
 	// version rises on every freeze, so a save that started before a second
 	// freeze cannot mark the newer bytes as written.
 	version uint64
+	// refs counts the freezes that are still counting on these bytes. Freezing
+	// the same words for a second format claims them again, and an export that
+	// never wrote a file gives its claim back; the words go only when the last
+	// claim does.
+	refs int
 }
 
 // snapshotCache is usable as a zero value, like coverCache and for the same
@@ -51,14 +56,37 @@ func (c *snapshotCache) put(snapshot book.Snapshot) {
 	if c.entries == nil {
 		c.entries = map[string]*cachedSnapshot{}
 	}
-	if _, ok := c.entries[snapshot.Record.ID]; ok {
+	if entry, ok := c.entries[snapshot.Record.ID]; ok {
 		// The same text frozen again. It is content-addressed, so the bytes
 		// already pending are these bytes; replacing them would only move the
-		// version forward and risk a save that is mid-flight losing them.
+		// version forward and risk a save that is mid-flight losing them. The
+		// claim is counted, so that one of the two exports being abandoned
+		// does not take the other one's words with it.
+		entry.refs++
 		return
 	}
 	c.nextVer++
-	c.entries[snapshot.Record.ID] = &cachedSnapshot{files: snapshot.Files, version: c.nextVer}
+	c.entries[snapshot.Record.ID] = &cachedSnapshot{files: snapshot.Files, version: c.nextVer, refs: 1}
+}
+
+// discard gives back one claim on a frozen manuscript.
+//
+// It is what an abandoned export calls. The wizard freezes before it writes,
+// so that the file and the record cannot disagree; when the author dismisses
+// the save dialog no file exists, nothing on the record points at those words,
+// and without this they would sit in memory for the session and be offered to
+// every save that ran.
+func (c *snapshotCache) discard(id string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	entry := c.entries[id]
+	if entry == nil {
+		return
+	}
+	entry.refs--
+	if entry.refs <= 0 {
+		delete(c.entries, id)
+	}
 }
 
 // has reports whether a snapshot is held here rather than in the project file.
@@ -98,18 +126,41 @@ func (c *snapshotCache) pending() (book.Assets, map[string]uint64) {
 	return assets, marks
 }
 
-// settled forgets what a successful save has written. A snapshot frozen while
-// that save was running keeps a newer version and stays.
-func (c *snapshotCache) settled(marks map[string]uint64) {
+// settled forgets what a successful save has written, and only that.
+//
+// A successful save is not the same thing as a save that wrote these bytes.
+// The writer skips a frozen manuscript the book it was handed does not name,
+// and the book it was handed can easily predate the freeze: an autosave armed
+// five seconds ago fires while FreezeSnapshot is still crossing the bridge, so
+// it carries the record as it stood before the stamp. Dropping the words then
+// would leave a published ISBN pointing at text that exists nowhere and cannot
+// be exported again — so what the writer did not write stays here, and the
+// next save, which does carry the record, puts it in the file.
+//
+// written is the set of member names the save actually stored. A snapshot
+// frozen while that save was running keeps a newer version and stays.
+func (c *snapshotCache) settled(marks map[string]uint64, written map[string]bool) {
 	if len(marks) == 0 {
 		return
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for id, version := range marks {
-		if entry := c.entries[id]; entry != nil && entry.version == version {
-			delete(c.entries, id)
+		entry := c.entries[id]
+		if entry == nil || entry.version != version {
+			continue
 		}
+		stored := false
+		for name := range entry.files {
+			if written[name] {
+				stored = true
+				break
+			}
+		}
+		if !stored {
+			continue
+		}
+		delete(c.entries, id)
 	}
 }
 
@@ -128,7 +179,11 @@ func (a *App) pendingAssets() (book.Assets, func()) {
 	coverAssets, coverMarks := a.covers.pending()
 	snapshotAssets, snapshotMarks := a.snapshots.pending()
 
-	merged := book.Assets{Files: map[string][]byte{}, Superseded: coverAssets.Superseded}
+	// written comes back from the writer naming the members it stored. The
+	// caches are the only holders of these bytes, so "the save succeeded" is
+	// not enough to let go of them; "the save wrote this one" is.
+	written := map[string]bool{}
+	merged := book.Assets{Files: map[string][]byte{}, Superseded: coverAssets.Superseded, Written: written}
 	for name, data := range coverAssets.Files {
 		merged.Files[name] = data
 	}
@@ -142,7 +197,7 @@ func (a *App) pendingAssets() (book.Assets, func()) {
 	}
 	return merged, func() {
 		a.covers.settled(coverMarks)
-		a.snapshots.settled(snapshotMarks)
+		a.snapshots.settled(snapshotMarks, written)
 	}
 }
 
@@ -199,6 +254,25 @@ func (a *App) FreezeSnapshot(b types.BookData, formatID string) (result types.Sn
 
 	record := snapshot.Record
 	return types.SnapshotResult{Success: true, Snapshot: &record, Reused: reused}
+}
+
+// DiscardSnapshot lets go of a freeze that never became a file.
+//
+// The export wizard freezes the manuscript before it writes, so that the file
+// that comes out and the text the ISBN stands for cannot disagree. If the
+// author then dismisses the system's save dialog there is no file, and nothing
+// on the publishing record points at those words: the screen keeps its record
+// unchanged and says so here, and the words are let go of instead of being
+// carried by every save for the rest of the session.
+//
+// A format that was already published from the same words is unaffected. Each
+// freeze holds its own claim, and only the last one released drops the bytes.
+func (a *App) DiscardSnapshot(snapshotID string) {
+	id := strings.TrimSpace(snapshotID)
+	if id == "" {
+		return
+	}
+	a.snapshots.discard(id)
 }
 
 // ── Reading one back ───────────────────────────────────────────────────────

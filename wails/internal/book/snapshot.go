@@ -21,10 +21,12 @@ package book
 // counted, exporting twice in one afternoon would freeze two copies of an
 // identical book.
 //
-// The members are written through the byte path from 02645 — stored, not
-// deflated, because HTML deflates once on the way in and there is nothing to
-// gain from doing it again — and they survive a save by the editions/ prefix
-// in preservedArchivePrefixes.
+// The members are written through the byte path from 02645 and survive a save
+// by the editions/ prefix in preservedArchivePrefixes. They are deflated: a
+// frozen manuscript is HTML, it packs to about a fifth of its size, and the
+// same book is already in the file at that size under body/. Cover art, which
+// comes through the same path, is not, because a JPEG is compressed already —
+// addAsset is where that decision is made and why.
 
 import (
 	"archive/zip"

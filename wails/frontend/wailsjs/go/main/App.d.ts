@@ -42,6 +42,8 @@ export function CloseBookFile():Promise<void>;
 
 export function DeleteCharacterEvent(arg1:types.BookData,arg2:string):Promise<types.BookData>;
 
+export function DiscardSnapshot(arg1:string):Promise<void>;
+
 export function DownloadReadAloudNative():Promise<void>;
 
 export function DownloadUpdate():Promise<main.UpdateDownloadResult>;

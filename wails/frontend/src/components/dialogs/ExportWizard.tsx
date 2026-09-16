@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useBookStore } from '../../store/bookStore'
 import { useAppStore } from '../../store/appStore'
-import { ExportEPUB, ExportDOCX, ExportPDF, ExportPrintPDF, FreezeSnapshot } from '../../../wailsjs/go/main/App'
-import { exportTextNote, frozenLabel, sharedWith, snapshotFor, withFrozenSnapshot } from './snapshotModel'
+import { ExportEPUB, ExportDOCX, ExportPDF, ExportPrintPDF, DiscardSnapshot, FreezeSnapshot } from '../../../wailsjs/go/main/App'
+import { exportTextNote, runExportWithFreeze, type FreezeOutcome } from './snapshotModel'
 import {
   customTrimError, editionCards, exportSourceSummary, findFormat, isbnRegistrationError,
   patchChangesFormat, prefillChanges, registrableKind, registrationPatch,
@@ -111,6 +111,11 @@ export default function ExportWizard() {
   const [isbnError, setIsbnError] = useState('')
   const [registered, setRegistered] = useState('')
   const [frozenNote, setFrozenNote] = useState('')
+  // What to say on the review step after a dismissed save dialog. Nothing was
+  // written and nothing was frozen, and an author who expected a file deserves
+  // to be told that rather than left to guess from a screen that went back a
+  // step on its own.
+  const [cancelNote, setCancelNote] = useState('')
   const [wizard, setWizard] = useState<WizardOptions>(defaultWizardOptions())
 
   // The four setters the design panels below use, with the shapes they had
@@ -261,42 +266,20 @@ export default function ExportWizard() {
     setStatusMessage(`Registered ${isbnDraft.trim()} as a new edition`)
   }
 
-  // freezeIfNeeded is what makes "as it was" true.
-  //
-  // The first export of a registered format freezes the manuscript and stamps
-  // the format with it; every export after that reads the frozen words instead
-  // of the draft. Freezing before the file is written, rather than after, means
-  // the book handed to the exporter is already the book the record names — so
-  // the file that comes out and the text the ISBN stands for cannot disagree,
-  // even if the save that stores them is still five seconds away.
-  //
-  // It returns the book to export, which is the book on screen with the new
-  // stamp on it. The store is updated too, by the same pure transform.
-  async function freezeIfNeeded(): Promise<typeof book | null> {
-    if (!book) return null
-    if (!formatID || !book.editions) return book
-    const found = findFormat(book.editions, formatID)
-    if (!found) return book
-    const already = snapshotFor(book.editions, found.format)
-    if (already) {
-      const when = frozenLabel(already.frozen)
-      setFrozenNote(`Exported the text frozen for this ISBN${when ? ` on ${when}` : ''}, not the draft on screen.`)
-      return book
-    }
-    const result = await FreezeSnapshot(book as any, formatID)
-    if (!result.success || !result.snapshot) {
-      setExportError(result.error || 'The text for this edition could not be frozen.')
-      return null
-    }
-    freezeFormat(formatID, result.snapshot)
-    const editions = withFrozenSnapshot(book.editions, formatID, result.snapshot)
-    const shared = sharedWith(editions, result.snapshot.id, formatID)
-    setFrozenNote(result.reused && shared.length
-      ? `These are the same words already frozen for ${shared.join(' and ')}. Your project file stores them once and both ISBNs point at them.`
-      : `Froze ${result.snapshot.word_count.toLocaleString()} words as the text this ISBN stands for. Exporting it again gives you these words, however far the book moves on.`)
-    return { ...book, editions }
+  // writeFile is the exporter for the chosen destination, handed the book that
+  // is actually going out — which, for a registered edition, is the book with
+  // the fresh freeze stamped on it.
+  async function writeFile(outgoing: NonNullable<typeof book>) {
+    if (format === 'epub') return await ExportEPUB(outgoing as any, epubOptions as any)
+    if (format === 'docx') return await ExportDOCX(outgoing as any, options as any)
+    if (format === 'pdf') return await ExportPDF(outgoing as any, pdfOptions as any)
+    return await ExportPrintPDF(outgoing as any, printOptions as any)
   }
 
+  // handleExport is the freeze and the file, in the order runExportWithFreeze
+  // describes: frozen before the exporter runs so the file and the record
+  // cannot disagree, recorded only once a file exists so that dismissing the
+  // save dialog leaves the ISBN exactly as it was.
   async function handleExport() {
     if (!book || !format) return
     setStep('exporting')
@@ -304,21 +287,26 @@ export default function ExportWizard() {
     setExportError('')
     setExportSuccess(false)
     setFrozenNote('')
+    setCancelNote('')
     try {
-      const outgoing = await freezeIfNeeded()
-      if (!outgoing) return
-      let result: { success: boolean; file_path?: string; error?: string }
-      if (format === 'epub') result = await ExportEPUB(outgoing as any, epubOptions as any)
-      else if (format === 'docx') result = await ExportDOCX(outgoing as any, options as any)
-      else if (format === 'pdf') result = await ExportPDF(outgoing as any, pdfOptions as any)
-      else result = await ExportPrintPDF(outgoing as any, printOptions as any)
-      if (result.success) {
+      const run = await runExportWithFreeze({
+        book,
+        formatID,
+        freeze: () => FreezeSnapshot(book as any, formatID) as Promise<FreezeOutcome>,
+        write: writeFile,
+        commit: record => freezeFormat(formatID, record),
+        discard: id => { void DiscardSnapshot(id) },
+      })
+      if (run.ok) {
+        setFrozenNote(run.note)
         setExportSuccess(true)
-        setExportedPath(result.file_path || '')
-        setStatusMessage(`Exported to ${result.file_path}`)
+        setExportedPath(run.filePath)
+        setStatusMessage(`Exported to ${run.filePath}`)
         settleWithEdition(format)
-      } else if (result.error === 'cancelled') setStep('review')
-      else setExportError(result.error || 'Export failed')
+      } else if (run.cancelled) {
+        setCancelNote(run.note)
+        setStep('review')
+      } else setExportError(run.error)
     } catch (error) {
       setExportError(String(error))
     } finally {
@@ -460,6 +448,7 @@ export default function ExportWizard() {
         <div className="export-review-card"><div className="export-review-section"><span>Contents</span><strong>{selectedWords.toLocaleString()} words</strong><p>{included.join(' · ')}</p></div><button type="button" onClick={() => setStep('contents')}>Edit contents</button></div>
         <div className="export-review-card"><div className="export-review-section"><span>Design</span><strong>{format === 'print-pdf' ? `${TRIM_SIZES[printOptions.trimSize].label}${printOptions.trimSize === 'custom' ? ` (${printOptions.customWidth} x ${printOptions.customHeight})` : ''} / ${printOptions.fontFamily} ${printOptions.fontSize} pt` : format === 'pdf' ? `${pdfOptions.pageSize.toUpperCase()} / ${pdfOptions.fontFamily} ${pdfOptions.fontSize} pt` : format === 'epub' ? `${epubOptions.fontFamily === 'reader' ? 'Reader typography' : `Embedded ${epubOptions.fontFamily}`} / ${epubOptions.paragraphStyle}` : 'Editable manuscript layout'}</strong><p>{format === 'print-pdf' ? `${printOptions.textAlign === 'justify' ? 'Justified' : 'Left aligned'} / ${printOptions.runningHeaders ? 'Running headers' : 'No running headers'} / ${printOptions.generateTOC ? 'Contents page' : 'No contents page'}` : format === 'epub' ? `${epubOptions.chapterStyle} chapters / ${epubOptions.sceneBreakStyle} scene breaks / ${epubOptions.textAlign} alignment` : FORMAT_INFO[format].detail}</p></div><button type="button" onClick={() => setStep('design')}>Edit design</button></div>
       </div>
+      {cancelNote && <p className="export-ed-cancelled" role="status">{cancelNote}</p>}
       <div className="export-save-note"><CheckIcon /><span>Draftline will open your system’s save dialog next. Your writing is not changed. {textNote}</span></div>
     </>
   }

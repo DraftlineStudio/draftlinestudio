@@ -10,6 +10,17 @@ A snapshot is the manuscript as it stood at one moment: every section's HTML,
 the order and titles the manifest gave them, the author's own copyright page,
 and the metadata. Anything less and "as it was" is not true.
 
+The metadata being in there has a consequence the screen has to state, because
+an author will meet it: the title, author, publisher and copyright holder
+printed in an already-frozen edition are the ones frozen with it, so correcting
+a misspelled name on the Book Details screen does not reach it. What *is* read
+live at export is the edition's own record — ISBN, cover, imprint of record,
+rights line, publication date (`snapshotBook` grafts today's `Editions`, file
+path, story bible, writing goals and style options onto the frozen book).
+`SNAPSHOT_DETAILS_NOTE` in `snapshotModel.ts` is that sentence, shown in the
+export wizard and on the format panel; releasing and re-freezing is the way to
+take up corrected details, and it takes up the new text with them.
+
 Code: `wails/internal/book/snapshot.go` (build, decode, retention),
 `wails/snapshot.go` (the cache, the freeze binding, the export resolution),
 `wails/internal/types/snapshot.go` (the record),
@@ -26,9 +37,13 @@ Code: `wails/internal/book/snapshot.go` (build, decode, retention),
 | `editions/index.json` → `snapshots[]` | the catalogue: when frozen, word count, section count, members, bytes |
 | `editions/index.json` → `editions[].formats[].snapshot_id` | which text this ISBN stands for |
 
-Members are written stored rather than deflated, through the byte path added in
-02645, and survive a save by the `editions/` entry in
-`preservedArchivePrefixes`. `index.json` inside a snapshot folder carries its
+Members are written through the byte path added in 02645 and survive a save by
+the `editions/` entry in `preservedArchivePrefixes`. They are **deflated**:
+a frozen manuscript is HTML, nothing compressed it on the way in, and the same
+words already sit in the same file under `body/` at about a fifth of the size.
+Cover art comes through the same path and is **stored**, because a JPEG is
+compressed already. `archiveWriter.addAsset` decides by what the member holds,
+not by which code path handed it over. `index.json` inside a snapshot folder carries its
 own version and is refused by `requireArchiveVersion` if a later Draftline
 wrote it — the same hard gate `planner.json` and `editions/index.json` apply.
 
@@ -71,6 +86,17 @@ Both halves live in `prepareSnapshotCatalogue`. On the frontend the same rule
 is `withReleasedSnapshot`: releasing one format never removes a record another
 format still points at.
 
+A successful save is **not** proof that a save wrote these particular bytes.
+The writer skips a frozen manuscript the book it was handed does not name, and
+that book can predate the freeze: an autosave armed five seconds ago fires
+while `FreezeSnapshot` is still crossing the bridge. `Assets.Written` therefore
+comes back naming the members that actually went in, and `snapshotCache.settled`
+drops only those. Anything the writer skipped stays in memory for the next
+save, which does carry the record. Forgetting it instead would leave a
+published ISBN pointing at text that exists nowhere, permanently, with nothing
+on any screen to say so — the catalogue guard below is bookkeeping and cannot
+see it.
+
 `editions/snapshots/` is exempt from the edition reaper (`editionFolder`
 returns nothing for it), because frozen manuscripts are shared between editions
 by design and outlive any one of them. `snapshots` is therefore a reserved
@@ -98,11 +124,17 @@ on the format panel.
 1. The wizard calls `FreezeSnapshot(book, formatID)`. Go builds the snapshot,
    keeps the bytes in `snapshotCache` — they never cross the bridge — and
    returns the catalogue record.
-2. The store applies `withFrozenSnapshot`, which stamps the format and
-   catalogues the record in one change. The ordinary five-second autosave
-   writes the words.
-3. The export is handed the book with that stamp already on it, so the file and
-   the record cannot disagree even though the save is still seconds away.
+2. The export is handed the book with that stamp on it, so the file and the
+   record cannot disagree.
+3. **Only once a file exists** does the store apply `withFrozenSnapshot`, which
+   stamps the format and catalogues the record in one change; the ordinary
+   five-second autosave then writes the words. The system's save dialog opens
+   inside the exporter, so pressing Export is not the same event as publishing
+   a file: an author who dismisses that dialog must not come back to an ISBN
+   bound to whatever was on screen at the moment of the click. The wizard calls
+   `DiscardSnapshot(id)` instead and says so on the review step.
+   `runExportWithFreeze` in `snapshotModel.ts` is that whole order, as a pure
+   function, so the rule is tested rather than implied by control flow.
 4. `App.exportSource` resolves the book every exporter actually renders: a
    format with a `snapshot_id` is rebuilt from the frozen members through
    `DecodeSnapshot`, keeping the *live* publishing record, file path and story

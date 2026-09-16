@@ -36,10 +36,14 @@ func (r *publicationPDFRenderer) tocEntriesPerPage() int {
 // tocOverflowError is what an oversubscribed contents produces instead of a
 // short one.
 //
-// The old behaviour was to stop writing when the reserved pages ran out, which
-// made the missing chapters invisible: the contents simply ended, in a file
-// the author was about to send to a printer. A named error costs an export and
-// saves a print run.
+// It is a guard, not a repair: the reservation and the fill both go through
+// tocEntriesPerPage, and the first reserved page is the tightest of them, so a
+// book cannot reach here by being long. What it stops is a later change to
+// either arithmetic quietly reintroducing the older behaviour, which was to
+// stop writing when the reserved pages ran out and leave the missing chapters
+// invisible in a file on its way to a printer. Should the two ever fall out of
+// step, an export fails with a number in it rather than succeeding with a
+// short contents.
 func tocOverflowError(remaining, listed, pages int) error {
 	return fmt.Errorf(
 		"the contents does not fit: %d of the %d entries could not be listed on the %d page%s set aside for it. Shorten the chapter titles, or turn the contents page off and let the book carry its own.",

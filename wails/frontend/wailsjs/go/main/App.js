@@ -78,6 +78,10 @@ export function DeleteCharacterEvent(arg1, arg2) {
   return window['go']['main']['App']['DeleteCharacterEvent'](arg1, arg2);
 }
 
+export function DiscardSnapshot(arg1) {
+  return window['go']['main']['App']['DiscardSnapshot'](arg1);
+}
+
 export function DownloadReadAloudNative() {
   return window['go']['main']['App']['DownloadReadAloudNative']();
 }

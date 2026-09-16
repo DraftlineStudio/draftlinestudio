@@ -64,6 +64,12 @@ func (a *archiveWriter) account(name string, size int64) {
 
 // addEntry writes text, deflated.
 func (a *archiveWriter) addEntry(name, content string) error {
+	return a.addDeflated(name, []byte(content))
+}
+
+// addDeflated writes a member compressed, which is what everything made of
+// words wants.
+func (a *archiveWriter) addDeflated(name string, data []byte) error {
 	if err := a.claim(name); err != nil {
 		return err
 	}
@@ -71,9 +77,34 @@ func (a *archiveWriter) addEntry(name, content string) error {
 	if err != nil {
 		return err
 	}
-	a.account(name, int64(len(content)))
-	_, err = f.Write([]byte(content))
+	a.account(name, int64(len(data)))
+	_, err = f.Write(data)
 	return err
+}
+
+// addAsset writes a member handed over in memory, compressed or not according
+// to what it is made of.
+//
+// Cover art arrives as a JPEG or a PNG, which is compressed already: deflating
+// it again costs processor time on every autosave and saves nothing. A frozen
+// manuscript is HTML and JSON, which deflates to about a fifth of its size —
+// and a project file holding several of them is copied whole into a rolling
+// backup before every single save, so that fifth is paid over and over.
+func (a *archiveWriter) addAsset(name string, data []byte) error {
+	if arrivesCompressed(name) {
+		return a.addBytes(name, data)
+	}
+	return a.addDeflated(name, data)
+}
+
+// arrivesCompressed reports whether a member's bytes were compressed before
+// they reached this program.
+func arrivesCompressed(name string) bool {
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif":
+		return true
+	}
+	return false
 }
 
 // addBytes writes a binary asset stored rather than deflated. Cover art and
@@ -217,14 +248,24 @@ func sameArchiveFile(a, b string) bool {
 // at all when they have changed: an unchanged cover survives by the passthrough
 // in history.go, stored and never re-encoded.
 type Assets struct {
-	// Files maps a full archive member name to its contents. Each is written
-	// stored rather than deflated, because a JPEG is already compressed.
+	// Files maps a full archive member name to its contents. Whether one is
+	// deflated depends on what it holds; see addAsset.
 	Files map[string][]byte
 	// Superseded lists member-name prefixes this save replaces. A carried-over
 	// member under one of them is dropped instead of preserved, which is what
 	// lets a cover be replaced by one in a different format: attaching a flat
 	// design as cover.png must not leave the old cover.jpg behind it.
 	Superseded []string
+	// Written, when it is not nil, is filled in with every member name this
+	// save actually wrote.
+	//
+	// It exists because not everything handed over is written: a member filed
+	// under an edition, or a frozen manuscript, that the saved book does not
+	// name is skipped below. The caller is holding the only copy of those
+	// bytes, and a successful save is not proof that its own copy is safe to
+	// let go of — so it is told which names reached the file rather than left
+	// to infer it.
+	Written map[string]bool
 }
 
 // Write saves a BookData to a .draftline file at destPath. sourcePath is the
@@ -370,8 +411,11 @@ func WriteArchive(sourcePath, destPath string, book types.BookData, appVersion s
 		if orphanedEditionMember(name, liveEditions) || orphanedSnapshotMember(name, liveSnapshots) {
 			continue
 		}
-		if err := aw.addBytes(name, data); err != nil {
+		if err := aw.addAsset(name, data); err != nil {
 			return types.SaveResult{Success: false, Error: err.Error()}
+		}
+		if assets.Written != nil {
+			assets.Written[name] = true
 		}
 	}
 

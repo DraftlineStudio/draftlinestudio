@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02654] - 2026-09-16
+
+### Fixed
+- Cancelling the save dialog no longer freezes the manuscript text to an ISBN.
+- The export wizard now correctly lists which book details are frozen with an edition.
+- Frozen edition text is now stored compressed, cutting its size by about 80%.
+- Fixed an autosave during edition freezing that could lose the frozen text.
+
 ## [0.20.02653] - 2026-09-16
 
 ### Added

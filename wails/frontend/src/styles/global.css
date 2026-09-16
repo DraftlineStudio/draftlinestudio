@@ -9127,3 +9127,30 @@ html, body, #root {
   background: var(--bg-surface-alt); border-left: 2px solid var(--app-accent);
   font-size: 11.5px; line-height: 1.6; color: var(--text-primary); text-align: left;
 }
+
+/* =============================================================================
+   A FREEZE THAT DID NOT HAPPEN  (prefix: .export-ed-cancelled, .bi-snap-details)
+
+   Two sentences the frozen-manuscript feature turned out to need, and neither
+   of them belongs to the section above: that one describes text that exists.
+
+     .export-ed-cancelled  On the review step, after the system's save dialog
+                           was dismissed. No file was written and nothing was
+                           frozen, and the wizard has just stepped backwards on
+                           its own, so it says why. It is a notice rather than
+                           an error — nothing went wrong — so it takes the
+                           muted border of .export-ed-source-text rather than
+                           the accent of .export-ed-frozen.
+     .bi-snap-details      On the format panel, under the facts: which parts of
+                           a published edition were frozen with the text and
+                           which are still read from the record. It sits on
+                           .bi-ed-note and only adds the room it needs.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.export-ed-cancelled {
+  margin: 0 0 12px; padding: 8px 10px; border-radius: 4px; max-width: 72ch;
+  background: var(--bg-surface-alt); border-left: 2px solid var(--border);
+  font-size: 11.5px; line-height: 1.6; color: var(--text-secondary);
+}
+
+.bi-snap-details { margin: 2px 0 0; max-width: 72ch; }

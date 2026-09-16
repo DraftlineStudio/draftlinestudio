@@ -436,3 +436,102 @@ func TestLeavingAProjectForgetsItsFrozenText(t *testing.T) {
 		t.Fatalf("%d members of another book's text are still waiting to be written", len(assets.Files))
 	}
 }
+
+// An autosave is armed five seconds after every edit, and the wizard's own
+// commits arm one. It can therefore fire while FreezeSnapshot is still
+// crossing the bridge, carrying the publishing record as it stood BEFORE the
+// stamp — and a save that does not know about a frozen manuscript does not
+// write it, because the reaper cannot tell an unknown one from an abandoned
+// one. What must not follow is the cache concluding from "the save succeeded"
+// that the words are on disk: they are not, and they exist nowhere else. The
+// ISBN would point at text that can never be exported again, and no screen
+// would say so.
+func TestAnInterleavedSaveDoesNotThrowAwayFrozenText(t *testing.T) {
+	app, path, before := openedHarbour(t)
+	after, result := freeze(t, app, before, "fmt-ebook")
+	id := result.Snapshot.ID
+
+	// The save that was already on its way, carrying the book as it was.
+	if res := app.writeBook(before, path); !res.Success {
+		t.Fatal(res.Error)
+	}
+	if names := snapshotMembers(t, path); len(names) != 0 {
+		t.Fatalf("a save that did not know about the freeze wrote it anyway: %v", names)
+	}
+	if !app.snapshots.has(id) {
+		t.Fatal("the frozen manuscript was forgotten by a save that never wrote it")
+	}
+
+	// The next save carries the record, and the words go in with it.
+	if res := app.writeBook(after, path); !res.Success {
+		t.Fatal(res.Error)
+	}
+	if len(snapshotMembers(t, path)) == 0 {
+		t.Fatal("the following save did not write the frozen manuscript")
+	}
+	if app.snapshots.has(id) {
+		t.Fatal("the frozen manuscript is still held in memory after being written")
+	}
+
+	// And it reads back: the ISBN still stands for words that exist.
+	app.snapshots.reset()
+	source, err := app.exportSource(after, types.ExportOptions{EditionID: "ed-1", FormatID: "fmt-ebook"})
+	if err != nil {
+		t.Fatalf("the frozen text cannot be read back: %v", err)
+	}
+	if len(source.Body) != len(before.Body) {
+		t.Fatalf("the frozen text came back with %d chapters, want %d", len(source.Body), len(before.Body))
+	}
+}
+
+// An export whose save dialog was dismissed wrote no file and recorded
+// nothing, so the words it froze are let go of rather than carried by every
+// save for the rest of the session.
+func TestAFreezeThatNeverBecameAFileIsLetGoOf(t *testing.T) {
+	app, path, b := openedHarbour(t)
+	result := app.FreezeSnapshot(b, "fmt-ebook")
+	if !result.Success {
+		t.Fatal(result.Error)
+	}
+	id := result.Snapshot.ID
+	if !app.snapshots.has(id) {
+		t.Fatal("freezing did not hold the words")
+	}
+
+	app.DiscardSnapshot(id)
+	if app.snapshots.has(id) {
+		t.Fatal("the abandoned freeze is still held")
+	}
+	// The book never learned of it, so the save writes nothing under it.
+	if res := app.writeBook(b, path); !res.Success {
+		t.Fatal(res.Error)
+	}
+	if names := snapshotMembers(t, path); len(names) != 0 {
+		t.Fatalf("an abandoned freeze reached the project file: %v", names)
+	}
+}
+
+// Two formats frozen from the same words each hold their own claim on them.
+// One export being abandoned must not take the other edition's text with it.
+func TestAbandoningOneExportKeepsTheWordsAnotherFormatFroze(t *testing.T) {
+	app, path, b := openedHarbour(t)
+	b, first := freeze(t, app, b, "fmt-ebook")
+
+	// The second format freezes the same unchanged text, then that export is
+	// abandoned at the file picker.
+	second := app.FreezeSnapshot(b, "fmt-paper")
+	if !second.Success || !second.Reused {
+		t.Fatalf("the same text did not come back as already frozen: %+v", second)
+	}
+	app.DiscardSnapshot(second.Snapshot.ID)
+
+	if !app.snapshots.has(first.Snapshot.ID) {
+		t.Fatal("abandoning the second export threw away the first edition's words")
+	}
+	if res := app.writeBook(b, path); !res.Success {
+		t.Fatal(res.Error)
+	}
+	if len(snapshotMembers(t, path)) == 0 {
+		t.Fatal("the first edition's frozen text never reached the project file")
+	}
+}

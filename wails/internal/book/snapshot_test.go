@@ -493,28 +493,57 @@ func TestTheEditionReaperLeavesFrozenManuscriptsAlone(t *testing.T) {
 	}
 }
 
-// Frozen text is stored, not deflated: it went through one round of
-// compression on the way in and there is nothing left to squeeze.
-func TestFrozenTextIsStoredRatherThanDeflated(t *testing.T) {
+// Frozen text is deflated, and cover art is not.
+//
+// A frozen manuscript is HTML. Nothing compressed it on the way in — the same
+// words are already in the same file, under body/, at about a fifth of this
+// size — so storing it uncompressed multiplies what an edition costs the
+// project file, every rolling backup of it, and every save. A JPEG is the
+// other way round: it arrives compressed and a second pass is work for
+// nothing. The member decides, not the code path.
+func TestFrozenTextIsDeflatedAndCoverArtIsNot(t *testing.T) {
 	isolateConfigDir(t)
 	path := filepath.Join(t.TempDir(), "harbour.draftline")
 
 	b := snapshotFixtureBook()
 	index := twoFormatEditions()
 	frozen, assets := freezeInto(t, index, "fmt-ebook", b)
+	index.Editions[0].Cover = &types.EditionCover{File: "cover.jpg", ThumbFile: "cover_thumb.jpg", Width: 1600, Height: 2560}
+	// Bytes a JPEG could plausibly be: incompressible, so a deflate pass would
+	// be measurable work and no saving.
+	jpeg := make([]byte, 4096)
+	for i := range jpeg {
+		jpeg[i] = byte(i*7 + i/3)
+	}
+	assets.Files[CoverMember("ed-1", "cover.jpg")] = jpeg
+	assets.Files[CoverMember("ed-1", "cover_thumb.jpg")] = jpeg[:512]
 	b.Editions = index
 	if res := WriteArchive("", path, b, "test", nil, assets); !res.Success {
 		t.Fatalf("save failed: %s", res.Error)
 	}
+
+	var text, packed uint64
 	eachMember(t, path, func(file *zip.File) {
-		if !strings.HasPrefix(file.Name, SnapshotPrefix(frozen.Record.ID)) {
-			return
-		}
-		if file.Method != zip.Store {
-			t.Fatalf("%s was deflated", file.Name)
-		}
-		if file.CompressedSize64 != file.UncompressedSize64 {
-			t.Fatalf("%s is %d stored bytes for %d", file.Name, file.CompressedSize64, file.UncompressedSize64)
+		switch {
+		case strings.HasPrefix(file.Name, SnapshotPrefix(frozen.Record.ID)):
+			if file.Method != zip.Deflate {
+				t.Fatalf("%s was stored uncompressed", file.Name)
+			}
+			text += file.UncompressedSize64
+			packed += file.CompressedSize64
+		case file.Name == CoverMember("ed-1", "cover.jpg"):
+			if file.Method != zip.Store {
+				t.Fatalf("cover art was deflated a second time")
+			}
+			if file.CompressedSize64 != file.UncompressedSize64 {
+				t.Fatalf("cover art is %d stored bytes for %d", file.CompressedSize64, file.UncompressedSize64)
+			}
 		}
 	})
+	if text == 0 {
+		t.Fatal("no frozen text reached the archive")
+	}
+	if packed >= text {
+		t.Fatalf("the frozen manuscript packed to %d bytes from %d, which is no saving", packed, text)
+	}
 }

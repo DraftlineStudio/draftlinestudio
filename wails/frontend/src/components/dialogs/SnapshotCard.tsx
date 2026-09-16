@@ -14,7 +14,8 @@ import { FreezeSnapshot } from '../../../wailsjs/go/main/App'
 import { useBookStore } from '../../store/bookStore'
 import type { Edition, EditionFormat, EditionIndex } from '../../types/draftline'
 import {
-  SNAPSHOT_ABSENT_NOTE, SNAPSHOT_RELEASE_NOTE, SNAPSHOT_SHARED_NOTE,
+  SNAPSHOT_ABSENT_NOTE, SNAPSHOT_DETAILS_NOTE, SNAPSHOT_REFREEZE_NOTE,
+  SNAPSHOT_RELEASE_NOTE, SNAPSHOT_SHARED_NOTE,
   frozenLabel, sharedWith, snapshotFacts, snapshotFootprint, snapshotFor,
 } from './snapshotModel'
 
@@ -107,6 +108,12 @@ export default function SnapshotCard({ index, edition, format }: Props) {
 
         {error && <p className="bi-cover-error">{error}</p>}
         {note && <p className="bi-snap-note">{note}</p>}
+
+        {snapshot && (
+          <p className="bi-ed-note bi-snap-details">
+            {SNAPSHOT_DETAILS_NOTE} {SNAPSHOT_REFREEZE_NOTE}
+          </p>
+        )}
 
         <div className="bi-field-hint bi-snap-hint">
           {snapshot

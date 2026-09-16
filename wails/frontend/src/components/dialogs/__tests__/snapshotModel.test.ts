@@ -7,7 +7,8 @@ import { describe, it, expect } from 'vitest'
 import type { EditionIndex, EditionSnapshot } from '../../../types/draftline'
 import {
   byteLabel, exportTextNote, frozenLabel, referenceCount, sharedWith,
-  snapshotFacts, snapshotFootprint, snapshotFor, withFrozenSnapshot, withReleasedSnapshot,
+  runExportWithFreeze, snapshotFacts, snapshotFootprint, snapshotFor,
+  withFrozenSnapshot, withReleasedSnapshot,
 } from '../snapshotModel'
 
 const snapshot = (id: string, over: Partial<EditionSnapshot> = {}): EditionSnapshot => ({
@@ -77,13 +78,14 @@ describe('saying it on screen', () => {
     expect(frozenLabel('some time last spring')).toBe('some time last spring')
   })
 
-  it('describes the frozen text as length, date and size', () => {
+  it('describes the frozen text as length, date and size, and names the details frozen with it', () => {
     const facts = snapshotFacts(snapshot('abcdef0123456789'))
-    expect(facts.map(f => f.label)).toEqual(['Frozen', 'Length', 'In this project file', 'Reference'])
-    expect(facts[1].value).toContain('91,400 words')
-    expect(facts[1].value).toContain('34 sections')
-    expect(facts[2].value).toBe('500 KB')
-    expect(facts[3].value).toBe('abcdef012345')
+    expect(facts.map(f => f.label)).toEqual(['Frozen', 'Book details', 'Length', 'In this project file', 'Reference'])
+    expect(facts[1].value).toContain('The Salt Lantern')
+    expect(facts[2].value).toContain('91,400 words')
+    expect(facts[2].value).toContain('34 sections')
+    expect(facts[3].value).toBe('500 KB')
+    expect(facts[4].value).toBe('abcdef012345')
     expect(snapshotFacts(undefined)).toEqual([])
   })
 
@@ -115,6 +117,20 @@ describe('what an export is about to contain', () => {
     expect(note).toContain('91,400 words')
     expect(note).toContain('not the draft')
     expect(note).toMatch(/2026/)
+  })
+
+  // The note used to claim that everything but the text came from the record
+  // as it stands now. The title, the author and the publisher are inside the
+  // frozen manuscript, so an author who corrects a misspelled name and
+  // re-exports a published ISBN still gets the misspelling; the record's own
+  // fields do reach the file. Saying the two apart is the whole point.
+  it('does not claim that corrected book details reach an edition already frozen', () => {
+    let i = index()
+    i = withFrozenSnapshot(i, 'fmt-ebook', snapshot('aaa'))
+    const note = exportTextNote(i, formatIn(i, 'fmt-ebook'))
+    expect(note).not.toContain('Everything else')
+    expect(note).toContain('the ones it was frozen with')
+    expect(note).toContain('imprint of record')
   })
 
   it('says what an export attached to no edition does', () => {
@@ -173,5 +189,110 @@ describe('releasing', () => {
   it('does nothing to a format that had nothing frozen', () => {
     const i = withFrozenSnapshot(index(), 'fmt-ebook', snapshot('aaa'))
     expect(withReleasedSnapshot(i, 'fmt-hard')).toBe(i)
+  })
+})
+
+// ── Freezing around an export ──────────────────────────────────────────────
+//
+// Pressing Export opens the system's save dialog inside the exporter, and
+// dismissing it is an ordinary thing to do. What must not happen then is a
+// published ISBN quietly bound to the words that were on screen at the moment
+// of the click: the author who cancels, writes for a week and exports again
+// would get the week-old text, with nothing on any screen having said so.
+
+describe('exporting a registered edition', () => {
+  const record = snapshot('frozen-1')
+
+  function run(over: {
+    formatID?: string
+    editions?: EditionIndex
+    freeze?: () => Promise<{ success: boolean; snapshot?: EditionSnapshot; reused?: boolean; error?: string }>
+    write?: (book: { editions?: EditionIndex }) => Promise<{ success: boolean; file_path?: string; error?: string }>
+  } = {}) {
+    const committed: EditionSnapshot[] = []
+    const discarded: string[] = []
+    const written: Array<{ editions?: EditionIndex }> = []
+    const freezes: number[] = []
+    const call = runExportWithFreeze({
+      book: { editions: over.editions ?? index() },
+      formatID: over.formatID ?? 'fmt-ebook',
+      freeze: over.freeze ?? (async () => { freezes.push(1); return { success: true, snapshot: record } }),
+      write: over.write ?? (async book => { written.push(book); return { success: true, file_path: '/tmp/out.epub' } }),
+      commit: r => committed.push(r),
+      discard: id => discarded.push(id),
+    })
+    return { call, committed, discarded, written, freezes }
+  }
+
+  it('writes the file from the words it froze, so the two cannot disagree', async () => {
+    const r = run()
+    const result = await r.call
+    expect(result.ok).toBe(true)
+    expect(r.written).toHaveLength(1)
+    const format = r.written[0].editions!.editions[0].formats[0]
+    expect(format.snapshot_id).toBe('frozen-1')
+    expect(r.written[0].editions!.snapshots).toHaveLength(1)
+    expect(r.committed).toEqual([record])
+    expect(result.note).toContain('91,400 words')
+  })
+
+  it('freezes nothing when the author dismisses the save dialog', async () => {
+    const r = run({ write: async () => ({ success: false, error: 'cancelled' }) })
+    const result = await r.call
+    expect(result.ok).toBe(false)
+    expect(result.cancelled).toBe(true)
+    expect(result.error).toBe('')
+    expect(r.committed).toEqual([])
+    expect(r.discarded).toEqual(['frozen-1'])
+    expect(result.note).toContain('nothing was frozen')
+  })
+
+  it('freezes nothing when the export fails outright, and says why', async () => {
+    const r = run({ write: async () => ({ success: false, error: 'the disk is full' }) })
+    const result = await r.call
+    expect(result.error).toBe('the disk is full')
+    expect(r.committed).toEqual([])
+    expect(r.discarded).toEqual(['frozen-1'])
+  })
+
+  it('does not write a file when the text could not be frozen', async () => {
+    const r = run({ freeze: async () => ({ success: false, error: 'there is nothing written to freeze yet' }) })
+    const result = await r.call
+    expect(result.error).toBe('there is nothing written to freeze yet')
+    expect(r.written).toEqual([])
+    expect(r.committed).toEqual([])
+    expect(r.discarded).toEqual([])
+  })
+
+  it('freezes nothing a second time, and exports the words already frozen', async () => {
+    let i = index()
+    i = withFrozenSnapshot(i, 'fmt-ebook', record)
+    const r = run({ editions: i })
+    const result = await r.call
+    expect(result.ok).toBe(true)
+    expect(r.freezes).toEqual([])
+    expect(r.committed).toEqual([])
+    expect(result.note).toContain('not the draft on screen')
+  })
+
+  it('freezes nothing for an export made from scratch', async () => {
+    const r = run({ formatID: '' })
+    const result = await r.call
+    expect(result.ok).toBe(true)
+    expect(r.freezes).toEqual([])
+    expect(r.committed).toEqual([])
+    expect(result.note).toBe('')
+  })
+
+  it('names the other ISBN when two formats are published from the same words', async () => {
+    let i = index()
+    i = withFrozenSnapshot(i, 'fmt-paper', record)
+    const r = run({
+      editions: i,
+      freeze: async () => ({ success: true, snapshot: record, reused: true }),
+    })
+    const result = await r.call
+    expect(result.note).toContain('Paperback — First edition')
+    expect(r.written[0].editions!.snapshots).toHaveLength(1)
   })
 })
