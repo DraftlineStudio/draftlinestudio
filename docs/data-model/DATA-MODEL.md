@@ -25,6 +25,10 @@ book.draftline (ZIP)
 ├── history/                # Chapter snapshot history (format 2.2+)
 │   ├── index.json          # Snapshot metadata
 │   └── snapshots/          # Deduplicated chapter versions
+├── editions/               # The publishing record (optional)
+│   ├── index.json          # Editions, formats, ISBNs, cover records, frozen-manuscript catalogue
+│   ├── <edition id>/       # That edition's cover art
+│   └── snapshots/<sha256>/ # The manuscript one ISBN went out with
 ├── story_bible.json        # Characters, plot notes, timeline
 ├── read_aloud_cast.json    # Per-book Read Aloud voice casting (optional)
 ├── beat_sheet.json         # Story structure beats
@@ -91,6 +95,19 @@ interface ChapterItem {
 Archive format 2.2 stores snapshot metadata in `history/index.json` and chapter HTML in `history/snapshots/`. A snapshot records the stable chapter ID, section and title at capture time, timestamp, reason, word count, and SHA-256 content hash. Identical content is not stored twice. Draftline retains at most 50 snapshots per chapter and 1,000 per project.
 
 Automatic snapshots are activity-driven: editing marks the affected chapter, and Draftline records its current content after ten minutes. An unchanged or background-idle project produces no snapshot. Chapter history remains active when activity-based autosave is disabled. Accepted AI and comparison passes atomically record the chapter immediately before and after the change rather than waiting for the periodic timer. A writer can also take a manual snapshot at any time (Chapter History dialog, or *Snapshot Chapter Now* in the project menu) with an optional label such as "Before rewrite"; it is stored under that reason and saves the manuscript in the same archive write. Ordinary saves copy unchanged history in its compressed ZIP representation.
+
+### Editions and frozen manuscripts
+
+`editions/index.json` (version 1) is the book's publishing record: which
+editions exist, which formats each was published in, and the ISBN and
+specification of each format. It also holds the catalogue of frozen
+manuscripts — the text each published ISBN went out with — which live under
+`editions/snapshots/<sha256>/`, addressed by the hash of their own contents so
+that the same words published as an ebook and a paperback are stored once.
+Everything under `editions/` is carried across a save byte for byte; frozen
+text is kept while a format still names it and dropped by the next save when
+none does. See `docs/backend/book/EDITION-SNAPSHOTS.md` and
+`docs/backend/book/COVER-ART.md`.
 
 ### Planner
 

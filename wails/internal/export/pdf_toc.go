@@ -1,6 +1,7 @@
 package export
 
 import (
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -15,8 +16,7 @@ func (r *publicationPDFRenderer) reserveTOC() {
 			entries++
 		}
 	}
-	usable := r.spec.TrimHeight - r.spec.TopMargin - r.spec.BottomMargin - r.spec.LineHeight*3
-	perPage := maxInt(1, int(usable/(r.spec.LineHeight*1.15)))
+	perPage := r.tocEntriesPerPage()
 	pages := maxInt(1, int(math.Ceil(float64(entries)/float64(perPage))))
 	for i := 0; i < pages; i++ {
 		r.addPage(pageTOC, "Contents")
@@ -24,9 +24,31 @@ func (r *publicationPDFRenderer) reserveTOC() {
 	}
 }
 
-func (r *publicationPDFRenderer) fillTOC() {
+// tocEntriesPerPage is how many contents lines fit on the tightest reserved
+// page — the first one, which gives three line-heights to the word "Contents".
+// The reservation and the fill both go through it, so the number of pages set
+// aside and the number of pages needed are worked out the same way.
+func (r *publicationPDFRenderer) tocEntriesPerPage() int {
+	usable := r.spec.TrimHeight - r.spec.TopMargin - r.spec.BottomMargin - r.spec.LineHeight*3
+	return maxInt(1, int(usable/(r.spec.LineHeight*1.15)))
+}
+
+// tocOverflowError is what an oversubscribed contents produces instead of a
+// short one.
+//
+// The old behaviour was to stop writing when the reserved pages ran out, which
+// made the missing chapters invisible: the contents simply ended, in a file
+// the author was about to send to a printer. A named error costs an export and
+// saves a print run.
+func tocOverflowError(remaining, listed, pages int) error {
+	return fmt.Errorf(
+		"the contents does not fit: %d of the %d entries could not be listed on the %d page%s set aside for it. Shorten the chapter titles, or turn the contents page off and let the book carry its own.",
+		remaining, listed+remaining, pages, map[bool]string{true: "", false: "s"}[pages == 1])
+}
+
+func (r *publicationPDFRenderer) fillTOC() error {
 	if len(r.tocPages) == 0 {
-		return
+		return nil
 	}
 	// SetPage changes fpdf's active page. Restore the final manuscript page
 	// after backfilling the reserved contents pages so Close() finalizes the
@@ -60,6 +82,10 @@ func (r *publicationPDFRenderer) fillTOC() {
 			entryIndex++
 		}
 	}
+	if entryIndex < len(r.toc) {
+		return tocOverflowError(len(r.toc)-entryIndex, entryIndex, len(r.tocPages))
+	}
+	return nil
 }
 
 func truncateToWidth(pdf *fpdf.Fpdf, text string, width float64) string {

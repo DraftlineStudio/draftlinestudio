@@ -112,6 +112,19 @@ func (r *publicationPDFRenderer) render() error {
 		r.addPage(pageHalfTitle, "")
 		r.centeredTextWithFont(r.doc.Title, r.spec.TitlePageFont, r.spec.FontSize*1.7, "B", r.trimY+r.spec.TrimHeight*0.42)
 	}
+	// The title page belongs on a recto. Trade convention runs half title,
+	// blank, title page, copyright — so the half title opens the book on page
+	// one, its verso is blank, and the title page is the first thing the
+	// reader meets on opening the book flat. Draftline used to put the title
+	// page straight after the half title, which lands it on the back of it:
+	// a verso title page is the mark of a book nobody typeset.
+	//
+	// Only the print interior is arranged this way. A reading PDF is read one
+	// page at a time on a screen, where there is no back of a sheet to land
+	// on, and a blank page inserted into it is just a blank page.
+	if r.spec.Print && r.pdf.PageNo()%2 == 1 {
+		r.addPage(pageBlank, "")
+	}
 	r.addPage(pageTitle, "")
 	r.renderTitlePage()
 
@@ -131,7 +144,9 @@ func (r *publicationPDFRenderer) render() error {
 		}
 	}
 	if r.spec.GenerateTOC {
-		r.fillTOC()
+		if err := r.fillTOC(); err != nil {
+			return err
+		}
 	}
 	return r.pdf.Error()
 }

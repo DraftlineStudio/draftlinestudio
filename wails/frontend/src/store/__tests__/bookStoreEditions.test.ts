@@ -213,3 +213,98 @@ describe('duplicating an edition through the store', () => {
     expect(store().duplicateEdition('ed-9', '2030')).toBe('')
   })
 })
+
+// ── Frozen manuscripts ─────────────────────────────────────────────────────
+//
+// The text a published ISBN stands for rides the same funnel: freezing dirties
+// the book and the ordinary autosave writes the catalogue. The words
+// themselves never reach the store — only the record that names them.
+
+const snapshotRecord = (id: string) => ({
+  id, frozen: '2026-04-14T09:00:00Z', title: 'Harbour Lights',
+  word_count: 91_400, sections: 34, members: 36, bytes: 512_000,
+})
+
+describe('freezing the text an ISBN stands for', () => {
+  it('stamps the format, catalogues the text, and autosaves both', async () => {
+    bookStoreMod.useBookStore.setState({ book: makeBook(), isDirty: false })
+    const edition = store().addEdition('2026')
+    const format = store().addFormat(edition, 'ebook')
+
+    store().freezeFormat(format, snapshotRecord('aaa'))
+    expect(record()?.editions[0].formats[0].snapshot_id).toBe('aaa')
+    expect(record()?.snapshots).toHaveLength(1)
+    expect(store().isDirty).toBe(true)
+
+    await vi.advanceTimersByTimeAsync(5_000)
+    await flushMicrotasks()
+    const saved: BookData = mocks.SaveBook.mock.calls[0][0]
+    expect(saved.editions?.snapshots?.[0].word_count).toBe(91_400)
+  })
+
+  it('stores the same words once for two formats', () => {
+    bookStoreMod.useBookStore.setState({ book: makeBook(), isDirty: false })
+    const edition = store().addEdition('2026')
+    const ebook = store().addFormat(edition, 'ebook')
+    const paperback = store().addFormat(edition, 'print')
+
+    store().freezeFormat(ebook, snapshotRecord('aaa'))
+    store().freezeFormat(paperback, snapshotRecord('aaa'))
+    expect(record()?.snapshots).toHaveLength(1)
+    expect(record()?.editions[0].formats.map(f => f.snapshot_id)).toEqual(['aaa', 'aaa'])
+  })
+
+  it('releasing one of two formats leaves the words the other went out with', () => {
+    bookStoreMod.useBookStore.setState({ book: makeBook(), isDirty: false })
+    const edition = store().addEdition('2026')
+    const ebook = store().addFormat(edition, 'ebook')
+    const paperback = store().addFormat(edition, 'print')
+    store().freezeFormat(ebook, snapshotRecord('aaa'))
+    store().freezeFormat(paperback, snapshotRecord('aaa'))
+
+    store().releaseFormatSnapshot(ebook)
+    expect(record()?.snapshots).toHaveLength(1)
+    expect(record()?.editions[0].formats[0].snapshot_id).toBeUndefined()
+    expect(record()?.editions[0].formats[1].snapshot_id).toBe('aaa')
+
+    store().releaseFormatSnapshot(paperback)
+    expect(record()?.snapshots).toEqual([])
+  })
+
+  it('removing a format lets go of the words nothing else points at', () => {
+    bookStoreMod.useBookStore.setState({ book: makeBook(), isDirty: false })
+    const edition = store().addEdition('2026')
+    const ebook = store().addFormat(edition, 'ebook')
+    const paperback = store().addFormat(edition, 'print')
+    store().freezeFormat(ebook, snapshotRecord('aaa'))
+    store().freezeFormat(paperback, snapshotRecord('bbb'))
+
+    store().removeFormat(ebook)
+    expect(record()?.snapshots?.map(s => s.id)).toEqual(['bbb'])
+    expect(record()?.editions[0].formats).toHaveLength(1)
+  })
+
+  it('removing a format that shares its words keeps them for the other', () => {
+    bookStoreMod.useBookStore.setState({ book: makeBook(), isDirty: false })
+    const edition = store().addEdition('2026')
+    const ebook = store().addFormat(edition, 'ebook')
+    const paperback = store().addFormat(edition, 'print')
+    store().freezeFormat(ebook, snapshotRecord('aaa'))
+    store().freezeFormat(paperback, snapshotRecord('aaa'))
+
+    store().removeFormat(ebook)
+    expect(record()?.snapshots?.map(s => s.id)).toEqual(['aaa'])
+    expect(record()?.editions[0].formats[0].snapshot_id).toBe('aaa')
+  })
+
+  it('a duplicated edition starts with nothing frozen', () => {
+    bookStoreMod.useBookStore.setState({ book: makeBook(), isDirty: false })
+    const edition = store().addEdition('2026')
+    const format = store().addFormat(edition, 'print')
+    store().freezeFormat(format, snapshotRecord('aaa'))
+
+    store().duplicateEdition(edition, '2030')
+    expect(record()?.editions[1].formats[0].snapshot_id).toBeUndefined()
+    expect(record()?.editions[0].formats[0].snapshot_id).toBe('aaa')
+  })
+})

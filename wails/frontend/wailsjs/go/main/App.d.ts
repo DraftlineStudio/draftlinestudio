@@ -54,6 +54,8 @@ export function ExportPDF(arg1:types.BookData,arg2:types.PDFOptions):Promise<typ
 
 export function ExportPrintPDF(arg1:types.BookData,arg2:types.PrintPDFOptions):Promise<types.ExportResult>;
 
+export function FreezeSnapshot(arg1:types.BookData,arg2:string):Promise<types.SnapshotResult>;
+
 export function GetAppVersion():Promise<string>;
 
 export function GetChapterHistory(arg1:string):Promise<types.ChapterHistorySnapshot>;

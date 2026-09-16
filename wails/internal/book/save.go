@@ -22,13 +22,26 @@ import (
 // carried over from the book being saved — and a ZIP will happily hold the same
 // name twice, with readers disagreeing about which copy wins. A collision is an
 // error here instead.
+//
+// It also keeps a running count of what has gone in. Until frozen manuscripts
+// existed, a .draftline could not plausibly reach the archive limits in
+// ziputil; a sixty-section novel frozen for six formats can, so a save that
+// would exceed one has to say which part of the file is responsible rather
+// than refuse a project that opened yesterday with a number.
 type archiveWriter struct {
 	zw      *zip.Writer
 	written map[string]bool
+	bytes   int64
+	// snapshotEntries and snapshotBytes are the share of the above that
+	// belongs to frozen manuscripts, and snapshots counts how many distinct
+	// ones they belong to.
+	snapshotEntries int
+	snapshotBytes   int64
+	snapshots       map[string]bool
 }
 
 func newArchiveWriter(zw *zip.Writer) *archiveWriter {
-	return &archiveWriter{zw: zw, written: map[string]bool{}}
+	return &archiveWriter{zw: zw, written: map[string]bool{}, snapshots: map[string]bool{}}
 }
 
 func (a *archiveWriter) claim(name string) error {
@@ -37,6 +50,16 @@ func (a *archiveWriter) claim(name string) error {
 	}
 	a.written[name] = true
 	return nil
+}
+
+// account records what one written member costs.
+func (a *archiveWriter) account(name string, size int64) {
+	a.bytes += size
+	if id, ok := snapshotFolder(name); ok {
+		a.snapshotEntries++
+		a.snapshotBytes += size
+		a.snapshots[id] = true
+	}
 }
 
 // addEntry writes text, deflated.
@@ -48,6 +71,7 @@ func (a *archiveWriter) addEntry(name, content string) error {
 	if err != nil {
 		return err
 	}
+	a.account(name, int64(len(content)))
 	_, err = f.Write([]byte(content))
 	return err
 }
@@ -67,6 +91,7 @@ func (a *archiveWriter) addBytes(name string, data []byte) error {
 	if err != nil {
 		return err
 	}
+	a.account(name, int64(len(data)))
 	_, err = f.Write(data)
 	return err
 }
@@ -89,10 +114,63 @@ func (a *archiveWriter) copyEntry(f *zip.File) error {
 	if err := a.claim(f.Name); err != nil {
 		return err
 	}
+	a.account(f.Name, int64(f.UncompressedSize64))
 	if err := a.zw.Copy(f); err != nil {
 		return fmt.Errorf("cannot preserve archived entry %q: %w", f.Name, err)
 	}
 	return nil
+}
+
+// budget refuses a save that would produce a project file this build, or any
+// other reader of the format, would then refuse to open.
+//
+// The check is here rather than only in ziputil so that the message names what
+// filled the file. "archive exceeds safety limits" on a project that saved
+// fine an hour ago tells an author nothing they can act on; the number of
+// frozen editions in it, and the fact that dropping one releases the space,
+// tells them exactly what to do.
+func (a *archiveWriter) budget() error {
+	if len(a.written) > ziputil.MaxEntries {
+		return fmt.Errorf(
+			"this project would hold %d pieces, more than the %d a Draftline file can contain%s",
+			len(a.written), ziputil.MaxEntries, a.snapshotShare(int64(a.snapshotEntries), int64(len(a.written))))
+	}
+	if a.bytes > ziputil.MaxTotalSize {
+		return fmt.Errorf(
+			"this project would come to %s, more than the %s a Draftline file can hold%s",
+			byteSize(a.bytes), byteSize(ziputil.MaxTotalSize), a.snapshotShare(a.snapshotBytes, a.bytes))
+	}
+	return nil
+}
+
+// snapshotShare is the sentence that names frozen manuscripts as the cause,
+// and it is only added when they are actually most of the problem. A project
+// that is simply enormous on its own should not be told to delete editions.
+func (a *archiveWriter) snapshotShare(part, whole int64) string {
+	if whole == 0 || part*2 < whole || len(a.snapshots) == 0 {
+		return ". Remove some of what it holds and save again."
+	}
+	return fmt.Sprintf(
+		". The %d frozen %s in it account for most of that — release one from a format on the Book & Editions screen and the space comes back on the next save.",
+		len(a.snapshots), plural(len(a.snapshots), "manuscript", "manuscripts"))
+}
+
+func plural(n int, one, many string) string {
+	if n == 1 {
+		return one
+	}
+	return many
+}
+
+func byteSize(n int64) string {
+	switch {
+	case n >= 1<<30:
+		return fmt.Sprintf("%.1f GB", float64(n)/float64(1<<30))
+	case n >= 1<<20:
+		return fmt.Sprintf("%.0f MB", float64(n)/float64(1<<20))
+	default:
+		return fmt.Sprintf("%.0f KB", float64(n)/float64(1<<10))
+	}
 }
 
 // toleratedSourceFailure decides what an unreadable source means for this save.
@@ -259,12 +337,17 @@ func WriteArchive(sourcePath, destPath string, book types.BookData, appVersion s
 	// nil for a book that has none. Nil means "do not reap"; see
 	// orphanedEditionMember for why that distinction has to be kept.
 	var liveEditions map[string]bool
+	// liveSnapshots is the other reaping set: the frozen manuscripts at least
+	// one format was exported from. Nil for the same reason, and the bytes of
+	// anything not in it are simply not carried across this save.
+	var liveSnapshots map[string]bool
 	if book.Editions != nil {
 		editions, err := prepareEditionsData(*book.Editions)
 		if err != nil {
 			return types.SaveResult{Success: false, Error: err.Error()}
 		}
 		liveEditions = liveEditionIDs(editions)
+		liveSnapshots = liveSnapshotIDs(editions)
 		editionsJSON, err := json.MarshalIndent(editions, "", "  ")
 		if err != nil {
 			return types.SaveResult{Success: false, Error: fmt.Sprintf("failed to encode editions: %v", err)}
@@ -284,7 +367,7 @@ func WriteArchive(sourcePath, destPath string, book types.BookData, appVersion s
 	// is the dangerous one, because there is no screen in the app that could
 	// ever show the author that another book's artwork is inside their file.
 	for name, data := range assets.Files {
-		if orphanedEditionMember(name, liveEditions) {
+		if orphanedEditionMember(name, liveEditions) || orphanedSnapshotMember(name, liveSnapshots) {
 			continue
 		}
 		if err := aw.addBytes(name, data); err != nil {
@@ -298,7 +381,7 @@ func WriteArchive(sourcePath, destPath string, book types.BookData, appVersion s
 	if len(snapshots) > 0 {
 		preserved = preservedPrefixesExcept(historyPrefix)
 	}
-	if err := copyPreservedEntriesExcept(aw, sourcePath, preserved, assets.Superseded, liveEditions); err != nil {
+	if err := copyPreservedEntriesExcept(aw, sourcePath, preserved, assets.Superseded, liveEditions, liveSnapshots); err != nil {
 		note, tolerated := toleratedSourceFailure(err, sourcePath, destPath)
 		if !tolerated {
 			return types.SaveResult{Success: false, Error: err.Error()}
@@ -421,6 +504,13 @@ func WriteArchive(sourcePath, destPath string, book types.BookData, appVersion s
 
 	manifestBytes, _ := json.MarshalIndent(mf, "", "  ")
 	if err := addEntry("manifest.json", string(manifestBytes)); err != nil {
+		return types.SaveResult{Success: false, Error: err.Error()}
+	}
+
+	// Asked before the archive is finalised, so that a project which has grown
+	// past what the format can hold says what filled it rather than failing
+	// the generic check below with a number.
+	if err := aw.budget(); err != nil {
 		return types.SaveResult{Success: false, Error: err.Error()}
 	}
 

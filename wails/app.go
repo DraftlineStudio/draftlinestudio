@@ -43,7 +43,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.20.02652"
+const AppVersion = "0.20.02653"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -88,6 +88,12 @@ type App struct {
 	// not on types.BookData, which crosses the Wails bridge as JSON on every
 	// autosave. Usable as a zero value.
 	covers coverCache
+
+	// snapshots holds frozen manuscripts that have not reached the project
+	// file yet (see snapshot.go). Frozen text is a whole novel and stays off
+	// types.BookData for the same reason cover art does. Usable as a zero
+	// value.
+	snapshots snapshotCache
 
 	// API key state. The key lives in the OS keyring; legacyAPIKey holds a
 	// plaintext key only on machines where no keyring is available, so users
@@ -134,18 +140,21 @@ func (a *App) setCurrentFile(path string) {
 }
 
 // leaveOpenProject is what every path that stops working on the open book has
-// to do: forget the save target, and forget the covers held for it.
+// to do: forget the save target, and forget the bytes held for it.
 //
-// The two have to move together. Cover art is the one thing the backend holds
-// that is not on BookData, so it does not travel with the book across the
-// bridge and nothing on screen would show that it is still there. A cover
-// attached but not yet saved, left in the cache while the author imports a
-// DOCX or goes back to the launch screen, would be written into whatever book
-// is saved next - another book's artwork, inside a project file, invisible,
-// and carried forward by the editions passthrough on every save after that.
+// They have to move together. Cover art and frozen manuscripts are the two
+// things the backend holds that are not on BookData, so they do not travel
+// with the book across the bridge and nothing on screen would show that they
+// are still there. A cover attached but not yet saved, or a manuscript frozen
+// for an edition and not yet written, left in a cache while the author imports
+// a DOCX or goes back to the launch screen, would be written into whatever
+// book is saved next - another book's artwork, or another book's words, inside
+// a project file, invisible, and carried forward by the editions passthrough
+// on every save after that.
 func (a *App) leaveOpenProject() {
 	a.setCurrentFile("")
 	a.covers.reset()
+	a.snapshots.reset()
 }
 
 // setLegacyAPIKey writes the plaintext fallback key under the API-key lock.
@@ -413,8 +422,10 @@ func (a *App) openBook(path string) (types.BookData, error) {
 		return types.BookData{}, err
 	}
 	a.installBookLock(lock)
-	// A different book has different covers; the cache is per project.
+	// A different book has different covers and a different publishing
+	// history; both caches are per project.
 	a.covers.reset()
+	a.snapshots.reset()
 	a.setCurrentFile(path)
 	return b, nil
 }
@@ -435,11 +446,11 @@ func (a *App) SaveBookSnapshots(b types.BookData, snapshots []types.ChapterSnaps
 	if current == "" {
 		return types.SaveResult{Success: false, Error: "save the project before creating version history"}
 	}
-	assets, marks := a.covers.pending()
+	assets, settled := a.pendingAssets()
 	result := book.WriteArchive(current, current, b, AppVersion, snapshots, assets)
 	if result.Success {
 		a.setCurrentFile(current)
-		a.covers.settled(marks)
+		settled()
 	}
 	return result
 }
@@ -508,7 +519,11 @@ func (a *App) ExportEPUB(book types.BookData, options types.EPUBOptions) types.E
 		path += ".epub"
 	}
 
-	return export.EPUB(path, book, options, a.exportCover(book, options.ExportOptions))
+	source, err := a.exportSource(book, options.ExportOptions)
+	if err != nil {
+		return types.ExportResult{Success: false, Error: err.Error()}
+	}
+	return export.EPUB(path, source, options, a.exportCover(book, options.ExportOptions))
 }
 
 // ExportDOCX exports the book to DOCX format.
@@ -533,7 +548,11 @@ func (a *App) ExportDOCX(book types.BookData, options types.ExportOptions) types
 		path += ".docx"
 	}
 
-	return export.DOCX(path, book, options)
+	source, err := a.exportSource(book, options)
+	if err != nil {
+		return types.ExportResult{Success: false, Error: err.Error()}
+	}
+	return export.DOCX(path, source, options)
 }
 
 // ExportPDF exports the book to PDF format.
@@ -558,7 +577,11 @@ func (a *App) ExportPDF(book types.BookData, options types.PDFOptions) types.Exp
 		path += ".pdf"
 	}
 
-	return export.PDF(path, book, options, a.exportCover(book, options.ExportOptions))
+	source, err := a.exportSource(book, options.ExportOptions)
+	if err != nil {
+		return types.ExportResult{Success: false, Error: err.Error()}
+	}
+	return export.PDF(path, source, options, a.exportCover(book, options.ExportOptions))
 }
 
 // ExportPrintPDF exports the book to print-ready PDF format.
@@ -583,7 +606,11 @@ func (a *App) ExportPrintPDF(book types.BookData, options types.PrintPDFOptions)
 		path += ".pdf"
 	}
 
-	return export.PrintPDF(path, book, options)
+	source, err := a.exportSource(book, options.ExportOptions)
+	if err != nil {
+		return types.ExportResult{Success: false, Error: err.Error()}
+	}
+	return export.PrintPDF(path, source, options)
 }
 
 // ── Settings ─────────────────────────────────────────────────────────────────
@@ -1388,10 +1415,10 @@ func (a *App) writeBook(b types.BookData, path string) types.SaveResult {
 	// Saving to a NEW path (Save As, first save) claims that path's lock, so
 	// two instances can't silently write over each other's book. Saving to
 	// the already-current path keeps the lock it holds.
-	// Cover art rides beside the book, not on it. Only what has changed since
-	// the last save is handed over; everything else survives by passthrough,
-	// stored and never re-encoded.
-	assets, marks := a.covers.pending()
+	// Cover art and frozen manuscripts ride beside the book, not on it. Only
+	// what has changed since the last save is handed over; everything else
+	// survives by passthrough, stored and never re-encoded.
+	assets, settled := a.pendingAssets()
 	if path != source {
 		lock, err := a.claimBookLock(path)
 		if err != nil {
@@ -1404,13 +1431,13 @@ func (a *App) writeBook(b types.BookData, path string) types.SaveResult {
 		}
 		a.installBookLock(lock)
 		a.setCurrentFile(path)
-		a.covers.settled(marks)
+		settled()
 		return result
 	}
 	result := book.WriteArchive(source, path, b, AppVersion, nil, assets)
 	if result.Success {
 		a.setCurrentFile(path)
-		a.covers.settled(marks)
+		settled()
 	}
 	return result
 }

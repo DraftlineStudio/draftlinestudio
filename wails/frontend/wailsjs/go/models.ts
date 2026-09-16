@@ -1146,6 +1146,30 @@ export namespace types {
 		    return a;
 		}
 	}
+	export class EditionSnapshot {
+	    id: string;
+	    frozen: string;
+	    title?: string;
+	    word_count: number;
+	    sections: number;
+	    members: number;
+	    bytes: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new EditionSnapshot(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.frozen = source["frozen"];
+	        this.title = source["title"];
+	        this.word_count = source["word_count"];
+	        this.sections = source["sections"];
+	        this.members = source["members"];
+	        this.bytes = source["bytes"];
+	    }
+	}
 	export class EditionFormat {
 	    id: string;
 	    kind: string;
@@ -1323,6 +1347,7 @@ export namespace types {
 	export class EditionIndex {
 	    version: number;
 	    editions: Edition[];
+	    snapshots?: EditionSnapshot[];
 	
 	    static createFrom(source: any = {}) {
 	        return new EditionIndex(source);
@@ -1332,6 +1357,7 @@ export namespace types {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.version = source["version"];
 	        this.editions = this.convertValues(source["editions"], Edition);
+	        this.snapshots = this.convertValues(source["snapshots"], EditionSnapshot);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -2329,6 +2355,7 @@ export namespace types {
 	
 	
 	
+	
 	export class ExportOptions {
 	    includeCopyright: boolean;
 	    includeFrontMatter: boolean;
@@ -2720,6 +2747,42 @@ export namespace types {
 	
 	
 	
+	export class SnapshotResult {
+	    success: boolean;
+	    error?: string;
+	    snapshot?: EditionSnapshot;
+	    reused?: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new SnapshotResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.error = source["error"];
+	        this.snapshot = this.convertValues(source["snapshot"], EditionSnapshot);
+	        this.reused = source["reused"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class SplitEntityResult {
 	    success: boolean;
 	    error?: string;

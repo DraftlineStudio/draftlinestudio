@@ -11,6 +11,7 @@
 
 import { useState } from 'react'
 import CoverCard from './CoverCard'
+import SnapshotCard from './SnapshotCard'
 import { RemoveCover } from '../../../wailsjs/go/main/App'
 import { useBookStore } from '../../store/bookStore'
 import type { Edition, EditionFormat, EditionIndex, Metadata } from '../../types/draftline'
@@ -274,7 +275,9 @@ function FormatPanel({ meta, index, edition, format, handEdited, advOpen, setAdv
 
       <StandingNote />
 
-      <CoverCard edition={edition} format={format} meta={meta} />
+      <CoverCard edition={edition} meta={meta} />
+
+      <SnapshotCard index={index} edition={edition} format={format} />
 
       {sections.map(section => (
         <section className="bi-section" key={section.label}>
@@ -324,16 +327,15 @@ function FormatPanel({ meta, index, edition, format, handEdited, advOpen, setAdv
 // ── What the record does today ─────────────────────────────────────────────
 
 // What an export does with this panel, said once at the top rather than as a
-// disclaimer hung on every field. The one thing it still does not do is freeze
-// the text: an edition holds no copy of the manuscript, so exporting a first
-// edition after writing a second one exports the second one's words.
+// disclaimer hung on every field.
 function StandingNote() {
   return (
     <p className="bi-ed-standing">
       <strong>Read by an export.</strong> Choose this edition on the first step of the export wizard
       and the file carries it: its ISBN as the book's identifier, its cover art, its trim and gutter,
-      and the copyright page below. The manuscript is the one thing it does not hold — an export
-      always uses your text as it stands today.
+      the copyright page below, and the text frozen for it. Exporting this edition freezes the
+      manuscript the first time and reads that frozen text every time after, so an export made
+      after you have started the next edition still gives you this one's book.
     </p>
   )
 }

@@ -31,7 +31,10 @@ const editionsIndexFile = "editions/index.json"
 //     identifier, because the screen selects by identifier and would then be
 //     editing whichever of them it happened to find first;
 //   - a format whose kind is not one Draftline knows, because the kind decides
-//     which specification the format has and an unknown one has none.
+//     which specification the format has and an unknown one has none;
+//   - a format exported from a frozen manuscript the catalogue has lost, which
+//     is the one bookkeeping mistake that would otherwise destroy the text a
+//     published ISBN stands for. See prepareSnapshotCatalogue.
 //
 // What it normalises is whitespace and empty collections. It does not touch
 // the substance of a field: an ISBN is stored exactly as the author typed it,
@@ -54,7 +57,7 @@ func prepareEditionsData(index types.EditionIndex) (types.EditionIndex, error) {
 		if editionIDs[edition.ID] {
 			return types.EditionIndex{}, fmt.Errorf("%s holds two editions with the identifier %q", editionsIndexFile, edition.ID)
 		}
-		if !safeArchiveSegment(edition.ID) {
+		if !safeArchiveSegment(edition.ID) || edition.ID == snapshotsSegment {
 			return types.EditionIndex{}, fmt.Errorf(
 				"%s gives an edition the identifier %q, which cannot be a folder name inside the project file",
 				editionsIndexFile, edition.ID)
@@ -90,6 +93,9 @@ func prepareEditionsData(index types.EditionIndex) (types.EditionIndex, error) {
 			}
 			trimFormatText(format)
 		}
+	}
+	if err := prepareSnapshotCatalogue(&index); err != nil {
+		return types.EditionIndex{}, err
 	}
 	return index, nil
 }
@@ -148,14 +154,17 @@ func CoverMember(editionID, file string) string {
 //
 // editions/index.json belongs to no edition and answers false, which is what
 // keeps the publishing record itself from being read as an orphan and swept
-// away by the reaping below.
+// away by the reaping below. editions/snapshots/ answers false for the same
+// reason: frozen manuscripts are shared between editions by design, so they
+// are kept by their own reference count rather than by an edition's life —
+// see orphanedSnapshotMember.
 func editionFolder(name string) (string, bool) {
 	rest, ok := strings.CutPrefix(name, editionsPrefix)
 	if !ok {
 		return "", false
 	}
 	id, _, ok := strings.Cut(rest, "/")
-	if !ok || id == "" {
+	if !ok || id == "" || id == snapshotsSegment {
 		return "", false
 	}
 	return id, true

@@ -42,6 +42,11 @@ const (
 type EditionIndex struct {
 	Version  int       `json:"version"`
 	Editions []Edition `json:"editions"`
+	// Snapshots is the catalogue of frozen manuscripts this book holds — the
+	// text each published ISBN actually went out with. The records are small;
+	// the text they describe lives under editions/snapshots/ and never joins
+	// this struct. See snapshot.go.
+	Snapshots []EditionSnapshot `json:"snapshots,omitempty"`
 }
 
 // Edition is one publication of the book: the first edition, a revised second
@@ -121,7 +126,10 @@ type EditionFormat struct {
 	ExportSettings map[string]any `json:"export_settings,omitempty"`
 	// SnapshotID names the frozen manuscript this format was exported from,
 	// so that exporting the first edition after writing the second produces
-	// the first edition's text. Also carried, also not yet written.
+	// the first edition's text. It is set when the format is first exported,
+	// or by hand from the format panel, and it must name a record in the
+	// index's own snapshot catalogue — see snapshot.go for why the reference
+	// has to be stated rather than worked out from the archive.
 	SnapshotID string `json:"snapshot_id,omitempty"`
 }
 

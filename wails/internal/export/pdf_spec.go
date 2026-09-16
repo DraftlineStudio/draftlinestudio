@@ -103,21 +103,29 @@ func readingPDFSpec(options types.PDFOptions) publicationPDFSpec {
 	bodyFont := resolvePDFFont(options.FontFamily)
 	codeFont := embeddedPDFFonts["ibmplexmono"]
 	return publicationPDFSpec{
-		TrimWidth:              w,
-		TrimHeight:             h,
-		GutterMargin:           pointsPerInch,
-		OuterMargin:            pointsPerInch,
-		TopMargin:              pointsPerInch,
-		BottomMargin:           pointsPerInch,
-		Font:                   bodyFont,
-		HeadingFont:            bodyFont,
-		FurnitureFont:          bodyFont,
-		TitlePageFont:          bodyFont,
-		CodeFont:               codeFont,
-		FontSize:               fontSize,
-		LineHeight:             fontSize * lineHeight,
-		ParagraphIndent:        parseInches(options.ParagraphIndent, 0.25),
-		TextAlign:              normalizedAlignment(options.TextAlign, "left"),
+		TrimWidth:       w,
+		TrimHeight:      h,
+		GutterMargin:    pointsPerInch,
+		OuterMargin:     pointsPerInch,
+		TopMargin:       pointsPerInch,
+		BottomMargin:    pointsPerInch,
+		Font:            bodyFont,
+		HeadingFont:     bodyFont,
+		FurnitureFont:   bodyFont,
+		TitlePageFont:   bodyFont,
+		CodeFont:        codeFont,
+		FontSize:        fontSize,
+		LineHeight:      fontSize * lineHeight,
+		ParagraphIndent: parseInches(options.ParagraphIndent, 0.25),
+		TextAlign:       normalizedAlignment(options.TextAlign, "left"),
+		// A reading PDF had no page numbers at all: the field was left empty
+		// and drawFurniture reads an empty position as "print nothing". A
+		// reviewer marking up a fixed-layout copy has no way to say where they
+		// are without them, and a reading copy is the one export whose whole
+		// purpose is being read and commented on. Centred at the foot, because
+		// a reading copy is read as single pages rather than as spreads and
+		// has no outside edge to sit against.
+		PageNumberPosition:     "bottom-center",
 		TitlePageStyle:         "classic",
 		TitlePageShowAuthor:    true,
 		TitlePageShowPublisher: true,

@@ -2,6 +2,19 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02653] - 2026-09-16
+
+### Added
+- The first export of a registered edition now freezes the manuscript as the text for that ISBN.
+- The format panel shows which text a format was published from, with Freeze and Release buttons.
+- Formats published from the same manuscript share one frozen copy.
+
+### Fixed
+- The title page now lands on a right-hand page after the half title.
+- Export now stops with an error if the table of contents does not fit its reserved pages.
+- Reading PDFs now have page numbers.
+- Pre-save backups of large projects are now copied directly instead of loaded into memory.
+
 ## [0.20.02652] - 2026-09-16
 
 ### Added

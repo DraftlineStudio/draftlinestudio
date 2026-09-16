@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useBookStore } from '../../store/bookStore'
 import { useAppStore } from '../../store/appStore'
-import { ExportEPUB, ExportDOCX, ExportPDF, ExportPrintPDF } from '../../../wailsjs/go/main/App'
+import { ExportEPUB, ExportDOCX, ExportPDF, ExportPrintPDF, FreezeSnapshot } from '../../../wailsjs/go/main/App'
+import { exportTextNote, frozenLabel, sharedWith, snapshotFor, withFrozenSnapshot } from './snapshotModel'
 import {
   customTrimError, editionCards, exportSourceSummary, findFormat, isbnRegistrationError,
   patchChangesFormat, prefillChanges, registrableKind, registrationPatch,
@@ -50,10 +51,10 @@ const DISPLAY_FONTS: Array<{ id: PrintPDFOptions['headingFont']; label: string; 
   { id: 'fantasy', label: 'Cinzel Decorative', use: 'Fantasy' },
 ]
 
-// Exports read the manuscript as it stands. An edition record does not yet
-// hold a frozen copy of the text, and the wizard must not suggest that picking
-// a first edition after writing a second one would produce the first one.
-const WORKING_DRAFT_NOTE = 'Exports the manuscript as it stands today. An edition does not hold a frozen copy of your text yet.'
+// Which text an export will actually contain. The sentence comes from the
+// record rather than from this file, because a format with a frozen manuscript
+// and a format without one are two different promises, and the author has to
+// be told which they are getting before the file is written rather than after.
 
 function FormatIcon({ format }: { format: ExportFormat }) {
   if (format === 'epub') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 016.5 3H11v16H6.5A2.5 2.5 0 004 21.5v-16zM20 5.5A2.5 2.5 0 0017.5 3H13v16h4.5a2.5 2.5 0 012.5 2.5v-16z" /></svg>
@@ -90,7 +91,7 @@ const applyUpdate = <T,>(current: T, next: Updater<T>): T =>
   (typeof next === 'function' ? (next as (value: T) => T)(current) : next)
 
 export default function ExportWizard() {
-  const { book, updateFormat, updateEdition, addEdition, addFormat } = useBookStore()
+  const { book, updateFormat, updateEdition, addEdition, addFormat, freezeFormat } = useBookStore()
   const { closeExportWizard, setStatusMessage } = useAppStore()
   const [step, setStep] = useState<WizardStep>('destination')
   const [format, setFormat] = useState<ExportFormat | null>(null)
@@ -109,6 +110,7 @@ export default function ExportWizard() {
   const [isbnDraft, setIsbnDraft] = useState('')
   const [isbnError, setIsbnError] = useState('')
   const [registered, setRegistered] = useState('')
+  const [frozenNote, setFrozenNote] = useState('')
   const [wizard, setWizard] = useState<WizardOptions>(defaultWizardOptions())
 
   // The four setters the design panels below use, with the shapes they had
@@ -128,6 +130,8 @@ export default function ExportWizard() {
   const title = book?.metadata.title || 'Untitled'
   const cards = useMemo(() => editionCards(book?.editions, title), [book?.editions, title])
   const source = useMemo(() => exportSourceSummary(book?.editions, formatID, title), [book?.editions, formatID, title])
+  const chosenFormat = useMemo(() => findFormat(book?.editions, formatID)?.format, [book?.editions, formatID])
+  const textNote = exportTextNote(book?.editions, chosenFormat)
 
   const stats = useMemo(() => {
     const countWords = (html: string) => {
@@ -257,18 +261,57 @@ export default function ExportWizard() {
     setStatusMessage(`Registered ${isbnDraft.trim()} as a new edition`)
   }
 
+  // freezeIfNeeded is what makes "as it was" true.
+  //
+  // The first export of a registered format freezes the manuscript and stamps
+  // the format with it; every export after that reads the frozen words instead
+  // of the draft. Freezing before the file is written, rather than after, means
+  // the book handed to the exporter is already the book the record names — so
+  // the file that comes out and the text the ISBN stands for cannot disagree,
+  // even if the save that stores them is still five seconds away.
+  //
+  // It returns the book to export, which is the book on screen with the new
+  // stamp on it. The store is updated too, by the same pure transform.
+  async function freezeIfNeeded(): Promise<typeof book | null> {
+    if (!book) return null
+    if (!formatID || !book.editions) return book
+    const found = findFormat(book.editions, formatID)
+    if (!found) return book
+    const already = snapshotFor(book.editions, found.format)
+    if (already) {
+      const when = frozenLabel(already.frozen)
+      setFrozenNote(`Exported the text frozen for this ISBN${when ? ` on ${when}` : ''}, not the draft on screen.`)
+      return book
+    }
+    const result = await FreezeSnapshot(book as any, formatID)
+    if (!result.success || !result.snapshot) {
+      setExportError(result.error || 'The text for this edition could not be frozen.')
+      return null
+    }
+    freezeFormat(formatID, result.snapshot)
+    const editions = withFrozenSnapshot(book.editions, formatID, result.snapshot)
+    const shared = sharedWith(editions, result.snapshot.id, formatID)
+    setFrozenNote(result.reused && shared.length
+      ? `These are the same words already frozen for ${shared.join(' and ')}. Your project file stores them once and both ISBNs point at them.`
+      : `Froze ${result.snapshot.word_count.toLocaleString()} words as the text this ISBN stands for. Exporting it again gives you these words, however far the book moves on.`)
+    return { ...book, editions }
+  }
+
   async function handleExport() {
     if (!book || !format) return
     setStep('exporting')
     setExporting(true)
     setExportError('')
     setExportSuccess(false)
+    setFrozenNote('')
     try {
+      const outgoing = await freezeIfNeeded()
+      if (!outgoing) return
       let result: { success: boolean; file_path?: string; error?: string }
-      if (format === 'epub') result = await ExportEPUB(book as any, epubOptions as any)
-      else if (format === 'docx') result = await ExportDOCX(book as any, options as any)
-      else if (format === 'pdf') result = await ExportPDF(book as any, pdfOptions as any)
-      else result = await ExportPrintPDF(book as any, printOptions as any)
+      if (format === 'epub') result = await ExportEPUB(outgoing as any, epubOptions as any)
+      else if (format === 'docx') result = await ExportDOCX(outgoing as any, options as any)
+      else if (format === 'pdf') result = await ExportPDF(outgoing as any, pdfOptions as any)
+      else result = await ExportPrintPDF(outgoing as any, printOptions as any)
       if (result.success) {
         setExportSuccess(true)
         setExportedPath(result.file_path || '')
@@ -417,13 +460,14 @@ export default function ExportWizard() {
         <div className="export-review-card"><div className="export-review-section"><span>Contents</span><strong>{selectedWords.toLocaleString()} words</strong><p>{included.join(' · ')}</p></div><button type="button" onClick={() => setStep('contents')}>Edit contents</button></div>
         <div className="export-review-card"><div className="export-review-section"><span>Design</span><strong>{format === 'print-pdf' ? `${TRIM_SIZES[printOptions.trimSize].label}${printOptions.trimSize === 'custom' ? ` (${printOptions.customWidth} x ${printOptions.customHeight})` : ''} / ${printOptions.fontFamily} ${printOptions.fontSize} pt` : format === 'pdf' ? `${pdfOptions.pageSize.toUpperCase()} / ${pdfOptions.fontFamily} ${pdfOptions.fontSize} pt` : format === 'epub' ? `${epubOptions.fontFamily === 'reader' ? 'Reader typography' : `Embedded ${epubOptions.fontFamily}`} / ${epubOptions.paragraphStyle}` : 'Editable manuscript layout'}</strong><p>{format === 'print-pdf' ? `${printOptions.textAlign === 'justify' ? 'Justified' : 'Left aligned'} / ${printOptions.runningHeaders ? 'Running headers' : 'No running headers'} / ${printOptions.generateTOC ? 'Contents page' : 'No contents page'}` : format === 'epub' ? `${epubOptions.chapterStyle} chapters / ${epubOptions.sceneBreakStyle} scene breaks / ${epubOptions.textAlign} alignment` : FORMAT_INFO[format].detail}</p></div><button type="button" onClick={() => setStep('design')}>Edit design</button></div>
       </div>
-      <div className="export-save-note"><CheckIcon /><span>Draftline will open your system’s save dialog next. Your project file will not be changed. {WORKING_DRAFT_NOTE}</span></div>
+      <div className="export-save-note"><CheckIcon /><span>Draftline will open your system’s save dialog next. Your writing is not changed. {textNote}</span></div>
     </>
   }
 
   // The two things that can be offered once the file exists.
   function renderAftermath() {
     return <>
+      {frozenNote && <p className="export-ed-frozen">{frozenNote}</p>}
       {pendingChanges.length > 0 && <div className="export-ed-writeback">
         <strong>Save these back to {source ? source.name : 'the edition'}?</strong>
         <ul>{pendingChanges.map(change => <li key={change.label}><span>{change.label}</span><em>{change.from} → {change.to}</em></li>)}</ul>
@@ -459,6 +503,7 @@ export default function ExportWizard() {
           <div className="export-ed-source-head"><CoverChip src={source.thumbURL} title={source.title} className="export-ed-source-cover" /><span><strong>{source.name}</strong><em>{source.isbn13}</em></span></div>
           <ul className="export-ed-prefill">{source.prefill.map(line => <li key={line.k}><CheckIcon /><span><i>{line.k}</i> {line.v}</span></li>)}</ul>
           {source.note && <small className="export-ed-source-note">{source.note}</small>}
+          <small className="export-ed-source-text">{textNote}</small>
           <small className="export-ed-source-foot">{source.footnote}</small>
         </div>
         : format ? <div className="export-summary-format"><span className="export-format-icon"><FormatIcon format={format} /></span><span><small>Selected edition</small><strong>{OUTPUT_LABELS[format]}</strong></span><button type="button" onClick={() => setStep('destination')}>Change</button></div>

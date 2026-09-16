@@ -102,6 +102,10 @@ export function ExportPrintPDF(arg1, arg2) {
   return window['go']['main']['App']['ExportPrintPDF'](arg1, arg2);
 }
 
+export function FreezeSnapshot(arg1, arg2) {
+  return window['go']['main']['App']['FreezeSnapshot'](arg1, arg2);
+}
+
 export function GetAppVersion() {
   return window['go']['main']['App']['GetAppVersion']();
 }

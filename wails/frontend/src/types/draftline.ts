@@ -1,9 +1,11 @@
 import type { EditionCover } from './cover'
+import type { EditionSnapshot } from './snapshot'
 import type { PlannerData } from './planner'
 
 // Re-exported so that a component reading a book has one door to go through
 // for the types on it, rather than having to know which file each lives in.
 export type { CoverSourceReport, EditionCover } from './cover'
+export type { EditionSnapshot, SnapshotResult } from './snapshot'
 
 export type Section = 'copyright' | 'front_matter' | 'body' | 'back_matter'
 
@@ -658,8 +660,12 @@ export interface EditionFormat {
   territory_rights?: string
   rights_notice?: string
   lccn?: string
-  // Forward hooks. Carried through a save; nothing writes them yet.
+  // The export wizard's options, frozen onto the format so that exporting
+  // this edition twice produces the same file.
   export_settings?: Record<string, unknown>
+  // The frozen manuscript this format was published from. It names a record
+  // in the index's own snapshot catalogue; the text itself never crosses the
+  // bridge. See types/snapshot.ts.
   snapshot_id?: string
 }
 
@@ -681,6 +687,9 @@ export interface Edition {
 export interface EditionIndex {
   version: number
   editions: Edition[]
+  // The catalogue of frozen manuscripts: which text each published ISBN went
+  // out with. Small records only — the text lives in the project file.
+  snapshots?: EditionSnapshot[]
 }
 
 export interface BookData {

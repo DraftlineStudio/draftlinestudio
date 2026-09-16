@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useBookStore } from '../../store/bookStore'
-import type { CoverSourceReport, Edition, EditionFormat, Metadata } from '../../types/draftline'
+import type { CoverSourceReport, Edition, Metadata } from '../../types/draftline'
 import { AttachCover, AttachCoverDialog, CheckCoverSource, RemoveCover } from '../../../wailsjs/go/main/App'
 import { OnFileDrop, OnFileDropOff } from '../../../wailsjs/runtime/runtime'
 import {
@@ -22,11 +22,10 @@ import {
 
 interface Props {
   edition: Edition
-  format: EditionFormat
   meta: Partial<Metadata>
 }
 
-export default function CoverCard({ edition, format, meta }: Props) {
+export default function CoverCard({ edition, meta }: Props) {
   const updateEdition = useBookStore(s => s.updateEdition)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -174,15 +173,6 @@ export default function CoverCard({ edition, format, meta }: Props) {
 
         <p className="bi-ed-note">{PRINT_COVER_CAVEAT}</p>
         <p className="bi-ed-note">{EDITION_COVER_CAVEAT}</p>
-
-        <div className="bi-ed-facts">
-          <div className="bi-ed-fact">
-            <span>Text frozen at export</span><span>{format.snapshot_id ? format.snapshot_id : 'no snapshot'}</span>
-          </div>
-          <div className="bi-ed-fact">
-            <span>Exports from</span><span>{format.snapshot_id ? 'the frozen text' : 'the current draft'}</span>
-          </div>
-        </div>
       </div>
     </section>
   )

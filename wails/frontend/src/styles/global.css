@@ -9075,3 +9075,55 @@ html, body, #root {
   background: var(--bg-surface-alt); color: var(--text-secondary);
   font-size: 11px; line-height: 1.5;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FROZEN MANUSCRIPTS  (prefix: bi-snap-, plus .export-ed-frozen /
+   .export-ed-source-text on the export wizard)
+
+   The text one ISBN stands for, on the format panel of the Book & Editions
+   screen, and the line that tells the export wizard which words are about to
+   go into the file.
+
+   The card borrows .bi-ed-card and .bi-ed-facts from the BOOK & EDITIONS
+   section above rather than restating them: a frozen manuscript is described
+   the same way a cover is — a labelled row of facts — and only the parts that
+   differ are here.
+
+     .bi-snap-card     The card has no picture, so unlike .bi-cover-drop it is
+                       a single column and needs no drop target.
+     .bi-snap-shared   The same words can stand behind several ISBNs. This says
+                       which, and it is accented rather than muted because it
+                       is the line that explains why releasing one of them does
+                       not delete anything.
+     .bi-snap-note     The result of the last freeze or release, said once.
+     .export-ed-frozen The same sentence after an export, where the author is
+                       looking at the file they just made.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.bi-snap-card { flex-direction: column; }
+.bi-snap-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.bi-snap-hint { max-width: 72ch; }
+
+.bi-snap-shared {
+  margin: 0; padding: 8px 0 8px 12px; border-left: 2px solid var(--app-accent);
+  font-size: 11px; line-height: 1.6; color: var(--text-secondary); max-width: 72ch;
+}
+.bi-snap-shared strong { color: var(--text-primary); font-weight: 600; }
+
+.bi-snap-note {
+  margin: 0; padding: 8px 10px; border-radius: 4px; max-width: 72ch;
+  background: var(--bg-surface-alt); border-left: 2px solid var(--app-accent);
+  font-size: 11.5px; line-height: 1.6; color: var(--text-primary);
+}
+
+.export-ed-source-text {
+  padding: 6px 8px; border-radius: 4px; border-left: 2px solid var(--border);
+  background: var(--bg-surface-alt); color: var(--text-secondary);
+  font-size: 11px; line-height: 1.5;
+}
+
+.export-ed-frozen {
+  margin: 0 0 12px; padding: 8px 10px; border-radius: 4px; max-width: 72ch;
+  background: var(--bg-surface-alt); border-left: 2px solid var(--app-accent);
+  font-size: 11.5px; line-height: 1.6; color: var(--text-primary); text-align: left;
+}

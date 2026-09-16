@@ -11,7 +11,10 @@
 // screen selects it straight afterwards.
 
 import { duplicateAsNewEdition, emptyEditionIndex, newEdition, newFormat } from '../components/dialogs/editionModel'
-import type { BookData, Edition, EditionFormat, EditionIndex, EditionKind } from '../types/draftline'
+import { withFrozenSnapshot, withReleasedSnapshot } from '../components/dialogs/snapshotModel'
+import type {
+  BookData, Edition, EditionFormat, EditionIndex, EditionKind, EditionSnapshot,
+} from '../types/draftline'
 
 export interface EditionActions {
   addEdition: (year: string) => string
@@ -21,6 +24,8 @@ export interface EditionActions {
   addFormat: (editionID: string, kind: EditionKind) => string
   updateFormat: (formatID: string, patch: Partial<EditionFormat>) => void
   removeFormat: (formatID: string) => void
+  freezeFormat: (formatID: string, snapshot: EditionSnapshot) => void
+  releaseFormatSnapshot: (formatID: string) => void
 }
 
 const mapEditions = (index: EditionIndex, fn: (edition: Edition) => Edition): EditionIndex =>
@@ -102,13 +107,37 @@ export function createEditionActions(
       })))
     },
 
+    // Removing a format releases its claim on the text it was published from
+    // FIRST, so that the catalogue and the reference count settle together.
+    // Dropping the format on its own would leave a record nothing points at,
+    // which the writer then reaps on the next save — correct, but a save later
+    // than it needed to be and with no chance to notice the words were shared.
     removeFormat: (formatID) => {
       const book = currentBook()
       if (!book?.editions) return
-      write(book, mapEditions(book.editions, edition => ({
+      const released = withReleasedSnapshot(book.editions, formatID)
+      write(book, mapEditions(released, edition => ({
         ...edition,
         formats: edition.formats.filter(format => format.id !== formatID),
       })))
+    },
+
+    // freezeFormat records the text one format was published from. The record
+    // and the format's pointer to it are written in one update; see
+    // withFrozenSnapshot for why they must not be separable.
+    freezeFormat: (formatID, snapshot) => {
+      const book = currentBook()
+      if (!book?.editions) return
+      write(book, withFrozenSnapshot(book.editions, formatID, snapshot))
+    },
+
+    // releaseFormatSnapshot puts one format back to exporting the working
+    // draft. The words themselves stay while any other format is still
+    // published from them.
+    releaseFormatSnapshot: (formatID) => {
+      const book = currentBook()
+      if (!book?.editions) return
+      write(book, withReleasedSnapshot(book.editions, formatID))
     },
   }
 }

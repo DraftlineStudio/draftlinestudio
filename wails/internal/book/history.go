@@ -177,7 +177,7 @@ func unreadableSource(err error) error { return sourceReadError{err: err} }
 // prefixes is not copied, and because every save rebuilds the archive from
 // scratch, not copying a member destroys it.
 func copyPreservedEntries(w *archiveWriter, sourcePath string, prefixes []string) error {
-	return copyPreservedEntriesExcept(w, sourcePath, prefixes, nil, nil)
+	return copyPreservedEntriesExcept(w, sourcePath, prefixes, nil, nil, nil)
 }
 
 // copyPreservedEntriesExcept is the same, with a list of prefixes this save is
@@ -192,7 +192,9 @@ func copyPreservedEntries(w *archiveWriter, sourcePath string, prefixes []string
 //
 // liveEditions is the other half of the same problem, for the case where it is
 // not the artwork that went but the edition: see orphanedEditionMember.
-func copyPreservedEntriesExcept(w *archiveWriter, sourcePath string, prefixes, superseded []string, liveEditions map[string]bool) error {
+// liveSnapshots is the same thing again for frozen manuscripts, which outlive
+// any one edition and are kept by reference count instead.
+func copyPreservedEntriesExcept(w *archiveWriter, sourcePath string, prefixes, superseded []string, liveEditions, liveSnapshots map[string]bool) error {
 	if strings.TrimSpace(sourcePath) == "" || len(prefixes) == 0 {
 		return nil
 	}
@@ -211,7 +213,7 @@ func copyPreservedEntriesExcept(w *archiveWriter, sourcePath string, prefixes, s
 		if !hasAnyPrefix(file.Name, prefixes) || hasAnyPrefix(file.Name, superseded) {
 			continue
 		}
-		if orphanedEditionMember(file.Name, liveEditions) {
+		if orphanedEditionMember(file.Name, liveEditions) || orphanedSnapshotMember(file.Name, liveSnapshots) {
 			continue
 		}
 		if err := w.copyEntry(file); err != nil {
