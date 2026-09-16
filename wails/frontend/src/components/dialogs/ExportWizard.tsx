@@ -4,8 +4,8 @@ import { useAppStore } from '../../store/appStore'
 import { ExportEPUB, ExportDOCX, ExportPDF, ExportPrintPDF } from '../../../wailsjs/go/main/App'
 import {
   customTrimError, editionCards, exportSourceSummary, findFormat, isbnRegistrationError,
-  prefillChanges, registrableKind, registrationPatch, wizardOptionsForFormat, writeBackPatch,
-  defaultWizardOptions, OUTPUT_LABELS,
+  patchChangesFormat, prefillChanges, registrableKind, registrationPatch,
+  wizardOptionsForFormat, writeBackPatch, defaultWizardOptions, OUTPUT_LABELS,
   type EditionCard, type EPUBOptions, type ExportFormat, type ExportOptions,
   type PDFOptions, type PrefillChange, type PrintPDFOptions, type WizardOptions,
 } from './exportSource'
@@ -90,7 +90,7 @@ const applyUpdate = <T,>(current: T, next: Updater<T>): T =>
   (typeof next === 'function' ? (next as (value: T) => T)(current) : next)
 
 export default function ExportWizard() {
-  const { book, updateFormat, addEdition, addFormat } = useBookStore()
+  const { book, updateFormat, updateEdition, addEdition, addFormat } = useBookStore()
   const { closeExportWizard, setStatusMessage } = useAppStore()
   const [step, setStep] = useState<WizardStep>('destination')
   const [format, setFormat] = useState<ExportFormat | null>(null)
@@ -160,10 +160,10 @@ export default function ExportWizard() {
   // Choosing a registered edition fills the rest of the wizard from the
   // record: the trim it is bound at, the gutter it is bound with, and whatever
   // a previous export of this same format saved back.
-  function chooseEdition(card: EditionCard) {
+  function chooseEdition(card: EditionCard, output: ExportFormat = card.outputFormat) {
     const found = findFormat(book?.editions, card.formatID)
     if (!found) return
-    setFormat(card.outputFormat)
+    setFormat(output)
     setFormatID(card.formatID)
     setWizard(wizardOptionsForFormat(found.edition, found.format))
   }
@@ -199,8 +199,9 @@ export default function ExportWizard() {
   //
   //   - the export came from a registered format, and something the record
   //     prefilled was changed, so the author is asked whether the record
-  //     should learn it. Nothing changed means the settings are simply kept,
-  //     because they already agree with the record;
+  //     should learn it. Nothing changed means only the wizard's own answers
+  //     are remembered: the trim, the gutter and the bleed are the record's
+  //     words for the published object and are never rewritten unasked;
   //   - the export came from scratch, in which case the design brief says
   //     nothing is written back at all. That became an offer rather than a
   //     rule: a file with an ISBN on it is an edition, and the offer saves
@@ -209,8 +210,13 @@ export default function ExportWizard() {
     const found = findFormat(book?.editions, formatID)
     if (found) {
       const changes = prefillChanges(found.edition, found.format, wizard, chosen)
-      if (changes.length) setPendingChanges(changes)
-      else updateFormat(formatID, writeBackPatch(wizard, chosen))
+      if (changes.length) {
+        setPendingChanges(changes)
+        return
+      }
+      const prefilled = wizardOptionsForFormat(found.edition, found.format)
+      const patch = writeBackPatch(wizard, chosen, prefilled)
+      if (patchChangesFormat(found.format, patch)) updateFormat(formatID, patch)
       return
     }
     if (registrableKind(chosen)) setOfferISBN(true)
@@ -218,7 +224,9 @@ export default function ExportWizard() {
 
   function saveBackToEdition() {
     if (!format || !formatID) return
-    updateFormat(formatID, writeBackPatch(wizard, format))
+    const found = findFormat(book?.editions, formatID)
+    if (!found) return
+    updateFormat(formatID, writeBackPatch(wizard, format, wizardOptionsForFormat(found.edition, found.format)))
     setPendingChanges([])
     setSavedBack(true)
     setStatusMessage('Saved back to the edition record')
@@ -230,10 +238,16 @@ export default function ExportWizard() {
     if (!book || !format) return
     const kind = registrableKind(format)
     if (!kind) return
-    const problem = isbnRegistrationError(isbnDraft)
+    const problem = isbnRegistrationError(isbnDraft, book.editions)
     if (problem) return setIsbnError(problem)
     const editionID = addEdition(String(new Date().getFullYear()))
     if (!editionID) return setIsbnError('That edition could not be created.')
+    // A new edition record normally names the one before it as what it
+    // supersedes, because that is what pressing "New edition" on the Editions
+    // screen means. An export made from scratch says nothing of the kind, and
+    // claiming it replaces the last edition would be an invention printed on
+    // the copyright page as a revision history.
+    updateEdition(editionID, { previous_edition_id: undefined })
     const newFormatID = addFormat(editionID, kind)
     if (!newFormatID) return setIsbnError('That format could not be created.')
     updateFormat(newFormatID, registrationPatch(isbnDraft, format, wizard, book.metadata))
@@ -276,15 +290,18 @@ export default function ExportWizard() {
         <div className="export-ed-section-head"><span className="export-eyebrow">Registered editions</span><small>{cards.length} {cards.length === 1 ? 'template' : 'templates'} from this project’s ISBNs</small></div>
         <div className="export-ed-grid">
           {cards.map(card => (
-            <button type="button" key={card.formatID} className={`export-ed-card${formatID === card.formatID ? ' selected' : ''}`} onClick={() => chooseEdition(card)} aria-pressed={formatID === card.formatID}>
-              <CoverChip src={card.thumbURL} title={card.title} className="export-ed-cover" />
-              <span className="export-ed-copy">
-                <span className="export-ed-topline"><strong>{card.format}</strong><em>{card.edition}</em></span>
-                <span className="export-ed-isbn">{card.isbn13}</span>
-                <span className="export-ed-spec">{card.spec}</span>
-                <span className="export-ed-foot"><i className={`export-ed-badge ${card.badgeKind}`}>{card.badge}</i><small>{card.out}</small></span>
-              </span>
-            </button>
+            <div key={card.formatID} className="export-ed-cell">
+              <button type="button" className={`export-ed-card${formatID === card.formatID && format === card.outputFormat ? ' selected' : ''}`} onClick={() => chooseEdition(card)} aria-pressed={formatID === card.formatID && format === card.outputFormat}>
+                <CoverChip src={card.thumbURL} title={card.title} className="export-ed-cover" />
+                <span className="export-ed-copy">
+                  <span className="export-ed-topline"><strong>{card.format}</strong><em>{card.edition}</em></span>
+                  <span className="export-ed-isbn">{card.isbn13}</span>
+                  <span className="export-ed-spec">{card.spec}</span>
+                  <span className="export-ed-foot"><i className={`export-ed-badge ${card.badgeKind}`}>{card.badge}</i><small>{card.out}</small></span>
+                </span>
+              </button>
+              {card.altOutput && <button type="button" className={`export-ed-alt${formatID === card.formatID && format === card.altOutput ? ' selected' : ''}`} onClick={() => chooseEdition(card, card.altOutput!)} aria-pressed={formatID === card.formatID && format === card.altOutput}>{card.altLabel}<em>Same ISBN, cover and copyright page — for reviewers</em></button>}
+            </div>
           ))}
         </div>
       </section>}
@@ -441,6 +458,7 @@ export default function ExportWizard() {
           <span className="export-summary-kicker">Using edition</span>
           <div className="export-ed-source-head"><CoverChip src={source.thumbURL} title={source.title} className="export-ed-source-cover" /><span><strong>{source.name}</strong><em>{source.isbn13}</em></span></div>
           <ul className="export-ed-prefill">{source.prefill.map(line => <li key={line.k}><CheckIcon /><span><i>{line.k}</i> {line.v}</span></li>)}</ul>
+          {source.note && <small className="export-ed-source-note">{source.note}</small>}
           <small className="export-ed-source-foot">{source.footnote}</small>
         </div>
         : format ? <div className="export-summary-format"><span className="export-format-icon"><FormatIcon format={format} /></span><span><small>Selected edition</small><strong>{OUTPUT_LABELS[format]}</strong></span><button type="button" onClick={() => setStep('destination')}>Change</button></div>

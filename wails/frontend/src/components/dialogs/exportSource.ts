@@ -139,6 +139,18 @@ export function outputFormatFor(format: EditionFormat): ExportFormat | null {
   return null
 }
 
+// The other file a registered edition can produce: a reading copy.
+//
+// It is the same edition — the same ISBN on the copyright page, the same cover
+// on a page of its own — as an ordinary PDF anyone can open, which is what
+// goes to a reviewer, a blurb writer or a sensitivity reader. It is not the
+// print interior: that file is for a printer and deliberately carries no
+// cover, because a cover bound into the interior becomes page one of the
+// printed block.
+export function readingCopyFor(format: EditionFormat): ExportFormat | null {
+  return outputFormatFor(format) ? 'pdf' : null
+}
+
 export const OUTPUT_LABELS: Record<ExportFormat, string> = {
   epub: 'EPUB', docx: 'DOCX', pdf: 'PDF', 'print-pdf': 'Print PDF',
 }
@@ -169,6 +181,9 @@ export interface EditionCard {
   /** What comes out: 'EPUB' or 'Print PDF'. */
   out: string
   outputFormat: ExportFormat
+  /** The reading copy this edition can also produce, or null. */
+  altOutput: ExportFormat | null
+  altLabel: string
   /** Same-origin thumbnail, or '' when this edition has no cover. */
   thumbURL: string
   /** The book title, for the drawn placeholder when there is no artwork. */
@@ -199,6 +214,8 @@ export function editionCards(index: EditionIndex | undefined, title: string): Ed
         badgeKind: published ? 'ok' : 'accent',
         out: OUTPUT_LABELS[output],
         outputFormat: output,
+        altOutput: readingCopyFor(format),
+        altLabel: 'Reading copy (PDF)',
         thumbURL: coverThumbURL(edition),
         title,
       })
@@ -216,9 +233,20 @@ function cardSpec(format: EditionFormat): string {
       (format.binding ?? '').trim().toLowerCase(),
     ].filter(Boolean).join(' · ')
   }
-  const layout = (format.layout ?? '').trim() || 'Reflowable'
   const version = (format.epub_version ?? '').trim() || 'EPUB 3.3'
-  return `${layout} ${version} · linked contents`
+  // The card says what the export will be, not what the record wishes it were.
+  // Draftline writes a reflowable package; see fixedLayoutNote.
+  return `Reflowable ${version} · linked contents`
+}
+
+// Draftline has one EPUB renderer and it makes a reflowable book. A record set
+// to fixed layout is not wrong — an author may well have a fixed-layout file
+// made elsewhere under that ISBN — but the export made here is not it, and the
+// screen says so rather than printing the word "Fixed layout" over a file that
+// reflows.
+export function fixedLayoutNote(format: EditionFormat): string {
+  if ((format.layout ?? '').trim().toLowerCase() !== 'fixed layout') return ''
+  return 'This record says fixed layout. Draftline exports a reflowable package.'
 }
 
 // ── Step one: the sidebar ──────────────────────────────────────────────────
@@ -235,6 +263,8 @@ export interface ExportSourceSummary {
   title: string
   prefill: PrefillLine[]
   footnote: string
+  /** A plain caveat about this record, or '' when there is nothing to warn about. */
+  note: string
 }
 
 export const SOURCE_FOOTNOTE =
@@ -260,12 +290,15 @@ export function exportSourceSummary(index: EditionIndex | undefined, formatID: s
       { k: 'Identifier', v: isbn || 'not yet assigned' },
     ]
     : [
-      { k: 'Package', v: `${(format.epub_version ?? 'EPUB 3.3').trim()}, ${((format.layout ?? 'Reflowable').trim()).toLowerCase()}` },
+      { k: 'Package', v: `${(format.epub_version ?? 'EPUB 3.3').trim()}, reflowable` },
       { k: 'Cover', v: coverLine(edition) },
       { k: 'Identifier', v: identifier },
       { k: 'Copyright page', v: copyright || 'from this edition' },
       { k: 'Contents', v: 'chapters + front matter' },
     ]
+
+  const layoutNote = format.kind === 'ebook' ? fixedLayoutNote(format) : ''
+  if (layoutNote) prefill.push({ k: 'Layout', v: 'record says fixed layout — this export reflows' })
 
   return {
     editionID: edition.id,
@@ -276,6 +309,7 @@ export function exportSourceSummary(index: EditionIndex | undefined, formatID: s
     title,
     prefill,
     footnote: SOURCE_FOOTNOTE,
+    note: layoutNote,
   }
 }
 
@@ -393,28 +427,57 @@ export function prefillChanges(edition: Edition, format: EditionFormat, options:
   return changes
 }
 
+// exportSettingsBlock is the wizard's own memory: every answer, so the next
+// export of this format starts where this one finished. It is not a statement
+// about the published object, which is why it is written without asking while
+// the record's own fields are not.
+export function exportSettingsBlock(options: WizardOptions): Record<string, unknown> {
+  return {
+    shared: { ...options.shared },
+    epub: { ...options.epub },
+    pdf: { ...options.pdf },
+    'print-pdf': { ...options.print },
+  }
+}
+
 // writeBackPatch is what saving back actually writes.
 //
-// Two things go onto the record: the fields the record has words of its own
-// for — a trim, a gutter, a bleed, all of which a cover designer and a printer
-// read off the edition record rather than out of an export — and the whole
-// option set under export_settings, so the next export of this format starts
-// where this one finished.
-export function writeBackPatch(options: WizardOptions, output: ExportFormat): Partial<EditionFormat> {
-  const patch: Partial<EditionFormat> = {
-    export_settings: {
-      shared: { ...options.shared },
-      epub: { ...options.epub },
-      pdf: { ...options.pdf },
-      'print-pdf': { ...options.print },
-    },
-  }
-  if (output === 'print-pdf') {
-    patch.trim = trimRecordWords(options.print)
-    patch.gutter = `${options.print.gutterMargin} in`
-    patch.bleed = bleedLabel(options.print.bleed)
-  }
+// Two things can go onto the record: the wizard's remembered answers, and the
+// fields the record has words of its own for — a trim, a gutter, a bleed, all
+// of which a cover designer and a printer read off the edition record rather
+// than out of an export.
+//
+// The second kind is written ONLY for a field the author actually moved.
+// `prefilled` is what this record put into the wizard when it was picked, and
+// a value that still matches it is left exactly as the record spells it. That
+// matters beyond tidiness: the record may hold '148 × 210 mm (A5)', which the
+// wizard reads as 5.83 by 8.27 inches and cannot spell in millimetres again.
+// Rewriting an untouched trim would quietly turn A5 into a rounded inch
+// measurement the trim list does not even offer — a printer's specification
+// changed by an export that changed nothing.
+export function writeBackPatch(
+  options: WizardOptions, output: ExportFormat, prefilled?: WizardOptions,
+): Partial<EditionFormat> {
+  const patch: Partial<EditionFormat> = { export_settings: exportSettingsBlock(options) }
+  if (output !== 'print-pdf') return patch
+  const was = prefilled?.print
+  const now = options.print
+  if (!was || trimRecordWords(was) !== trimRecordWords(now)) patch.trim = trimRecordWords(now)
+  if (!was || was.gutterMargin !== now.gutterMargin) patch.gutter = `${now.gutterMargin} in`
+  if (!was || was.bleed !== now.bleed) patch.bleed = bleedLabel(now.bleed)
   return patch
+}
+
+// patchChangesFormat says whether writing this patch would alter the record at
+// all. A successful export marks the project dirty and schedules an autosave,
+// and an export that settled on exactly the settings already stored has
+// nothing to save.
+export function patchChangesFormat(format: EditionFormat, patch: Partial<EditionFormat>): boolean {
+  const current = format as unknown as Record<string, unknown>
+  for (const [key, value] of Object.entries(patch)) {
+    if (JSON.stringify(current[key] ?? null) !== JSON.stringify(value ?? null)) return true
+  }
+  return false
 }
 
 // ── Registering a from-scratch export ──────────────────────────────────────
@@ -424,26 +487,53 @@ export function writeBackPatch(options: WizardOptions, output: ExportFormat): Pa
 // an edition, and saying so here saves typing the whole record in again on the
 // Book & Editions screen. It is an offer, not a rule — an export with no
 // number given is exactly the export the brief describes.
-export function isbnRegistrationError(isbn: string): string {
+export function isbnRegistrationError(isbn: string, index?: EditionIndex): string {
   const trimmed = isbn.trim()
   if (!trimmed) return 'Type an ISBN, or skip this.'
   const digits = normalizeISBN(trimmed)
   if (digits.length !== 10 && digits.length !== 13) return 'An ISBN is 10 or 13 digits.'
   if (!validISBN(trimmed)) return 'That ISBN’s check digit does not match the digits before it.'
+  const holder = formatHolding(index, digits)
+  if (holder) {
+    // An ISBN identifies one object. Two records carrying the same number is a
+    // publishing record that contradicts itself, and it is the kind of mistake
+    // nothing later in the chain catches.
+    return `${digits} is already on ${holder}. An ISBN belongs to one format only.`
+  }
+  return ''
+}
+
+// formatHolding names the record an ISBN is already on, for the message above.
+export function formatHolding(index: EditionIndex | undefined, digits: string): string {
+  if (!index || !digits) return ''
+  for (const edition of index.editions) {
+    for (const format of edition.formats) {
+      if (normalizeISBN(format.isbn13 ?? '') !== digits) continue
+      const word = (format.format ?? '').trim() || 'a format'
+      const label = (edition.label ?? '').trim()
+      return label ? `the ${word.toLowerCase()} of the ${label.toLowerCase()}` : `the ${word.toLowerCase()}`
+    }
+  }
   return ''
 }
 
 // registrationPatch is the format record a registered from-scratch export
-// becomes: the number, where it came from, and the specification the export
-// was actually made with, so the edition describes the file that exists rather
-// than a blank template.
+// becomes: the number, and the specification the export was actually made
+// with, so the edition describes the file that exists rather than a blank
+// template.
+//
+// It deliberately does not claim more than the wizard knows. Where the number
+// came from — an agency block, a retailer's free number — is something only
+// the author can say, so `registration` keeps the new record's own 'Not yet
+// assigned' until they set it. And the status is 'Registered', not
+// 'Published': a file has been made and a number attached to it, which is not
+// the same as a book being on sale.
 export function registrationPatch(
   isbn: string, output: ExportFormat, options: WizardOptions, meta: Partial<Metadata>,
 ): Partial<EditionFormat> {
   const patch: Partial<EditionFormat> = {
     isbn13: isbn.trim(),
-    registration: 'Registered — agency',
-    status: 'Published',
+    status: 'Registered',
     publication_date: today(),
     imprint_of_record: (meta.imprint ?? '').trim() || (meta.publisher ?? '').trim() || undefined,
     ...writeBackPatch(options, output),

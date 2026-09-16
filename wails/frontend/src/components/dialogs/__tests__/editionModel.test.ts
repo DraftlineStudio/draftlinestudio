@@ -15,7 +15,7 @@ import type { Edition, EditionFormat, EditionIndex, Metadata } from '../../../ty
 import {
   advancedFor, copyrightLines, derivedISBN10, duplicateAsNewEdition, editionBadge, emptyEditionIndex,
   formatBadge, isbnLocked, kindDot, newEdition, newFormat, priorYears, sectionsFor, spineWidthInches,
-  spineWidthLabel, statusBadgeKind,
+  publicationDateHint, spineWidthLabel, statusBadgeKind,
 } from '../editionModel'
 
 interface CopyrightCase {
@@ -318,5 +318,25 @@ describe('duplicating an edition', () => {
 
   it('does nothing when asked to copy an edition that is not there', () => {
     expect(duplicateAsNewEdition(index, 'ed-9', '2030')).toBe(index)
+  })
+})
+
+// ── What an export may declare ─────────────────────────────────────────────
+
+describe('the publication date hint', () => {
+  it('says nothing about a date an exported ebook can declare', () => {
+    expect(publicationDateHint('2027')).toBe('')
+    expect(publicationDateHint('2027-04')).toBe('')
+    expect(publicationDateHint('2027-04-14')).toBe('')
+    expect(publicationDateHint('')).toBe('')
+    expect(publicationDateHint(undefined)).toBe('')
+  })
+
+  it('warns about wording the file will have to leave out', () => {
+    // dc:date is constrained to W3CDTF. A retailer's validator rejects the
+    // file rather than the phrase, which is a bad way to find out.
+    expect(publicationDateHint('Spring 2027')).toContain('YYYY-MM-DD')
+    expect(publicationDateHint('14/04/2027')).toContain('will not be in the file')
+    expect(publicationDateHint('2027-13-01')).toContain('YYYY-MM-DD')
   })
 })

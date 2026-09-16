@@ -21,6 +21,7 @@ package export
 
 import (
 	"strings"
+	"time"
 
 	"draftline/internal/types"
 )
@@ -110,7 +111,7 @@ func selectEdition(book types.BookData, options types.ExportOptions) *DocumentEd
 		ISBN:      strings.TrimSpace(format.ISBN13),
 		Imprint:   strings.TrimSpace(format.ImprintOfRecord),
 		Rights:    types.RightsSentence(format),
-		Date:      strings.TrimSpace(format.PublicationDate),
+		Date:      w3cdtfDate(format.PublicationDate),
 		EPUB:      epubProfileFor(format.EPUBVersion),
 		Copyright: types.CopyrightLines(book.Metadata, edition, format, book.Editions.PriorYears(edition.ID)),
 		Trim:      strings.TrimSpace(format.Trim),
@@ -122,6 +123,30 @@ func selectEdition(book types.BookData, options types.ExportOptions) *DocumentEd
 		selected.Identifier = "urn:isbn:" + digits
 	}
 	return selected
+}
+
+// w3cdtfDate is the publication date in the only form a package document may
+// state it in.
+//
+// dc:date is constrained to W3CDTF — a year, a year and month, a calendar day,
+// or a full timestamp — and a reading system or a validator will reject
+// anything else. The Editions screen's publication date is a free text field,
+// because an author with a contract that says "Spring 2027" should be able to
+// write that down. So the record keeps what was typed and the file declares
+// only what it is allowed to declare: a date it cannot parse produces no
+// dc:date at all, which is a book with no stated publication date rather than
+// a book no shop will accept.
+func w3cdtfDate(raw string) string {
+	text := strings.TrimSpace(raw)
+	if text == "" {
+		return ""
+	}
+	for _, layout := range []string{"2006", "2006-01", "2006-01-02", "2006-01-02T15:04:05Z07:00", "2006-01-02T15:04Z07:00"} {
+		if _, err := time.Parse(layout, text); err == nil {
+			return text
+		}
+	}
+	return ""
 }
 
 // ── The EPUB profile ───────────────────────────────────────────────────────

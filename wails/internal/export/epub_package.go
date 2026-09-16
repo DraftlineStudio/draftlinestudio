@@ -282,20 +282,17 @@ func epubEditionStatement(edition *DocumentEdition) string {
 // phone and a six-inch e-ink screen alike without being upscaled past its own
 // resolution.
 func renderEPUBCoverPage(doc Document, cover *CoverArt) string {
-	epubType := ""
-	if documentEPUBProfile(doc).Three {
-		epubType = ` epub:type="cover"`
+	profile := documentEPUBProfile(doc)
+	bodyAttrs := ` class="cover"`
+	if profile.Three {
+		bodyAttrs += ` epub:type="cover"`
 	}
-	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="%s" lang="%s">
-<head><meta charset="UTF-8"/><title>Cover</title>
+	head := `
 <style type="text/css">body { margin: 0; padding: 0; text-align: center; }
-img { max-width: 100%%; max-height: 100%%; height: auto; }</style></head>
-<body class="cover"%s><div><img src="../images/%s" alt="%s"/></div></body>
-</html>`,
-		EscapeXML(doc.Language), EscapeXML(doc.Language), epubType,
+img { max-width: 100%; max-height: 100%; height: auto; }</style>`
+	body := fmt.Sprintf(`<div><img src="../images/%s" alt="%s"/></div>`,
 		EscapeXML(cover.FileName), EscapeXML(coverAltText(doc)))
+	return epubDocumentShell(profile, doc.Language, "Cover", bodyAttrs, head, body)
 }
 
 func coverAltText(doc Document) string {
@@ -305,18 +302,26 @@ func coverAltText(doc Document) string {
 	return "Cover: " + strings.TrimSpace(doc.Title)
 }
 
+// renderEPUBNav is the contents page a reader can turn to.
+//
+// EPUB 3 marks it up as the navigation document the specification defines:
+// <nav epub:type="toc">, declared properties="nav" in the manifest. XHTML 1.1
+// has no <nav> element and no epub: namespace, so the EPUB 2 file carries the
+// same list as a plain division — the machine-readable contents of an EPUB 2
+// is the NCX beside it, and this page is for the person holding the book.
 func renderEPUBNav(doc Document, sections []epubSection) string {
+	profile := documentEPUBProfile(doc)
 	var items strings.Builder
 	for _, section := range sections {
 		fmt.Fprintf(&items, "      <li><a href=\"text/%s\">%s</a></li>\n", section.FileName, EscapeXML(displaySectionTitle(section.Title)))
 	}
-	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="%s" lang="%s">
-<head><meta charset="UTF-8"/><title>Contents</title><link rel="stylesheet" type="text/css" href="styles/book.css"/></head>
-<body class="navigation"><nav epub:type="toc" id="toc"><h1>Contents</h1><ol>
-%s    </ol></nav></body>
-</html>`, EscapeXML(doc.Language), EscapeXML(doc.Language), items.String())
+	open, shut := `<nav epub:type="toc" id="toc">`, `</nav>`
+	if !profile.Three {
+		open, shut = `<div class="toc" id="toc">`, `</div>`
+	}
+	body := fmt.Sprintf("%s<h1>Contents</h1><ol>\n%s    </ol>%s", open, items.String(), shut)
+	return epubDocumentShell(profile, doc.Language, "Contents", ` class="navigation"`,
+		`<link rel="stylesheet" type="text/css" href="styles/book.css"/>`, body)
 }
 
 // renderEPUBNCX is the EPUB 2 table of contents. It is written only for a

@@ -338,6 +338,103 @@ func TestAnEPUB2FormatProducesAnEPUB2Package(t *testing.T) {
 	}
 }
 
+// A package document is only half of an EPUB. The content documents inside it
+// are the other half, and an EPUB 2 package wrapped around XHTML5 fails
+// EPUBCheck on every single file — which would make the file an author chose
+// EPUB 2.0.1 to produce the one a legacy retailer refuses.
+//
+// OPS 2.0.1 content is XHTML 1.1: no HTML5 doctype, no <meta charset>, no
+// <section>, no <nav>, no epub: namespace, and none of the elements XHTML 1.1
+// dropped.
+func TestEPUB2ContentDocumentsAreXHTML11(t *testing.T) {
+	book := editionBook()
+	// Some struck-through text, so the run renderer is exercised too.
+	book.Body[0].Content = `<p>The ferry left <s>early</s> before anyone counted.</p><hr/><p>Then it did not.</p>`
+	parts := exportEPUBTo(t, book, "fmt-2", inventedArtwork(t, 600, 960))
+
+	html5 := []string{"<!DOCTYPE html>", "<meta charset", "<section ", "<nav ", "epub:type", "xmlns:epub", "aria-hidden", "<s>"}
+	for name, body := range parts {
+		if !strings.HasSuffix(name, ".xhtml") {
+			continue
+		}
+		for _, construct := range html5 {
+			if strings.Contains(body, construct) {
+				t.Errorf("%s is not an OPS 2.0.1 document: it contains %q\n%s", name, construct, body)
+			}
+		}
+		if !strings.Contains(body, `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"`) {
+			t.Errorf("%s does not declare the XHTML 1.1 document type:\n%s", name, body)
+		}
+		if !strings.Contains(body, `<meta http-equiv="Content-Type"`) {
+			t.Errorf("%s states its encoding the HTML5 way:\n%s", name, body)
+		}
+	}
+	// The markup the EPUB 3 file expresses with epub:type survives as a class,
+	// so one stylesheet still dresses both.
+	if !anyPartContains(parts, `<div class="section chapter">`) {
+		t.Errorf("no chapter kept its role: %v", memberNames(parts))
+	}
+	if !anyPartContains(parts, `<span class="strike">`) {
+		t.Errorf("struck text was not rewritten for XHTML 1.1: %v", memberNames(parts))
+	}
+	if css := parts["OEBPS/styles/book.css"]; !strings.Contains(css, ".strike") || !strings.Contains(css, "div.section") {
+		t.Errorf("the stylesheet does not dress the EPUB 2 markup:\n%s", css)
+	}
+	if nav := parts["OEBPS/nav.xhtml"]; !strings.Contains(nav, `<div class="toc" id="toc">`) {
+		t.Errorf("the contents page still uses <nav>:\n%s", nav)
+	}
+}
+
+// And the EPUB 3 file keeps every one of those constructs, because there they
+// are what the specification asks for.
+func TestEPUB3ContentDocumentsStayXHTML5(t *testing.T) {
+	parts := exportEPUBTo(t, editionBook(), "fmt-1", inventedArtwork(t, 600, 960))
+	for _, want := range []string{"<!DOCTYPE html>", "<meta charset", `<section epub:type="chapter">`, "xmlns:epub"} {
+		if !anyPartContains(parts, want) {
+			t.Errorf("no EPUB 3 content document carries %q: %v", want, memberNames(parts))
+		}
+	}
+	if nav := parts["OEBPS/nav.xhtml"]; !strings.Contains(nav, `<nav epub:type="toc" id="toc">`) {
+		t.Errorf("the EPUB 3 navigation document is not a nav:\n%s", nav)
+	}
+	if cover := parts["OEBPS/text/"+epubCoverPageDoc]; !strings.Contains(cover, `epub:type="cover"`) {
+		t.Errorf("the EPUB 3 cover page is not marked as one:\n%s", cover)
+	}
+}
+
+// dc:date is constrained to W3CDTF and the record's publication date is free
+// text, because "Spring 2027" is a real answer to give a contract. The file
+// declares what it is allowed to declare and leaves out what it is not, rather
+// than shipping a package no validator will pass.
+func TestOnlyADateTheSpecificationAllowsIsDeclared(t *testing.T) {
+	cases := []struct {
+		record string
+		want   string
+	}{
+		{"2026-04-14", "2026-04-14"},
+		{"2026-04", "2026-04"},
+		{"2026", "2026"},
+		{"Spring 2027", ""},
+		{"14/04/2026", ""},
+		{"2026-13-01", ""},
+		{"", ""},
+	}
+	for _, tc := range cases {
+		book := editionBook()
+		book.Editions.Editions[0].Formats[0].PublicationDate = tc.record
+		opf := exportEPUBTo(t, book, "fmt-1", nil)["OEBPS/content.opf"]
+		if tc.want == "" {
+			if strings.Contains(opf, "<dc:date>") {
+				t.Errorf("%q reached dc:date, which only takes a W3CDTF value:\n%s", tc.record, opf)
+			}
+			continue
+		}
+		if !strings.Contains(opf, "<dc:date>"+tc.want+"</dc:date>") {
+			t.Errorf("%q did not become <dc:date>%s</dc:date>:\n%s", tc.record, tc.want, opf)
+		}
+	}
+}
+
 // EPUB 3.3 and EPUB 3.0 both declare version="3.0", because that attribute has
 // only ever had two legal values. The revision the author chose is recorded
 // where a revision belongs.
@@ -636,4 +733,16 @@ func pdfPageCount(t *testing.T, path string) int {
 		t.Fatal(err)
 	}
 	return len(pdfPageMarker.FindAll(data, -1))
+}
+
+// anyPartContains says whether any content document in the package carries a
+// construct. Which numbered section a chapter lands in depends on how much
+// front matter precedes it, and that is not what these tests are about.
+func anyPartContains(parts map[string]string, want string) bool {
+	for name, body := range parts {
+		if strings.HasSuffix(name, ".xhtml") && strings.Contains(body, want) {
+			return true
+		}
+	}
+	return false
 }

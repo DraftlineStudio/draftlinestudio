@@ -8,11 +8,48 @@ import (
 	"draftline/internal/types"
 )
 
+// epubDocumentShell is the XHTML a content document is wrapped in.
+//
+// This is where the two EPUBs genuinely part company. An EPUB 3 content
+// document is XHTML5: the HTML5 doctype, <meta charset>, and the epub:
+// namespace that carries epub:type. An OPS 2.0.1 content document is XHTML
+// 1.1, where every one of those is a validation error — which is the whole
+// point of choosing EPUB 2.0.1 in the first place, since the reading systems
+// that need it are the ones that will not open anything else.
+func epubDocumentShell(profile epubProfile, language, title, bodyAttrs, head, body string) string {
+	lang := EscapeXML(language)
+	if profile.Three {
+		return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="%s" lang="%s">
+<head><meta charset="UTF-8"/><title>%s</title>%s</head>
+<body%s>
+%s</body>
+</html>`, lang, lang, EscapeXML(title), head, bodyAttrs, body)
+	}
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="%s">
+<head><meta http-equiv="Content-Type" content="application/xhtml+xml; charset=utf-8"/><title>%s</title>%s</head>
+<body%s>
+%s</body>
+</html>`, lang, EscapeXML(title), head, bodyAttrs, body)
+}
+
 func renderEPUBSection(doc Document, section DocumentSection, options types.EPUBOptions) string {
+	profile := documentEPUBProfile(doc)
 	var body strings.Builder
-	body.WriteString("    <section epub:type=\"")
-	body.WriteString(epubSectionType(section.Role))
-	body.WriteString("\">\n")
+	if profile.Three {
+		body.WriteString("    <section epub:type=\"")
+		body.WriteString(epubSectionType(section.Role))
+		body.WriteString("\">\n")
+	} else {
+		// XHTML 1.1 has no <section> and no epub:type. The role survives as a
+		// class, which the stylesheet reads either way.
+		body.WriteString("    <div class=\"section ")
+		body.WriteString(epubSectionType(section.Role))
+		body.WriteString("\">\n")
+	}
 	if strings.TrimSpace(section.Title) != "" {
 		fmt.Fprintf(&body, "      <h1>%s</h1>\n", EscapeXML(section.Title))
 	}
@@ -45,27 +82,27 @@ func renderEPUBSection(doc Document, section DocumentSection, options types.EPUB
 					body.WriteString("      <ul>\n")
 				}
 			}
-			fmt.Fprintf(&body, "        <li%s>%s</li>\n", epubAlignmentClass(block.Alignment), renderEPUBRuns(block.Runs))
+			fmt.Fprintf(&body, "        <li%s>%s</li>\n", epubAlignmentClass(block.Alignment), renderEPUBRuns(block.Runs, profile))
 			continue
 		}
 		closeList()
-		renderEPUBBlock(&body, block, options)
+		renderEPUBBlock(&body, block, options, profile)
 	}
 	closeList()
-	body.WriteString("    </section>\n")
+	if profile.Three {
+		body.WriteString("    </section>\n")
+	} else {
+		body.WriteString("    </div>\n")
+	}
 
-	title := displaySectionTitle(section.Title)
-	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="%s" lang="%s">
-<head><meta charset="UTF-8"/><title>%s</title><link rel="stylesheet" type="text/css" href="../styles/book.css"/></head>
-<body class="%s %s">
-%s  </body>
-</html>`, EscapeXML(doc.Language), EscapeXML(doc.Language), EscapeXML(title), epubRoleClass(section.Role), EscapeXML(options.ChapterStyle), body.String())
+	bodyAttrs := fmt.Sprintf(" class=\"%s %s\"", epubRoleClass(section.Role), EscapeXML(options.ChapterStyle))
+	return epubDocumentShell(profile, doc.Language, displaySectionTitle(section.Title),
+		bodyAttrs, `<link rel="stylesheet" type="text/css" href="../styles/book.css"/>`,
+		body.String()+"  ")
 }
 
-func renderEPUBBlock(out *strings.Builder, block DocumentBlock, options types.EPUBOptions) {
-	content := renderEPUBRuns(block.Runs)
+func renderEPUBBlock(out *strings.Builder, block DocumentBlock, options types.EPUBOptions, profile epubProfile) {
+	content := renderEPUBRuns(block.Runs, profile)
 	align := epubAlignmentClass(block.Alignment)
 	switch block.Kind {
 	case BlockHeading:
@@ -83,16 +120,28 @@ func renderEPUBBlock(out *strings.Builder, block DocumentBlock, options types.EP
 		case "rule":
 			out.WriteString("      <hr class=\"scene-break scene-rule\"/>\n")
 		case "space":
-			out.WriteString("      <div class=\"scene-break scene-space\" aria-hidden=\"true\"></div>\n")
+			fmt.Fprintf(out, "      <div class=\"scene-break scene-space\"%s></div>\n", epubHidden(profile))
 		default:
-			out.WriteString("      <div class=\"scene-break scene-asterism\" aria-hidden=\"true\">⁂</div>\n")
+			fmt.Fprintf(out, "      <div class=\"scene-break scene-asterism\"%s>⁂</div>\n", epubHidden(profile))
 		}
 	default:
 		fmt.Fprintf(out, "      <p%s>%s</p>\n", align, content)
 	}
 }
 
-func renderEPUBRuns(runs []DocumentRun) string {
+// epubHidden is the ARIA attribute that tells a screen reader to skip a
+// decorative scene break. WAI-ARIA attributes are part of XHTML5 and are not
+// in the XHTML 1.1 document type an OPS 2.0.1 document is validated against,
+// so an EPUB 2 file leaves them off rather than failing validation over an
+// ornament.
+func epubHidden(profile epubProfile) string {
+	if profile.Three {
+		return ` aria-hidden="true"`
+	}
+	return ""
+}
+
+func renderEPUBRuns(runs []DocumentRun, profile epubProfile) string {
 	var out strings.Builder
 	for _, run := range runs {
 		if run.LineBreak {
@@ -113,7 +162,13 @@ func renderEPUBRuns(runs []DocumentRun) string {
 			text = "<sub>" + text + "</sub>"
 		}
 		if run.Strike {
-			text = "<s>" + text + "</s>"
+			// <s> was dropped from XHTML 1.1, so an EPUB 2 file strikes text
+			// the same way it underlines it: with a class the stylesheet knows.
+			if profile.Three {
+				text = "<s>" + text + "</s>"
+			} else {
+				text = "<span class=\"strike\">" + text + "</span>"
+			}
 		}
 		if run.Underline {
 			text = "<span class=\"underline\">" + text + "</span>"
@@ -189,7 +244,7 @@ func renderEPUBCSS(options types.EPUBOptions) string {
 	css.WriteString(`@charset "UTF-8";
 html { -webkit-hyphens: auto; hyphens: auto; }
 body { margin: 5%; line-height: 1.5; widows: 2; orphans: 2; }
-section { max-width: 42em; margin: 0 auto; }
+section, div.section { max-width: 42em; margin: 0 auto; }
 h1 { text-align: center; break-after: avoid; page-break-after: avoid; }
 .classic h1 { margin: 22vh 0 2.5em; }
 .minimal h1 { margin: 1.5em 0 1.75em; text-align: left; }
@@ -197,6 +252,7 @@ h1 { text-align: center; break-after: avoid; page-break-after: avoid; }
 blockquote { margin: 1em 1.5em; }
 pre { white-space: pre-wrap; font-family: monospace; }
 .underline { text-decoration: underline; }
+.strike { text-decoration: line-through; }
 .align-left { text-align: left !important; }
 .align-center { text-align: center !important; }
 .align-right { text-align: right !important; }
@@ -206,8 +262,8 @@ pre { white-space: pre-wrap; font-family: monospace; }
 .scene-rule { border: 0; border-top: 1px solid currentColor; margin: 1.75em auto; width: 18%; }
 .scene-space { height: 2em; }
 .scene-break + p, h1 + p, h2 + p, h3 + p, blockquote + p { text-indent: 0; }
-nav ol { padding-left: 1.5em; }
-nav li { margin: 0.35em 0; }
+nav ol, .toc ol { padding-left: 1.5em; }
+nav li, .toc li { margin: 0.35em 0; }
 `)
 	if options.ParagraphStyle == "spaced" {
 		css.WriteString("p { margin: 0 0 0.8em; text-indent: 0; }\n")

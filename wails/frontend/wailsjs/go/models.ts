@@ -2292,6 +2292,8 @@ export namespace types {
 	    includeCopyright: boolean;
 	    includeFrontMatter: boolean;
 	    includeBackMatter: boolean;
+	    editionID?: string;
+	    formatID?: string;
 	    fontFamily: string;
 	    paragraphStyle: string;
 	    textAlign: string;
@@ -2307,6 +2309,8 @@ export namespace types {
 	        this.includeCopyright = source["includeCopyright"];
 	        this.includeFrontMatter = source["includeFrontMatter"];
 	        this.includeBackMatter = source["includeBackMatter"];
+	        this.editionID = source["editionID"];
+	        this.formatID = source["formatID"];
 	        this.fontFamily = source["fontFamily"];
 	        this.paragraphStyle = source["paragraphStyle"];
 	        this.textAlign = source["textAlign"];
@@ -2329,6 +2333,8 @@ export namespace types {
 	    includeCopyright: boolean;
 	    includeFrontMatter: boolean;
 	    includeBackMatter: boolean;
+	    editionID?: string;
+	    formatID?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ExportOptions(source);
@@ -2339,6 +2345,8 @@ export namespace types {
 	        this.includeCopyright = source["includeCopyright"];
 	        this.includeFrontMatter = source["includeFrontMatter"];
 	        this.includeBackMatter = source["includeBackMatter"];
+	        this.editionID = source["editionID"];
+	        this.formatID = source["formatID"];
 	    }
 	}
 	export class ExportResult {
@@ -2480,6 +2488,8 @@ export namespace types {
 	    includeCopyright: boolean;
 	    includeFrontMatter: boolean;
 	    includeBackMatter: boolean;
+	    editionID?: string;
+	    formatID?: string;
 	    pageSize: string;
 	    fontFamily: string;
 	    fontSize: number;
@@ -2496,6 +2506,8 @@ export namespace types {
 	        this.includeCopyright = source["includeCopyright"];
 	        this.includeFrontMatter = source["includeFrontMatter"];
 	        this.includeBackMatter = source["includeBackMatter"];
+	        this.editionID = source["editionID"];
+	        this.formatID = source["formatID"];
 	        this.pageSize = source["pageSize"];
 	        this.fontFamily = source["fontFamily"];
 	        this.fontSize = source["fontSize"];
@@ -2513,6 +2525,8 @@ export namespace types {
 	    includeCopyright: boolean;
 	    includeFrontMatter: boolean;
 	    includeBackMatter: boolean;
+	    editionID?: string;
+	    formatID?: string;
 	    pageSize: string;
 	    fontFamily: string;
 	    fontSize: number;
@@ -2553,6 +2567,8 @@ export namespace types {
 	        this.includeCopyright = source["includeCopyright"];
 	        this.includeFrontMatter = source["includeFrontMatter"];
 	        this.includeBackMatter = source["includeBackMatter"];
+	        this.editionID = source["editionID"];
+	        this.formatID = source["formatID"];
 	        this.pageSize = source["pageSize"];
 	        this.fontFamily = source["fontFamily"];
 	        this.fontSize = source["fontSize"];

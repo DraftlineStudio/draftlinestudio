@@ -8,8 +8,9 @@ import { describe, expect, it } from 'vitest'
 import type { Edition, EditionFormat, EditionIndex } from '../../../types/draftline'
 import {
   bleedFromRecord, bleedLabel, customTrimError, defaultWizardOptions, editionCards,
-  exportSourceSummary, findFormat, inchesText, isbnRegistrationError, outputFormatFor,
-  prefillChanges, printPrefill, registrableKind, registrationPatch, SOURCE_FOOTNOTE,
+  exportSourceSummary, findFormat, fixedLayoutNote, inchesText, isbnRegistrationError,
+  outputFormatFor, patchChangesFormat, prefillChanges, printPrefill, readingCopyFor,
+  registrableKind, registrationPatch, SOURCE_FOOTNOTE,
   trimFromRecord, trimRecordWords, wizardOptionsForFormat, writeBackPatch,
   type PrintPDFOptions,
 } from '../exportSource'
@@ -309,13 +310,25 @@ describe('registering a from-scratch export', () => {
     expect(isbnRegistrationError('978-1-9471345-1-5')).toBe('')
   })
 
-  it('makes a record that describes the file that exists', () => {
+  it('refuses a number the record already carries, however it is punctuated', () => {
+    const idx = index()
+    expect(isbnRegistrationError('978-1-9471345-1-5', idx)).toContain('already on')
+    expect(isbnRegistrationError('9781947134515', idx)).toContain('already on')
+    expect(isbnRegistrationError('978-1-9471345-1-5', idx)).toContain('ebook')
+    // A number nowhere in the record is still fine.
+    expect(isbnRegistrationError('978-1-9471345-4-6', idx)).toBe('')
+  })
+
+  it('makes a record that describes the file that exists, and claims nothing else', () => {
     const options = defaultWizardOptions()
     options.print = { ...options.print, trimSize: '6x9', gutterMargin: '0.95' }
     const patch = registrationPatch('978-1-9471345-1-5', 'print-pdf', options, { imprint: 'Bellwether House' })
     expect(patch.isbn13).toBe('978-1-9471345-1-5')
     expect(patch.format).toBe('Paperback')
-    expect(patch.status).toBe('Published')
+    // A file exists and a number is attached to it. Neither of those is a book
+    // being on sale, and where the number came from only the author knows.
+    expect(patch.status).toBe('Registered')
+    expect(patch.registration).toBeUndefined()
     expect(patch.trim).toBe('6 × 9 in (trade)')
     expect(patch.gutter).toBe('0.95 in')
     expect(patch.imprint_of_record).toBe('Bellwether House')
@@ -334,5 +347,98 @@ describe('which file a format produces', () => {
     expect(outputFormatFor({ id: 'a', kind: 'ebook' })).toBe('epub')
     expect(outputFormatFor({ id: 'b', kind: 'print' })).toBe('print-pdf')
     expect(outputFormatFor({ id: 'c', kind: 'audio' })).toBeNull()
+  })
+
+  it('also offers a reading copy of anything it makes a file for', () => {
+    expect(readingCopyFor({ id: 'a', kind: 'ebook' })).toBe('pdf')
+    expect(readingCopyFor({ id: 'b', kind: 'print' })).toBe('pdf')
+    expect(readingCopyFor({ id: 'c', kind: 'audio' })).toBeNull()
+  })
+
+  it('puts the reading copy on every card, so the cover page is reachable', () => {
+    const cards = editionCards(index(), 'The Quiet Ledger')
+    expect(cards.map(c => c.altOutput)).toEqual(['pdf', 'pdf'])
+    expect(cards[0].altLabel).toContain('Reading copy')
+  })
+})
+
+// ── What the screen may and may not promise ────────────────────────────────
+
+describe('a record that says fixed layout', () => {
+  const fixed = (): EditionIndex => {
+    const idx = index()
+    idx.editions[0].formats[0] = { ...idx.editions[0].formats[0], layout: 'Fixed layout' }
+    return idx
+  }
+
+  it('is named as a caveat rather than repeated as a promise', () => {
+    expect(fixedLayoutNote({ id: 'a', kind: 'ebook', layout: 'Fixed layout' })).toContain('reflowable')
+    expect(fixedLayoutNote({ id: 'a', kind: 'ebook', layout: 'Reflowable' })).toBe('')
+    expect(fixedLayoutNote({ id: 'a', kind: 'ebook' })).toBe('')
+  })
+
+  it('never makes the card claim a fixed-layout export', () => {
+    const card = editionCards(fixed(), 'The Quiet Ledger')[0]
+    expect(card.spec).toBe('Reflowable EPUB 3.3 · linked contents')
+    expect(card.spec).not.toContain('Fixed')
+  })
+
+  it('makes the sidebar say what the file will actually be', () => {
+    const summary = exportSourceSummary(fixed(), 'fmt-ebook', 'The Quiet Ledger')!
+    expect(summary.prefill.find(line => line.k === 'Package')!.v).toBe('EPUB 3.3, reflowable')
+    expect(summary.note).toContain('reflowable')
+    const plain = exportSourceSummary(index(), 'fmt-ebook', 'The Quiet Ledger')!
+    expect(plain.note).toBe('')
+  })
+})
+
+// ── The record's own words are not rewritten by an export ──────────────────
+
+describe('a no-change export', () => {
+  // The A5 case is the one that bites: the wizard reads 148 × 210 mm as 5.83 by
+  // 8.27 inches and has no way to spell millimetres again, so rewriting an
+  // untouched trim would change a printer's specification behind the author.
+  const a5 = (): EditionIndex => {
+    const idx = index()
+    idx.editions[0].formats[1] = { ...idx.editions[0].formats[1], trim: '148 × 210 mm (A5)' }
+    return idx
+  }
+
+  it('reports nothing changed', () => {
+    const idx = a5()
+    const { edition, format } = paperbackOf(idx)
+    const options = wizardOptionsForFormat(edition, format)
+    expect(prefillChanges(edition, format, options, 'print-pdf')).toEqual([])
+  })
+
+  it('leaves the record’s trim, gutter and bleed exactly as the record spells them', () => {
+    const idx = a5()
+    const { edition, format } = paperbackOf(idx)
+    const options = wizardOptionsForFormat(edition, format)
+    const patch = writeBackPatch(options, 'print-pdf', wizardOptionsForFormat(edition, format))
+    expect(patch.trim).toBeUndefined()
+    expect(patch.gutter).toBeUndefined()
+    expect(patch.bleed).toBeUndefined()
+    expect(Object.keys(patch)).toEqual(['export_settings'])
+  })
+
+  it('writes a trim back only once the author has actually moved it', () => {
+    const idx = a5()
+    const { edition, format } = paperbackOf(idx)
+    const prefilled = wizardOptionsForFormat(edition, format)
+    const options = { ...prefilled, print: { ...prefilled.print, trimSize: '6x9' as const, pageSize: '6x9' as const } }
+    const patch = writeBackPatch(options, 'print-pdf', prefilled)
+    expect(patch.trim).toBe('6 × 9 in (trade)')
+    expect(patch.gutter).toBeUndefined()
+  })
+
+  it('does not dirty the book when the settings already stored are the settings used', () => {
+    const idx = index()
+    const { edition, format } = paperbackOf(idx)
+    const options = wizardOptionsForFormat(edition, format)
+    const patch = writeBackPatch(options, 'print-pdf', options)
+    expect(patchChangesFormat(format, patch)).toBe(true)
+    const stored = { ...format, ...patch }
+    expect(patchChangesFormat(stored, patch)).toBe(false)
   })
 })

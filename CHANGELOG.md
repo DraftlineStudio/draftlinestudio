@@ -2,6 +2,18 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02652] - 2026-09-16
+
+### Added
+- Registered editions can now export a plain reading PDF for reviewers.
+
+### Fixed
+- EPUB 2.0.1 exports now use EPUB 2 markup in every chapter, contents page, and cover page.
+- Publication dates that are not valid EPUB dates are left out of the file instead of breaking validation.
+- Exporting a paperback no longer rewrites the trim, gutter, or bleed on the edition record.
+- The same ISBN can no longer be registered on two formats.
+- Fixed-layout formats are now labeled as reflowable, since that is what Draftline exports.
+
 ## [0.20.02651] - 2026-09-16
 
 ### Added

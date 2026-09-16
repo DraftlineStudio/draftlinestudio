@@ -241,6 +241,25 @@ function monthAndYear(date: string): string {
   return `${MONTHS[month - 1]} ${year}`
 }
 
+// A publication date is free text, because a contract that says "Spring 2027"
+// is a real answer. An exported EPUB can only declare a date in the form the
+// specification allows — a year, a year and month, or a calendar day — so a
+// date it cannot state is left out of the file entirely, and the row says so
+// rather than letting the author find out from a retailer's validator.
+// The rule is the same one internal/export/edition.go applies.
+export function publicationDateHint(date: string | undefined): string {
+  const text = (date ?? '').trim()
+  if (!text) return ''
+  if (/^\d{4}(-\d{2}(-\d{2}([T ].*)?)?)?$/.test(text) && isoPartsValid(text)) return ''
+  return 'An exported ebook can only declare YYYY, YYYY-MM or YYYY-MM-DD. This wording stays on the record but will not be in the file.'
+}
+
+function isoPartsValid(text: string): boolean {
+  const month = text.length >= 7 ? Number.parseInt(text.slice(5, 7), 10) : 1
+  const day = text.length >= 10 ? Number.parseInt(text.slice(8, 10), 10) : 1
+  return month >= 1 && month <= 12 && day >= 1 && day <= 31
+}
+
 // ── The format panel ───────────────────────────────────────────────────────
 
 export type EditionRowKind = 'text' | 'select' | 'static' | 'textarea'
@@ -338,7 +357,11 @@ export function sectionsFor(edition: Edition, format: EditionFormat): EditionSec
     label: 'Release',
     note: '',
     rows: [
-      { label: 'Publication date', kind: 'text', field: 'publication_date', value: text(format.publication_date), mono: true, placeholder: 'YYYY-MM-DD' },
+      {
+        label: 'Publication date', kind: 'text', field: 'publication_date',
+        value: text(format.publication_date), mono: true, placeholder: 'YYYY-MM-DD',
+        hint: publicationDateHint(format.publication_date),
+      },
       { label: 'List price', kind: 'text', field: 'list_price', value: text(format.list_price), mono: true },
       { label: 'Status', kind: 'select', field: 'status', value: text(format.status), options: FORMAT_STATUSES },
       { label: 'Channels', kind: 'text', field: 'channels', value: text(format.channels), placeholder: 'Where this format is sold' },
@@ -377,7 +400,10 @@ export function advancedFor(index: EditionIndex | undefined, edition: Edition, f
   }
   if (format.kind === 'ebook') {
     rows.push(
-      { label: 'Layout', kind: 'select', field: 'layout', value: text(format.layout), options: LAYOUTS },
+      {
+        label: 'Layout', kind: 'select', field: 'layout', value: text(format.layout), options: LAYOUTS,
+        hint: 'Draftline exports a reflowable package. A fixed-layout file for this ISBN is made elsewhere.',
+      },
       { label: 'Retailer ASIN', kind: 'text', field: 'asin', value: text(format.asin), mono: true },
       { label: 'DRM', kind: 'select', field: 'drm', value: text(format.drm), options: DRM_CHOICES },
     )
