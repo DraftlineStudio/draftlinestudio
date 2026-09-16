@@ -21,6 +21,9 @@ import type { Edition, EditionFormat, EditionIndex, EditionKind, Metadata } from
 import { coverThumbURL } from './coverModel'
 import { spineWidthLabel } from './editionModel'
 import { normalizeISBN, validISBN } from './bookInfoModel'
+import {
+  CONTENTS_DEFAULTS, defaultWizardOptions, MAX_TRIM_INCHES, MIN_TRIM_INCHES, TRIM_PRESETS,
+} from './publishingDefaults'
 
 // ── The option shapes ──────────────────────────────────────────────────────
 // These mirror internal/types/export.go field for field. They live here rather
@@ -75,6 +78,13 @@ export interface PrintPDFOptions extends PDFOptions {
   dropCapLines: 2 | 3 | 4
   runningHeaders: boolean
   headerStyle: 'smallcaps' | 'italic' | 'normal'
+  // What the running head says on each side of the spread. With folios set
+  // top-outside, 'author-title' reads across as
+  // "137 | A. Marsh        Wide Water | 138".
+  headerContent: 'author-title' | 'title-chapter' | 'chapter'
+  // The same two choices an ebook offers, asked of a printed page.
+  sceneBreakStyle: 'asterism' | 'rule' | 'space'
+  chapterStyle: 'classic' | 'compact'
   pageNumberPosition: 'bottom-center' | 'bottom-outside' | 'top-outside'
   generateHalfTitle: boolean
   generateTOC: boolean
@@ -96,36 +106,12 @@ export interface WizardOptions {
   print: PrintPDFOptions
 }
 
-export const defaultSharedOptions = (): ExportOptions => ({
-  includeCopyright: true, includeFrontMatter: true, includeBackMatter: true,
-})
-
-export function defaultWizardOptions(): WizardOptions {
-  const shared = defaultSharedOptions()
-  const pdf: PDFOptions = {
-    ...shared, pageSize: 'letter', fontFamily: 'merriweather', fontSize: 12,
-    lineHeight: 1.5, paragraphIndent: '0.25', textAlign: 'left',
-  }
-  return {
-    shared,
-    epub: {
-      ...shared, fontFamily: 'reader', paragraphStyle: 'indented',
-      textAlign: 'reader', chapterStyle: 'classic', sceneBreakStyle: 'asterism',
-    },
-    pdf,
-    print: {
-      ...pdf, pageSize: '5.5x8.5', trimSize: '5.5x8.5', customWidth: '5.5', customHeight: '8.5',
-      bleed: '0', gutterMargin: '0.875', outerMargin: '0.625', topMargin: '0.75', bottomMargin: '0.625',
-      includeCropMarks: false, fontFamily: 'merriweather', fontSize: 9, lineHeight: 1.4,
-      paragraphIndent: '0.25', textAlign: 'left', chapterStartsRecto: true,
-      dropCap: true, dropCapLines: 3, runningHeaders: true, headerStyle: 'smallcaps',
-      pageNumberPosition: 'bottom-center', generateHalfTitle: true, generateTOC: true,
-      mirroredMargins: true, headingFont: 'classic', furnitureFont: 'body',
-      titlePageFont: 'classic', titlePageStyle: 'classic',
-      titlePageShowAuthor: true, titlePageShowPublisher: true,
-    },
-  }
-}
+// Every number a new export starts from is in publishingDefaults.ts, which is
+// the one file to edit when the defaults turn out to be wrong. They are
+// re-exported here because this is where the rest of the app already asks for
+// them, and moving the callers would only spread the knowledge again.
+export const defaultSharedOptions = (): ExportOptions => ({ ...CONTENTS_DEFAULTS })
+export { defaultWizardOptions, MAX_TRIM_INCHES, MIN_TRIM_INCHES }
 
 // ── Which file a format produces ───────────────────────────────────────────
 
@@ -136,7 +122,11 @@ export function defaultWizardOptions(): WizardOptions {
 export function outputFormatFor(format: EditionFormat): ExportFormat | null {
   if (format.kind === 'print') return 'print-pdf'
   if (format.kind === 'ebook') return 'epub'
-  return null
+  // An audiobook record catalogues the ISBN, the artwork, the narrators and
+  // the channels; Draftline writes no audio. What it can give that edition is
+  // the file a narrator actually reads from, which is the reading copy.
+  if (format.kind === 'audio') return 'pdf'
+  return 'pdf'
 }
 
 // The other file a registered edition can produce: a reading copy.
@@ -148,6 +138,9 @@ export function outputFormatFor(format: EditionFormat): ExportFormat | null {
 // cover, because a cover bound into the interior becomes page one of the
 // printed block.
 export function readingCopyFor(format: EditionFormat): ExportFormat | null {
+  // An audiobook's main output is already the reading copy, so it gets no
+  // second button offering the same file twice.
+  if (format.kind === 'audio') return null
   return outputFormatFor(format) ? 'pdf' : null
 }
 
@@ -190,10 +183,13 @@ export interface EditionCard {
   title: string
 }
 
-// editionCards walks every format of every edition, exactly as the design
-// brief's own card builder does, and leaves out the two it leaves out: a
-// format with no ISBN yet — there is nothing to export it as — and audio,
-// which Draftline does not produce a file for.
+// editionCards walks every format of every edition. An edition the author
+// configured is an edition they can export: the ISBN is a field on the record,
+// not a permission to use it. A format with no ISBN exports perfectly well and
+// the package simply carries the generated identifier it always carried.
+//
+// The one format left out is audio, because Draftline writes no audio file and
+// a card that cannot produce anything is not an option.
 export function editionCards(index: EditionIndex | undefined, title: string): EditionCard[] {
   if (!index) return []
   const cards: EditionCard[] = []
@@ -201,7 +197,7 @@ export function editionCards(index: EditionIndex | undefined, title: string): Ed
     for (const format of edition.formats) {
       const isbn = (format.isbn13 ?? '').trim()
       const output = outputFormatFor(format)
-      if (!isbn || !output) continue
+      if (!output) continue
       const published = (format.status ?? '').trim().toLowerCase() === 'published'
       cards.push({
         editionID: edition.id,
@@ -212,7 +208,7 @@ export function editionCards(index: EditionIndex | undefined, title: string): Ed
         spec: cardSpec(format),
         badge: published ? 'Published' : 'Template ready',
         badgeKind: published ? 'ok' : 'accent',
-        out: OUTPUT_LABELS[output],
+        out: format.kind === 'audio' ? 'Narrator script (PDF)' : OUTPUT_LABELS[output],
         outputFormat: output,
         altOutput: readingCopyFor(format),
         altLabel: 'Reading copy (PDF)',
@@ -549,18 +545,6 @@ function today(): string {
 
 // ── Trim arithmetic ────────────────────────────────────────────────────────
 
-const NAMED_TRIMS: Array<{ id: TrimSize; width: number; height: number }> = [
-  { id: '5x8', width: 5, height: 8 },
-  { id: '5.25x8', width: 5.25, height: 8 },
-  { id: '5.5x8.5', width: 5.5, height: 8.5 },
-  { id: '6x9', width: 6, height: 9 },
-]
-
-// The bounds mirror internal/export/pdf_spec.go. A page smaller than the
-// smallest mass-market paperback or larger than anything a print-on-demand
-// service will bind is a typing mistake, and "99" used to be typeset in full.
-export const MIN_TRIM_INCHES = 3
-export const MAX_TRIM_INCHES = 12
 
 const MM_PER_INCH = 25.4
 
@@ -582,7 +566,7 @@ export function trimFromRecord(trim: string): { trimSize: TrimSize; width: strin
   }
   if (width < MIN_TRIM_INCHES || width > MAX_TRIM_INCHES) return null
   if (height < MIN_TRIM_INCHES || height > MAX_TRIM_INCHES) return null
-  const named = NAMED_TRIMS.find(t => t.width === width && t.height === height)
+  const named = TRIM_PRESETS.find(t => t.width === width && t.height === height)
   return {
     trimSize: named ? named.id : 'custom',
     width: String(width),
@@ -594,13 +578,9 @@ export function trimFromRecord(trim: string): { trimSize: TrimSize; width: strin
 // the trim the author has set, so a write-back does not fill the record with a
 // vocabulary of its own.
 export function trimRecordWords(options: PrintPDFOptions): string {
-  switch (options.trimSize) {
-    case '5x8': return '5 × 8 in'
-    case '5.25x8': return '5.25 × 8 in'
-    case '5.5x8.5': return '5.5 × 8.5 in'
-    case '6x9': return '6 × 9 in (trade)'
-    default: return `${options.customWidth} × ${options.customHeight} in`
-  }
+  const preset = TRIM_PRESETS.find(one => one.id === options.trimSize)
+  if (preset) return preset.recordWords
+  return `${options.customWidth} × ${options.customHeight} in`
 }
 
 export function trimLabel(options: PrintPDFOptions): string {

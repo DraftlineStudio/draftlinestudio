@@ -91,7 +91,10 @@ interface AppStore {
   openNewChapterDialog: (section: Section) => void
   closeNewChapterDialog: () => void
   showExportWizard: boolean
-  openExportWizard: () => void
+  openExportWizard: (formatID?: string) => void
+  /** The edition format the export wizard should open on, if one was chosen. */
+  exportFormatID: string | null
+  clearExportFormat: () => void
   closeExportWizard: () => void
   showChapterHistory: boolean
   openChapterHistory: () => void
@@ -203,7 +206,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
   openNewChapterDialog: (section) => set({ showNewChapter: true, newChapterSection: section }),
   closeNewChapterDialog: () => set({ showNewChapter: false, newChapterSection: null }),
   showExportWizard: false,
-  openExportWizard: () => set({ showExportWizard: true }),
+  exportFormatID: null,
+  openExportWizard: (formatID) => set({ showExportWizard: true, exportFormatID: formatID ?? null }),
+  clearExportFormat: () => set({ exportFormatID: null }),
   closeExportWizard: () => set({ showExportWizard: false }),
   showChapterHistory: false,
   openChapterHistory: () => set({ showChapterHistory: true }),

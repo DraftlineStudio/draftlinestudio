@@ -28,6 +28,9 @@ export interface PlannerCard {
   id: string
   // The scratch note an imported outline card came from.
   source_id?: string
+  // Stable identity of the source movement within that note. This lets
+  // repeated proposals show only movements not accepted before.
+  source_key?: string
   title: string
   synopsis: string
   lines: string[]

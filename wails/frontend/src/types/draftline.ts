@@ -1,10 +1,13 @@
 import type { EditionCover } from './cover'
+import type { EditionWrap } from './wrap'
 import type { EditionSnapshot } from './snapshot'
 import type { PlannerData } from './planner'
 
 // Re-exported so that a component reading a book has one door to go through
 // for the types on it, rather than having to know which file each lives in.
 export type { CoverSourceReport, EditionCover } from './cover'
+export type { EditionWrap } from './wrap'
+
 export type { EditionSnapshot, SnapshotResult } from './snapshot'
 
 export type Section = 'copyright' | 'front_matter' | 'body' | 'back_matter'
@@ -660,6 +663,9 @@ export interface EditionFormat {
   territory_rights?: string
   rights_notice?: string
   lccn?: string
+  // 'standard' or 'custom', stored rather than worked out: comparing settings
+  // against the defaults could not decide it. Empty means standard.
+  typesetting?: string
   // The export wizard's options, frozen onto the format so that exporting
   // this edition twice produces the same file.
   export_settings?: Record<string, unknown>
@@ -667,6 +673,9 @@ export interface EditionFormat {
   // in the index's own snapshot catalogue; the text itself never crosses the
   // bridge. See types/snapshot.ts.
   snapshot_id?: string
+  // The print-ready wraparound artwork for this printed object: back, spine
+  // and front in one piece. Absent on an ebook or an audiobook.
+  wrap?: EditionWrap
 }
 
 export interface Edition {

@@ -12,6 +12,7 @@
 
 import { duplicateAsNewEdition, emptyEditionIndex, newEdition, newFormat } from '../components/dialogs/editionModel'
 import { withFrozenSnapshot, withReleasedSnapshot } from '../components/dialogs/snapshotModel'
+import { kindForFormat } from '../components/dialogs/editionModel'
 import type {
   BookData, Edition, EditionFormat, EditionIndex, EditionKind, EditionSnapshot,
 } from '../types/draftline'
@@ -21,11 +22,12 @@ export interface EditionActions {
   duplicateEdition: (editionID: string, year: string) => string
   updateEdition: (editionID: string, patch: Partial<Edition>) => void
   removeEdition: (editionID: string) => void
-  addFormat: (editionID: string, kind: EditionKind) => string
+  addFormat: (editionID: string, kind: EditionKind, word?: string) => string
   updateFormat: (formatID: string, patch: Partial<EditionFormat>) => void
   removeFormat: (formatID: string) => void
   freezeFormat: (formatID: string, snapshot: EditionSnapshot) => void
   releaseFormatSnapshot: (formatID: string) => void
+  releaseEditionSnapshot: (editionID: string) => void
 }
 
 const mapEditions = (index: EditionIndex, fn: (edition: Edition) => Edition): EditionIndex =>
@@ -87,12 +89,12 @@ export function createEditionActions(
       })
     },
 
-    addFormat: (editionID, kind) => {
+    addFormat: (editionID, kind, word) => {
       const book = currentBook()
       if (!book) return ''
       const index = book.editions ?? emptyEditionIndex()
       if (!index.editions.some(e => e.id === editionID)) return ''
-      const format = newFormat(index, kind)
+      const format = newFormat(index, kind, word)
       write(book, mapEditions(index, edition =>
         (edition.id === editionID ? { ...edition, formats: [...edition.formats, format] } : edition)))
       return format.id
@@ -101,9 +103,16 @@ export function createEditionActions(
     updateFormat: (formatID, patch) => {
       const book = currentBook()
       if (!book?.editions) return
+      // The format word is the choice a writer makes; the kind follows it.
+      // Without this a record created as an eBook and changed to Paperback
+      // stays an ebook underneath, showing ebook settings and exporting as
+      // one, which is invisible and wrong.
+      const settled = patch.format !== undefined
+        ? { ...patch, kind: kindForFormat(patch.format) }
+        : patch
       write(book, mapEditions(book.editions, edition => ({
         ...edition,
-        formats: edition.formats.map(format => (format.id === formatID ? { ...format, ...patch } : format)),
+        formats: edition.formats.map(format => (format.id === formatID ? { ...format, ...settled } : format)),
       })))
     },
 
@@ -138,6 +147,22 @@ export function createEditionActions(
       const book = currentBook()
       if (!book?.editions) return
       write(book, withReleasedSnapshot(book.editions, formatID))
+    },
+
+    // A locked text belongs to the edition, not to one of its ISBNs: every
+    // format exported with it points at the same record. Releasing therefore
+    // lets go of it on all of them at once, and the words themselves are only
+    // dropped when nothing anywhere still stands on them.
+    releaseEditionSnapshot: (editionID) => {
+      const book = currentBook()
+      if (!book?.editions) return
+      const edition = book.editions.editions.find(one => one.id === editionID)
+      if (!edition) return
+      const next = edition.formats.reduce(
+        (index, format) => (format.snapshot_id ? withReleasedSnapshot(index, format.id) : index),
+        book.editions,
+      )
+      if (next !== book.editions) write(book, next)
     },
   }
 }

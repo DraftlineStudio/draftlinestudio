@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { Edition, EditionCover } from '../../../types/draftline'
 import {
-  COVER_EXTENSIONS, EDITION_COVER_CAVEAT, PRINT_COVER_CAVEAT, attachedLabel, coverAssetURL,
-  coverFacts, coverFullURL, coverNotices, coverThumbURL, fileSize, firstArtworkPath,
+  COVER_EXTENSIONS, EDITION_COVER_NOTE, LARGE_COPY_HINT, attachedLabel, coverAssetURL,
+  coverFacts, coverFullURL, coverNotices, coverPixels, coverThumbURL, fileSize, firstArtworkPath,
+  sourceLabel,
   looksLikeArtwork, sourceStatusTone,
 } from '../coverModel'
 
@@ -74,49 +75,58 @@ describe('the address a cover is shown from', () => {
 })
 
 describe('the facts beside the picture', () => {
-  it('reports the pixels, the size and the encoding the search settled on', () => {
-    const facts = coverFacts(cover())
-    const byLabel = Object.fromEntries(facts.map(f => [f.label, f.value]))
-    expect(byLabel['Pixels']).toBe('1600 × 2560')
-    expect(byLabel['Size']).toBe('598 KB')
-    expect(byLabel['Encoding']).toBe('JPEG, quality 88')
-    expect(byLabel['Colour']).toBe('sRGB')
-    expect(byLabel['From']).toBe('4000 × 6400 TIFF')
+  it('reports what it is, what it costs, and what it was made from', () => {
+    const byLabel = Object.fromEntries(coverFacts(cover()).map(f => [f.label, f.value]))
+    expect(byLabel['Format']).toBe('JPEG, quality 88')
+    expect(byLabel['Stored']).toBe('598 KB')
+    expect(byLabel['Print-ready original']).toBe('4000 × 6400 TIFF')
+  })
+
+  // The file name and the archive path are not facts an author can act on: the
+  // cover lives inside the .draftline. The original's location is on a button.
+  it('names neither the stored file nor a path', () => {
+    const text = coverFacts(cover()).map(f => `${f.label} ${f.value}`).join(' ')
+    expect(text).not.toContain('cover.jpg')
+    expect(text).not.toContain('/')
   })
 
   it('does not claim a JPEG quality for a PNG', () => {
-    const facts = coverFacts(cover({ encoding: 'png', quality: 0, file: 'cover.png' }))
-    expect(facts.find(f => f.label === 'Encoding')?.value).toBe('PNG')
+    expect(coverFacts(cover({ encoding: 'png', quality: 0, file: 'cover.png' }))
+      .find(f => f.label === 'Format')?.value).toBe('PNG')
   })
 
   it('says greyscale when the artwork carried no colour', () => {
-    const facts = coverFacts(cover({ greyscale: true }))
-    expect(facts.find(f => f.label === 'Colour')?.value).toBe('greyscale')
+    expect(coverFacts(cover({ greyscale: true }))
+      .find(f => f.label === 'Format')?.value).toContain('greyscale')
   })
 
-  it('mentions the larger copy only when one was kept', () => {
-    expect(coverFacts(cover()).some(f => f.label === 'Larger copy')).toBe(false)
+  it('counts the larger copy in what is stored, only when one was kept', () => {
+    expect(coverFacts(cover()).find(f => f.label === 'Stored')?.value).toBe('598 KB')
     const big = coverFacts(cover({ large_file: 'cover_large.jpg', large_width: 2400, large_height: 3840, large_bytes: 1_500_000 }))
-    expect(big.find(f => f.label === 'Larger copy')?.value).toBe('2400 × 3840 · 1.43 MB')
+    expect(big.find(f => f.label === 'Stored')?.value).toBe('598 KB · 1.43 MB larger copy')
   })
 
-  it('says plainly when no print-ready original was recorded', () => {
-    const facts = coverFacts(cover({ source_path: '' }))
-    expect(facts.find(f => f.label === 'Print-ready original')?.value).toBe('not recorded')
+  it('says the original is unrecorded rather than inventing a specification', () => {
+    expect(sourceLabel(cover({ source_width: 0, source_height: 0, source_format: '', source_path: '' })))
+      .toBe('not recorded')
+    expect(coverPixels(cover())).toBe('1600 × 2560')
   })
 })
 
-describe('what the panel says a cover is not', () => {
-  it('states the arithmetic that makes it not a print cover', () => {
-    expect(PRINT_COVER_CAVEAT).toContain('no spine')
-    expect(PRINT_COVER_CAVEAT).toContain('no bleed')
-    expect(PRINT_COVER_CAVEAT).toContain('5.33 × 8.53')
-    expect(PRINT_COVER_CAVEAT).toContain('6 × 9')
+describe('what the card says, and how little of it', () => {
+  // The card carries one sentence. Everything else Draftline does to a cover
+  // belongs in the docs, not on a modal the author is trying to work in.
+  // An edition is a catalogue entry, not a number. The line says where the
+  // artwork lives and stops; making the ISBN the point of it was wrong.
+  it('says the artwork belongs to the edition, in one short line', () => {
+    expect(EDITION_COVER_NOTE).toContain('edition')
+    expect(EDITION_COVER_NOTE).not.toContain('ISBN')
+    expect(EDITION_COVER_NOTE.split(' ').length).toBeLessThan(16)
   })
 
-  it('says the artwork belongs to the edition rather than to the book', () => {
-    expect(EDITION_COVER_CAVEAT).toContain('edition')
-    expect(EDITION_COVER_CAVEAT).toContain('ISBN')
+  it('keeps the reason for the larger copy on a tooltip rather than the card', () => {
+    expect(LARGE_COPY_HINT).toContain('Kobo')
+    expect(LARGE_COPY_HINT).toContain('every copy sold')
   })
 
   it('shows the conversion notes the backend produced, unaltered', () => {

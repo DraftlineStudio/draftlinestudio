@@ -18,7 +18,21 @@ import { isbn10, normalizeISBN } from './bookInfoModel'
 // stored in it, because a record written elsewhere is not wrong just because
 // this build does not offer its wording.
 
-export const FORMAT_WORDS = ['eBook', 'Paperback', 'Hardcover', 'Large print']
+export const FORMAT_WORDS = ['eBook', 'Paperback', 'Hardcover', 'Large print', 'Audiobook']
+
+// The format word a writer picks decides what kind of thing the record is.
+// Nothing should be a print record that says "eBook" on it, or an ebook that
+// says "Hardcover": the word is the choice, and the kind follows it.
+export function kindForFormat(word: string): EditionKind {
+  switch (word.trim().toLowerCase()) {
+    case 'ebook':
+      return 'ebook'
+    case 'audiobook':
+      return 'audio'
+    default:
+      return 'print'
+  }
+}
 export const REGISTRATIONS = ['Registered — agency', 'Free retailer ISBN', 'Not yet assigned']
 export const FORMAT_STATUSES = ['Draft', 'Registered', 'Published', 'Out of print']
 export const EDITION_STATUSES = ['Draft', 'In progress', 'Published', 'Out of print']
@@ -365,6 +379,16 @@ export function sectionsFor(edition: Edition, format: EditionFormat): EditionSec
       { label: 'List price', kind: 'text', field: 'list_price', value: text(format.list_price), mono: true },
       { label: 'Status', kind: 'select', field: 'status', value: text(format.status), options: FORMAT_STATUSES },
       { label: 'Channels', kind: 'text', field: 'channels', value: text(format.channels), placeholder: 'Where this format is sold' },
+      // Which words this ISBN prints. Exporting freezes the manuscript the
+      // first time and reads the frozen text afterwards, so the format has to
+      // be able to say what it stands for. One row, not a panel.
+      {
+        label: 'Text', kind: 'static', field: 'snapshot_id',
+        value: format.snapshot_id ? 'frozen when this ISBN was first exported' : 'not frozen yet',
+        hint: format.snapshot_id
+          ? 'Exports of this ISBN print these words, however far the book moves on.'
+          : 'The first export of this ISBN freezes the manuscript as it stands then.',
+      },
     ],
   })
 
@@ -476,7 +500,7 @@ export function newEdition(index: EditionIndex, year: string): Edition {
 // A new format starts with the defaults its kind needs to compute anything at
 // all: a paperback with no stock has no spine width, and 'blank' is not a
 // safer answer than 'the commonest one'.
-export function newFormat(index: EditionIndex, kind: EditionKind): EditionFormat {
+export function newFormat(index: EditionIndex, kind: EditionKind, word?: string): EditionFormat {
   const base: EditionFormat = {
     id: nextID(formatIDs(index), 'fmt'),
     kind,
@@ -486,10 +510,12 @@ export function newFormat(index: EditionIndex, kind: EditionKind): EditionFormat
     territory_rights: 'World',
   }
   if (kind === 'print') {
-    return { ...base, format: 'Paperback', trim: '6 × 9 in (trade)', paper_stock: 'Cream, 55#', binding: 'Perfect bound', bleed: 'No bleed', interior: 'Black and white' }
+    // The word the writer picked, so a Hardcover does not arrive labelled
+    // Paperback. The rest are starting points they can change.
+    return { ...base, format: word || 'Paperback', trim: '6 × 9 in (trade)', paper_stock: 'Cream, 55#', binding: word === 'Hardcover' ? 'Case laminate' : 'Perfect bound', bleed: 'No bleed', interior: 'Black and white' }
   }
   if (kind === 'ebook') {
-    return { ...base, format: 'eBook', epub_version: 'EPUB 3.3', layout: 'Reflowable', drm: 'None' }
+    return { ...base, format: word || 'eBook', epub_version: 'EPUB 3.3', layout: 'Reflowable', drm: 'None' }
   }
   return { ...base, format: 'Audiobook' }
 }

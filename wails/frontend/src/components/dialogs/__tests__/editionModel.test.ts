@@ -12,11 +12,7 @@ import { describe, expect, it } from 'vitest'
 // same file.
 import copyrightFixture from '../../../../../internal/types/testdata/copyright_cases.json?raw'
 import type { Edition, EditionFormat, EditionIndex, Metadata } from '../../../types/draftline'
-import {
-  advancedFor, copyrightLines, derivedISBN10, duplicateAsNewEdition, editionBadge, emptyEditionIndex,
-  formatBadge, isbnLocked, kindDot, newEdition, newFormat, priorYears, sectionsFor, spineWidthInches,
-  publicationDateHint, spineWidthLabel, statusBadgeKind,
-} from '../editionModel'
+import { advancedFor, copyrightLines, derivedISBN10, duplicateAsNewEdition, editionBadge, emptyEditionIndex, formatBadge, isbnLocked, kindDot, kindForFormat, newEdition, newFormat, priorYears, publicationDateHint, sectionsFor, spineWidthInches, spineWidthLabel, statusBadgeKind } from '../editionModel'
 
 interface CopyrightCase {
   name: string
@@ -338,5 +334,32 @@ describe('the publication date hint', () => {
     expect(publicationDateHint('Spring 2027')).toContain('YYYY-MM-DD')
     expect(publicationDateHint('14/04/2027')).toContain('will not be in the file')
     expect(publicationDateHint('2027-13-01')).toContain('YYYY-MM-DD')
+  })
+})
+
+// Adding a format used to mean picking from a dropdown that already said
+// eBook. Miss it and you got an ebook; change the Format field to Paperback
+// afterwards and the record stayed an ebook underneath, showing ebook
+// settings and exporting as one. The word is the choice now, and the kind
+// follows it.
+describe('the format word decides what kind of record it is', () => {
+  it('reads each word as the kind of thing it names', () => {
+    expect(kindForFormat('eBook')).toBe('ebook')
+    expect(kindForFormat('Paperback')).toBe('print')
+    expect(kindForFormat('Hardcover')).toBe('print')
+    expect(kindForFormat('Large print')).toBe('print')
+    expect(kindForFormat('Audiobook')).toBe('audio')
+  })
+
+  it('is not fooled by spacing or case', () => {
+    expect(kindForFormat('  ebook ')).toBe('ebook')
+    expect(kindForFormat('AUDIOBOOK')).toBe('audio')
+  })
+
+  it('creates the format the writer actually picked, not a default', () => {
+    const index = emptyEditionIndex()
+    expect(newFormat(index, 'print', 'Hardcover')).toMatchObject({ kind: 'print', format: 'Hardcover', binding: 'Case laminate' })
+    expect(newFormat(index, 'print', 'Paperback')).toMatchObject({ kind: 'print', format: 'Paperback', binding: 'Perfect bound' })
+    expect(newFormat(index, 'audio')).toMatchObject({ kind: 'audio', format: 'Audiobook' })
   })
 })

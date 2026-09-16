@@ -2,6 +2,19 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02656] - 2026-09-16
+
+### Changed
+- Rebuilt the export flow to start from an edition, a reading copy, or a hand-picked set of formats.
+- Rebuilt Book & Editions around the edition record, with formats, covers, and locked manuscripts in one rail.
+- A format's typesetting settings and the export wizard now share one stored template.
+- Typesetting is now an explicit choice between industry standard and custom.
+
+### Added
+- Removing or replacing artwork now checks that the original file still exists and offers to save the stored copy first.
+- Deleting an edition or format now asks for confirmation, and published records ask for their name.
+- Moved all typesetting defaults into a single file.
+
 ## [0.20.02655] - 2026-09-16
 
 ### Added

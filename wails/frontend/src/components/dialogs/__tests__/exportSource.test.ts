@@ -44,19 +44,31 @@ function index(): EditionIndex {
 const paperbackOf = (idx: EditionIndex) => findFormat(idx, 'fmt-paper')!
 
 describe('the registered-edition cards', () => {
-  it('offers one card per format that has an ISBN and a file Draftline makes', () => {
+  it('offers a card for every format on the record, audio included', () => {
     const cards = editionCards(index(), 'The Quiet Ledger')
-    expect(cards.map(c => c.formatID)).toEqual(['fmt-ebook', 'fmt-paper'])
+    expect(cards.map(c => c.formatID)).toEqual(['fmt-ebook', 'fmt-paper', 'fmt-hard', 'fmt-audio'])
   })
 
-  it('leaves out a format with no ISBN, because there is nothing to export it as', () => {
+  // An edition the author configured is an edition they can export. The ISBN
+  // is a field on the record, not a permission to use it: without one the
+  // package carries the generated identifier every export carried before
+  // editions existed.
+  it('offers a format that has no ISBN yet, and says so on the card', () => {
     const cards = editionCards(index(), 'The Quiet Ledger')
-    expect(cards.some(c => c.formatID === 'fmt-hard')).toBe(false)
+    const hardback = cards.find(c => c.formatID === 'fmt-hard')
+    expect(hardback).toBeTruthy()
+    expect(hardback!.isbn13).toBe('')
   })
 
-  it('leaves out audio, which Draftline does not produce a file for', () => {
+  // An audiobook record catalogues the ISBN, the artwork, the narrators and
+  // the channels. Draftline writes no audio, but it can give that edition the
+  // file a narrator actually reads from.
+  it('gives an audiobook the narrator script rather than nothing', () => {
     const cards = editionCards(index(), 'The Quiet Ledger')
-    expect(cards.some(c => c.formatID === 'fmt-audio')).toBe(false)
+    const audio = cards.find(c => c.formatID === 'fmt-audio')
+    expect(audio?.out).toBe('Narrator script (PDF)')
+    expect(audio?.outputFormat).toBe('pdf')
+    expect(audio?.altOutput).toBeNull()
   })
 
   it('says what comes out of each one', () => {
@@ -343,13 +355,15 @@ describe('registering a from-scratch export', () => {
 })
 
 describe('which file a format produces', () => {
-  it('is one file per kind, and nothing for audio', () => {
+  it('gives every kind a file, audio getting the one a narrator reads from', () => {
     expect(outputFormatFor({ id: 'a', kind: 'ebook' })).toBe('epub')
     expect(outputFormatFor({ id: 'b', kind: 'print' })).toBe('print-pdf')
-    expect(outputFormatFor({ id: 'c', kind: 'audio' })).toBeNull()
+    expect(outputFormatFor({ id: 'c', kind: 'audio' })).toBe('pdf')
   })
 
-  it('also offers a reading copy of anything it makes a file for', () => {
+  // An audiobook's own output is already the reading copy, so it is not
+  // offered the same file twice.
+  it('offers a reading copy beside anything that is not already one', () => {
     expect(readingCopyFor({ id: 'a', kind: 'ebook' })).toBe('pdf')
     expect(readingCopyFor({ id: 'b', kind: 'print' })).toBe('pdf')
     expect(readingCopyFor({ id: 'c', kind: 'audio' })).toBeNull()
@@ -357,7 +371,7 @@ describe('which file a format produces', () => {
 
   it('puts the reading copy on every card, so the cover page is reachable', () => {
     const cards = editionCards(index(), 'The Quiet Ledger')
-    expect(cards.map(c => c.altOutput)).toEqual(['pdf', 'pdf'])
+    expect(cards.map(c => c.altOutput)).toEqual(['pdf', 'pdf', 'pdf', null])
     expect(cards[0].altLabel).toContain('Reading copy')
   })
 })

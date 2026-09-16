@@ -13,19 +13,30 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useBookStore } from '../../store/bookStore'
 import type { CoverSourceReport, Edition, Metadata } from '../../types/draftline'
-import { AttachCover, AttachCoverDialog, CheckCoverSource, RemoveCover } from '../../../wailsjs/go/main/App'
+import {
+  AttachCover, AttachCoverDialog, CheckCoverSource, RemoveCover, RevealInFileManager,
+} from '../../../wailsjs/go/main/App'
 import { OnFileDrop, OnFileDropOff } from '../../../wailsjs/runtime/runtime'
 import {
-  EDITION_COVER_CAVEAT, PRINT_COVER_CAVEAT, attachedLabel, coverFacts, coverNotices,
+  EDITION_COVER_NOTE, LARGE_COPY_HINT, coverFacts, coverNotices, coverPixels,
   coverThumbURL, firstArtworkPath, sourceStatusTone,
 } from './coverModel'
 
 interface Props {
   edition: Edition
   meta: Partial<Metadata>
+  /**
+   * Removing or replacing a cover goes through the same confirmation the wrap
+   * uses: it can be the moment an author loses a file they cannot make again,
+   * and the project may hold the only copy. The shell owns that dialog because
+   * it owns the one that asks about the wrap.
+   */
+  onAsk: (action: 'remove' | 'replace', replace: () => void) => void
+  /** Writes the stored cover back out to a file the author chooses. */
+  onSaveCopy: () => void
 }
 
-export default function CoverCard({ edition, meta }: Props) {
+export default function CoverCard({ edition, meta, onAsk, onSaveCopy }: Props) {
   const updateEdition = useBookStore(s => s.updateEdition)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -86,6 +97,8 @@ export default function CoverCard({ edition, meta }: Props) {
     return () => { live = false }
   }, [sourcePath, sourceChecksum])
 
+  // The act itself, run only after the confirmation has been answered and any
+  // backup has actually been written.
   const remove = async () => {
     await RemoveCover(editionID)
     updateEdition(editionID, { cover: undefined, cover_id: '' })
@@ -94,86 +107,99 @@ export default function CoverCard({ edition, meta }: Props) {
 
   const thumb = cover ? coverThumbURL(edition) : ''
 
+  // Showing the print-ready original where it lives. It is the author's own
+  // file on their own disk — the project only remembers where — so the honest
+  // answer to "where is it?" is the one the file browser already gives.
+  const reveal = async () => {
+    if (!sourcePath) return
+    const result = await RevealInFileManager(sourcePath)
+    if (!result.success) setError(result.error || 'That file could not be shown.')
+    else if (result.note) setError(result.note)
+  }
+
   return (
-    <section className="bi-ed-card bi-cover-drop">
-      <div className="bi-ed-cover">
-        {thumb ? (
-          <img
-            className="bi-cover-image" src={thumb}
-            width={cover?.thumb_width} height={cover?.thumb_height}
-            alt={`Cover artwork for ${edition.label || 'this edition'}`}
-          />
-        ) : (
-          <div className="bi-ed-cover-plate">
-            <span className="bi-ed-cover-kicker">{edition.label || 'Edition'}</span>
-            <span className="bi-ed-cover-title">{meta.title || 'Untitled'}</span>
-            <span className="bi-ed-cover-author">{meta.author || ''}</span>
-          </div>
-        )}
-        <span className="bi-ed-cover-caption">
-          {cover
-            ? `${edition.label || 'Edition'} art${attachedLabel(cover) ? ` · ${attachedLabel(cover)}` : ''}`
-            : 'No cover attached'}
-        </span>
+    <section className="bi-cover-card bi-cover-drop">
+      <div className="bi-card-head">
+        <span className="chapter-section-label">Cover</span>
+        <small>This edition only</small>
       </div>
 
-      <div className="bi-ed-card-body">
-        <div className="bi-section-head">
-          <span className="chapter-section-label">Cover art — this edition only</span>
-          <span className="bi-section-note">Drop artwork here, or choose a file.</span>
+      {/* Everything is UNDER the picture. This card lives in a 300px column
+          and a two-column layout put the facts off the side of the screen. */}
+      {thumb ? (
+        <img
+          className="bi-cover-image" src={thumb}
+          alt={`Cover artwork for ${edition.label || 'this edition'}`}
+        />
+      ) : (
+        <div className="bi-ed-cover-plate">
+          <span className="bi-ed-cover-kicker">{edition.label || 'Edition'}</span>
+          <span className="bi-ed-cover-title">{meta.title || 'Untitled'}</span>
+          <span className="bi-ed-cover-author">{meta.author || ''}</span>
         </div>
+      )}
 
-        {cover ? (
-          <div className="bi-ed-facts">
-            {coverFacts(cover).map(fact => (
-              <div className="bi-ed-fact" key={fact.label}>
-                <span>{fact.label}</span><span>{fact.value}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="bi-ed-note">
-            Nothing attached. Draftline makes the ebook cover from whatever you give it: a JPEG, a
-            PNG, a TIFF, at any size from 625 × 1000 upwards. It is resized once, in linear light,
-            and encoded at the quality this particular picture needs rather than at a fixed one.
-          </p>
-        )}
+      {/* Under the picture: its size, and nothing else. */}
+      <span className="bi-cover-pixels">
+        {cover ? coverPixels(cover) : 'No cover attached'}
+      </span>
 
-        <div className="bi-cover-actions">
-          <button className="dialog-btn sm" disabled={busy} onClick={() => void attach('')}>
-            {busy ? 'Working…' : cover ? 'Replace cover…' : 'Attach cover…'}
-          </button>
-          {cover && (
-            <button className="dialog-btn sm" disabled={busy} onClick={() => void remove()}>
-              Remove cover
+      {cover && (
+        <div className="bi-cover-facts">
+          {coverFacts(cover).map(fact => (
+            <div className="bi-cover-fact" key={fact.label}>
+              <span>{fact.label}</span><em>{fact.value}</em>
+            </div>
+          ))}
+          {sourcePath && (
+            <div className="bi-fact-path">
+              <span>Original file</span>
+              <em title={sourcePath}>{sourcePath}</em>
+            </div>
+          )}
+          {sourcePath && (
+            <button type="button" className="dialog-btn sm bi-cover-reveal" onClick={() => void reveal()}>
+              Show original in folder
             </button>
           )}
-          <label className="bi-cover-option">
-            <input type="checkbox" checked={large} onChange={e => setLarge(e.target.checked)} />
-            <span>Also keep a 2400 × 3840 copy</span>
-          </label>
         </div>
-        <div className="bi-field-hint bi-cover-hint">
-          The larger copy is for Kobo, which asks for 2400 on the short edge. It is off by default
-          because Amazon charges the author a delivery fee per megabyte on every sale, so a bigger
-          cover costs a little on every copy sold for as long as the book is on sale.
-        </div>
+      )}
 
-        {error && <p className="bi-cover-error">{error}</p>}
-
-        {cover && coverNotices(cover).map(note => (
-          <p className="bi-cover-notice" key={note}>{note}</p>
-        ))}
-
-        {source && (
-          <p className={`bi-cover-source ${sourceStatusTone(source.status)}`}>
-            <strong>Print-ready original:</strong> {source.message}
-          </p>
+      <div className="bi-cover-actions">
+        <button
+          className="dialog-btn sm" disabled={busy}
+          onClick={() => (cover ? onAsk('replace', () => void attach('')) : void attach(''))}
+        >
+          {busy ? <><span className="bi-spinner" aria-hidden="true" />Working…</> : cover ? 'Replace…' : 'Attach cover…'}
+        </button>
+        {cover && (
+          <button className="dialog-btn sm" disabled={busy} onClick={() => onAsk('remove', () => void remove())}>
+            Remove
+          </button>
         )}
-
-        <p className="bi-ed-note">{PRINT_COVER_CAVEAT}</p>
-        <p className="bi-ed-note">{EDITION_COVER_CAVEAT}</p>
+        {cover && (
+          <button className="dialog-btn sm" disabled={busy} onClick={onSaveCopy}>Save a copy…</button>
+        )}
       </div>
+
+      <label className="bi-cover-option" title={LARGE_COPY_HINT}>
+        <input type="checkbox" checked={large} disabled={busy} onChange={e => setLarge(e.target.checked)} />
+        <span>Keep a 2400 × 3840 copy</span>
+      </label>
+
+      {error && <p className="bi-cover-error">{error}</p>}
+
+      {/* One line, and only when there is something to say about THIS
+          artwork: what the conversion changed, or that the print-ready
+          original has moved. */}
+      {cover && coverNotices(cover).slice(0, 1).map(note => (
+        <p className="bi-cover-notice" key={note}>{note}</p>
+      ))}
+      {source && source.status !== 'present' && (
+        <p className={`bi-cover-source ${sourceStatusTone(source.status)}`}>{source.message}</p>
+      )}
+
+      <p className="bi-cover-note">{EDITION_COVER_NOTE}</p>
     </section>
   )
 }

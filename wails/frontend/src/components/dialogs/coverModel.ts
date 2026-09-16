@@ -44,25 +44,75 @@ export interface CoverFact {
   value: string
 }
 
-// coverFacts is the rows beside the picture, in the design's Cover file /
-// Pixels shape, with what Draftline did to the artwork added underneath.
+// coverFacts is the rows beside the picture. The pixel size is under the
+// picture itself (coverPixels), not repeated here.
 export function coverFacts(cover: EditionCover): CoverFact[] {
-  const facts: CoverFact[] = [
+  // Three facts and no more. The file name and the archive path are not among
+  // them: the cover lives inside the .draftline and there is nothing an author
+  // can do with either. What is worth knowing is what it is, what it costs,
+  // and where the print-ready original they made it from actually is.
+  const stored = cover.large_file
+    ? `${fileSize(cover.bytes)} · ${fileSize(cover.large_bytes ?? 0)} larger copy`
+    : fileSize(cover.bytes)
+  return [
+    { label: 'Format', value: coverFormat(cover) },
+    { label: 'Stored', value: stored },
+    { label: 'Print-ready original', value: sourceLabel(cover) },
+  ]
+}
+
+/**
+ * The original's own location, on a line of its own.
+ *
+ * A path is long and a fact row is two columns, so putting one in the value
+ * column wrapped it into a ribbon a dozen characters wide. It gets the full
+ * width, and it is the last thing on the card because it is the least often
+ * needed.
+ */
+export function sourcePathLine(cover: EditionCover): string {
+  return (cover.source_path ?? '').trim()
+}
+
+// What the author handed Draftline, said as a specification rather than as a
+// path. The path is on the button beside it, which is the only thing anyone
+// actually wants to do with it.
+export function sourceLabel(cover: EditionCover): string {
+  const size = cover.source_width && cover.source_height
+    ? `${cover.source_width} × ${cover.source_height}`
+    : ''
+  const format = (cover.source_format ?? '').trim().toUpperCase()
+  const spec = [size, format].filter(Boolean).join(' ')
+  if (spec) return spec
+  return cover.source_path ? 'recorded' : 'not recorded'
+}
+
+/** What the stored cover is: its encoding, and whether it carries colour. */
+export function coverFormat(cover: EditionCover): string {
+  return `${encodingLabel(cover)}${cover.greyscale ? ' · greyscale' : ''}`
+}
+
+/** The pixel size under the picture, and nothing else. */
+export function coverPixels(cover: EditionCover): string {
+  return `${cover.width} × ${cover.height}`
+}
+
+// The two facts the design canvas puts on a format: an ebook publishes pixels,
+// a print format publishes a wrap. Two rows, because that is what fits beside
+// a thumbnail and it is all a format needs to know about the artwork.
+export function formatCoverFacts(cover: EditionCover, format: { kind?: string }): CoverFact[] {
+  if (format.kind === 'print') {
+    return [
+      { label: 'Full wrap', value: cover.source_path ? baseName(cover.source_path) : 'not supplied' },
+      { label: 'Front cover', value: `${cover.width} × ${cover.height}` },
+    ]
+  }
+  return [
     { label: 'Cover file', value: cover.file },
     { label: 'Pixels', value: `${cover.width} × ${cover.height}` },
-    { label: 'Size', value: fileSize(cover.bytes) },
-    { label: 'Encoding', value: encodingLabel(cover) },
   ]
-  if (cover.large_file) {
-    facts.push({ label: 'Larger copy', value: `${cover.large_width} × ${cover.large_height} · ${fileSize(cover.large_bytes ?? 0)}` })
-  }
-  facts.push({ label: 'Colour', value: cover.greyscale ? 'greyscale' : 'sRGB' })
-  if (cover.source_width && cover.source_height) {
-    facts.push({ label: 'From', value: `${cover.source_width} × ${cover.source_height}${cover.source_format ? ` ${cover.source_format.toUpperCase()}` : ''}` })
-  }
-  facts.push({ label: 'Print-ready original', value: cover.source_path || 'not recorded' })
-  return facts
 }
+
+const baseName = (path: string): string => path.split(/[\/]/).pop() || path
 
 function encodingLabel(cover: EditionCover): string {
   if (cover.encoding === 'png') return 'PNG'
@@ -82,16 +132,16 @@ export function fileSize(bytes: number): string {
 //
 // The arithmetic in it is real: 1600 / 300 = 5.33 inches, 2560 / 300 = 8.53,
 // against the 6 by 9 trim this same project offers in the export wizard.
-export const PRINT_COVER_CAVEAT =
-  'This is the ebook cover: the front only, with no spine, no back and no bleed. ' +
-  'At 300 dots per inch 1600 × 2560 is 5.33 × 8.53 inches, smaller than the 6 × 9 trim ' +
-  'Draftline prints at, so it is not a print cover and Draftline will not make one from it. ' +
-  'The print-ready artwork stays where it is on your disk; Draftline remembers the file and ' +
-  'checks it is still the same one.'
+// The one sentence the card carries. Everything else Draftline does to a
+// cover — the resizing, the colour conversion, why it is not a print cover —
+// lives in docs/frontend/EDITIONS.md and on the tooltips, not on the screen.
+// The author is registering an edition, not reading a manual.
+export const EDITION_COVER_NOTE = 'Stored in the project, with this edition.'
 
-export const EDITION_COVER_CAVEAT =
-  'Cover art belongs to the edition, not to the book, so the artwork of a first edition stays ' +
-  'with the first edition’s ISBNs when a second edition is reset with new art.'
+// The tooltip on the larger-copy checkbox. Off by default because Amazon
+// charges a delivery fee per megabyte on every sale.
+export const LARGE_COPY_HINT =
+  'For Kobo, which asks for 2400 on the short edge. Off by default: a bigger cover costs a little on every copy sold.'
 
 // coverNotices are the sentences about THIS artwork: what the conversion
 // changed. They come from the backend, which is where the conversion happened,

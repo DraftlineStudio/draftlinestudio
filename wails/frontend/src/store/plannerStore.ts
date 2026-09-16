@@ -6,14 +6,14 @@
 
 import { create } from 'zustand'
 import type {
-  BeatTemplateId, PlannerCard, PlannerData, PlannerLane,
+  BeatTemplateId, Character, PlannerCard, PlannerData, PlannerLane,
   PlannerLink, PlannerNote,
 } from '../types/draftline'
 import { useBookStore } from './bookStore'
 import { useAppStore } from './appStore'
 import {
   bookChapters, codexPeople, deadIdeaBlock, ensurePlanner, LANE_PALETTE, MAIN_LANE_ID, newId, nowStamp,
-  parseOutline, rebindWho, whoNames, type ParsedOutline, type Proposal,
+  onlyNewOutlineProposals, parseOutline, rebindWho, whoNames, type ParsedOutline, type Proposal, type ProposalCharacter,
 } from '../components/planner/plannerModel'
 
 export type PlannerView = 'timeline' | 'board' | 'scratch' | 'synopsis'
@@ -27,7 +27,6 @@ interface PlannerStore {
   noteId: string | null
   noteMono: boolean
   linkOpen: boolean
-  chapterDialog: { title: string } | null
   lineDialog: { kind: string; name: string } | null
   importOpen: boolean
   importText: string
@@ -43,8 +42,6 @@ interface PlannerStore {
   setNoteId: (id: string | null) => void
   toggleNoteMono: () => void
   setLinkOpen: (open: boolean) => void
-  openChapterDialog: () => void
-  setChapterDialog: (d: { title: string } | null) => void
   openLineDialog: () => void
   setLineDialog: (d: { kind: string; name: string } | null) => void
   reset: () => void
@@ -62,7 +59,6 @@ interface PlannerStore {
   toggleLaneHidden: (laneId: string) => void
   setBeatTemplate: (t: BeatTemplateId) => void
   setCompact: (compact: boolean) => void
-  createChapter: (title: string) => void
 
   // Notes
   newNote: (title?: string, body?: string) => string
@@ -83,6 +79,9 @@ interface PlannerStore {
   closeImport: () => void
   runImport: () => void
   updateProposal: (id: string, patch: Partial<Proposal>) => void
+  updateProposalCharacter: (id: string, patch: Partial<ProposalCharacter>) => void
+  setProposalGroupLane: (groupId: string, laneId: string) => void
+  addProposalLane: (groupId: string, name: string) => void
   dropProposal: (id: string) => void
   backToPaste: () => void
   acceptProposals: () => void
@@ -90,14 +89,8 @@ interface PlannerStore {
 
 const initialUI = {
   view: 'timeline' as PlannerView, panelOpen: true, selected: null, drag: null, boardBy: 'chapter' as const,
-  noteId: null, noteMono: false, linkOpen: false, chapterDialog: null, lineDialog: null, noteDeleteId: null as string | null,
+  noteId: null, noteMono: false, linkOpen: false, lineDialog: null, noteDeleteId: null as string | null,
   importOpen: false, importText: '', importFromNoteId: null, proposals: null,
-}
-
-function newChapterId(): string {
-  return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-    ? `ch-${crypto.randomUUID().replace(/-/g, '')}`
-    : `ch-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
 }
 
 export const usePlannerStore = create<PlannerStore>((set, get) => ({
@@ -111,8 +104,6 @@ export const usePlannerStore = create<PlannerStore>((set, get) => ({
   setNoteId: (noteId) => set({ noteId }),
   toggleNoteMono: () => set(s => ({ noteMono: !s.noteMono })),
   setLinkOpen: (linkOpen) => set({ linkOpen }),
-  openChapterDialog: () => set({ chapterDialog: { title: '' } }),
-  setChapterDialog: (chapterDialog) => set({ chapterDialog }),
   openLineDialog: () => set({ lineDialog: { kind: 'Subplot', name: '' } }),
   setLineDialog: (lineDialog) => set({ lineDialog }),
   reset: () => set({ ...initialUI }),
@@ -152,7 +143,10 @@ export const usePlannerStore = create<PlannerStore>((set, get) => ({
       const src = p.cards.find(c => c.id === id)
       if (!src) return p
       const moved: PlannerCard = { ...src, chapter_id: chapterId, updated: nowStamp() }
-      if (laneId) moved.lines = [laneId, ...moved.lines.filter(l => l !== laneId)]
+      // A drag between lanes moves the card's primary line. Secondary lines
+      // are deliberate crossings chosen in the inspector, so preserve those
+      // without retaining the old primary lane as an accidental crossing.
+      if (laneId) moved.lines = [laneId, ...moved.lines.slice(1).filter(l => l !== laneId)]
       const rest = p.cards.filter(c => c.id !== id)
       const at = beforeId ? rest.findIndex(c => c.id === beforeId) : -1
       if (at >= 0) rest.splice(at, 0, moved)
@@ -203,11 +197,6 @@ export const usePlannerStore = create<PlannerStore>((set, get) => ({
   setBeatTemplate: (beat_template) => get().mutate(p => ({ ...p, beat_template })),
   setCompact: (compact) => get().mutate(p => ({ ...p, compact })),
 
-  createChapter: (title) => {
-    useBookStore.getState().addChapter('body', { id: newChapterId(), title: title.trim() || `Chapter ${(useBookStore.getState().book?.body.length ?? 0) + 1}`, type: 'chapter', content: '' })
-    set({ chapterDialog: null })
-  },
-
   newNote: (title = '', body = '') => {
     const id = newId('note')
     get().mutate(p => ({ ...p, notes: [{ id, title, body, updated: nowStamp() }, ...p.notes] }))
@@ -246,12 +235,39 @@ export const usePlannerStore = create<PlannerStore>((set, get) => ({
   runImport: () => {
     const book = useBookStore.getState().book
     const planner = get().planner()
-    set({ proposals: parseOutline(get().importText, bookChapters(book), codexPeople(book), planner.lanes) })
+    const parsed = parseOutline(get().importText, codexPeople(book), planner.lanes)
+    const sourceId = get().importFromNoteId
+    set({ proposals: sourceId ? onlyNewOutlineProposals(parsed, planner.cards, sourceId) : parsed })
   },
 
   updateProposal: (id, patch) => set(s => (s.proposals
     ? { proposals: { ...s.proposals, proposals: s.proposals.proposals.map(q => (q.id === id ? { ...q, ...patch } : q)) } }
     : {})),
+
+  updateProposalCharacter: (id, patch) => set(s => (s.proposals
+    ? { proposals: { ...s.proposals, characters: s.proposals.characters.map(character => character.id === id ? { ...character, ...patch } : character) } }
+    : {})),
+
+  setProposalGroupLane: (groupId, laneId) => set(s => (s.proposals
+    ? { proposals: { ...s.proposals, proposals: s.proposals.proposals.map(q => (q.groupId === groupId ? { ...q, laneId } : q)) } }
+    : {})),
+
+  addProposalLane: (groupId, name) => {
+    const trimmed = name.trim()
+    if (!trimmed) return
+    const key = trimmed.toLocaleLowerCase()
+    const existingLane = get().planner().lanes.find(l => l.name.trim().toLocaleLowerCase() === key)
+    set(s => {
+      if (!s.proposals) return {}
+      const proposed = s.proposals.lanes.find(l => l.name.trim().toLocaleLowerCase() === key)
+      const laneId = existingLane?.id ?? proposed?.id ?? `new:${newId('proposal-lane')}`
+      return { proposals: {
+        ...s.proposals,
+        lanes: existingLane || proposed ? s.proposals.lanes : [...s.proposals.lanes, { id: laneId, name: trimmed }],
+        proposals: s.proposals.proposals.map(q => (q.groupId === groupId ? { ...q, laneId } : q)),
+      } }
+    })
+  },
 
   dropProposal: (id) => set(s => (s.proposals
     ? { proposals: { ...s.proposals, proposals: s.proposals.proposals.filter(q => q.id !== id) } }
@@ -259,33 +275,78 @@ export const usePlannerStore = create<PlannerStore>((set, get) => ({
 
   backToPaste: () => set({ proposals: null }),
 
-  // Accepting adds planned cards, creates any chapters the outline reaches
-  // past the end of the manuscript (empty, titled from the outline), and
-  // keeps the pasted text as a note unless it came from one.
+  // Accepting adds unpinned planned cards and any story lines explicitly
+  // chosen in the proposal view. The manuscript's chapter list is never
+  // changed; cards can be attached to chapters later.
   acceptProposals: () => {
     const s = get()
     const bookStore = useBookStore.getState()
     const book = bookStore.book
     if (!s.proposals || !book) return
     const accepted = s.proposals.proposals.filter(q => q.accepted)
-    const maxChapter = Math.max(book.body.length, ...accepted.map(q => q.chapterNum))
-    for (let n = book.body.length + 1; n <= maxChapter; n++) {
-      bookStore.addChapter('body', { id: newChapterId(), title: s.proposals.titles[n] || '', type: 'chapter', content: '' })
-    }
-    const chapters = bookChapters(useBookStore.getState().book)
+    const acceptedCharacters = s.proposals.characters.filter(character => character.accepted && character.name.trim())
     const fromNote = s.importFromNoteId
     const noteId = fromNote ?? newId('note')
-    const codex = codexPeople(useBookStore.getState().book)
-    const cards: PlannerCard[] = accepted.map(q => ({
-      id: newId('card'), source_id: noteId, title: q.title, synopsis: q.synopsis, lines: [q.laneId], who: q.who, who_names: whoNames(q.who, codex), changes: '', stakes: '',
-      chapter_id: chapters[q.chapterNum - 1]?.id ?? '', status: 'planned', origin: 'outline', updated: nowStamp(),
-    }))
-    get().mutate(p => ({
-      ...p,
-      cards: [...p.cards, ...cards],
-      notes: fromNote ? p.notes : [{ id: noteId, title: 'Imported outline', body: s.importText, updated: nowStamp() }, ...p.notes],
-    }))
+    const existingCharacters = book.story_bible?.characters ?? []
+    const characterIDs = new Map<string, string>()
+    const addedCharacters: Character[] = []
+    for (const proposed of acceptedCharacters) {
+      const proposedNames = new Set([proposed.name, ...proposed.aliases].map(name => name.trim().toLocaleLowerCase()))
+      const existing = existingCharacters.find(character => [character.name, ...(character.aliases ?? [])].some(name => proposedNames.has(name.trim().toLocaleLowerCase())))
+      const id = existing?.id ?? newId('character')
+      characterIDs.set(proposed.id, id)
+      if (!existing) addedCharacters.push({
+        id, name: proposed.name.trim(), aliases: proposed.aliases, role: 'supporting', description: proposed.description,
+        appearance: '', personality: '', motivation: '', notes: '',
+      })
+    }
+    const storyBible = book.story_bible ?? { characters: [], plot_notes: '', timeline: '' }
+    const bookWithCharacters = { ...book, story_bible: { ...storyBible, characters: [...existingCharacters, ...addedCharacters] } }
+    const codex = codexPeople(bookWithCharacters)
+    const p = ensurePlanner(book)
+    const laneIDs = new Map<string, string>()
+    const addedLanes: PlannerLane[] = []
+    for (const proposal of accepted) {
+      if (!proposal.laneId.startsWith('new:') || laneIDs.has(proposal.laneId)) continue
+      const proposedName = s.proposals.lanes.find(l => l.id === proposal.laneId)?.name ?? proposal.groupName
+      const existing = p.lanes.find(l => l.name.trim().toLocaleLowerCase() === proposedName.trim().toLocaleLowerCase())
+      const id = existing?.id ?? newId('lane')
+      laneIDs.set(proposal.laneId, id)
+      if (!existing) addedLanes.push({ id, name: proposedName, kind: 'subplot', color: LANE_PALETTE[(p.lanes.length + addedLanes.length) % LANE_PALETTE.length] })
+    }
+    const characterLaneIDs = new Map<string, string>()
+    for (const proposed of acceptedCharacters.filter(character => character.createLane)) {
+      const characterId = characterIDs.get(proposed.id)
+      if (!characterId) continue
+      const existing = [...p.lanes, ...addedLanes].find(l => l.character_id === characterId)
+      const id = existing?.id ?? newId('lane')
+      characterLaneIDs.set(characterId, id)
+      if (!existing) addedLanes.push({ id, name: proposed.name.trim(), kind: 'character', color: LANE_PALETTE[(p.lanes.length + addedLanes.length) % LANE_PALETTE.length], character_id: characterId })
+    }
+    const cards: PlannerCard[] = accepted.map(q => {
+      const who = [...new Set(q.who.map(id => characterIDs.get(id) ?? id).filter(id => codex.some(person => person.id === id)))]
+      const characterLines = who.map(id => characterLaneIDs.get(id)).filter((id): id is string => !!id)
+      let primary = laneIDs.get(q.laneId) ?? q.laneId
+      if (primary === MAIN_LANE_ID && q.groupName === 'Outline' && characterLines.length) primary = characterLines[0]
+      return {
+        id: newId('card'), source_id: noteId, source_key: q.sourceKey, title: q.title, synopsis: q.synopsis,
+        lines: [primary, ...characterLines.filter(id => id !== primary)], who, who_names: whoNames(who, codex), changes: '', stakes: '',
+        chapter_id: '', status: 'planned', origin: 'outline', updated: nowStamp(),
+      }
+    })
+    bookStore.updateBook({
+      ...bookWithCharacters,
+      planner: {
+        ...p,
+        lanes: [...p.lanes, ...addedLanes],
+        cards: [...p.cards, ...cards],
+        notes: fromNote ? p.notes : [{ id: noteId, title: 'Imported outline', body: s.importText, updated: nowStamp() }, ...p.notes],
+      },
+    })
     set({ importOpen: false, proposals: null, importFromNoteId: null, noteId, view: 'timeline', panelOpen: true })
-    useAppStore.getState().setStatusMessage(`${cards.length} card${cards.length === 1 ? '' : 's'} added to the Planner`)
+    const messages = []
+    if (accepted.length) messages.push(`${accepted.length} card${accepted.length === 1 ? '' : 's'} added to Later`)
+    if (acceptedCharacters.length) messages.push(`${acceptedCharacters.length} character${acceptedCharacters.length === 1 ? '' : 's'} added`)
+    useAppStore.getState().setStatusMessage(messages.join('; '))
   },
 }))

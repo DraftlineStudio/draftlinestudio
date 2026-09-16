@@ -1,381 +1,188 @@
-// The right-hand pane of the Book & Editions screen when an edition, or one
-// format of one edition, is selected.
+// One edition: the record shared by every format published under it, the
+// formats themselves, the locked manuscript if there is one, and the cover.
 //
 // Everything here writes straight to the book through bookStore, which dirties
 // it and autosaves five seconds later, exactly as typing in a chapter does.
 // There is no separate Save for the publishing record; the dialog's Save
 // button belongs to the shared book form beside it.
-//
-// The rows themselves are built in editionModel.ts, which is where the design
-// brief's sections live. This file only draws them.
 
-import { useState } from 'react'
 import CoverCard from './CoverCard'
-import SnapshotCard from './SnapshotCard'
-import { RemoveCover } from '../../../wailsjs/go/main/App'
-import { useBookStore } from '../../store/bookStore'
-import type { Edition, EditionFormat, EditionIndex, Metadata } from '../../types/draftline'
-import {
-  EDITION_STATUSES, advancedFor, copyrightLines, editionBadge, formatBadge, formatSubtitle,
-  formatTitle, kindDot, priorYears, sectionsFor,
-  type EditionRow,
-} from './editionModel'
+import type { Edition, EditionIndex, EditionSnapshot, Metadata } from '../../types/draftline'
+import { EDITION_STATUSES, editionBadge, kindDot } from './editionModel'
+import { templateFor, templateSummary } from './formatTemplate'
+import { editionSnapshotRows } from './snapshotModel'
 
 interface Props {
-  // The metadata as the author is currently typing it, so the generated
-  // copyright page answers the form beside it rather than the last save.
   meta: Partial<Metadata>
   index: EditionIndex
-  editionID: string
-  formatID?: string
-  // True when the book carries a copyright page somebody wrote by hand.
-  handEdited: boolean
-  onSelect: (editionID: string, formatID?: string) => void
+  edition: Edition
+  snapshot?: EditionSnapshot
+  /** The working draft's length today, for the snapshot's drift row. */
+  draftWords: number
+  onEdition: (patch: Partial<Edition>) => void
+  onSelectFormat: (formatID: string) => void
+  onAddFormat: () => void
+  onDuplicate: () => void
+  onRemove: () => void
+  onOpenSnapshot: () => void
+  onCompare: () => void
+  onRelease: () => void
+  /** Removing or replacing the cover goes through the shell's confirmation. */
+  onAskCover: (action: 'remove' | 'replace', act: () => void) => void
+  onSaveCoverCopy: () => void
 }
 
-function Badge({ label, kind }: { label: string; kind: string }) {
-  return <span className={`bi-ed-badge ${kind}`}>{label}</span>
-}
-
-// A select keeps whatever the record already holds even when this build does
-// not offer that wording: a value written by another version of Draftline is
-// not wrong, and a dropdown that silently rewrites it would be.
-function optionsWith(options: string[], value: string): string[] {
-  const out = value && !options.includes(value) ? [value, ...options] : [...options]
+// A record written by another build may hold a status this list does not
+// offer. It is kept rather than silently rewritten.
+function statusOptions(value: string): string[] {
+  const out = value && !EDITION_STATUSES.includes(value) ? [value, ...EDITION_STATUSES] : [...EDITION_STATUSES]
   if (!value) out.unshift('')
   return out
 }
 
-function RowField({ row, onChange }: { row: EditionRow; onChange: (value: string) => void }) {
-  const mono = row.mono ? ' mono' : ''
-  if (row.kind === 'static') {
-    return <div className={`bi-ed-static${mono}`}>{row.value}</div>
-  }
-  if (row.kind === 'select') {
-    return (
-      <select
-        className="dialog-select" value={row.value}
-        onChange={e => onChange(e.target.value)}
-      >
-        {optionsWith(row.options ?? [], row.value).map(option => (
-          <option key={option || '—'} value={option}>{option || 'Not set'}</option>
-        ))}
-      </select>
-    )
-  }
-  if (row.kind === 'textarea') {
-    return (
-      <textarea
-        className="dialog-input bi-textarea" rows={3} value={row.value}
-        placeholder={row.placeholder} onChange={e => onChange(e.target.value)}
-      />
-    )
-  }
-  return (
-    <input
-      className={`dialog-input${mono}`} value={row.value} placeholder={row.placeholder}
-      readOnly={row.locked} disabled={row.locked}
-      onChange={e => onChange(e.target.value)}
-    />
-  )
-}
-
-function Rows({ rows, onChange }: { rows: EditionRow[]; onChange: (row: EditionRow, value: string) => void }) {
-  return (
-    <div className="bi-grid">
-      {rows.map(row => (
-        <div className="bi-field" key={row.label}>
-          <label className="bi-field-label">{row.label}</label>
-          <RowField row={row} onChange={value => onChange(row, value)} />
-          {row.hint && <div className="bi-field-hint">{row.hint}</div>}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-export default function EditionPane({ meta, index, editionID, formatID, handEdited, onSelect }: Props) {
-  const updateEdition = useBookStore(s => s.updateEdition)
-  const updateFormat = useBookStore(s => s.updateFormat)
-  const removeEdition = useBookStore(s => s.removeEdition)
-  const removeFormat = useBookStore(s => s.removeFormat)
-  const duplicateEdition = useBookStore(s => s.duplicateEdition)
-  const [advOpen, setAdvOpen] = useState(false)
-
-  const edition = index.editions.find(e => e.id === editionID)
-  if (!edition) return null
-  const format = formatID ? edition.formats.find(f => f.id === formatID) : undefined
-
-  const duplicate = () => {
-    const created = duplicateEdition(edition.id, String(new Date().getFullYear()))
-    if (created) onSelect(created)
-  }
-
-  // Deleting an edition lets go of its artwork too. The save itself no longer
-  // carries the cover of an edition the book does not have, so the project
-  // file would come out right either way; this is so the megabyte stops being
-  // held in memory the moment the author says the edition is gone.
-  const remove = () => {
-    void RemoveCover(edition.id)
-    removeEdition(edition.id)
-    onSelect('')
-  }
-
-  return (
-    <div className="bi-ed-pane">
-      {format
-        ? <FormatPanel
-            meta={meta} index={index} edition={edition} format={format} handEdited={handEdited}
-            advOpen={advOpen} setAdvOpen={setAdvOpen}
-            onEdition={patch => updateEdition(edition.id, patch)}
-            onFormat={patch => updateFormat(format.id, patch)}
-            onDuplicate={duplicate}
-            onRemove={() => { removeFormat(format.id); onSelect(edition.id) }}
-          />
-        : <EditionPanel
-            meta={meta} index={index} edition={edition} handEdited={handEdited}
-            onEdition={patch => updateEdition(edition.id, patch)}
-            onDuplicate={duplicate}
-            onRemove={remove}
-          />}
-    </div>
-  )
-}
-
-// ── The edition itself ─────────────────────────────────────────────────────
-
-function EditionPanel({ meta, index, edition, handEdited, onEdition, onDuplicate, onRemove }: {
-  meta: Partial<Metadata>
-  index: EditionIndex
-  edition: Edition
-  handEdited: boolean
-  onEdition: (patch: Partial<Edition>) => void
-  onDuplicate: () => void
-  onRemove: () => void
-}) {
+export default function EditionPane(props: Props) {
+  const { meta, index, edition, snapshot } = props
   const badge = editionBadge(edition)
-  const previous = index.editions.find(e => e.id === edition.previous_edition_id)
-  return (
-    <>
-      <header className="bi-ed-head">
-        <div className="bi-ed-head-text">
-          <div className="bi-ed-title-line">
-            <span className="bi-ed-title">{edition.label || 'Untitled edition'}</span>
-            <Badge label={badge.label} kind={badge.kind} />
-          </div>
-          <div className="bi-ed-subtitle">
-            {edition.formats.length
-              ? `${edition.formats.length} format${edition.formats.length === 1 ? '' : 's'} · copyright ${edition.year || 'year not set'}`
-              : 'No formats yet. Add one from the rail to give this edition an ISBN.'}
-          </div>
-        </div>
-        <div className="bi-ed-head-actions">
-          <button className="dialog-btn sm" onClick={onDuplicate}>Duplicate as new edition</button>
-          <button className="dialog-btn sm" onClick={onRemove}>Remove edition</button>
-        </div>
-      </header>
+  const previous = index.editions.find(one => one.id === edition.previous_edition_id)
+  const ready = edition.formats.filter(one => (one.isbn13 ?? '').trim()).length
+  const readyText = snapshot
+    ? 'text locked'
+    : ready === edition.formats.length && ready > 0 ? 'all ready to export' : `${ready} with an ISBN`
 
-      <section className="bi-section">
-        <div className="bi-section-head">
-          <span className="chapter-section-label">Edition</span>
-          <span className="bi-section-note">Shared by every format under it.</span>
+  return <>
+    <header className="bi-pane-head">
+      <div className="bi-pane-head-text">
+        <div className="bi-pane-title">
+          <strong>{edition.label || 'Untitled edition'}</strong>
+          <span className={`bi-badge ${badge.kind}`}>{badge.label}</span>
         </div>
-        <div className="bi-grid">
-          <div className="bi-field">
-            <label className="bi-field-label">Label</label>
-            <input
-              className="dialog-input" value={edition.label}
-              onChange={e => onEdition({ label: e.target.value })}
-              placeholder="First edition"
-            />
-            <div className="bi-field-hint">Printed on the copyright page with the publication month.</div>
+        <span className="bi-pane-sub">
+          © {edition.year || 'year not set'} · {edition.formats.length} {edition.formats.length === 1 ? 'format' : 'formats'} · {readyText}
+        </span>
+      </div>
+      <div className="bi-pane-actions">
+        <button type="button" className="dialog-btn sm" onClick={props.onDuplicate}>Duplicate as new edition</button>
+        <button type="button" className="dialog-btn sm" onClick={props.onRemove}>Remove</button>
+      </div>
+    </header>
+
+    <div className="bi-ed-columns">
+      <div className="bi-ed-main">
+        <section className="bi-card">
+          <div className="bi-card-head">
+            <span className="chapter-section-label">Edition</span>
+            <small>Shared by every format under it.</small>
           </div>
-          <div className="bi-field">
-            <label className="bi-field-label">Copyright year</label>
-            <input
-              className="dialog-input mono" value={edition.year}
-              onChange={e => onEdition({ year: e.target.value })}
-              placeholder="2026"
-            />
-            <div className="bi-field-hint">Added to the years the editions before it established.</div>
-          </div>
-          <div className="bi-field">
-            <label className="bi-field-label">Status</label>
-            <select className="dialog-select" value={edition.status} onChange={e => onEdition({ status: e.target.value })}>
-              {optionsWith(EDITION_STATUSES, edition.status).map(option => (
-                <option key={option || '—'} value={option}>{option || 'Not set'}</option>
-              ))}
-            </select>
-          </div>
-          <div className="bi-field">
-            <label className="bi-field-label">Supersedes</label>
-            <div className="bi-ed-static">{previous ? `${previous.label} (${previous.year})` : 'None — original release'}</div>
+          <div className="bi-grid two">
+            <div className="bi-field">
+              <label className="bi-field-label">Label</label>
+              <input
+                className="dialog-input" value={edition.label} placeholder="First edition"
+                onChange={event => props.onEdition({ label: event.target.value })}
+              />
+              <div className="bi-field-hint">Printed on title and copyright pages.</div>
+            </div>
+            <div className="bi-field">
+              <label className="bi-field-label">Copyright year</label>
+              <input
+                className="dialog-input mono" value={edition.year} placeholder="2026"
+                onChange={event => props.onEdition({ year: event.target.value })}
+              />
+            </div>
+            <div className="bi-field">
+              <label className="bi-field-label">Status</label>
+              <select
+                className="dialog-select" value={edition.status}
+                onChange={event => props.onEdition({ status: event.target.value })}
+              >
+                {statusOptions(edition.status).map(one => (
+                  <option key={one || '—'} value={one}>{one || 'Not set'}</option>
+                ))}
+              </select>
+            </div>
+            <div className="bi-field">
+              <label className="bi-field-label">Supersedes</label>
+              <div className="bi-static">{previous ? `${previous.label} (${previous.year})` : 'None — original release'}</div>
+            </div>
           </div>
           <div className="bi-field bi-field-wide">
             <label className="bi-field-label">Revision note</label>
             <textarea
               className="dialog-input bi-textarea" rows={3} value={edition.revision_note ?? ''}
-              onChange={e => onEdition({ revision_note: e.target.value })}
               placeholder="What changed in this edition."
+              onChange={event => props.onEdition({ revision_note: event.target.value })}
             />
             <div className="bi-field-hint">
-              Optional. Printed on the copyright page of a later edition; a first edition never prints one.
+              Optional. A later edition prints this on its copyright page; a first edition never does.
             </div>
           </div>
-        </div>
-      </section>
-
-      <CopyrightCard
-        meta={meta} index={index} edition={edition}
-        format={edition.formats[0]} handEdited={handEdited}
-      />
-    </>
-  )
-}
-
-// ── One format ─────────────────────────────────────────────────────────────
-
-function FormatPanel({ meta, index, edition, format, handEdited, advOpen, setAdvOpen, onEdition, onFormat, onDuplicate, onRemove }: {
-  meta: Partial<Metadata>
-  index: EditionIndex
-  edition: Edition
-  format: EditionFormat
-  handEdited: boolean
-  advOpen: boolean
-  setAdvOpen: (open: boolean) => void
-  onEdition: (patch: Partial<Edition>) => void
-  onFormat: (patch: Partial<EditionFormat>) => void
-  onDuplicate: () => void
-  onRemove: () => void
-}) {
-  const badge = formatBadge(format)
-  const sections = sectionsFor(edition, format)
-  const advanced = advancedFor(index, edition, format)
-  const apply = (row: EditionRow, value: string) => {
-    if (!row.field || row.locked) return
-    onFormat({ [row.field]: value } as Partial<EditionFormat>)
-  }
-
-  return (
-    <>
-      <header className="bi-ed-head">
-        <div className="bi-ed-head-text">
-          <div className="bi-ed-title-line">
-            <span className="bi-ed-dot" style={{ background: kindDot(format.kind) }} />
-            <span className="bi-ed-title">{formatTitle(edition, format)}</span>
-            <Badge label={badge.label} kind={badge.kind} />
-          </div>
-          <div className="bi-ed-subtitle">{formatSubtitle(edition, format) || 'Not released yet.'}</div>
-        </div>
-        <div className="bi-ed-head-actions">
-          <button className="dialog-btn sm" onClick={onDuplicate}>Duplicate as new edition</button>
-          <button className="dialog-btn sm" onClick={onRemove}>Remove format</button>
-        </div>
-      </header>
-
-      <StandingNote />
-
-      <CoverCard edition={edition} meta={meta} />
-
-      <SnapshotCard index={index} edition={edition} format={format} />
-
-      {sections.map(section => (
-        <section className="bi-section" key={section.label}>
-          <div className="bi-section-head">
-            <span className="chapter-section-label">{section.label}</span>
-            {section.note && <span className="bi-section-note">{section.note}</span>}
-          </div>
-          <Rows rows={section.rows} onChange={apply} />
         </section>
-      ))}
 
-      <CopyrightCard meta={meta} index={index} edition={edition} format={format} handEdited={handEdited} />
+        <section className="bi-card">
+          <div className="bi-card-head">
+            <span className="chapter-section-label">Formats</span>
+            <small>Each has its own ISBN and export template.</small>
+          </div>
+          <div className="bi-format-list">
+            {edition.formats.map(format => {
+              const isbn = (format.isbn13 ?? '').trim()
+              return (
+                <button
+                  type="button" key={format.id} className="bi-format-row"
+                  onClick={() => props.onSelectFormat(format.id)}
+                >
+                  <span className="bi-ed-dot" style={{ background: kindDot(format.kind) }} />
+                  <span className="bi-format-name">{format.format || 'Format'}</span>
+                  <span className="bi-format-isbn">{isbn || 'No ISBN yet'}</span>
+                  <span className="bi-format-summary">{templateSummary(format, templateFor(edition, format))}</span>
+                  <span className={`bi-format-state${isbn ? ' ready' : ''}`}>{isbn ? 'Ready' : 'No ISBN'}</span>
+                  <span className="bi-format-chevron" aria-hidden="true">›</span>
+                </button>
+              )
+            })}
+            <button type="button" className="bi-format-add" onClick={props.onAddFormat}>
+              <span aria-hidden="true">+</span>Add format
+            </button>
+          </div>
+        </section>
 
-      <section className="bi-section bi-ed-advanced">
-        <button
-          type="button" className="bi-ed-disclosure"
-          onClick={() => setAdvOpen(!advOpen)} aria-expanded={advOpen}
-        >
-          <span className={`bi-ed-caret${advOpen ? ' open' : ''}`}>›</span>
-          <span className="chapter-section-label">Advanced</span>
-          {!advOpen && (
-            <span className="bi-section-note">ISBN-10, imprint, territory, LCCN, retailer and print details</span>
-          )}
-        </button>
-        {advOpen && (
-          <>
-            <Rows rows={advanced} onChange={apply} />
-            <div className="bi-field bi-field-wide bi-ed-revision">
-              <label className="bi-field-label">Revision note</label>
-              <textarea
-                className="dialog-input bi-textarea" rows={3} value={edition.revision_note ?? ''}
-                onChange={e => onEdition({ revision_note: e.target.value })}
-                placeholder="What changed in this edition."
-              />
-              <div className="bi-field-hint">
-                Belongs to the whole edition. Printed on the copyright page of a later edition; a first
-                edition never prints one.
+        {snapshot && (
+          <section className="bi-card bi-snap">
+            <div className="bi-card-head">
+              <span className="chapter-section-label">Manuscript snapshot</span>
+              <span className="bi-badge ok">Locked</span>
+              <small>The text as it stood when this edition was first exported.</small>
+            </div>
+            <div className="bi-snap-body">
+              <div className="bi-snap-page" aria-hidden="true">
+                <span className="bi-snap-kicker">Chapter One</span>
+                <i style={{ width: '88%' }} /><i /><i style={{ width: '94%' }} /><i style={{ width: '70%' }} />
+                <span className="bi-snap-break">⁂</span>
+                <i style={{ width: '84%' }} /><i /><i style={{ width: '60%' }} />
+              </div>
+              <div className="bi-snap-facts">
+                {editionSnapshotRows(index, snapshot, props.draftWords).map(fact => (
+                  <div className="bi-snap-fact" key={fact.label}>
+                    <span>{fact.label}</span>
+                    <em>{fact.value}</em>
+                  </div>
+                ))}
               </div>
             </div>
-          </>
-        )}
-      </section>
-    </>
-  )
-}
-
-// ── What the record does today ─────────────────────────────────────────────
-
-// What an export does with this panel, said once at the top rather than as a
-// disclaimer hung on every field.
-function StandingNote() {
-  return (
-    <p className="bi-ed-standing">
-      <strong>Read by an export.</strong> Choose this edition on the first step of the export wizard
-      and the file carries it: its ISBN as the book's identifier, its cover art, its trim and gutter,
-      the copyright page below, and the text frozen for it. Exporting this edition freezes the
-      manuscript the first time and reads that frozen text every time after, so an export made
-      after you have started the next edition still gives you this one's book.
-    </p>
-  )
-}
-
-// ── The generated copyright page ───────────────────────────────────────────
-
-function CopyrightCard({ meta, index, edition, format, handEdited }: {
-  meta: Partial<Metadata>
-  index: EditionIndex
-  edition: Edition
-  format?: EditionFormat
-  handEdited: boolean
-}) {
-  const subject: EditionFormat = format ?? { id: '', kind: edition.formats[0]?.kind ?? 'print' }
-  const lines = copyrightLines(meta, edition, subject, priorYears(index, edition.id))
-  return (
-    <section className="bi-section">
-      <div className="bi-section-head">
-        <span className="chapter-section-label">Copyright page</span>
-        <span className="bi-section-note">Written from the fields above. Nothing to type.</span>
-      </div>
-      <div className="bi-ed-copyright">
-        {lines.map((line, i) => (
-          <span key={i} className="bi-ed-copyright-line">{line || ' '}</span>
-        ))}
-      </div>
-      <div className="bi-field-hint bi-ed-handwritten">
-{handEdited ? (
-          <>
-            This is the page an export of this edition prints. The Copyright Page you wrote yourself,
-            under Front Pages, follows underneath it — a copyright page carries more than the notice,
-            and nothing you wrote there is dropped.
-          </>
-        ) : (
-          <>
-            This is the page an export of this edition prints. You have written nothing under Front
-            Pages, so this is the whole of it.
-          </>
+            <div className="bi-snap-actions">
+              <button type="button" className="dialog-btn sm" onClick={props.onOpenSnapshot}>Open snapshot read-only</button>
+              <button type="button" className="dialog-btn sm" onClick={props.onCompare}>Compare with working draft</button>
+              {/* The only destructive act on this screen, and the only one set
+                  in the error colour. It opens a three-step confirmation. */}
+              <button type="button" className="bi-danger-link" onClick={props.onRelease}>Release snapshot…</button>
+            </div>
+          </section>
         )}
       </div>
-    </section>
-  )
+
+      {/* One cover per edition: every format under it publishes the same
+          artwork, so it is attached here rather than repeated on each one. */}
+      <CoverCard edition={edition} meta={meta} onAsk={props.onAskCover} onSaveCopy={props.onSaveCoverCopy} />
+    </div>
+  </>
 }

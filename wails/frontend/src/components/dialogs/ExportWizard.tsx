@@ -1,504 +1,590 @@
-import { useMemo, useState } from 'react'
+// Export.
+//
+// The flow starts from what is being exported rather than from what kind of
+// file to write. An edition is one choice that carries every format registered
+// under it; a reading copy and a from-scratch export are the two ways to make
+// a file that belongs to no edition. Everything after that first screen — how
+// many steps there are, which formats are on offer, whether the text can be
+// locked — follows from it, and is computed in exportFlow.ts.
+//
+// The wizard owns the answers. ExportSteps draws them.
+
+import { useEffect, useMemo, useState } from 'react'
 import { useBookStore } from '../../store/bookStore'
 import { useAppStore } from '../../store/appStore'
-import { ExportEPUB, ExportDOCX, ExportPDF, ExportPrintPDF, DiscardSnapshot, FreezeSnapshot } from '../../../wailsjs/go/main/App'
-import { exportTextNote, runExportWithFreeze, type FreezeOutcome } from './snapshotModel'
 import {
-  customTrimError, editionCards, exportSourceSummary, findFormat, isbnRegistrationError,
-  patchChangesFormat, prefillChanges, registrableKind, registrationPatch,
-  wizardOptionsForFormat, writeBackPatch, defaultWizardOptions, OUTPUT_LABELS,
-  type EditionCard, type EPUBOptions, type ExportFormat, type ExportOptions,
-  type PDFOptions, type PrefillChange, type PrintPDFOptions, type WizardOptions,
+  AttachCoverDialog, AttachWrapDialog, DiscardSnapshot, ExportEditionBundle,
+  ExportDOCX, ExportEPUB, ExportPDF, ExportPrintPDF, FreezeSnapshot,
+} from '../../../wailsjs/go/main/App'
+import type { Edition, EditionSnapshot } from '../../types/draftline'
+import { runExportWithFreeze, withFrozenSnapshot, type FreezeOutcome } from './snapshotModel'
+import { coverThumbURL } from './coverModel'
+import {
+  artworkRows, bundleName, bundleRequest, editionItems, exportFormatFor, fileCount,
+  findEdition, reviewRows, scratchItems, stepSummary, stepsFor, STEP_LABELS, writeField,
+  type FlowItem, type FlowMode, type FlowStep, type OptionField, type SettingRow,
+} from './exportFlow'
+import {
+  customTrimError, defaultWizardOptions, findFormat, wizardOptionsForFormat,
+  type WizardOptions,
 } from './exportSource'
+import ExportSteps from './ExportSteps'
+import { CloseGlyph, FormatGlyph, LockGlyph, SparkGlyph, StackGlyph, TickGlyph } from './exportGlyphs'
 
-type WizardStep = 'destination' | 'contents' | 'design' | 'review' | 'exporting'
-type PrintPanel = 'page' | 'typography' | 'furniture' | 'title'
+type Screen = 'start' | FlowStep | 'exporting'
 
-const FLOW_STEPS: Array<{ id: Exclude<WizardStep, 'exporting'>; label: string }> = [
-  { id: 'destination', label: 'Destination' },
-  { id: 'contents', label: 'Contents' },
-  { id: 'design', label: 'Design' },
-  { id: 'review', label: 'Review' },
-]
-
-const FORMAT_INFO: Record<ExportFormat, {
-  label: string
-  intent: string
-  description: string
-  detail: string
-  extension: string
-}> = {
-  epub: { label: 'EPUB', intent: 'Publish an ebook', description: 'A responsive edition for e-readers and storefronts.', detail: 'Reader-controlled type · Linked contents', extension: '.epub' },
-  docx: { label: 'DOCX', intent: 'Send an editable manuscript', description: 'For editors, agents, collaborators, or another word processor.', detail: 'Editable text · Microsoft Word compatible', extension: '.docx' },
-  pdf: { label: 'PDF', intent: 'Share a reading copy', description: 'A fixed-layout copy for reviewers, beta readers, or archiving.', detail: 'Letter page · Fixed appearance', extension: '.pdf' },
-  'print-pdf': { label: 'Print PDF', intent: 'Prepare a printed book', description: 'Book trim, mirrored margins, folios, and print typography.', detail: 'Production layout · Printer-oriented', extension: '.pdf' },
-}
-
-const TRIM_SIZES: Record<PrintPDFOptions['trimSize'], { label: string; w: string; h: string }> = {
-  '5x8': { label: '5 × 8', w: '5', h: '8' },
-  '5.25x8': { label: '5.25 × 8', w: '5.25', h: '8' },
-  '5.5x8.5': { label: '5.5 × 8.5', w: '5.5', h: '8.5' },
-  '6x9': { label: '6 × 9', w: '6', h: '9' },
-  custom: { label: 'Custom', w: '', h: '' },
-}
-
-const DISPLAY_FONTS: Array<{ id: PrintPDFOptions['headingFont']; label: string; use: string }> = [
-  { id: 'body', label: 'Body font', use: 'Unified' },
-  { id: 'classic', label: 'EB Garamond', use: 'Classic' },
-  { id: 'modern', label: 'Lato', use: 'Modern' },
-  { id: 'romance', label: 'Great Vibes', use: 'Romance' },
-  { id: 'scifi', label: 'Orbitron', use: 'Science fiction' },
-  { id: 'fantasy', label: 'Cinzel Decorative', use: 'Fantasy' },
-]
-
-// Which text an export will actually contain. The sentence comes from the
-// record rather than from this file, because a format with a frozen manuscript
-// and a format without one are two different promises, and the author has to
-// be told which they are getting before the file is written rather than after.
-
-function FormatIcon({ format }: { format: ExportFormat }) {
-  if (format === 'epub') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 016.5 3H11v16H6.5A2.5 2.5 0 004 21.5v-16zM20 5.5A2.5 2.5 0 0017.5 3H13v16h4.5a2.5 2.5 0 012.5 2.5v-16z" /></svg>
-  if (format === 'docx') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2.75h8l4 4V21.25H6zM14 3v4h4M8.5 11l1.25 5 1.4-3.7 1.35 3.7 1.25-5" /></svg>
-  if (format === 'pdf') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2.75h8l4 4V21.25H6zM14 3v4h4M8.5 16v-4h1.25a1.15 1.15 0 010 2.3H8.5M12.5 12h1.1a2 2 0 010 4h-1.1zM16 16v-4h2" /></svg>
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8V3h12v5M6 18H4a2 2 0 01-2-2v-6a2 2 0 012-2h16a2 2 0 012 2v6a2 2 0 01-2 2h-2M6 14h12v7H6zM18.5 11h.01" /></svg>
-}
-
-function CheckIcon() {
-  return <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10.5l3.5 3.5L16 5.5" /></svg>
-}
-
-// CoverChip is the picture on an edition card and in the sidebar. A cover that
-// exists is fetched from the same-origin address this process serves; an
-// edition with no artwork gets the drawn placeholder the design uses, with the
-// book's title on it, rather than an empty rectangle.
-function CoverChip({ src, title, className }: { src: string; title: string; className: string }) {
-  if (src) return <img className={className} src={src} alt="" />
-  return <span className={`${className} placeholder`} aria-hidden="true"><em>{title}</em></span>
-}
-
-function Toggle({ checked, onChange, label, note }: { checked: boolean; onChange: (checked: boolean) => void; label: string; note?: string }) {
-  return (
-    <label className="export-toggle-row">
-      <span><strong>{label}</strong>{note && <small>{note}</small>}</span>
-      <input type="checkbox" checked={checked} onChange={event => onChange(event.target.checked)} />
-      <span className="export-switch" aria-hidden="true" />
-    </label>
-  )
-}
-
-type Updater<T> = T | ((current: T) => T)
-const applyUpdate = <T,>(current: T, next: Updater<T>): T =>
-  (typeof next === 'function' ? (next as (value: T) => T)(current) : next)
+interface Written { name: string; path: string }
 
 export default function ExportWizard() {
-  const { book, updateFormat, updateEdition, addEdition, addFormat, freezeFormat } = useBookStore()
+  const { book, updateFormat, updateEdition, freezeFormat } = useBookStore()
   const { closeExportWizard, setStatusMessage } = useAppStore()
-  const [step, setStep] = useState<WizardStep>('destination')
-  const [format, setFormat] = useState<ExportFormat | null>(null)
-  // The registered format this export is made against, or '' for a
-  // from-scratch export. It is the one piece of wizard state the backend also
-  // reads, through the options it travels in.
-  const [formatID, setFormatID] = useState('')
-  const [printPanel, setPrintPanel] = useState<PrintPanel>('page')
-  const [exporting, setExporting] = useState(false)
-  const [exportError, setExportError] = useState('')
-  const [exportSuccess, setExportSuccess] = useState(false)
-  const [exportedPath, setExportedPath] = useState('')
-  const [pendingChanges, setPendingChanges] = useState<PrefillChange[]>([])
-  const [savedBack, setSavedBack] = useState(false)
-  const [offerISBN, setOfferISBN] = useState(false)
-  const [isbnDraft, setIsbnDraft] = useState('')
-  const [isbnError, setIsbnError] = useState('')
-  const [registered, setRegistered] = useState('')
-  const [frozenNote, setFrozenNote] = useState('')
-  // What to say on the review step after a dismissed save dialog. Nothing was
-  // written and nothing was frozen, and an author who expected a file deserves
-  // to be told that rather than left to guess from a screen that went back a
-  // step on its own.
+  const requestedFormatID = useAppStore(s => s.exportFormatID)
+  const clearExportFormat = useAppStore(s => s.clearExportFormat)
+
+  const [screen, setScreen] = useState<Screen>('start')
+  const [mode, setMode] = useState<FlowMode>('custom')
+  const [editionID, setEditionID] = useState('')
+  const [selected, setSelected] = useState<string[]>([])
+  const [tab, setTab] = useState('')
+  const [includeArt, setIncludeArt] = useState(true)
+  const [lock, setLock] = useState<boolean | null>(null)
+  const [touched, setTouched] = useState<string[]>([])
+  const [answers, setAnswers] = useState<Record<string, WizardOptions>>({})
+  // The controls the design calls for that no exporter reads yet. They are
+  // held here, keyed by format and row, so the screen remembers what was
+  // chosen even though the file does not carry it.
+  const [loose, setLooseState] = useState<Record<string, string | boolean>>({})
+  const [artError, setArtError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [written, setWritten] = useState<Written[]>([])
+  const [note, setNote] = useState('')
   const [cancelNote, setCancelNote] = useState('')
-  const [wizard, setWizard] = useState<WizardOptions>(defaultWizardOptions())
 
-  // The four setters the design panels below use, with the shapes they had
-  // when each option set was its own piece of component state. The state is
-  // one object now — it is what gets written to the edition record — and this
-  // keeps the panels reading as the settings they edit rather than as paths
-  // into a structure.
-  const options = wizard.shared
-  const epubOptions = wizard.epub
-  const pdfOptions = wizard.pdf
-  const printOptions = wizard.print
-  const setOptions = (next: Updater<ExportOptions>) => setWizard(current => ({ ...current, shared: applyUpdate(current.shared, next) }))
-  const setEpubOptions = (next: Updater<EPUBOptions>) => setWizard(current => ({ ...current, epub: applyUpdate(current.epub, next) }))
-  const setPdfOptions = (next: Updater<PDFOptions>) => setWizard(current => ({ ...current, pdf: applyUpdate(current.pdf, next) }))
-  const setPrintOptions = (next: Updater<PrintPDFOptions>) => setWizard(current => ({ ...current, print: applyUpdate(current.print, next) }))
-
+  const index = book?.editions
+  const editions = index?.editions ?? []
   const title = book?.metadata.title || 'Untitled'
-  const cards = useMemo(() => editionCards(book?.editions, title), [book?.editions, title])
-  const source = useMemo(() => exportSourceSummary(book?.editions, formatID, title), [book?.editions, formatID, title])
-  const chosenFormat = useMemo(() => findFormat(book?.editions, formatID)?.format, [book?.editions, formatID])
-  const textNote = exportTextNote(book?.editions, chosenFormat)
+  const edition = useMemo(() => findEdition(index, editionID), [index, editionID])
 
   const stats = useMemo(() => {
-    const countWords = (html: string) => {
+    const words = (html: string) => {
       const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
       return text ? text.split(' ').length : 0
     }
-    const countGroup = (items: Array<{ content: string }> = []) => items.reduce((sum, item) => sum + countWords(item.content), 0)
-    if (!book) return { chapters: 0, words: 0, frontCount: 0, bodyCount: 0, backCount: 0, copyrightWords: 0, frontWords: 0, bodyWords: 0, backWords: 0 }
-    const copyrightWords = countWords(book.copyright || '')
-    const frontWords = countGroup(book.front_matter)
-    const bodyWords = countGroup(book.body)
-    const backWords = countGroup(book.back_matter)
-    return { chapters: book.front_matter.length + book.body.length + book.back_matter.length, words: copyrightWords + frontWords + bodyWords + backWords, frontCount: book.front_matter.length, bodyCount: book.body.length, backCount: book.back_matter.length, copyrightWords, frontWords, bodyWords, backWords }
+    const group = (items: Array<{ content: string }> = []) => items.reduce((sum, item) => sum + words(item.content), 0)
+    if (!book) return { chapters: 0, words: 0 }
+    return {
+      chapters: book.body.length,
+      words: words(book.copyright || '') + group(book.front_matter) + group(book.body) + group(book.back_matter),
+    }
   }, [book])
 
-  const currentOptions = format === 'print-pdf' ? printOptions : format === 'pdf' ? pdfOptions : format === 'epub' ? epubOptions : options
-  const selectedWords = stats.bodyWords + (currentOptions.includeCopyright ? stats.copyrightWords : 0) + (currentOptions.includeFrontMatter ? stats.frontWords : 0) + (currentOptions.includeBackMatter ? stats.backWords : 0)
-  const currentStepIndex = FLOW_STEPS.findIndex(item => item.id === step)
-  const trimError = format === 'print-pdf' ? customTrimError(printOptions) : ''
+  const offered = useMemo(
+    () => (mode === 'edition' ? editionItems(edition) : scratchItems()),
+    [mode, edition],
+  )
+  const chosen = useMemo(
+    () => offered.filter(item => selected.includes(item.id)),
+    [offered, selected],
+  )
 
-  function updateSharedOption(key: keyof ExportOptions, value: boolean) {
-    setWizard(current => ({
-      shared: { ...current.shared, [key]: value },
-      epub: { ...current.epub, [key]: value },
-      pdf: { ...current.pdf, [key]: value },
-      print: { ...current.print, [key]: value },
-    }))
+  // The answers for one format, seeded from its record the first time they are
+  // asked for so that picking an edition really does prefill the wizard.
+  function optionsFor(item: FlowItem): WizardOptions {
+    const held = answers[item.id]
+    if (held) return held
+    const found = findFormat(index, item.id)
+    return found ? wizardOptionsForFormat(found.edition, found.format) : defaultWizardOptions()
   }
 
-  // Choosing a registered edition fills the rest of the wizard from the
-  // record: the trim it is bound at, the gutter it is bound with, and whatever
-  // a previous export of this same format saved back.
-  function chooseEdition(card: EditionCard, output: ExportFormat = card.outputFormat) {
-    const found = findFormat(book?.editions, card.formatID)
-    if (!found) return
-    setFormat(output)
-    setFormatID(card.formatID)
-    setWizard(wizardOptionsForFormat(found.edition, found.format))
+  function setField(item: FlowItem, field: OptionField, value: string | number | boolean) {
+    const next = writeField(optionsFor(item), field, value)
+    setAnswers(current => ({ ...current, [item.id]: next }))
+    setTouched(current => (current.includes(item.id) ? current : [...current, item.id]))
   }
 
-  // Starting from scratch really does start from scratch: the defaults, and no
-  // edition attached to what comes out.
-  function chooseScratch(id: ExportFormat) {
-    setFormat(id)
-    setFormatID('')
-    setWizard(defaultWizardOptions())
+  const looseKey = (item: FlowItem, row: SettingRow) => `${item.id}:${row.id}`
+  function looseValue(item: FlowItem, row: SettingRow): string | boolean {
+    const held = loose[looseKey(item, row)]
+    if (held !== undefined) return held
+    // A control nothing has answered yet shows the first choice, or on.
+    return row.kind === 'select' ? String(row.choices[0]?.value ?? '') : true
+  }
+  function setLoose(item: FlowItem, row: SettingRow, value: string | boolean) {
+    setLooseState(current => ({ ...current, [looseKey(item, row)]: value }))
+    setTouched(current => (current.includes(item.id) ? current : [...current, item.id]))
   }
 
-  function handleBack() {
-    if (step === 'destination') return closeExportWizard()
-    if (step === 'contents') setStep('destination')
-    if (step === 'design') setStep('contents')
-    if (step === 'review') setStep('design')
+  const art = useMemo(() => artworkRows(chosen, edition, title), [chosen, edition, title])
+  const files = fileCount(chosen, mode !== 'reading' && includeArt, art)
+  const review = useMemo(() => reviewRows({
+    mode, edition, items: chosen, includeArt: mode !== 'reading' && includeArt,
+    art, lock, words: stats.words, fileCount: files, title,
+  }), [mode, edition, chosen, includeArt, art, lock, stats.words, files, title])
+
+  const steps = stepsFor(mode)
+  const stepIndex = steps.indexOf(screen as FlowStep)
+  const inWizard = stepIndex >= 0
+  const activeItem = chosen.find(item => item.id === tab) ?? chosen[0]
+  const trimError = activeItem && (activeItem.output === 'print-pdf' || activeItem.output === 'hc')
+    ? customTrimError(optionsFor(activeItem).print)
+    : ''
+
+  // ── Starting ─────────────────────────────────────────────────────────────
+
+  function startEdition(id: string) {
+    const target = findEdition(index, id)
+    if (!target) return
+    setMode('edition')
+    setEditionID(id)
+    setSelected(target.formats.map(format => format.id))
+    setTab(target.formats[0]?.id ?? '')
+    setIncludeArt(true)
+    setLock(null)
+    setScreen('formats')
   }
 
-  function handleNext() {
-    if (step === 'destination' && format) setStep('contents')
-    else if (step === 'contents') setStep('design')
-    else if (step === 'design' && !trimError) setStep('review')
+  function startReading() {
+    setMode('reading')
+    setEditionID('')
+    setSelected(['pdf'])
+    setTab('pdf')
+    setIncludeArt(false)
+    setLock(null)
+    setScreen('settings')
   }
 
-  function goToCompletedStep(target: Exclude<WizardStep, 'exporting'>) {
-    const targetIndex = FLOW_STEPS.findIndex(item => item.id === target)
-    if (targetIndex <= currentStepIndex || (step === 'review' && targetIndex < 3)) setStep(target)
+  function startCustom() {
+    setMode('custom')
+    setEditionID('')
+    setSelected(['docx', 'pdf'])
+    setTab('docx')
+    setIncludeArt(true)
+    setLock(null)
+    setScreen('formats')
   }
 
-  // settleWithEdition runs after the file exists. Two different things can
-  // happen, and neither of them touches the record without being asked:
-  //
-  //   - the export came from a registered format, and something the record
-  //     prefilled was changed, so the author is asked whether the record
-  //     should learn it. Nothing changed means only the wizard's own answers
-  //     are remembered: the trim, the gutter and the bleed are the record's
-  //     words for the published object and are never rewritten unasked;
-  //   - the export came from scratch, in which case the design brief says
-  //     nothing is written back at all. That became an offer rather than a
-  //     rule: a file with an ISBN on it is an edition, and the offer saves
-  //     typing the whole record in again.
-  function settleWithEdition(chosen: ExportFormat) {
-    const found = findFormat(book?.editions, formatID)
+  // Opened from an edition's own Export button: land inside that edition with
+  // the one format already chosen.
+  useEffect(() => {
+    if (!requestedFormatID) return
+    const found = findFormat(index, requestedFormatID)
     if (found) {
-      const changes = prefillChanges(found.edition, found.format, wizard, chosen)
-      if (changes.length) {
-        setPendingChanges(changes)
-        return
-      }
-      const prefilled = wizardOptionsForFormat(found.edition, found.format)
-      const patch = writeBackPatch(wizard, chosen, prefilled)
-      if (patchChangesFormat(found.format, patch)) updateFormat(formatID, patch)
+      setMode('edition')
+      setEditionID(found.edition.id)
+      setSelected([found.format.id])
+      setTab(found.format.id)
+      setIncludeArt(true)
+      setLock(null)
+      setScreen('formats')
+    }
+    clearExportFormat()
+  }, [requestedFormatID, index, clearExportFormat])
+
+  // A book with no editions has nothing to choose between, so the flow opens
+  // on the format picker instead of an empty gallery, with nothing chosen and
+  // the footer saying so.
+
+  function toggle(id: string) {
+    setSelected(current => (current.includes(id) ? current.filter(x => x !== id) : [...current, id]))
+  }
+
+  // ── Moving ───────────────────────────────────────────────────────────────
+
+  function goBack() {
+    if (screen === 'start') return closeExportWizard()
+    if (stepIndex <= 0) return setScreen('start')
+    setScreen(steps[stepIndex - 1])
+  }
+
+  function goNext() {
+    if (screen === 'start') {
+      setMode('custom')
+      setIncludeArt(true)
+      setLock(null)
+      return setScreen('settings')
+    }
+    if (stepIndex < 0) return
+    if (stepIndex === steps.length - 1) return void runExport()
+    setScreen(steps[stepIndex + 1])
+  }
+
+  const canContinue = screen === 'start'
+    ? selected.length > 0
+    : screen === 'formats' ? selected.length > 0
+      : screen === 'finalize' ? lock !== null
+        : !trimError
+
+  const lastStep = stepIndex === steps.length - 1
+  const footerHint = screen === 'start'
+    ? (selected.length ? `${selected.length} format${selected.length > 1 ? 's' : ''} selected` : 'Select at least one format')
+    : screen === 'finalize' && lock === null ? 'Choose whether to lock the text before exporting.'
+      : screen === 'formats' && !selected.length ? 'Select at least one format.'
+        : trimError ? trimError
+          : lastStep ? 'A Save As window opens next.' : ''
+
+  // ── Artwork ──────────────────────────────────────────────────────────────
+
+  async function chooseArtwork(id: string) {
+    const item = chosen.find(one => one.id === id)
+    if (!item) return
+    if (!edition) {
+      setArtError('Artwork is kept on an edition. Register one in Book Info to attach a file here.')
       return
     }
-    if (registrableKind(chosen)) setOfferISBN(true)
-  }
-
-  function saveBackToEdition() {
-    if (!format || !formatID) return
-    const found = findFormat(book?.editions, formatID)
-    if (!found) return
-    updateFormat(formatID, writeBackPatch(wizard, format, wizardOptionsForFormat(found.edition, found.format)))
-    setPendingChanges([])
-    setSavedBack(true)
-    setStatusMessage('Saved back to the edition record')
-  }
-
-  // Registering a from-scratch export makes a one-format edition out of it, so
-  // it appears in the Book & Editions rail like any other.
-  function registerExportAsEdition() {
-    if (!book || !format) return
-    const kind = registrableKind(format)
-    if (!kind) return
-    const problem = isbnRegistrationError(isbnDraft, book.editions)
-    if (problem) return setIsbnError(problem)
-    const editionID = addEdition(String(new Date().getFullYear()))
-    if (!editionID) return setIsbnError('That edition could not be created.')
-    // A new edition record normally names the one before it as what it
-    // supersedes, because that is what pressing "New edition" on the Editions
-    // screen means. An export made from scratch says nothing of the kind, and
-    // claiming it replaces the last edition would be an invention printed on
-    // the copyright page as a revision history.
-    updateEdition(editionID, { previous_edition_id: undefined })
-    const newFormatID = addFormat(editionID, kind)
-    if (!newFormatID) return setIsbnError('That format could not be created.')
-    updateFormat(newFormatID, registrationPatch(isbnDraft, format, wizard, book.metadata))
-    setFormatID(newFormatID)
-    setOfferISBN(false)
-    setRegistered(isbnDraft.trim())
-    setStatusMessage(`Registered ${isbnDraft.trim()} as a new edition`)
-  }
-
-  // writeFile is the exporter for the chosen destination, handed the book that
-  // is actually going out — which, for a registered edition, is the book with
-  // the fresh freeze stamped on it.
-  async function writeFile(outgoing: NonNullable<typeof book>) {
-    if (format === 'epub') return await ExportEPUB(outgoing as any, epubOptions as any)
-    if (format === 'docx') return await ExportDOCX(outgoing as any, options as any)
-    if (format === 'pdf') return await ExportPDF(outgoing as any, pdfOptions as any)
-    return await ExportPrintPDF(outgoing as any, printOptions as any)
-  }
-
-  // handleExport is the freeze and the file, in the order runExportWithFreeze
-  // describes: frozen before the exporter runs so the file and the record
-  // cannot disagree, recorded only once a file exists so that dismissing the
-  // save dialog leaves the ISBN exactly as it was.
-  async function handleExport() {
-    if (!book || !format) return
-    setStep('exporting')
-    setExporting(true)
-    setExportError('')
-    setExportSuccess(false)
-    setFrozenNote('')
-    setCancelNote('')
+    setArtError('')
     try {
-      const run = await runExportWithFreeze({
-        book,
-        formatID,
-        freeze: () => FreezeSnapshot(book as any, formatID) as Promise<FreezeOutcome>,
-        write: writeFile,
-        commit: record => freezeFormat(formatID, record),
-        discard: id => { void DiscardSnapshot(id) },
-      })
-      if (run.ok) {
-        setFrozenNote(run.note)
-        setExportSuccess(true)
-        setExportedPath(run.filePath)
-        setStatusMessage(`Exported to ${run.filePath}`)
-        settleWithEdition(format)
-      } else if (run.cancelled) {
-        setCancelNote(run.note)
-        setStep('review')
-      } else setExportError(run.error)
-    } catch (error) {
-      setExportError(String(error))
-    } finally {
-      setExporting(false)
+      if (item.output === 'print-pdf' || item.output === 'hc') {
+        const result = await AttachWrapDialog(edition.id, item.id)
+        if (result.cancelled) return
+        if (!result.success || !result.wrap) return setArtError(result.error || 'That artwork could not be read.')
+        updateFormat(item.id, { wrap: result.wrap })
+        return
+      }
+      const result = await AttachCoverDialog(edition.id, false)
+      if (result.cancelled) return
+      if (!result.success || !result.cover) return setArtError(result.error || 'That cover could not be read.')
+      updateEdition(edition.id, { cover: result.cover, cover_id: result.cover.id })
+    } catch (e) {
+      setArtError(String(e))
     }
   }
 
-  function renderDestination() {
-    return <>
-      <div className="export-step-heading"><span className="export-eyebrow">Step 1 of 4</span><h2>Where is this book going?</h2><p>Editions you have registered already carry an ISBN, a trim size, and their own cover art. Pick one and Draftline fills in the remaining steps.</p></div>
-      {cards.length > 0 && <section className="export-ed-section">
-        <div className="export-ed-section-head"><span className="export-eyebrow">Registered editions</span><small>{cards.length} {cards.length === 1 ? 'template' : 'templates'} from this project’s ISBNs</small></div>
-        <div className="export-ed-grid">
-          {cards.map(card => (
-            <div key={card.formatID} className="export-ed-cell">
-              <button type="button" className={`export-ed-card${formatID === card.formatID && format === card.outputFormat ? ' selected' : ''}`} onClick={() => chooseEdition(card)} aria-pressed={formatID === card.formatID && format === card.outputFormat}>
-                <CoverChip src={card.thumbURL} title={card.title} className="export-ed-cover" />
-                <span className="export-ed-copy">
-                  <span className="export-ed-topline"><strong>{card.format}</strong><em>{card.edition}</em></span>
-                  <span className="export-ed-isbn">{card.isbn13}</span>
-                  <span className="export-ed-spec">{card.spec}</span>
-                  <span className="export-ed-foot"><i className={`export-ed-badge ${card.badgeKind}`}>{card.badge}</i><small>{card.out}</small></span>
-                </span>
-              </button>
-              {card.altOutput && <button type="button" className={`export-ed-alt${formatID === card.formatID && format === card.altOutput ? ' selected' : ''}`} onClick={() => chooseEdition(card, card.altOutput!)} aria-pressed={formatID === card.formatID && format === card.altOutput}>{card.altLabel}<em>Same ISBN, cover and copyright page — for reviewers</em></button>}
-            </div>
-          ))}
-        </div>
-      </section>}
-      <section className="export-ed-section">
-        <div className="export-ed-section-head"><span className="export-eyebrow">{cards.length > 0 ? 'Or start from scratch' : 'Choose a destination'}</span><small>No ISBN attached — Draftline will offer to register one afterwards.</small></div>
-        <div className="export-destination-grid">
-          {(Object.entries(FORMAT_INFO) as Array<[ExportFormat, typeof FORMAT_INFO[ExportFormat]]>).map(([id, info]) => (
-            <button type="button" key={id} className={`export-destination-card${format === id && !formatID ? ' selected' : ''}`} onClick={() => chooseScratch(id)} aria-pressed={format === id && !formatID}>
-              <span className="export-format-icon"><FormatIcon format={id} /></span>
-              <span className="export-destination-copy"><span className="export-destination-topline"><strong>{info.intent}</strong></span><span>{info.description}</span><small>{info.label} {info.extension} · {info.detail}</small></span>
-              <span className="export-card-check"><CheckIcon /></span>
-            </button>
-          ))}
-        </div>
-      </section>
-    </>
+  // ── Writing the files ────────────────────────────────────────────────────
+
+  async function writeOne(item: FlowItem, outgoing: NonNullable<typeof book>) {
+    const options = optionsFor(item)
+    const format = exportFormatFor(item.output)
+    if (format === 'epub') return await ExportEPUB(outgoing as any, options.epub as any)
+    if (format === 'docx') return await ExportDOCX(outgoing as any, options.shared as any)
+    if (format === 'pdf') return await ExportPDF(outgoing as any, options.pdf as any)
+    return await ExportPrintPDF(outgoing as any, options.print as any)
   }
 
-  function renderContents() {
-    const copyrightNote = source
-      ? 'Generated from this edition’s record, with your own copyright page kept underneath it.'
-      : book?.copyright ? 'Rights, edition, and publication notice.' : 'No copyright content has been written.'
-    const sectionCards = [
-      { id: 'copyright', title: 'Copyright page', description: copyrightNote, count: source ? 'Generated' : stats.copyrightWords ? `${stats.copyrightWords.toLocaleString()} words` : 'Empty', checked: currentOptions.includeCopyright, locked: false, change: (value: boolean) => updateSharedOption('includeCopyright', value) },
-      { id: 'front', title: 'Front matter', description: 'Dedication, acknowledgements, preface, and other opening material.', count: `${stats.frontCount} ${stats.frontCount === 1 ? 'item' : 'items'}`, checked: currentOptions.includeFrontMatter, locked: false, change: (value: boolean) => updateSharedOption('includeFrontMatter', value) },
-      { id: 'body', title: 'Manuscript', description: 'The complete body of the book in manuscript order.', count: `${stats.bodyCount} ${stats.bodyCount === 1 ? 'chapter' : 'chapters'}`, checked: true, locked: true, change: () => undefined },
-      { id: 'back', title: 'Back matter', description: 'Afterword, notes, bibliography, and other closing material.', count: `${stats.backCount} ${stats.backCount === 1 ? 'item' : 'items'}`, checked: currentOptions.includeBackMatter, locked: false, change: (value: boolean) => updateSharedOption('includeBackMatter', value) },
-    ]
-    return <>
-      <div className="export-step-heading"><span className="export-eyebrow">Step 2 of 4</span><h2>What belongs in this edition?</h2><p>The manuscript always travels with the export. Choose which surrounding book sections belong with it.</p></div>
-      <div className="export-content-grid">
-        {sectionCards.map(section => (
-          <button type="button" key={section.id} className={`export-content-card${section.checked ? ' selected' : ''}`} disabled={section.locked} onClick={() => section.change(!section.checked)} aria-pressed={section.checked}>
-            <span className="export-content-check"><CheckIcon /></span><span><strong>{section.title}</strong><small>{section.description}</small></span><em>{section.count}</em>
-          </button>
-        ))}
-      </div>
-      <div className="export-selection-total"><span>{selectedWords.toLocaleString()} words selected</span><span>{FORMAT_INFO[format!].label} edition</span></div>
-    </>
+  // Each chosen format is written in turn, and the system's save dialog opens
+  // once per file. Locking is the edition's decision rather than the format's,
+  // so when it is taken every registered format in this export is frozen to
+  // the words that went out.
+  async function runExport() {
+    if (!book || !chosen.length) return
+    setScreen('exporting')
+    setBusy(true)
+    setError('')
+    setNote('')
+    setCancelNote('')
+    setWritten([])
+    try {
+      if (mode === 'edition' && edition) await runBundle(edition)
+      else await runLooseFiles()
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setBusy(false)
+    }
   }
 
-  function renderPrintPagePanel() {
-    return <div className="export-design-panel">
-      <div className="export-setting-block export-setting-block-wide"><h3>Trim size</h3><p>The finished dimensions of the bound book.</p>
-        <div className="export-choice-strip export-trim-choices">
-          {(Object.entries(TRIM_SIZES) as Array<[PrintPDFOptions['trimSize'], { label: string; w: string; h: string }]>).map(([id, size]) => <button type="button" key={id} className={printOptions.trimSize === id ? 'selected' : ''} onClick={() => setPrintOptions(current => ({ ...current, trimSize: id, customWidth: size.w || current.customWidth, customHeight: size.h || current.customHeight }))}>{size.label}{id !== 'custom' && <small>inches</small>}</button>)}
-        </div>
-        {printOptions.trimSize === 'custom' && <div className="export-inline-fields"><label>Width <input value={printOptions.customWidth} onChange={event => setPrintOptions(current => ({ ...current, customWidth: event.target.value }))} inputMode="decimal" /></label><span>×</span><label>Height <input value={printOptions.customHeight} onChange={event => setPrintOptions(current => ({ ...current, customHeight: event.target.value }))} inputMode="decimal" /></label><span>inches</span></div>}
-        {trimError && <p className="export-trim-error" role="alert">{trimError}</p>}
-      </div>
-      <div className="export-setting-block"><h3>Page margins</h3><p>Interior breathing room and binding allowance.</p><div className="export-number-grid">
-        {([['gutterMargin', 'Inside', printOptions.gutterMargin], ['outerMargin', 'Outside', printOptions.outerMargin], ['topMargin', 'Top', printOptions.topMargin], ['bottomMargin', 'Bottom', printOptions.bottomMargin]] as const).map(([key, label, value]) => <label key={key}>{label}<span><input value={value} onChange={event => setPrintOptions(current => ({ ...current, [key]: event.target.value }))} inputMode="decimal" /> in</span></label>)}
-      </div></div>
-      <div className="export-setting-block"><h3>Production page</h3><p>Binding and printer setup.</p><Toggle checked={printOptions.mirroredMargins} onChange={value => setPrintOptions(current => ({ ...current, mirroredMargins: value }))} label="Mirror inside margins" /><Toggle checked={printOptions.chapterStartsRecto} onChange={value => setPrintOptions(current => ({ ...current, chapterStartsRecto: value }))} label="Chapters begin on recto" note="Right-hand starts may insert an unnumbered blank that still counts in pagination" /><div className="export-compact-field"><label>Bleed</label><span><input value={printOptions.bleed} onChange={event => setPrintOptions(current => ({ ...current, bleed: event.target.value }))} inputMode="decimal" /> in</span></div><Toggle checked={printOptions.includeCropMarks} onChange={value => setPrintOptions(current => ({ ...current, includeCropMarks: value }))} label="Include crop marks" /></div>
-    </div>
+  // An edition is not a file. It is several objects that go out together, so
+  // it is written as one publication-ready archive: one folder per format,
+  // each holding its interior and the artwork that goes on it. Locking is the
+  // edition's decision rather than any one format's, so the text is frozen
+  // once and every chosen format is answered with that same snapshot.
+  async function runBundle(one: Edition) {
+    if (!book) return
+    const ids = chosen.map(item => item.id)
+    let outgoing = book
+    let frozen: EditionSnapshot | null = null
+
+    if (lock === true) {
+      const result = await FreezeSnapshot(book as any, ids[0]) as FreezeOutcome
+      if (!result.success || !result.snapshot) {
+        setError(result.error || 'The text for this edition could not be frozen.')
+        return
+      }
+      frozen = result.snapshot
+      const index = ids.reduce(
+        (current, id) => withFrozenSnapshot(current, id, frozen as EditionSnapshot),
+        book.editions as NonNullable<typeof book.editions>,
+      )
+      outgoing = { ...book, editions: index }
+    }
+
+    const request = bundleRequest(one.id, includeArt, chosen, optionsFor)
+    const result = await ExportEditionBundle(outgoing as any, request as any)
+
+    if (!result.success) {
+      // Nothing was written, so nothing is frozen either: a snapshot taken for
+      // a bundle that never reached disk would claim an edition went out.
+      if (frozen) void DiscardSnapshot(frozen.id)
+      if (result.error === 'cancelled') setCancelNote('Nothing was written. The save window was closed.')
+      else setError(result.error || 'That bundle could not be written.')
+      return
+    }
+
+    if (frozen) {
+      for (const id of ids) freezeFormat(id, frozen)
+      setNote(`Froze ${frozen.word_count.toLocaleString()} words as the text this edition stands for. Exporting it again gives you these words, however far the book moves on.`)
+    }
+    setWritten([{ name: `${bundleName(title, one)}.zip`, path: result.file_path || '' }])
+    setStatusMessage(`Exported ${bundleName(title, one)}.zip`)
   }
 
-  function renderPrintTypographyPanel() {
-    return <div className="export-design-panel">
-      <div className="export-setting-block export-setting-block-wide"><h3>Body typeface</h3><p>Choose the reading character of the printed page.</p><div className="export-font-choices">
-        {(['merriweather', 'lato'] as const).map(font => <button type="button" key={font} className={`${font}${printOptions.fontFamily === font ? ' selected' : ''}`} onClick={() => setPrintOptions(current => ({ ...current, fontFamily: font }))}><span>Aa</span><small>{font === 'merriweather' ? 'Merriweather' : 'Lato'}</small></button>)}
-      </div></div>
-      <div className="export-setting-block export-setting-block-wide"><h3>Chapter heading typeface</h3><p>A display face for chapter titles and generated Contents headings. Body text remains in the reading face above.</p><div className="export-display-font-choices">
-        {DISPLAY_FONTS.map(font => <button type="button" key={font.id} className={`${font.id}${printOptions.headingFont === font.id ? ' selected' : ''}`} onClick={() => setPrintOptions(current => ({ ...current, headingFont: font.id }))}><span>Aa</span><strong>{font.label}</strong><small>{font.use}</small></button>)}
-      </div></div>
-      <div className="export-setting-block"><h3>Composition</h3><div className="export-select-grid">
-        <label>Type size<select value={printOptions.fontSize} onChange={event => setPrintOptions(current => ({ ...current, fontSize: Number(event.target.value) as PDFOptions['fontSize'] }))}><option value={9}>9 pt</option><option value={10}>10 pt</option><option value={11}>11 pt</option><option value={12}>12 pt</option></select></label>
-        <label>Line spacing<select value={printOptions.lineHeight} onChange={event => setPrintOptions(current => ({ ...current, lineHeight: Number(event.target.value) as PrintPDFOptions['lineHeight'] }))}><option value={1.3}>Tight · 1.3</option><option value={1.4}>Book · 1.4</option><option value={1.5}>Relaxed · 1.5</option><option value={1.6}>Open · 1.6</option></select></label>
-        <label>Alignment<select value={printOptions.textAlign} onChange={event => setPrintOptions(current => ({ ...current, textAlign: event.target.value as PrintPDFOptions['textAlign'] }))}><option value="left">Left aligned</option><option value="justify">Justified</option></select></label>
-        <label>First-line indent<span className="export-field-with-unit"><input value={printOptions.paragraphIndent} onChange={event => setPrintOptions(current => ({ ...current, paragraphIndent: event.target.value }))} inputMode="decimal" /> in</span></label>
-      </div></div>
-      <div className="export-setting-block"><h3>Chapter opening</h3><Toggle checked={printOptions.dropCap} onChange={value => setPrintOptions(current => ({ ...current, dropCap: value }))} label="Opening drop cap" />{printOptions.dropCap && <div className="export-compact-field"><label>Depth</label><select value={printOptions.dropCapLines} onChange={event => setPrintOptions(current => ({ ...current, dropCapLines: Number(event.target.value) as PrintPDFOptions['dropCapLines'] }))}><option value={2}>2 lines</option><option value={3}>3 lines</option><option value={4}>4 lines</option></select></div>}</div>
-    </div>
-  }
-
-  function renderPrintFurniturePanel() {
-    return <div className="export-design-panel">
-      <div className="export-setting-block"><h3>Running furniture</h3><p>Quiet navigation around the manuscript.</p><div className="export-compact-field"><label>Header and folio font</label><select value={printOptions.furnitureFont} onChange={event => setPrintOptions(current => ({ ...current, furnitureFont: event.target.value as PrintPDFOptions['furnitureFont'] }))}>{DISPLAY_FONTS.map(font => <option key={font.id} value={font.id}>{font.label}</option>)}</select></div><Toggle checked={printOptions.runningHeaders} onChange={value => setPrintOptions(current => ({ ...current, runningHeaders: value }))} label="Running headers" note="Book title on verso, chapter on recto" />{printOptions.runningHeaders && <div className="export-compact-field"><label>Header style</label><select value={printOptions.headerStyle} onChange={event => setPrintOptions(current => ({ ...current, headerStyle: event.target.value as PrintPDFOptions['headerStyle'] }))}><option value="smallcaps">Small caps</option><option value="italic">Italic</option><option value="normal">Normal</option></select></div>}<div className="export-compact-field"><label>Page numbers</label><select value={printOptions.pageNumberPosition} onChange={event => setPrintOptions(current => ({ ...current, pageNumberPosition: event.target.value as PrintPDFOptions['pageNumberPosition'] }))}><option value="bottom-center">Bottom center</option><option value="bottom-outside">Bottom outside</option><option value="top-outside">Top outside</option></select></div></div>
-      <div className="export-setting-block"><h3>Generated pages</h3><p>Pages Draftline composes around your manuscript.</p><Toggle checked={printOptions.generateHalfTitle} onChange={value => setPrintOptions(current => ({ ...current, generateHalfTitle: value }))} label="Half-title page" /><Toggle checked={printOptions.generateTOC} onChange={value => setPrintOptions(current => ({ ...current, generateTOC: value }))} label="Table of contents" /></div>
-      <div className="export-setting-block export-page-sample" aria-hidden="true"><span className={`export-page-sample-header display-${printOptions.furnitureFont}`}>{book?.metadata.title || 'BOOK TITLE'}</span><div className={`export-page-sample-title display-${printOptions.headingFont}`}>Chapter One</div><div className="export-page-sample-lines"><i /><i /><i /><i /><i /><i /></div><span className={`export-page-sample-number display-${printOptions.furnitureFont}`}>17</span></div>
-    </div>
-  }
-
-  function renderPrintTitlePanel() {
-    return <div className="export-design-panel">
-      <div className={`export-setting-block export-title-page-sample ${printOptions.titlePageStyle} ${printOptions.titlePageFont}`} aria-hidden="true"><div><strong>{book?.metadata.title || 'Untitled'}</strong>{printOptions.titlePageShowAuthor && <span>by {book?.metadata.author || 'Author'}</span>}{printOptions.titlePageShowPublisher && <small>{book?.metadata.publisher || 'Publisher'}</small>}</div></div>
-      <div className="export-setting-block"><h3>Title page composition</h3><p>Set the tone of the first full title page.</p><div className="export-compact-field"><label>Display typeface</label><select value={printOptions.titlePageFont} onChange={event => setPrintOptions(current => ({ ...current, titlePageFont: event.target.value as PrintPDFOptions['titlePageFont'] }))}>{DISPLAY_FONTS.map(font => <option key={font.id} value={font.id}>{font.label} / {font.use}</option>)}</select></div><label className="export-option-label">Placement</label><div className="export-choice-strip">{(['classic', 'minimal', 'dramatic'] as const).map(style => <button type="button" key={style} className={printOptions.titlePageStyle === style ? 'selected' : ''} onClick={() => setPrintOptions(current => ({ ...current, titlePageStyle: style }))}>{style[0].toUpperCase() + style.slice(1)}</button>)}</div><Toggle checked={printOptions.titlePageShowAuthor} onChange={value => setPrintOptions(current => ({ ...current, titlePageShowAuthor: value }))} label="Show author" /><Toggle checked={printOptions.titlePageShowPublisher} onChange={value => setPrintOptions(current => ({ ...current, titlePageShowPublisher: value }))} label="Show publisher or imprint" /></div>
-    </div>
-  }
-
-  function renderDesign() {
-    if (!format) return null
-    const info = FORMAT_INFO[format]
-    return <>
-      <div className="export-step-heading export-step-heading-row"><div><span className="export-eyebrow">Step 3 of 4</span><h2>Shape the {info.label} edition</h2><p>{format === 'print-pdf' ? 'Make a few deliberate book-design decisions; everything else receives sensible defaults.' : 'Choose how this edition should behave after it leaves Draftline.'}</p></div><span className="export-heading-format"><FormatIcon format={format} />{info.label}</span></div>
-      {format === 'epub' && <div className="export-simple-design export-epub-design"><div className="export-reader-preview" aria-hidden="true"><div className={`${epubOptions.chapterStyle} ${epubOptions.paragraphStyle} ${epubOptions.fontFamily}`}><span>Chapter One</span><i /><i /><i /><b>{epubOptions.sceneBreakStyle === 'asterism' ? '⁂' : epubOptions.sceneBreakStyle === 'rule' ? '—' : ''}</b><i /><i /></div></div><div className="export-reading-controls"><h3>Responsive reader edition</h3><p>Choose the publisher defaults. Compatible readers can still override type, size, spacing, and theme for accessibility.</p><div className="export-select-grid"><label>Typeface<select value={epubOptions.fontFamily} onChange={event => setEpubOptions(current => ({ ...current, fontFamily: event.target.value as EPUBOptions['fontFamily'] }))}><option value="reader">Reader default (smallest file)</option><option value="merriweather">Embed Merriweather</option><option value="lato">Embed Lato</option></select></label><label>Paragraphs<select value={epubOptions.paragraphStyle} onChange={event => setEpubOptions(current => ({ ...current, paragraphStyle: event.target.value as EPUBOptions['paragraphStyle'] }))}><option value="indented">Book-style indents</option><option value="spaced">Space between paragraphs</option></select></label><label>Alignment<select value={epubOptions.textAlign} onChange={event => setEpubOptions(current => ({ ...current, textAlign: event.target.value as EPUBOptions['textAlign'] }))}><option value="reader">Reader default</option><option value="left">Left aligned</option><option value="justify">Justified</option></select></label><label>Chapter opening<select value={epubOptions.chapterStyle} onChange={event => setEpubOptions(current => ({ ...current, chapterStyle: event.target.value as EPUBOptions['chapterStyle'] }))}><option value="classic">Classic / lowered title</option><option value="minimal">Minimal / compact title</option></select></label><label>Scene breaks<select value={epubOptions.sceneBreakStyle} onChange={event => setEpubOptions(current => ({ ...current, sceneBreakStyle: event.target.value as EPUBOptions['sceneBreakStyle'] }))}><option value="asterism">Asterism</option><option value="rule">Short rule</option><option value="space">Open space</option></select></label></div><ul><li><CheckIcon />Linked contents and chapter navigation</li><li><CheckIcon />{source ? `Identifier, cover and copyright page from ${source.name}` : 'Storefront metadata from Book Details'}</li><li><CheckIcon />Valid reflowable XHTML, never raw editor markup</li></ul></div></div>}
-      {format === 'docx' && <div className="export-simple-design"><div className="export-document-preview" aria-hidden="true"><div><i /><i /><i /><i /><i /><i /><i /></div></div><div><h3>Clean editable manuscript</h3><p>Draftline will favor familiar Word styles and editable structure over a locked visual design.</p><ul><li><CheckIcon />One heading per chapter</li><li><CheckIcon />Explicit page breaks</li><li><CheckIcon />Readable body-text defaults</li></ul></div></div>}
-      {format === 'pdf' && <div className="export-simple-design export-pdf-design"><div className="export-document-preview pdf" aria-hidden="true"><div className={pdfOptions.fontFamily}><span>{book?.metadata.title || 'Untitled'}</span><i /><i /><i /><i /><i /></div></div><div className="export-reading-controls"><h3>Comfortable reading copy</h3><p>A fixed-layout edition for screens, reviewers, home printers, or archiving.</p><div className="export-select-grid"><label>Page size<select value={pdfOptions.pageSize} onChange={event => setPdfOptions(current => ({ ...current, pageSize: event.target.value as PDFOptions['pageSize'] }))}><option value="letter">US Letter</option><option value="a4">A4</option><option value="6x9">6 x 9 in</option><option value="5.5x8.5">5.5 x 8.5 in</option><option value="5x8">5 x 8 in</option></select></label><label>Typeface<select value={pdfOptions.fontFamily} onChange={event => setPdfOptions(current => ({ ...current, fontFamily: event.target.value as PDFOptions['fontFamily'] }))}><option value="merriweather">Merriweather</option><option value="lato">Lato</option></select></label><label>Type size<select value={pdfOptions.fontSize} onChange={event => setPdfOptions(current => ({ ...current, fontSize: Number(event.target.value) as PDFOptions['fontSize'] }))}><option value={11}>11 pt</option><option value={12}>12 pt</option><option value={14}>14 pt</option></select></label><label>Line spacing<select value={pdfOptions.lineHeight} onChange={event => setPdfOptions(current => ({ ...current, lineHeight: Number(event.target.value) as PDFOptions['lineHeight'] }))}><option value={1.3}>Tight / 1.3</option><option value={1.4}>Book / 1.4</option><option value={1.5}>Relaxed / 1.5</option><option value={1.6}>Open / 1.6</option></select></label><label>Alignment<select value={pdfOptions.textAlign} onChange={event => setPdfOptions(current => ({ ...current, textAlign: event.target.value as PDFOptions['textAlign'] }))}><option value="left">Left aligned</option><option value="justify">Justified</option></select></label><label>First-line indent<span className="export-field-with-unit"><input value={pdfOptions.paragraphIndent} onChange={event => setPdfOptions(current => ({ ...current, paragraphIndent: event.target.value }))} inputMode="decimal" /> in</span></label></div></div></div>}
-      {format === 'print-pdf' && <><div className="export-design-tabs" role="tablist">{([['page', 'Page'], ['typography', 'Typography'], ['furniture', 'Furniture'], ['title', 'Title page']] as Array<[PrintPanel, string]>).map(([id, label]) => <button type="button" key={id} role="tab" aria-selected={printPanel === id} className={printPanel === id ? 'selected' : ''} onClick={() => setPrintPanel(id)}>{label}</button>)}</div>{printPanel === 'page' && renderPrintPagePanel()}{printPanel === 'typography' && renderPrintTypographyPanel()}{printPanel === 'furniture' && renderPrintFurniturePanel()}{printPanel === 'title' && renderPrintTitlePanel()}</>}
-    </>
-  }
-
-  function renderReview() {
-    if (!format) return null
-    const included = [currentOptions.includeCopyright && (source || book?.copyright) ? 'Copyright page' : '', currentOptions.includeFrontMatter && stats.frontCount ? `${stats.frontCount} front matter ${stats.frontCount === 1 ? 'item' : 'items'}` : '', `${stats.bodyCount} manuscript ${stats.bodyCount === 1 ? 'chapter' : 'chapters'}`, currentOptions.includeBackMatter && stats.backCount ? `${stats.backCount} back matter ${stats.backCount === 1 ? 'item' : 'items'}` : ''].filter(Boolean)
-    return <>
-      <div className="export-step-heading"><span className="export-eyebrow">Step 4 of 4</span><h2>Review this edition</h2><p>One final check before choosing where to save the file.</p></div>
-      <div className="export-review-layout">
-        <div className="export-review-hero"><span className="export-format-icon"><FormatIcon format={format} /></span><div><small>{FORMAT_INFO[format].intent}</small><strong>{book?.metadata.title || 'Untitled'}</strong><span>{book?.metadata.author ? `by ${book.metadata.author}` : 'Author not set'}</span></div><em>{FORMAT_INFO[format].extension}</em></div>
-        {source
-          ? <div className="export-review-card"><div className="export-review-section"><span>Edition</span><strong>{source.name}</strong><p>{source.isbn13} · identifier, cover art and copyright page come from this record</p></div><button type="button" onClick={() => setStep('destination')}>Change edition</button></div>
-          : <div className="export-review-card"><div className="export-review-section"><span>Edition</span><strong>Not registered</strong><p>Exported from scratch. Draftline will offer to attach an ISBN afterwards.</p></div><button type="button" onClick={() => setStep('destination')}>Change</button></div>}
-        <div className="export-review-card"><div className="export-review-section"><span>Contents</span><strong>{selectedWords.toLocaleString()} words</strong><p>{included.join(' · ')}</p></div><button type="button" onClick={() => setStep('contents')}>Edit contents</button></div>
-        <div className="export-review-card"><div className="export-review-section"><span>Design</span><strong>{format === 'print-pdf' ? `${TRIM_SIZES[printOptions.trimSize].label}${printOptions.trimSize === 'custom' ? ` (${printOptions.customWidth} x ${printOptions.customHeight})` : ''} / ${printOptions.fontFamily} ${printOptions.fontSize} pt` : format === 'pdf' ? `${pdfOptions.pageSize.toUpperCase()} / ${pdfOptions.fontFamily} ${pdfOptions.fontSize} pt` : format === 'epub' ? `${epubOptions.fontFamily === 'reader' ? 'Reader typography' : `Embedded ${epubOptions.fontFamily}`} / ${epubOptions.paragraphStyle}` : 'Editable manuscript layout'}</strong><p>{format === 'print-pdf' ? `${printOptions.textAlign === 'justify' ? 'Justified' : 'Left aligned'} / ${printOptions.runningHeaders ? 'Running headers' : 'No running headers'} / ${printOptions.generateTOC ? 'Contents page' : 'No contents page'}` : format === 'epub' ? `${epubOptions.chapterStyle} chapters / ${epubOptions.sceneBreakStyle} scene breaks / ${epubOptions.textAlign} alignment` : FORMAT_INFO[format].detail}</p></div><button type="button" onClick={() => setStep('design')}>Edit design</button></div>
-      </div>
-      {cancelNote && <p className="export-ed-cancelled" role="status">{cancelNote}</p>}
-      <div className="export-save-note"><CheckIcon /><span>Draftline will open your system’s save dialog next. Your writing is not changed. {textNote}</span></div>
-    </>
-  }
-
-  // The two things that can be offered once the file exists.
-  function renderAftermath() {
-    return <>
-      {frozenNote && <p className="export-ed-frozen">{frozenNote}</p>}
-      {pendingChanges.length > 0 && <div className="export-ed-writeback">
-        <strong>Save these back to {source ? source.name : 'the edition'}?</strong>
-        <ul>{pendingChanges.map(change => <li key={change.label}><span>{change.label}</span><em>{change.from} → {change.to}</em></li>)}</ul>
-        <p>An ISBN never changes. These are the settings this edition is exported with, not the number it is sold under.</p>
-        <div className="dialog-actions"><button className="dialog-btn" onClick={() => setPendingChanges([])}>Not this time</button><button className="dialog-btn primary" onClick={saveBackToEdition}>Save to the edition</button></div>
-      </div>}
-      {savedBack && <p className="export-ed-settled">Saved to the edition record.</p>}
-      {offerISBN && <div className="export-ed-writeback">
-        <strong>Does this file have an ISBN?</strong>
-        <p>Attaching one registers it as an edition, so the number, the specification you just used and the copyright page stay with the book. Leave it blank if it has none.</p>
-        <label className="export-ed-isbn-field">ISBN<input value={isbnDraft} onChange={event => { setIsbnDraft(event.target.value); setIsbnError('') }} placeholder="978-…" inputMode="numeric" /></label>
-        {isbnError && <p className="export-trim-error" role="alert">{isbnError}</p>}
-        <div className="dialog-actions"><button className="dialog-btn" onClick={() => setOfferISBN(false)}>No ISBN</button><button className="dialog-btn primary" onClick={registerExportAsEdition}>Register this edition</button></div>
-      </div>}
-      {registered && <p className="export-ed-settled">Registered {registered}. It is on the Book &amp; Editions screen now.</p>}
-    </>
+  // Everything that is not an edition stays what it has always been: one file
+  // at a time, one save dialog each, nothing written back to the project.
+  async function runLooseFiles() {
+    if (!book) return
+    const done: Written[] = []
+    for (const item of chosen) {
+      const run = await runExportWithFreeze({
+        book,
+        formatID: '',
+        freeze: () => FreezeSnapshot(book as any, '') as Promise<FreezeOutcome>,
+        write: outgoing => writeOne(item, outgoing),
+        commit: () => undefined,
+        discard: id => { void DiscardSnapshot(id) },
+      })
+      if (run.cancelled) {
+        setCancelNote(run.note || 'Nothing was written. The save window was closed.')
+        break
+      }
+      if (!run.ok) {
+        setError(run.error)
+        break
+      }
+      done.push({ name: item.label, path: run.filePath })
+    }
+    setWritten(done)
+    if (done.length) setStatusMessage(`Exported ${done.length} ${done.length === 1 ? 'file' : 'files'}`)
   }
 
   if (!book) return null
-  if (step === 'exporting') return <div className="dialog-overlay" onKeyDown={event => event.key === 'Escape' && !exporting && closeExportWizard()}><div className="dialog export-wizard export-wizard-result">
-    {exporting && <div className="export-result-state"><div className="export-progress-spinner" /><span className="export-eyebrow">Building edition</span><h2>Creating your {format ? FORMAT_INFO[format].label : 'export'}…</h2><p>Draftline is assembling the selected book sections.</p></div>}
-    {exportError && <div className="export-result-state error"><span className="export-result-icon">!</span><span className="export-eyebrow">Export interrupted</span><h2>That file could not be created</h2><p>{exportError}</p><div className="dialog-actions"><button className="dialog-btn" onClick={() => setStep('review')}>Back to review</button><button className="dialog-btn primary" onClick={handleExport}>Try again</button></div></div>}
-    {exportSuccess && <div className="export-result-state success"><span className="export-result-icon"><CheckIcon /></span><span className="export-eyebrow">Edition complete</span><h2>Your book is ready</h2><p>{exportedPath}</p>{renderAftermath()}<div className="dialog-actions"><button className="dialog-btn primary" onClick={closeExportWizard}>Done</button></div></div>}
-  </div></div>
 
-  return <div className="dialog-overlay" onKeyDown={event => event.key === 'Escape' && closeExportWizard()}><div className="dialog export-wizard">
-    <header className="export-wizard-header"><div><span className="export-wizard-mark">D</span><strong>Create an edition</strong></div><button type="button" className="export-close" onClick={closeExportWizard} aria-label="Close export wizard">×</button></header>
-    <nav className="export-stepper" aria-label="Export progress">{FLOW_STEPS.map((item, index) => { const complete = index < currentStepIndex; const active = item.id === step; return <button type="button" key={item.id} disabled={index > currentStepIndex} className={`${active ? 'active' : ''}${complete ? ' complete' : ''}`} onClick={() => goToCompletedStep(item.id)} aria-current={active ? 'step' : undefined}><span>{complete ? <CheckIcon /> : index + 1}</span><em>{item.label}</em></button> })}</nav>
-    <div className="export-wizard-body">
-      <aside className="export-edition-summary"><span className="export-summary-kicker">Current book</span><h3>{title}</h3><p>{book.metadata.author || 'Author not set'}</p><div className="export-summary-stats"><span><strong>{stats.bodyCount}</strong> chapters</span><span><strong>{stats.words.toLocaleString()}</strong> words</span></div>
-        {source ? <div className="export-ed-source">
-          <span className="export-summary-kicker">Using edition</span>
-          <div className="export-ed-source-head"><CoverChip src={source.thumbURL} title={source.title} className="export-ed-source-cover" /><span><strong>{source.name}</strong><em>{source.isbn13}</em></span></div>
-          <ul className="export-ed-prefill">{source.prefill.map(line => <li key={line.k}><CheckIcon /><span><i>{line.k}</i> {line.v}</span></li>)}</ul>
-          {source.note && <small className="export-ed-source-note">{source.note}</small>}
-          <small className="export-ed-source-text">{textNote}</small>
-          <small className="export-ed-source-foot">{source.footnote}</small>
+  // ── The screens ──────────────────────────────────────────────────────────
+
+  if (screen === 'exporting') {
+    return <div className="dialog-overlay"><div className="dialog export-wizard export-wizard-result">
+      {busy && <div className="export-result-state">
+        <div className="export-progress-spinner" />
+        <h2>Writing {chosen.length === 1 ? 'your file' : `${chosen.length} files`}…</h2>
+        <p>Draftline is assembling the chosen formats.</p>
+      </div>}
+      {!busy && error && <div className="export-result-state error">
+        <span className="export-result-icon">!</span>
+        <h2>That file could not be created</h2>
+        <p>{error}</p>
+        <div className="dialog-actions">
+          <button className="dialog-btn" onClick={() => setScreen(steps[steps.length - 1])}>Back</button>
+          <button className="dialog-btn primary" onClick={() => void runExport()}>Try again</button>
         </div>
-        : format ? <div className="export-summary-format"><span className="export-format-icon"><FormatIcon format={format} /></span><span><small>Selected edition</small><strong>{OUTPUT_LABELS[format]}</strong></span><button type="button" onClick={() => setStep('destination')}>Change</button></div>
-          : <div className="export-summary-empty">Pick a registered edition, or start from scratch, to begin.</div>}
-        <div className="export-summary-foot"><span>Original protected</span><small>Exporting creates a separate file and never replaces the open Draftline project.</small></div></aside>
-      <main className="export-wizard-main"><div className="export-step-content">{step === 'destination' && renderDestination()}{step === 'contents' && renderContents()}{step === 'design' && renderDesign()}{step === 'review' && renderReview()}</div><footer className="export-wizard-footer"><span className="export-ed-footer-hint">{format ? (source ? 'Using registered metadata. Nothing is written to the manuscript.' : '') : 'Choose an edition or a format to continue.'}</span><span className="export-ed-footer-actions"><button type="button" className="dialog-btn" onClick={handleBack}>{step === 'destination' ? 'Cancel' : 'Back'}</button>{step !== 'review' ? <button type="button" className="dialog-btn primary" onClick={handleNext} disabled={(step === 'destination' && !format) || !!trimError}>Continue</button> : <button type="button" className="dialog-btn primary export-create-button" onClick={handleExport}>Choose location and export</button>}</span></footer></main>
+      </div>}
+      {!busy && !error && <div className="export-result-state success">
+        <span className="export-result-icon"><TickGlyph /></span>
+        <h2>{written.length ? 'Your book is ready' : 'Nothing was written'}</h2>
+        <div className="export-written">
+          {written.map(file => <div className="export-written-row" key={file.path}><strong>{file.name}</strong><span>{file.path}</span></div>)}
+        </div>
+        {note && <p className="export-ed-frozen">{note}</p>}
+        {cancelNote && <p className="export-ed-cancelled">{cancelNote}</p>}
+        <div className="dialog-actions"><button className="dialog-btn primary" onClick={closeExportWizard}>Done</button></div>
+      </div>}
+    </div></div>
+  }
+
+  const header = (
+    <header className="export-head">
+      <span className="export-head-mark">D</span>
+      <strong>Export</strong>
+      <span className="export-head-sub">
+        {[title, book.metadata.author, `${stats.chapters} chapters`, `${stats.words.toLocaleString()} words`]
+          .filter(Boolean).join(' · ')}
+      </span>
+      <button type="button" className="export-head-close" onClick={closeExportWizard} aria-label="Close export">
+        <CloseGlyph />
+      </button>
+    </header>
+  )
+
+  const footer = (hint: string) => (
+    <footer className="export-foot">
+      <span className="export-foot-hint">{hint}</span>
+      <span className="export-foot-actions">
+        <button type="button" className="dialog-btn" onClick={goBack}>{screen === 'start' ? 'Cancel' : 'Back'}</button>
+        <button type="button" className="dialog-btn primary" onClick={goNext} disabled={!canContinue}>
+          {lastStep && inWizard ? 'Export…' : 'Continue'}
+        </button>
+      </span>
+    </footer>
+  )
+
+  if (screen === 'start') {
+    return <div className="dialog-overlay" onKeyDown={e => e.key === 'Escape' && closeExportWizard()}>
+      <div className="dialog export-wizard">
+        {header}
+        {editions.length > 0
+          ? <div className="export-start">
+            <div className="export-pane-head">
+              <h2>What are you exporting?</h2>
+              <p>Editions carry their cover art, format records and saved settings. Pick one to publish, or make a copy that isn’t tied to an edition.</p>
+            </div>
+            <div className="export-group">
+              <div className="export-group-head">
+                <span className="chapter-section-label">Your editions</span>
+                <small>Manage in Book Info…</small>
+              </div>
+              <div className="export-ed-grid">
+                {editions.map(one => {
+                  const thumb = coverThumbURL(one)
+                  const locked = one.formats.some(format => (format.snapshot_id ?? '').trim())
+                  return (
+                    <div className="export-ed-card" key={one.id}>
+                      <div className="export-ed-cover">
+                        {thumb ? <img src={thumb} alt="" /> : <span className="export-ed-plate"><em>{title}</em><i>{book.metadata.author}</i></span>}
+                      </div>
+                      <div className="export-ed-main">
+                        <div className="export-ed-name">
+                          <strong>{one.label || 'Edition'}</strong>
+                          {one.status && <span className="export-badge ok">{one.status}</span>}
+                        </div>
+                        <span className="export-ed-sub">{[one.year, book.metadata.imprint || book.metadata.publisher].filter(Boolean).join(' · ')}</span>
+                        <div className="export-ed-formats">
+                          {one.formats.map(format => (
+                            <div className="export-ed-format" key={format.id}>
+                              <span className={`export-ed-dot ${format.kind}`} aria-hidden="true" />
+                              <span className="export-ed-fmt">{format.format || 'Format'}</span>
+                              <span className="export-ed-isbn">{(format.isbn13 ?? '').trim() || '—'}</span>
+                            </div>
+                          ))}
+                          {!one.formats.length && <span className="export-ed-empty">No formats yet.</span>}
+                        </div>
+                        <div className="export-ed-actions">
+                          <button type="button" className="dialog-btn primary sm" disabled={!one.formats.length}
+                            onClick={() => startEdition(one.id)}>Export this edition</button>
+                          {locked && <span className="export-ed-locked"><LockGlyph />Text locked</span>}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+            <div className="export-group">
+              <span className="chapter-section-label">Not tied to an edition</span>
+              <div className="export-loose-grid">
+                <button type="button" className="export-loose-card" onClick={startReading}>
+                  <span className="export-loose-icon"><SparkGlyph /></span>
+                  <span className="export-loose-text">
+                    <strong>Share a reading copy</strong>
+                    <small>A quick PDF of the current text for beta readers or reviewers. Uses the current draft, nothing is locked.</small>
+                    <em>PDF · US Letter · Merriweather 12 pt</em>
+                  </span>
+                </button>
+                <button type="button" className="export-loose-card" onClick={startCustom}>
+                  <span className="export-loose-icon"><StackGlyph /></span>
+                  <span className="export-loose-text">
+                    <strong>Create an export from scratch</strong>
+                    <small>Choose any mix of DOCX, PDF, print PDF and EPUB and set every option yourself. Nothing is written back to an edition.</small>
+                    <em>Any format · current draft</em>
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+          : <div className="export-start">
+            <div className="export-pane-head">
+              <h2>Export the current draft</h2>
+              <p>Pick everything you need in one pass. Each format gets its own settings on the next step.</p>
+            </div>
+            <div className="export-pick-grid">
+              {scratchItems().map(item => {
+                const on = selected.includes(item.id)
+                return (
+                  <button type="button" key={item.id} className={`export-pick-card${on ? ' selected' : ''}`}
+                    onClick={() => toggle(item.id)} aria-pressed={on}>
+                    <span className="export-pick-top">
+                      <span className="export-pick-icon"><FormatGlyph output={item.output} /></span>
+                      <span className={`export-check${on ? ' on' : ''}`} aria-hidden="true">{on && <TickGlyph />}</span>
+                    </span>
+                    <span className="export-pick-body">
+                      <strong>{item.label}</strong>
+                      <small>{item.desc}</small>
+                      <em>{item.meta}</em>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            <div className="export-note-panel">
+              <span className="export-note-text">
+                <strong>Publishing this book?</strong>
+                <small>Register an edition in Book Info to keep your cover art and format settings together. Exports can then lock the text so every reprint matches.</small>
+              </span>
+            </div>
+          </div>}
+        {/* The gallery has no footer: every card on it is its own way in. The
+            format picker does, because it is a selection that has to be
+            confirmed. */}
+        {editions.length === 0 && footer(footerHint)}
+      </div>
     </div>
-  </div></div>
+  }
+
+  const summaryInput = {
+    items: chosen, touched: touched.length > 0, fromEdition: mode === 'edition',
+    includeArt: mode !== 'reading' && includeArt, lock, fileCount: files,
+  }
+
+  return <div className="dialog-overlay" onKeyDown={e => e.key === 'Escape' && closeExportWizard()}>
+    <div className="dialog export-wizard">
+      {header}
+      <div className="export-body">
+        <aside className="export-rail">
+          <div className="export-rail-ctx">
+            <span className="chapter-section-label">{mode === 'edition' ? 'Exporting edition' : 'Exporting'}</span>
+            <div className="export-rail-book">
+              {edition && coverThumbURL(edition) && <img className="export-rail-cover" src={coverThumbURL(edition)} alt="" />}
+              <span className="export-rail-text">
+                <strong>{mode === 'edition' ? (edition?.label || 'Edition') : mode === 'reading' ? 'Reading copy' : 'Custom export'}</strong>
+                <small>{mode === 'edition'
+                  ? [edition?.year, `${edition?.formats.length ?? 0} formats`].filter(Boolean).join(' · ')
+                  : 'Current draft · no edition'}</small>
+              </span>
+            </div>
+          </div>
+          <nav className="export-steps">
+            {steps.map((id, i) => {
+              const done = i < stepIndex
+              const current = i === stepIndex
+              return (
+                <button type="button" key={id} className={`export-step${current ? ' active' : ''}${done ? ' done' : ''}`}
+                  disabled={!done} onClick={() => done && setScreen(id)}>
+                  <span className="export-step-num">{done ? <TickGlyph /> : i + 1}</span>
+                  <span className="export-step-text">
+                    <strong>{STEP_LABELS[id]}</strong>
+                    <small>{stepSummary(id, summaryInput)}</small>
+                  </span>
+                </button>
+              )
+            })}
+          </nav>
+          <div className="export-rail-foot">
+            <strong>Original protected</strong>
+            <small>Exporting writes new files and never changes the open project.</small>
+          </div>
+        </aside>
+        <main className="export-main">
+          <div className="export-pane">
+            <ExportSteps
+              step={screen as FlowStep} mode={mode} edition={edition} title={title}
+              offered={offered} selected={selected} onToggle={toggle} chosen={chosen}
+              tab={activeItem?.id ?? ''} onTab={setTab} touched={touched}
+              optionsFor={optionsFor} onField={setField} looseValue={looseValue} onLoose={setLoose}
+              includeArt={includeArt} onIncludeArt={setIncludeArt} art={art}
+              onChooseArt={id => void chooseArtwork(id)} artError={artError}
+              lock={lock} onLock={setLock} review={review} words={stats.words}
+            />
+          </div>
+          {footer(footerHint)}
+        </main>
+      </div>
+    </div>
+  </div>
 }

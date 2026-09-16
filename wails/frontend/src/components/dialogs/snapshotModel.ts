@@ -151,6 +151,90 @@ export const SNAPSHOT_SHARED_NOTE =
 export const SNAPSHOT_RELEASE_NOTE =
   'Releasing the frozen text does not change the book, and does not touch a format that shares it. When nothing points at those words any more, the next save drops them and the project file gets smaller.'
 
+// ── The edition's own snapshot ─────────────────────────────────────────────
+
+// A snapshot belongs to an edition, not to one of its ISBNs. Every format of
+// an edition that has been exported with the text locked points at the same
+// record, which is why releasing it is a decision about the edition and why
+// the Book & Editions screen asks about it there.
+export function editionSnapshot(
+  index: EditionIndex | undefined, edition: Edition | undefined,
+): EditionSnapshot | undefined {
+  for (const format of edition?.formats ?? []) {
+    const found = snapshotFor(index, format)
+    if (found) return found
+  }
+  return undefined
+}
+
+/** Which of the edition's formats were published from the locked text. */
+export function formatsOnSnapshot(edition: Edition | undefined, snapshotID: string): string[] {
+  const id = (snapshotID ?? '').trim()
+  if (!id) return []
+  return (edition?.formats ?? [])
+    .filter(format => format.snapshot_id === id)
+    .map(format => (format.format ?? '').trim() || 'a format')
+}
+
+/**
+ * How far the working draft has moved since the text was locked.
+ *
+ * It is the one line in the release dialog that is not an opinion: it says, in
+ * words, what the author would start exporting instead.
+ */
+export function draftDrift(snapshot: EditionSnapshot | undefined, draftWords: number): string {
+  if (!snapshot) return ''
+  const delta = draftWords - snapshot.word_count
+  if (delta === 0) return 'the same length'
+  const size = Math.abs(delta).toLocaleString()
+  return delta > 0 ? `+${size} words since` : `${size} words shorter since`
+}
+
+/**
+ * The facts under the snapshot on the edition panel.
+ *
+ * "Formats using it" is a reference count rather than a tally of exports:
+ * Draftline records which ISBNs stand on these words, and does not count how
+ * many times a file was written from them.
+ */
+export function editionSnapshotRows(
+  index: EditionIndex | undefined, snapshot: EditionSnapshot | undefined, draftWords: number,
+): Fact[] {
+  if (!snapshot) return []
+  const used = referenceCount(index, snapshot.id)
+  return [
+    { label: 'Locked on', value: frozenLabel(snapshot.frozen) || 'unknown' },
+    { label: 'Words', value: snapshot.word_count.toLocaleString() },
+    { label: 'Sections', value: String(snapshot.sections) },
+    { label: 'Formats using it', value: `${used} ${used === 1 ? 'format' : 'formats'}` },
+    { label: 'Working draft', value: draftDrift(snapshot, draftWords) || 'unchanged' },
+    { label: 'Fingerprint', value: snapshot.id.slice(0, 8) },
+  ]
+}
+
+/**
+ * Whether what was typed releases the snapshot.
+ *
+ * The last step of the release confirmation asks for the edition's own name
+ * rather than for "yes" or a ticked box, because a name cannot be produced by
+ * a reflex. Case and surrounding space are forgiven; nothing else is. It is a
+ * function so that the one rule guarding an irreversible act can be tested.
+ */
+export function releaseConfirmed(edition: Edition | undefined, typed: string): boolean {
+  const name = (edition?.label ?? '').trim()
+  if (!name) return false
+  return typed.trim().toLowerCase() === name.toLowerCase()
+}
+
+/** The three steps, in order. Step three is the only one that can act. */
+export const RELEASE_STEPS = 3
+
+export function releaseStepLabel(step: number): string {
+  if (step <= 1) return 'Yes, continue'
+  if (step === 2) return 'I understand, continue'
+  return 'Release snapshot'
+}
+
 // ── Changing the record ────────────────────────────────────────────────────
 
 const withFormats = (
