@@ -75,6 +75,21 @@ export function validISBN(value: string): boolean {
   return false
 }
 
+// isbn10 is the ISBN-10 form of an ISBN-13, or '' when there is none. Only
+// the 978 range converts: a 979 ISBN has no ISBN-10 at all, which is a fact
+// about the number rather than a failure, so the screen shows nothing.
+// Mirrors ISBN10 in internal/types/isbn.go.
+export function isbn10(value: string): string {
+  const d = normalizeISBN(value)
+  if (d.length === 10) return validISBN(d) ? d : ''
+  if (d.length !== 13 || !validISBN(d) || !d.startsWith('978')) return ''
+  const body = d.slice(3, 12)
+  let sum = 0
+  for (let i = 0; i < 9; i++) sum += (body.charCodeAt(i) - 48) * (10 - i)
+  const check = (11 - (sum % 11)) % 11
+  return body + (check === 10 ? 'X' : String(check))
+}
+
 // ── Validation ─────────────────────────────────────────────────────────────
 
 export interface FieldProblem {

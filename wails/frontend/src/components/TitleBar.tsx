@@ -166,11 +166,8 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
           {settings.default_publisher && (
             <div className="titlebar-author-pop-imprint">{settings.default_publisher}</div>
           )}
-          {settings.default_copyright && (
-            <div className="titlebar-author-pop-copyright">{settings.default_copyright}</div>
-          )}
-          {!settings.default_author && !settings.default_publisher && !settings.default_copyright && (
-            <div className="titlebar-author-pop-imprint">Set your name, imprint, and copyright template so new books start prefilled.</div>
+          {!settings.default_author && !settings.default_publisher && (
+            <div className="titlebar-author-pop-imprint">Set your name and imprint so new books start prefilled.</div>
           )}
           <button
             className="dialog-btn titlebar-author-pop-edit"

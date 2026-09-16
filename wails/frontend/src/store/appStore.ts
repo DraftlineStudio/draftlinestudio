@@ -11,6 +11,10 @@ export interface AppSettings {
   // Application
   default_author: string
   default_publisher: string
+  // Retired. The copyright page is written from the book record on Book &
+  // Editions; nothing reads this any more. The field stays so a settings file
+  // written before the change still parses, and so a round-trip through the
+  // settings screen does not quietly delete what an author typed into it.
   default_copyright: string
   default_save_dir: string
   dark_mode: boolean

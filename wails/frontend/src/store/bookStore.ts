@@ -12,6 +12,7 @@ import { types } from '../../wailsjs/go/models'
 import { useAppStore } from './appStore'
 import { useEditorStore, type DiffTarget, type EditorInstance, type EditorSelection } from './editorStore'
 import { useStoryBibleStore } from './storyBibleStore'
+import { createEditionActions, type EditionActions } from './editions'
 import { resetChapterHistorySession, saveAIChapterHistory, saveManualChapterSnapshot, scheduleChapterHistory as queueChapterHistory, type ChapterHistoryDependencies } from './chapterHistory'
 
 // Status-bar text lives in appStore (app-level UI state); this is the funnel
@@ -204,7 +205,7 @@ interface DialogState {
   showNewBookWizard: boolean
 }
 
-interface BookStore {
+interface BookStore extends EditionActions {
   // Core state
   book: BookData | null
   currentSection: Section
@@ -709,6 +710,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
     set(state => ({ book: { ...book, copyright: html }, isDirty: true, analysisRevision: state.analysisRevision + 1 }))
     scheduleAutoSave()
   },
+  ...createEditionActions(() => get().book, book => { set({ book, isDirty: true }); scheduleAutoSave() }),
 
   updateReadAloudCast: (cast) => {
     const { book } = get()

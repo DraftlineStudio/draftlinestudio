@@ -8707,3 +8707,138 @@ html, body, #root {
 .pl-import-notice { font-size: 11px; color: #E5C07B; line-height: 1.5; }
 .pl-import-foot { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 .pl-import-foot .pl-dialog-hint { flex: 1; }
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   BOOK & EDITIONS · EDITIONS AND FORMATS
+   The rail's edition groups and the format panel beside them
+   (components/dialogs/BookInfoDialog.tsx, EditionPane.tsx). Prefix: bi-ed-.
+   Two conventions carry meaning here and are not decoration:
+     · the coloured dot on a format row is its kind, reusing the section
+       colours the chapter rail already uses for front matter, body and back
+       matter, so the same colour means the same family of thing;
+     · a calculated value (.bi-ed-static) is drawn as monospace text with no
+       input box, because it cannot be typed into. That is the interface
+       saying "derived, never stored".
+   ═══════════════════════════════════════════════════════════════════════════ */
+.bi-dialog .dialog-btn.sm { height: 25px; padding: 0 10px; font-size: 11.5px; }
+.bi-dialog .dialog-input.mono, .bi-dialog .bi-ed-static.mono { font-family: 'IBM Plex Mono', 'Fira Code', monospace; }
+
+/* Rail */
+.bi-ed-rail-count { margin-left: auto; font-size: 10px; color: var(--text-muted); }
+.bi-ed-rail-head { display: flex; align-items: baseline; gap: 8px; }
+.bi-ed-groups { display: flex; flex-direction: column; }
+.bi-ed-group { padding-bottom: 4px; }
+.bi-ed-group-head {
+  display: flex; align-items: baseline; gap: 6px; width: 100%;
+  padding: 10px 12px 4px; border: 0; border-left: 2px solid transparent;
+  background: transparent; text-align: left; font: inherit; cursor: pointer;
+}
+.bi-ed-group-head:hover { background: var(--bg-hover); }
+.bi-ed-group-head.active { background: var(--bg-active); border-left-color: var(--app-accent); }
+.bi-ed-group-label { font-size: 11.5px; font-weight: 600; color: var(--text-primary); }
+.bi-ed-group-year { font-size: 10.5px; color: var(--text-muted); }
+.bi-ed-group-empty { padding: 2px 12px 4px; font-size: 10.5px; color: var(--text-muted); }
+.bi-ed-format-row {
+  display: flex; align-items: center; gap: 9px; width: 100%;
+  padding: 6px 12px; border: 0; border-left: 2px solid transparent;
+  background: transparent; text-align: left; font: inherit; cursor: pointer;
+}
+.bi-ed-format-row:hover { background: var(--bg-hover); }
+.bi-ed-format-row.active { background: var(--bg-active); border-left-color: var(--app-accent); }
+.bi-ed-dot { width: 5px; height: 5px; border-radius: 50%; flex: none; }
+.bi-ed-format-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.bi-ed-format-name { font-size: 12.5px; color: var(--text-primary); }
+.bi-ed-format-isbn {
+  font-size: 10.5px; color: var(--text-muted);
+  font-family: 'IBM Plex Mono', 'Fira Code', monospace;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.bi-ed-rail-foot {
+  position: sticky; bottom: 0; margin-top: 8px; padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 6px;
+  border-top: 1px solid var(--border); background: var(--bg-panel);
+}
+.bi-ed-add-format { display: flex; gap: 6px; }
+.bi-ed-add-format .dialog-select { flex: 0 0 82px; height: 25px; font-size: 11.5px; }
+.bi-ed-add-format .dialog-btn.sm { flex: 1; min-width: 0; }
+
+/* Badges. A status is a state of the world and the colour says which kind:
+   settled, under way, not started, or wanting attention. */
+.bi-ed-badge {
+  flex: none; padding: 1px 7px; border-radius: 9px;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.2px; white-space: nowrap;
+  border: 1px solid var(--border); color: var(--text-secondary); background: transparent;
+}
+.bi-ed-badge.ok { border-color: var(--status-success); color: var(--status-success); }
+.bi-ed-badge.accent { border-color: var(--app-accent); color: var(--app-accent-text); }
+.bi-ed-badge.warn { border-color: #E5C07B; color: #E5C07B; }
+.bi-ed-badge.neutral { border-color: var(--border-strong); color: var(--text-muted); }
+
+/* Panel */
+.bi-ed-pane { display: flex; flex-direction: column; gap: 4px; }
+.bi-ed-head { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+.bi-ed-head-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.bi-ed-title-line { display: flex; align-items: center; gap: 9px; }
+.bi-ed-title { font-size: 15px; font-weight: 600; }
+.bi-ed-subtitle { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+.bi-ed-head-actions { margin-left: auto; display: flex; gap: 6px; flex: none; }
+.bi-ed-static {
+  min-height: 32px; display: flex; align-items: center;
+  font-size: 12.5px; color: var(--text-secondary);
+}
+
+/* Cover and frozen text: drawn so the shape of the record is visible, and
+   labelled as not attachable, because nothing here is wired up yet. */
+.bi-ed-card {
+  display: flex; gap: 20px; align-items: flex-start; margin-bottom: 22px; padding: 16px;
+  background: var(--bg-surface-alt); border: 1px solid var(--border); border-radius: 6px;
+}
+.bi-ed-cover { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: none; }
+.bi-ed-cover-plate {
+  width: 112px; height: 168px; padding: 12px 10px; border-radius: 2px;
+  display: flex; flex-direction: column; justify-content: space-between;
+  background: var(--bg-page); color: var(--text-primary);
+  box-shadow: var(--shadow-page); font-family: var(--font-editor, Georgia, serif);
+  border: 1px dashed var(--border-strong);
+}
+.bi-ed-cover-kicker { font-size: 8px; letter-spacing: 1.4px; text-transform: uppercase; opacity: 0.7; }
+.bi-ed-cover-title { font-size: 17px; line-height: 1.15; font-weight: 700; overflow: hidden; }
+.bi-ed-cover-author { font-size: 9px; letter-spacing: 0.6px; opacity: 0.85; }
+.bi-ed-cover-caption { font-size: 10.5px; color: var(--text-muted); }
+.bi-ed-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.bi-ed-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 6px 20px; }
+.bi-ed-fact {
+  display: flex; justify-content: space-between; gap: 12px; font-size: 12px;
+  padding-bottom: 6px; border-bottom: 1px solid var(--border-subtle);
+}
+.bi-ed-fact > span:first-child { color: var(--text-secondary); }
+.bi-ed-fact > span:last-child {
+  color: var(--text-primary); text-align: right;
+  font-family: 'IBM Plex Mono', 'Fira Code', monospace; font-size: 11.5px;
+}
+.bi-ed-note { margin: 0; font-size: 11px; color: var(--text-muted); line-height: 1.6; max-width: 66ch; }
+
+/* The generated copyright page, drawn on a page-coloured card so it reads as
+   the printed thing it becomes rather than as another form. */
+.bi-ed-copyright {
+  padding: 18px 22px; border-radius: 4px; background: var(--bg-page);
+  box-shadow: var(--shadow-page); font-family: var(--font-editor, Georgia, serif);
+  font-size: 12px; line-height: 1.8; color: var(--text-primary);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.bi-ed-copyright-line { white-space: pre-wrap; min-height: 1em; }
+.bi-ed-handwritten { margin-top: 8px; max-width: 66ch; }
+
+/* Advanced disclosure */
+.bi-ed-advanced { border-top: 1px solid var(--border); padding-top: 14px; }
+.bi-ed-disclosure {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 0 0 10px; border: 0; background: transparent;
+  text-align: left; font: inherit; cursor: pointer; color: inherit;
+}
+.bi-ed-caret {
+  display: inline-block; width: 12px; color: var(--text-muted);
+  transition: transform 0.12s ease;
+}
+.bi-ed-caret.open { transform: rotate(90deg); }
+.bi-ed-revision { margin-top: 14px; }

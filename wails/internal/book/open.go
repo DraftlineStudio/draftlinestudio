@@ -281,6 +281,25 @@ func Open(path string) (types.BookData, error) {
 		return types.BookData{}, fmt.Errorf("planner entry %q could not be read: %w", "planner.json", err)
 	}
 
+	// editions/index.json is the book's publishing record: ISBNs an author
+	// cannot reissue and specifications a printer has already accepted. It is
+	// refused rather than skipped for the same reason planner.json is — a save
+	// rebuilds the archive, so a record this build cannot read is a record the
+	// next save would erase.
+	if editionsData, err := ReadZipEntry(r, editionsIndexFile); err == nil {
+		var editions types.EditionIndex
+		if err := json.Unmarshal(editionsData, &editions); err != nil {
+			return types.BookData{}, fmt.Errorf("editions data could not be parsed: %w", err)
+		}
+		editions, err = prepareEditionsData(editions)
+		if err != nil {
+			return types.BookData{}, err
+		}
+		book.Editions = &editions
+	} else if !errors.Is(err, ziputil.ErrEntryNotFound) {
+		return types.BookData{}, fmt.Errorf("editions entry %q could not be read: %w", editionsIndexFile, err)
+	}
+
 	RefreshWordCount(&book)
 	return book, nil
 }

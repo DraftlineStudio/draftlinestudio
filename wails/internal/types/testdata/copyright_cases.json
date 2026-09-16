@@ -1,0 +1,204 @@
+{
+  "about": [
+    "Worked examples for the generated copyright page. Two programs read this",
+    "file: internal/types/copyright_test.go and",
+    "frontend/src/components/dialogs/__tests__/editionModel.test.ts. The Go",
+    "generator writes the page into an exported book; the TypeScript one draws",
+    "the preview the author watches while typing. They must agree on every",
+    "line, so they are checked against these rows rather than against each",
+    "other's output.",
+    "Every name, imprint and number below is invented. The ISBNs are made up",
+    "and pass their own check digits."
+  ],
+  "cases": [
+    {
+      "name": "a first edition paperback, with a control number",
+      "metadata": {
+        "title": "The Salt Ledger",
+        "author": "Ines Marrow",
+        "copyright_holder": "Ines Marrow",
+        "publisher": "Windlass and Co.",
+        "imprint": "Windlass and Co."
+      },
+      "edition": {
+        "id": "ed-1",
+        "label": "First edition",
+        "year": "2026",
+        "revision_note": "Original release."
+      },
+      "format": {
+        "id": "ed-1-paperback",
+        "kind": "print",
+        "format": "Paperback",
+        "isbn13": "978-1-9471345-1-5",
+        "publication_date": "2026-04-14",
+        "imprint_of_record": "Windlass and Co.",
+        "rights_notice": "All rights reserved",
+        "lccn": "2026901447"
+      },
+      "prior_years": [],
+      "lines": [
+        "The Salt Ledger",
+        "Copyright © 2026 by Ines Marrow",
+        "All rights reserved.",
+        "",
+        "First edition, April 2026",
+        "Published by Windlass and Co.",
+        "ISBN 978-1-9471345-1-5 (paperback)",
+        "Library of Congress Control Number: 2026901447"
+      ]
+    },
+    {
+      "name": "a second edition paperback, carrying both copyright years and its revision note",
+      "metadata": {
+        "title": "The Salt Ledger",
+        "author": "Ines Marrow",
+        "copyright_holder": "Ines Marrow",
+        "publisher": "Windlass and Co.",
+        "imprint": "Windlass and Co."
+      },
+      "edition": {
+        "id": "ed-2",
+        "label": "Second edition",
+        "year": "2030",
+        "previous_edition_id": "ed-1",
+        "revision_note": "Revised and reset. Cover art by Petra Kemball."
+      },
+      "format": {
+        "id": "ed-2-paperback",
+        "kind": "print",
+        "format": "Paperback",
+        "isbn13": "978-1-9471345-4-6",
+        "publication_date": "2030-09-08",
+        "imprint_of_record": "Windlass and Co.",
+        "rights_notice": "All rights reserved"
+      },
+      "prior_years": ["2026"],
+      "lines": [
+        "The Salt Ledger",
+        "Copyright © 2026, 2030 by Ines Marrow",
+        "All rights reserved.",
+        "",
+        "Second edition, September 2030",
+        "Published by Windlass and Co.",
+        "ISBN 978-1-9471345-4-6 (paperback)",
+        "Revised and reset. Cover art by Petra Kemball."
+      ]
+    },
+    {
+      "name": "an ebook whose holder is not the author and whose imprint falls back to the publisher",
+      "metadata": {
+        "title": "The Salt Ledger",
+        "author": "Ines Marrow",
+        "copyright_holder": "Windlass and Co. Limited",
+        "publisher": "Windlass and Co."
+      },
+      "edition": {
+        "id": "ed-2",
+        "label": "Second edition",
+        "year": "2030",
+        "previous_edition_id": "ed-1",
+        "revision_note": "Revised and reset. Cover art by Petra Kemball."
+      },
+      "format": {
+        "id": "ed-2-ebook",
+        "kind": "ebook",
+        "format": "eBook",
+        "isbn13": "979-8-1234567-1-2",
+        "publication_date": "2030-09-08"
+      },
+      "prior_years": ["2026"],
+      "lines": [
+        "The Salt Ledger",
+        "Copyright © 2026, 2030 by Windlass and Co. Limited",
+        "All rights reserved.",
+        "",
+        "Second edition, September 2030",
+        "Published by Windlass and Co.",
+        "ISBN 979-8-1234567-1-2 (ebook)",
+        "Revised and reset. Cover art by Petra Kemball."
+      ]
+    },
+    {
+      "name": "a hardcover still in draft: no ISBN yet, no date yet, a licence instead of reserved rights",
+      "metadata": {
+        "title": "The Salt Ledger",
+        "author": "Ines Marrow",
+        "publisher": "Windlass and Co."
+      },
+      "edition": {
+        "id": "ed-2",
+        "label": "Second edition",
+        "year": "2030",
+        "previous_edition_id": "ed-1",
+        "revision_note": "Revised and reset. Cover art by Petra Kemball."
+      },
+      "format": {
+        "id": "ed-2-hardcover",
+        "kind": "print",
+        "format": "Hardcover",
+        "rights_notice": "CC BY-NC-ND 4.0"
+      },
+      "prior_years": ["2026"],
+      "lines": [
+        "The Salt Ledger",
+        "Copyright © 2026, 2030 by Ines Marrow",
+        "CC BY-NC-ND 4.0.",
+        "",
+        "Second edition",
+        "Published by Windlass and Co.",
+        "Revised and reset. Cover art by Petra Kemball."
+      ]
+    },
+    {
+      "name": "a third edition announced for a year but not a month",
+      "metadata": {
+        "title": "The Salt Ledger",
+        "author": "Ines Marrow",
+        "publisher": "Windlass and Co."
+      },
+      "edition": {
+        "id": "ed-3",
+        "label": "Third edition",
+        "year": "2033",
+        "previous_edition_id": "ed-2"
+      },
+      "format": {
+        "id": "ed-3-large-print",
+        "kind": "print",
+        "format": "Large print",
+        "isbn13": "978-1-9471345-3-9",
+        "publication_date": "2033"
+      },
+      "prior_years": ["2026", "2030"],
+      "lines": [
+        "The Salt Ledger",
+        "Copyright © 2026, 2030, 2033 by Ines Marrow",
+        "All rights reserved.",
+        "",
+        "Third edition, 2033",
+        "Published by Windlass and Co.",
+        "ISBN 978-1-9471345-3-9 (large print)"
+      ]
+    },
+    {
+      "name": "a book that has only a title so far",
+      "metadata": {
+        "title": "Untitled Draft"
+      },
+      "edition": {
+        "id": "ed-1"
+      },
+      "format": {
+        "id": "ed-1-ebook",
+        "kind": "ebook",
+        "format": "eBook"
+      },
+      "prior_years": [],
+      "lines": [
+        "Untitled Draft",
+        "All rights reserved."
+      ]
+    }
+  ]
+}

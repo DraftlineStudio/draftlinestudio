@@ -608,6 +608,75 @@ export interface ChapterHistorySnapshot {
 
 export * from './planner'
 
+// ── Editions (editions/index.json) ──────────────────────────────────────────
+// The book's publishing record: which editions exist and which formats each
+// one was published in. Mirrors internal/types/editions.go; the field names
+// are the design brief's own and are not renamed on the way across.
+//
+// ISBN-10 and spine width are absent on purpose. Both are derived from fields
+// that are here, and a derived value stored twice is a derived value that goes
+// stale. editionModel.ts computes them for display.
+
+export type EditionKind = 'ebook' | 'print' | 'audio'
+
+export interface EditionFormat {
+  id: string
+  // One of EditionKind. Typed as a string because that is what the generated
+  // Wails binding hands across the bridge; kindDot() and the panel branch on
+  // it and treat anything else as a plain record with no specification.
+  kind: string
+  // The printed word: eBook, Paperback, Hardcover, Large print.
+  format?: string
+  // Stored exactly as the author typed it, hyphens and all.
+  isbn13?: string
+  registration?: string
+  edition_statement?: string
+  publication_date?: string
+  list_price?: string
+  status?: string
+  channels?: string
+  // Print specification.
+  trim?: string
+  page_count?: string
+  paper_stock?: string
+  binding?: string
+  bleed?: string
+  interior?: string
+  gutter?: string
+  // Ebook specification.
+  epub_version?: string
+  layout?: string
+  asin?: string
+  drm?: string
+  // Advanced.
+  imprint_of_record?: string
+  territory_rights?: string
+  rights_notice?: string
+  lccn?: string
+  // Forward hooks. Carried through a save; nothing writes them yet.
+  export_settings?: Record<string, unknown>
+  snapshot_id?: string
+}
+
+export interface Edition {
+  id: string
+  label: string
+  year: string
+  status: string
+  cover_id?: string
+  // The edition this one supersedes. It makes the copyright year list
+  // cumulative and marks the edition as later, which is the only condition
+  // under which a revision note is printed.
+  previous_edition_id?: string
+  revision_note?: string
+  formats: EditionFormat[]
+}
+
+export interface EditionIndex {
+  version: number
+  editions: Edition[]
+}
+
 export interface BookData {
   version: string
   metadata: Metadata
@@ -627,6 +696,10 @@ export interface BookData {
   read_aloud_cast?: ReadAloudCast
   // Story-line timeline. Optional archive member planner.json.
   planner?: PlannerData
+  // The publishing record: editions, formats, ISBNs. Optional archive member
+  // editions/index.json. Cover images and frozen manuscripts are bytes and
+  // stay out of this struct, which is serialised on every save.
+  editions?: EditionIndex
   foreshadowing?: ForeshadowingLedger
   knowledge_matrix?: KnowledgeMatrix
   // Entity resolution and other analysis results

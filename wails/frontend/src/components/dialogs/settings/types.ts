@@ -19,8 +19,6 @@ export interface AuthorSectionProps {
   setAuthor: (v: string) => void
   publisher: string
   setPublisher: (v: string) => void
-  copyright: string
-  setCopyright: (v: string) => void
 }
 
 export interface ApplicationSectionProps {

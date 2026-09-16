@@ -1146,6 +1146,146 @@ export namespace types {
 		    return a;
 		}
 	}
+	export class EditionFormat {
+	    id: string;
+	    kind: string;
+	    format?: string;
+	    isbn13?: string;
+	    registration?: string;
+	    edition_statement?: string;
+	    publication_date?: string;
+	    list_price?: string;
+	    status?: string;
+	    channels?: string;
+	    trim?: string;
+	    page_count?: string;
+	    paper_stock?: string;
+	    binding?: string;
+	    bleed?: string;
+	    interior?: string;
+	    gutter?: string;
+	    epub_version?: string;
+	    layout?: string;
+	    asin?: string;
+	    drm?: string;
+	    imprint_of_record?: string;
+	    territory_rights?: string;
+	    rights_notice?: string;
+	    lccn?: string;
+	    export_settings?: Record<string, any>;
+	    snapshot_id?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new EditionFormat(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.kind = source["kind"];
+	        this.format = source["format"];
+	        this.isbn13 = source["isbn13"];
+	        this.registration = source["registration"];
+	        this.edition_statement = source["edition_statement"];
+	        this.publication_date = source["publication_date"];
+	        this.list_price = source["list_price"];
+	        this.status = source["status"];
+	        this.channels = source["channels"];
+	        this.trim = source["trim"];
+	        this.page_count = source["page_count"];
+	        this.paper_stock = source["paper_stock"];
+	        this.binding = source["binding"];
+	        this.bleed = source["bleed"];
+	        this.interior = source["interior"];
+	        this.gutter = source["gutter"];
+	        this.epub_version = source["epub_version"];
+	        this.layout = source["layout"];
+	        this.asin = source["asin"];
+	        this.drm = source["drm"];
+	        this.imprint_of_record = source["imprint_of_record"];
+	        this.territory_rights = source["territory_rights"];
+	        this.rights_notice = source["rights_notice"];
+	        this.lccn = source["lccn"];
+	        this.export_settings = source["export_settings"];
+	        this.snapshot_id = source["snapshot_id"];
+	    }
+	}
+	export class Edition {
+	    id: string;
+	    label: string;
+	    year: string;
+	    status: string;
+	    cover_id?: string;
+	    previous_edition_id?: string;
+	    revision_note?: string;
+	    formats: EditionFormat[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Edition(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.label = source["label"];
+	        this.year = source["year"];
+	        this.status = source["status"];
+	        this.cover_id = source["cover_id"];
+	        this.previous_edition_id = source["previous_edition_id"];
+	        this.revision_note = source["revision_note"];
+	        this.formats = this.convertValues(source["formats"], EditionFormat);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class EditionIndex {
+	    version: number;
+	    editions: Edition[];
+	
+	    static createFrom(source: any = {}) {
+	        return new EditionIndex(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.version = source["version"];
+	        this.editions = this.convertValues(source["editions"], Edition);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class PlannerNote {
 	    id: string;
 	    title: string;
@@ -1680,6 +1820,7 @@ export namespace types {
 	    knowledge_matrix?: KnowledgeMatrix;
 	    read_aloud_cast?: ReadAloudCast;
 	    planner?: PlannerData;
+	    editions?: EditionIndex;
 	    analysis?: AnalysisData;
 	
 	    static createFrom(source: any = {}) {
@@ -1705,6 +1846,7 @@ export namespace types {
 	        this.knowledge_matrix = this.convertValues(source["knowledge_matrix"], KnowledgeMatrix);
 	        this.read_aloud_cast = this.convertValues(source["read_aloud_cast"], ReadAloudCast);
 	        this.planner = this.convertValues(source["planner"], PlannerData);
+	        this.editions = this.convertValues(source["editions"], EditionIndex);
 	        this.analysis = this.convertValues(source["analysis"], AnalysisData);
 	    }
 	
@@ -2054,6 +2196,9 @@ export namespace types {
 	        this.sceneBreakStyle = source["sceneBreakStyle"];
 	    }
 	}
+	
+	
+	
 	
 	
 	
@@ -2423,6 +2568,7 @@ export namespace types {
 	    success: boolean;
 	    file_path: string;
 	    error?: string;
+	    warnings?: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new SaveResult(source);
@@ -2433,6 +2579,7 @@ export namespace types {
 	        this.success = source["success"];
 	        this.file_path = source["file_path"];
 	        this.error = source["error"];
+	        this.warnings = source["warnings"];
 	    }
 	}
 	

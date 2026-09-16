@@ -1,12 +1,17 @@
-// Author Settings Section - the writer's identity and copyright template,
-// pre-filled into every new book.
+// Author Settings Section - the writer's identity, pre-filled into every new
+// book.
+//
+// The copyright template that used to live here is gone. It advertised [YEAR]
+// and [AUTHOR] placeholders that nothing ever substituted, and it was never
+// applied to a new book either. The copyright page is now written from the
+// book's own fields, on Book & Editions, where the year, the holder, the
+// edition and the ISBN of the format actually live.
 
 import type { AuthorSectionProps } from './types'
 
 export default function AuthorSection({
   author, setAuthor,
   publisher, setPublisher,
-  copyright, setCopyright,
 }: AuthorSectionProps) {
   return (
     <>
@@ -21,17 +26,11 @@ export default function AuthorSection({
         <input className="dialog-input" value={publisher} onChange={e => setPublisher(e.target.value)} placeholder="Publisher or imprint name" />
       </div>
 
-      <div className="settings-section-label">Copyright Template</div>
-      <div className="dialog-field">
-        <label className="dialog-label">Default Copyright Text</label>
-        <textarea
-          className="dialog-input settings-copyright-textarea"
-          value={copyright}
-          onChange={e => setCopyright(e.target.value)}
-          placeholder={"Copyright © [YEAR] [AUTHOR]. All rights reserved.\n\nNo part of this publication may be reproduced..."}
-          rows={5}
-        />
-        <div className="settings-hint">Inserted into the Copyright page of every new book. Use [YEAR] and [AUTHOR] as placeholders.</div>
+      <div className="settings-section-label">Copyright</div>
+      <div className="settings-hint">
+        A book&apos;s copyright page is written from its own record — the copyright holder, the
+        edition, the publication date and the ISBN of the format being published. Open
+        Book &amp; Editions to see it and to change what it says.
       </div>
     </>
   )

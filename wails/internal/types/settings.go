@@ -3,8 +3,14 @@ package types
 // AppSettings contains user preferences and configuration.
 type AppSettings struct {
 	// Application
-	DefaultAuthor           string   `json:"default_author"`
-	DefaultPublisher        string   `json:"default_publisher"`
+	DefaultAuthor    string `json:"default_author"`
+	DefaultPublisher string `json:"default_publisher"`
+	// DefaultCopyright is retired. It was a template advertising [YEAR] and
+	// [AUTHOR] placeholders that nothing substituted, and it was never applied
+	// to a new book either; the copyright page is now written from the book's
+	// own record on the Book & Editions screen. The field stays so that a
+	// settings file written before the change still parses and a round-trip
+	// through the settings screen does not silently delete what it holds.
 	DefaultCopyright        string   `json:"default_copyright"`
 	DefaultSaveDir          string   `json:"default_save_dir"`
 	DarkMode                bool     `json:"dark_mode"`

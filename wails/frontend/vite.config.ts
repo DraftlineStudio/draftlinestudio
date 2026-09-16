@@ -8,6 +8,12 @@ export default defineConfig({
     include: ['src/**/*.test.ts'],
   },
   server: {
+    // The Go tree is outside this project root, and one file in it is read
+    // from a test: internal/types/testdata/copyright_cases.json is the shared
+    // table of worked copyright pages that the Go generator and the
+    // TypeScript preview are both checked against. Allowing exactly that
+    // directory keeps one copy of the table instead of two that can drift.
+    fs: { allow: ['.', '../internal/types/testdata'] },
     port: 5173,
     strictPort: true,
     hmr: {

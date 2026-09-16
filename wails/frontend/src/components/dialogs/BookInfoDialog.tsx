@@ -1,17 +1,34 @@
-// Book & editions: the record a book carries and, later, the editions
-// published from it. The left rail selects what is being edited; the right
-// pane is the form for it. Everything here is the book's own record, saved
-// into the .draftline project.
+// Book & editions: the record a book carries and the editions published from
+// it. The left rail selects what is being edited; the right pane is the form
+// for it. Everything here is the book's own record, saved into the .draftline
+// project.
+//
+// The two halves save differently, on purpose. The shared book details are a
+// form with a Save button, because changing a title is one decision. An
+// edition is a record you build up over months, so every keystroke on it goes
+// straight onto the book and rides the ordinary five-second autosave.
 
 import { useState } from 'react'
 import { useAppStore } from '../../store/appStore'
 import { useBookStore } from '../../store/bookStore'
-import type { ISBNEntry, Metadata } from '../../types/draftline'
+import type { EditionIndex, EditionKind, ISBNEntry, Metadata } from '../../types/draftline'
 import {
   AUDIENCES, ISBN_FORMATS, LANGUAGES, blockingProblems, checkBook, isbnRows, metadataPatch, validISBN,
 } from './bookInfoModel'
+import { editionBadge, emptyEditionIndex, isbnLocked, kindDot } from './editionModel'
+import EditionPane from './EditionPane'
 
 type Draft = Partial<Metadata>
+
+// What the rail has selected. null is the shared book details; an edition with
+// no format is the edition itself.
+type Selection = { editionID: string; formatID?: string } | null
+
+const FORMAT_KINDS: { value: EditionKind; label: string }[] = [
+  { value: 'ebook', label: 'eBook' },
+  { value: 'print', label: 'Print' },
+  { value: 'audio', label: 'Audiobook' },
+]
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -36,12 +53,24 @@ function Section({ title, note, children }: { title: string; note?: string; chil
 }
 
 export default function BookInfoDialog() {
-  const { book, updateMetadata } = useBookStore()
+  const book = useBookStore(s => s.book)
+  const updateMetadata = useBookStore(s => s.updateMetadata)
+  const addEdition = useBookStore(s => s.addEdition)
+  const addFormat = useBookStore(s => s.addFormat)
   const closeMetadataDialog = useAppStore(s => s.closeMetadataDialog)
   const meta = book?.metadata
 
   const [draft, setDraft] = useState<Draft>(() => ({ ...meta }))
   const [isbns, setIsbns] = useState<ISBNEntry[]>(() => isbnRows(meta))
+  const [selection, setSelection] = useState<Selection>(null)
+  const [newKind, setNewKind] = useState<EditionKind>('ebook')
+
+  const index: EditionIndex = book?.editions ?? emptyEditionIndex()
+  const formatCount = index.editions.reduce((n, e) => n + e.formats.length, 0)
+  const selected = selection ? index.editions.find(e => e.id === selection.editionID) : undefined
+  const selectedFormat = selected && selection?.formatID
+    ? selected.formats.find(f => f.id === selection.formatID)
+    : undefined
 
   const set = (key: keyof Metadata) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setDraft(d => ({ ...d, [key]: e.target.value }))
@@ -57,6 +86,28 @@ export default function BookInfoDialog() {
     updateMetadata(metadataPatch(draft, isbns))
     closeMetadataDialog()
   }
+
+  function handleNewEdition() {
+    const created = addEdition(String(new Date().getFullYear()))
+    if (created) setSelection({ editionID: created })
+  }
+
+  function handleAddFormat() {
+    if (!selection) return
+    const created = addFormat(selection.editionID, newKind)
+    if (created) setSelection({ editionID: selection.editionID, formatID: created })
+  }
+
+  // The rail's selection can be removed from under it — a deleted edition, a
+  // deleted format — so a selection that no longer resolves falls back to the
+  // shared book details rather than to an empty pane.
+  const resolved: Selection = selected ? { editionID: selected.id, formatID: selectedFormat?.id } : null
+
+  const footerNote = blocking.length
+    ? blocking[0].message
+    : selectedFormat && isbnLocked(selectedFormat)
+      ? 'This format is published, so its ISBN cannot be edited. An ISBN is fixed once it is registered. Changing trim size, cover, or publisher means a new edition record — never an edit to a published one.'
+      : 'An ISBN is fixed once it is registered. Changing trim size, cover, or publisher means a new edition record — never an edit to a published one.'
 
   return (
     <div className="dialog-overlay">
@@ -77,19 +128,97 @@ export default function BookInfoDialog() {
         <div className="bi-body">
           <nav className="bi-rail">
             <div className="bi-rail-head"><span className="chapter-section-label">Book</span></div>
-            <button type="button" className="bi-rail-row active">
+            <button
+              type="button" className={`bi-rail-row${resolved ? '' : ' active'}`}
+              onClick={() => setSelection(null)}
+            >
               <span className="bi-rail-row-name">Shared book details</span>
               <span className="bi-rail-row-sub">carried by every edition</span>
             </button>
-            <div className="bi-rail-head bi-rail-divider">
+
+            <div className="bi-rail-head bi-rail-divider bi-ed-rail-head">
               <span className="chapter-section-label">Editions</span>
+              <span className="bi-ed-rail-count">
+                {formatCount} format{formatCount === 1 ? '' : 's'}
+              </span>
             </div>
-            <div className="bi-rail-empty">
-              No editions registered yet. An edition records the ISBN, the cover and the
-              specification a format was published with.
+
+            {index.editions.length === 0 && (
+              <div className="bi-rail-empty">
+                No editions registered yet. An edition records the ISBN, the cover and the
+                specification a format was published with.
+              </div>
+            )}
+
+            <div className="bi-ed-groups">
+              {index.editions.map(edition => {
+                const badge = editionBadge(edition)
+                const groupActive = resolved?.editionID === edition.id && !resolved.formatID
+                return (
+                  <div className="bi-ed-group" key={edition.id}>
+                    <button
+                      type="button" className={`bi-ed-group-head${groupActive ? ' active' : ''}`}
+                      onClick={() => setSelection({ editionID: edition.id })}
+                    >
+                      <span className="bi-ed-group-label">{edition.label || 'Untitled edition'}</span>
+                      <span className="bi-ed-group-year">{edition.year}</span>
+                      <span className={`bi-ed-badge ${badge.kind}`}>{badge.label}</span>
+                    </button>
+                    {edition.formats.length === 0 && (
+                      <div className="bi-ed-group-empty">No formats yet</div>
+                    )}
+                    {edition.formats.map(format => {
+                      const active = resolved?.formatID === format.id
+                      return (
+                        <button
+                          type="button" key={format.id}
+                          className={`bi-ed-format-row${active ? ' active' : ''}`}
+                          onClick={() => setSelection({ editionID: edition.id, formatID: format.id })}
+                        >
+                          <span className="bi-ed-dot" style={{ background: kindDot(format.kind) }} />
+                          <span className="bi-ed-format-text">
+                            <span className="bi-ed-format-name">{format.format || format.kind}</span>
+                            <span className="bi-ed-format-isbn">{format.isbn13 || 'No ISBN yet'}</span>
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="bi-ed-rail-foot">
+              <button type="button" className="dialog-btn sm" onClick={handleNewEdition}>+ New edition</button>
+              <div className="bi-ed-add-format">
+                <select
+                  className="dialog-select" value={newKind}
+                  onChange={e => setNewKind(e.target.value as EditionKind)}
+                  aria-label="Kind of format to add"
+                >
+                  {FORMAT_KINDS.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}
+                </select>
+                <button
+                  type="button" className="dialog-btn sm" onClick={handleAddFormat}
+                  disabled={!resolved}
+                  title={resolved ? 'Add this kind of format to the selected edition' : 'Select an edition first'}
+                >
+                  + Add format to edition
+                </button>
+              </div>
             </div>
           </nav>
 
+          {resolved ? (
+            <div className="bi-pane">
+              <EditionPane
+                meta={draft} index={index}
+                editionID={resolved.editionID} formatID={resolved.formatID}
+                handEdited={!!book?.copyright?.trim()}
+                onSelect={(editionID, formatID) => setSelection(editionID ? { editionID, formatID } : null)}
+              />
+            </div>
+          ) : (
           <div className="bi-pane">
             <p className="bi-pane-intro">
               These carry across every edition. Anything an edition changes, such as its
@@ -130,7 +259,7 @@ export default function BookInfoDialog() {
                   {LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
                 </datalist>
               </Field>
-              <Field label="Copyright holder" hint="Not always the author.">
+              <Field label="Copyright holder" hint="Not always the author. The generated copyright page is made out to this name.">
                 <input className="dialog-input" value={draft.copyright_holder ?? ''} onChange={set('copyright_holder')} placeholder={draft.author || ''} />
               </Field>
             </Section>
@@ -196,14 +325,11 @@ export default function BookInfoDialog() {
               </div>
             </Section>
           </div>
+          )}
         </div>
 
         <footer className="bi-footer">
-          <span className="bi-footer-note">
-            {blocking.length
-              ? blocking[0].message
-              : 'An ISBN is fixed once it is registered. Changing a cover, a trim size or a publisher means a new edition, never an edit to a published one.'}
-          </span>
+          <span className="bi-footer-note">{footerNote}</span>
           <button className="dialog-btn" onClick={closeMetadataDialog}>Cancel</button>
           <button className="dialog-btn primary" onClick={handleSave} disabled={blocking.length > 0}>Save</button>
         </footer>

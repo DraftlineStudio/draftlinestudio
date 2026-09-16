@@ -2,6 +2,18 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02647] - 2026-09-16
+
+### Added
+- Added editions, each holding its formats with their own ISBN, specification, and price.
+- Added a copyright page generated from the edition record.
+- ISBN-10 and spine width are now calculated automatically.
+- Added Duplicate as New Edition, which copies a format's specification without its ISBNs.
+- Editions save with the book through normal autosave.
+
+### Removed
+- Removed the copyright template from Settings.
+
 ## [0.20.02646] - 2026-09-15
 
 ### Fixed

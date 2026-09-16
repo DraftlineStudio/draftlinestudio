@@ -224,6 +224,26 @@ func WriteWithSnapshots(sourcePath, destPath string, book types.BookData, appVer
 	aw := newArchiveWriter(w)
 	addEntry := aw.addEntry
 
+	// The publishing record is written BEFORE the passthrough below, not after
+	// it. Everything under editions/ is carried across a save, which is what
+	// keeps cover art and frozen manuscripts alive; the index is the one
+	// member under that prefix this save rebuilds, so it claims its own name
+	// first and the passthrough then skips the copy in the old file. Written
+	// after, it would collide with the carried-over copy and fail the save.
+	if book.Editions != nil {
+		editions, err := prepareEditionsData(*book.Editions)
+		if err != nil {
+			return types.SaveResult{Success: false, Error: err.Error()}
+		}
+		editionsJSON, err := json.MarshalIndent(editions, "", "  ")
+		if err != nil {
+			return types.SaveResult{Success: false, Error: fmt.Sprintf("failed to encode editions: %v", err)}
+		}
+		if err := addEntry(editionsIndexFile, string(editionsJSON)); err != nil {
+			return types.SaveResult{Success: false, Error: err.Error()}
+		}
+	}
+
 	// Carry over everything this save does not rebuild. The snapshot branch is
 	// rewriting chapter history from memory, so it preserves the rest.
 	preserved := preservedArchivePrefixes

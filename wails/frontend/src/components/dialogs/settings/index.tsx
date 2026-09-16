@@ -49,7 +49,6 @@ export default function AppSettingsDialog() {
   // Application state
   const [author, setAuthor]       = useState(settings.default_author)
   const [publisher, setPublisher] = useState(settings.default_publisher)
-  const [copyright, setCopyright] = useState(settings.default_copyright)
   const [saveDir, setSaveDir]     = useState(settings.default_save_dir)
   const [dark]                     = useState(settings.dark_mode)
   const [themeMode, setThemeMode] = useState<ThemeMode>(settings.theme_mode)
@@ -253,7 +252,6 @@ export default function AppSettingsDialog() {
     await saveSettings({
       default_author: author.trim(),
       default_publisher: publisher.trim(),
-      default_copyright: copyright,
       default_save_dir: saveDir.trim(),
       dark_mode: newDarkMode,
       theme_mode: themeMode,
@@ -385,7 +383,6 @@ export default function AppSettingsDialog() {
               <AuthorSection
                 author={author} setAuthor={setAuthor}
                 publisher={publisher} setPublisher={setPublisher}
-                copyright={copyright} setCopyright={setCopyright}
               />
             )}
 
