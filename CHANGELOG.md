@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02645] - 2026-09-15
+
+### Fixed
+- Save As now keeps chapter history.
+- Saving now keeps data in the project file that the current save did not write.
+
 ## [0.20.02644] - 2026-09-15
 
 ### Added

@@ -41,7 +41,7 @@ func TestWriteOpenRoundTrip(t *testing.T) {
 	isolateConfigDir(t)
 	path := filepath.Join(t.TempDir(), "book.draftline")
 
-	res := Write(path, testBook(), "test-version")
+	res := Write(path, path, testBook(), "test-version")
 	if !res.Success {
 		t.Fatalf("Write failed: %s", res.Error)
 	}
@@ -74,7 +74,7 @@ func TestWordCountComputedOnOpenAndPersistedOnSave(t *testing.T) {
 
 	// strings.Fields over stripped text: "Hello — “world”." = 3 tokens (the
 	// em-dash stands alone) + "More text." (2) + front matter "For x." (2).
-	if res := Write(path, testBook(), "test-version"); !res.Success {
+	if res := Write(path, path, testBook(), "test-version"); !res.Success {
 		t.Fatalf("Write failed: %s", res.Error)
 	}
 	got, err := Open(path)
@@ -109,7 +109,7 @@ func TestISBNListRoundTripAndLegacyMirror(t *testing.T) {
 		{Format: "ebook", Value: "978-1-0000-0002-8"},
 		{Format: "paperback", Value: "  "}, // blank entries are dropped
 	}
-	if res := Write(path, book, "test-version"); !res.Success {
+	if res := Write(path, path, book, "test-version"); !res.Success {
 		t.Fatalf("Write failed: %s", res.Error)
 	}
 	got, err := Open(path)
@@ -133,7 +133,7 @@ func TestLegacySingleISBNSeedsTheList(t *testing.T) {
 
 	book := testBook()
 	book.Metadata.ISBN = "978-1-9999-9999-9" // legacy-only book
-	if res := Write(path, book, "test-version"); !res.Success {
+	if res := Write(path, path, book, "test-version"); !res.Success {
 		t.Fatalf("Write failed: %s", res.Error)
 	}
 	got, err := Open(path)
@@ -153,7 +153,7 @@ func TestReadAloudCastRoundTrip(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "book.draftline")
 
 	// A book that never used cast mode must not grow the optional member.
-	if res := Write(path, testBook(), "test-version"); !res.Success {
+	if res := Write(path, path, testBook(), "test-version"); !res.Success {
 		t.Fatalf("Write failed: %s", res.Error)
 	}
 	r, err := zip.OpenReader(path)
@@ -170,7 +170,7 @@ func TestReadAloudCastRoundTrip(t *testing.T) {
 		CastMode: true,
 		Voices:   map[string]string{"renee alvarez": "af_bella", "marcus webb": "am_puck"},
 	}
-	if res := Write(path, withCast, "test-version"); !res.Success {
+	if res := Write(path, path, withCast, "test-version"); !res.Success {
 		t.Fatalf("Write failed: %s", res.Error)
 	}
 	got, err := Open(path)
@@ -216,7 +216,7 @@ func TestWriteOpenPersistsAnalysisAndCorrections(t *testing.T) {
 		},
 	}
 
-	if res := Write(path, b, "test-version"); !res.Success {
+	if res := Write(path, path, b, "test-version"); !res.Success {
 		t.Fatalf("Write failed: %s", res.Error)
 	}
 	got, err := Open(path)
@@ -247,14 +247,14 @@ func TestChapterHistoryRoundTripDeduplicatesAndSurvivesNormalSave(t *testing.T) 
 	EnsureBookChapterIDs(&b)
 	chapterID := b.Body[0].ID
 
-	if res := Write(path, b, "v1"); !res.Success {
+	if res := Write(path, path, b, "v1"); !res.Success {
 		t.Fatalf("initial write: %s", res.Error)
 	}
 	request := types.ChapterSnapshotRequest{
 		ChapterID: chapterID, Section: "body", ChapterTitle: b.Body[0].Title,
 		Content: b.Body[0].Content, Reason: "Writing session",
 	}
-	if res := WriteWithSnapshots(path, b, "v1", []types.ChapterSnapshotRequest{request, request}); !res.Success {
+	if res := WriteWithSnapshots(path, path, b, "v1", []types.ChapterSnapshotRequest{request, request}); !res.Success {
 		t.Fatalf("snapshot write: %s", res.Error)
 	}
 	entries, err := ListChapterHistory(path, chapterID)
@@ -273,7 +273,7 @@ func TestChapterHistoryRoundTripDeduplicatesAndSurvivesNormalSave(t *testing.T) 
 	}
 
 	b.Metadata.Title = "Saved Again"
-	if res := Write(path, b, "v1"); !res.Success {
+	if res := Write(path, path, b, "v1"); !res.Success {
 		t.Fatalf("normal save: %s", res.Error)
 	}
 	entries, err = ListChapterHistory(path, chapterID)
@@ -285,7 +285,7 @@ func TestChapterHistoryRoundTripDeduplicatesAndSurvivesNormalSave(t *testing.T) 
 func TestLegacyChapterIDsAreAssignedAndPersisted(t *testing.T) {
 	isolateConfigDir(t)
 	path := filepath.Join(t.TempDir(), "ids.draftline")
-	if res := Write(path, testBook(), "v1"); !res.Success {
+	if res := Write(path, path, testBook(), "v1"); !res.Success {
 		t.Fatalf("write: %s", res.Error)
 	}
 	got, err := Open(path)
@@ -303,12 +303,12 @@ func TestChapterHistoryDeduplicatesAgainstLatestSnapshot(t *testing.T) {
 	b := testBook()
 	EnsureBookChapterIDs(&b)
 	chapterID := b.Body[0].ID
-	if res := Write(path, b, "v1"); !res.Success {
+	if res := Write(path, path, b, "v1"); !res.Success {
 		t.Fatal(res.Error)
 	}
 	for _, content := range []string{"<p>Version A</p>", "<p>Version B</p>", "<p>Version B</p>"} {
 		request := types.ChapterSnapshotRequest{ChapterID: chapterID, Section: "body", ChapterTitle: "Chapter One", Content: content}
-		if res := WriteWithSnapshots(path, b, "v1", []types.ChapterSnapshotRequest{request}); !res.Success {
+		if res := WriteWithSnapshots(path, path, b, "v1", []types.ChapterSnapshotRequest{request}); !res.Success {
 			t.Fatal(res.Error)
 		}
 	}
@@ -348,12 +348,12 @@ func TestWriteReplacesExistingFileAtomically(t *testing.T) {
 	isolateConfigDir(t)
 	path := filepath.Join(t.TempDir(), "book.draftline")
 
-	if res := Write(path, testBook(), "v1"); !res.Success {
+	if res := Write(path, path, testBook(), "v1"); !res.Success {
 		t.Fatalf("first write: %s", res.Error)
 	}
 	b := testBook()
 	b.Metadata.Title = "Second Save"
-	if res := Write(path, b, "v1"); !res.Success {
+	if res := Write(path, path, b, "v1"); !res.Success {
 		t.Fatalf("second write: %s", res.Error)
 	}
 	got, err := Open(path)

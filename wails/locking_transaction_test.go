@@ -21,7 +21,7 @@ func TestFailedOpenKeepsCurrentBookLock(t *testing.T) {
 		Metadata: types.Metadata{Title: "Invented test book"},
 		Body:     []types.ChapterItem{{Title: "One", Type: "chapter", Content: "<p>The signal lamp dimmed.</p>"}},
 	}
-	if result := book.Write(current, b, "test-version"); !result.Success {
+	if result := book.Write(current, current, b, "test-version"); !result.Success {
 		t.Fatal(result.Error)
 	}
 
@@ -52,7 +52,7 @@ func TestFailedSaveAsKeepsCurrentBookLock(t *testing.T) {
 	dir := t.TempDir()
 	current := filepath.Join(dir, "current.draftline")
 	b := types.BookData{Version: "2.0", Metadata: types.Metadata{Title: "Invented test book"}}
-	if result := book.Write(current, b, "test-version"); !result.Success {
+	if result := book.Write(current, current, b, "test-version"); !result.Success {
 		t.Fatal(result.Error)
 	}
 

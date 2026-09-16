@@ -35,7 +35,7 @@ func TestPlannerRoundTrip(t *testing.T) {
 		BeatTemplate: "three-act",
 		HiddenLanes:  []string{"lane-1"},
 	}
-	if res := Write(path, book, "test-version"); !res.Success {
+	if res := Write(path, path, book, "test-version"); !res.Success {
 		t.Fatalf("write: %s", res.Error)
 	}
 	got, err := Open(path)
@@ -65,7 +65,7 @@ func TestPlannerCollectionsAreNormalizedOnOpen(t *testing.T) {
 	b := testBook()
 	b.Body[0].ID = "ch-legacy"
 	b.Planner = &types.PlannerData{Version: 1}
-	if result := Write(path, b, "test-version"); !result.Success {
+	if result := Write(path, path, b, "test-version"); !result.Success {
 		t.Fatal(result.Error)
 	}
 	got, err := Open(path)
@@ -89,7 +89,7 @@ func TestPlannerMisalignedWhoNamesAreDroppedOnOpen(t *testing.T) {
 		{ID: "c2", Title: "Misaligned", Lines: []string{"main"}, Who: []string{"char-rhea", "char-tomas"}, WhoNames: []string{"Rhea"}, Status: "planned"},
 		{ID: "c3", Title: "Unnamed", Lines: []string{"main"}, Who: []string{"char-rhea"}, Status: "planned"},
 	}}
-	if result := Write(path, b, "test-version"); !result.Success {
+	if result := Write(path, path, b, "test-version"); !result.Success {
 		t.Fatal(result.Error)
 	}
 	got, err := Open(path)
@@ -107,7 +107,7 @@ func TestPlannerSaveDoesNotMutateCaller(t *testing.T) {
 	b := testBook()
 	b.Body[0].ID = "ch-legacy"
 	b.Planner = &types.PlannerData{Version: 1}
-	if result := Write(path, b, "test-version"); !result.Success {
+	if result := Write(path, path, b, "test-version"); !result.Success {
 		t.Fatal(result.Error)
 	}
 	if b.Planner.Lanes != nil || b.Planner.Cards != nil || b.Planner.Notes != nil {
@@ -120,7 +120,7 @@ func TestMalformedPlannerBlocksOpenRatherThanBeingDropped(t *testing.T) {
 	b := testBook()
 	b.Body[0].ID = "ch-legacy"
 	b.Planner = &types.PlannerData{Version: 1}
-	if result := Write(path, b, "test-version"); !result.Success {
+	if result := Write(path, path, b, "test-version"); !result.Success {
 		t.Fatal(result.Error)
 	}
 	replacePlannerEntry(t, path, []byte(`{"version":`))
@@ -133,7 +133,8 @@ func TestUnsupportedPlannerVersionCannotBeSaved(t *testing.T) {
 	b := testBook()
 	b.Body[0].ID = "ch-legacy"
 	b.Planner = &types.PlannerData{Version: 2}
-	result := Write(filepath.Join(t.TempDir(), "planner-newer.draftline"), b, "test-version")
+	newerPath := filepath.Join(t.TempDir(), "planner-newer.draftline")
+	result := Write(newerPath, newerPath, b, "test-version")
 	if result.Success || !strings.Contains(result.Error, "version 2") {
 		t.Fatalf("unsupported Planner save was accepted: %+v", result)
 	}
@@ -184,7 +185,7 @@ func replacePlannerEntry(t *testing.T, path string, replacement []byte) {
 // A book that never opened the Planner writes no planner.json.
 func TestPlannerAbsentWhenUnused(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "plain.draftline")
-	if res := Write(path, testBook(), "test-version"); !res.Success {
+	if res := Write(path, path, testBook(), "test-version"); !res.Success {
 		t.Fatalf("write: %s", res.Error)
 	}
 	got, err := Open(path)
@@ -216,7 +217,7 @@ func TestArchiveWithLegacyNarrativeKeysStillOpens(t *testing.T) {
 		}},
 		Notes: []types.PlannerNote{},
 	}
-	if res := Write(path, b, "test-version"); !res.Success {
+	if res := Write(path, path, b, "test-version"); !res.Success {
 		t.Fatalf("Write failed: %s", res.Error)
 	}
 

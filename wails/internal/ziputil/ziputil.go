@@ -16,8 +16,10 @@ import (
 var ErrEntryNotFound = errors.New("entry not found in archive")
 
 const (
-	// MaxEntrySize caps a single decompressed entry. Chapters are HTML/JSON;
-	// 50 MB is far beyond any real manuscript component.
+	// MaxEntrySize caps a single decompressed entry. Most entries are HTML or
+	// JSON, for which 50 MB is far beyond any real manuscript component; it is
+	// also the ceiling for a stored binary asset such as cover art, which is
+	// the only kind of entry that gets anywhere near it.
 	MaxEntrySize = 50 << 20
 	// MaxEntries caps the archive's file count.
 	MaxEntries = 10_000

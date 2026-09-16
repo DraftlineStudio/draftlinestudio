@@ -22,9 +22,30 @@ import (
 
 const (
 	historyIndexFile     = "history/index.json"
+	historyPrefix        = "history/"
+	editionsPrefix       = "editions/"
 	maxHistoryPerChapter = 50
 	maxHistoryTotal      = 1000
 )
+
+// preservedArchivePrefixes lists the archive members a save carries over from
+// the book it is saving. Every save rebuilds the .draftline from scratch, so a
+// member under no prefix in this list is destroyed by the next autosave, five
+// seconds after the next keystroke. Anything written into the archive that the
+// app does not rebuild from BookData belongs here.
+var preservedArchivePrefixes = []string{historyPrefix, editionsPrefix}
+
+// preservedPrefixesExcept returns the passthrough list without one prefix, for
+// the save branch that is already rewriting that prefix from memory.
+func preservedPrefixesExcept(skip string) []string {
+	kept := make([]string, 0, len(preservedArchivePrefixes))
+	for _, prefix := range preservedArchivePrefixes {
+		if prefix != skip {
+			kept = append(kept, prefix)
+		}
+	}
+	return kept
+}
 
 var htmlTagPattern = regexp.MustCompile(`<[^>]*>`)
 
@@ -70,12 +91,14 @@ func historyWordCount(content string) int {
 	}))
 }
 
-func loadHistory(path string) (historyArchive, error) {
+// loadHistory reads the chapter history of the book being saved FROM. During a
+// Save As that is the open project, not the file about to be written.
+func loadHistory(sourcePath string) (historyArchive, error) {
 	state := historyArchive{Entries: []types.ChapterHistoryEntry{}, Contents: map[string][]byte{}}
-	if strings.TrimSpace(path) == "" {
+	if strings.TrimSpace(sourcePath) == "" {
 		return state, nil
 	}
-	r, err := zip.OpenReader(path)
+	r, err := zip.OpenReader(sourcePath)
 	if os.IsNotExist(err) {
 		return state, nil // A first save has no archive to preserve.
 	}
@@ -131,29 +154,47 @@ func readHistoryIndex(files []*zip.File) ([]types.ChapterHistoryEntry, error) {
 	return index.Entries, nil
 }
 
-// copyHistoryEntries preserves unchanged history without inflating it into
-// memory or recompressing it. This is the hot path for ordinary autosaves.
-func copyHistoryEntries(w *zip.Writer, path string) error {
-	r, err := zip.OpenReader(path)
+// copyPreservedEntries carries members of the source archive into the archive
+// being written, byte for byte and without inflating or recompressing them.
+// This is the hot path for ordinary autosaves.
+//
+// sourcePath is the book being saved FROM, which during a Save As is not the
+// file being written. A member whose name starts with none of the given
+// prefixes is not copied, and because every save rebuilds the archive from
+// scratch, not copying a member destroys it.
+func copyPreservedEntries(w *archiveWriter, sourcePath string, prefixes []string) error {
+	if strings.TrimSpace(sourcePath) == "" || len(prefixes) == 0 {
+		return nil
+	}
+	r, err := zip.OpenReader(sourcePath)
 	if os.IsNotExist(err) {
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("cannot preserve chapter history: %w", err)
+		return fmt.Errorf("cannot preserve archived data: %w", err)
 	}
 	defer func() { _ = r.Close() }()
 	if err := ziputil.CheckArchive(r.File); err != nil {
-		return fmt.Errorf("cannot preserve chapter history: %w", err)
+		return fmt.Errorf("cannot preserve archived data: %w", err)
 	}
 	for _, file := range r.File {
-		if file.Name != historyIndexFile && !strings.HasPrefix(file.Name, "history/snapshots/") {
+		if !hasAnyPrefix(file.Name, prefixes) {
 			continue
 		}
-		if err := w.Copy(file); err != nil {
-			return fmt.Errorf("cannot preserve chapter history entry: %w", err)
+		if err := w.copyEntry(file); err != nil {
+			return err
 		}
 	}
 	return nil
+}
+
+func hasAnyPrefix(name string, prefixes []string) bool {
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(name, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func addHistorySnapshots(state *historyArchive, requests []types.ChapterSnapshotRequest) {

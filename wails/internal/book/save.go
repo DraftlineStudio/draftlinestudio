@@ -13,19 +13,88 @@ import (
 	"draftline/internal/ziputil"
 )
 
-// Write saves a BookData to a .draftline file at the specified path.
+// archiveWriter writes the members of a .draftline, tracking every name it has
+// written. Two code paths add members — data rebuilt from BookData and data
+// carried over from the book being saved — and a ZIP will happily hold the same
+// name twice, with readers disagreeing about which copy wins. A collision is an
+// error here instead.
+type archiveWriter struct {
+	zw      *zip.Writer
+	written map[string]bool
+}
+
+func newArchiveWriter(zw *zip.Writer) *archiveWriter {
+	return &archiveWriter{zw: zw, written: map[string]bool{}}
+}
+
+func (a *archiveWriter) claim(name string) error {
+	if a.written[name] {
+		return fmt.Errorf("archive entry %q would be written twice", name)
+	}
+	a.written[name] = true
+	return nil
+}
+
+// addEntry writes text, deflated.
+func (a *archiveWriter) addEntry(name, content string) error {
+	if err := a.claim(name); err != nil {
+		return err
+	}
+	f, err := a.zw.Create(name)
+	if err != nil {
+		return err
+	}
+	_, err = f.Write([]byte(content))
+	return err
+}
+
+// addBytes writes a binary asset stored rather than deflated. Cover art and
+// other already-compressed formats gain nothing from a second pass, and
+// autosave runs five seconds after every edit.
+func (a *archiveWriter) addBytes(name string, data []byte) error {
+	if err := a.claim(name); err != nil {
+		return err
+	}
+	f, err := a.zw.CreateHeader(&zip.FileHeader{
+		Name:     name,
+		Method:   zip.Store,
+		Modified: time.Now(),
+	})
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(data)
+	return err
+}
+
+// copyEntry carries one member over from the source archive without inflating
+// or recompressing it.
+func (a *archiveWriter) copyEntry(f *zip.File) error {
+	if err := a.claim(f.Name); err != nil {
+		return err
+	}
+	if err := a.zw.Copy(f); err != nil {
+		return fmt.Errorf("cannot preserve archived entry %q: %w", f.Name, err)
+	}
+	return nil
+}
+
+// Write saves a BookData to a .draftline file at destPath. sourcePath is the
+// project the book is open from, which a Save As carries chapter history and
+// other preserved members over from; it is empty for a book never yet saved.
 // appVersion should be the current application version string.
-func Write(path string, book types.BookData, appVersion string) types.SaveResult {
-	return WriteWithSnapshots(path, book, appVersion, nil)
+func Write(sourcePath, destPath string, book types.BookData, appVersion string) types.SaveResult {
+	return WriteWithSnapshots(sourcePath, destPath, book, appVersion, nil)
 }
 
 // WriteWithSnapshots saves the book while preserving its embedded chapter
-// history and optionally appending changed chapter snapshots.
-func WriteWithSnapshots(path string, book types.BookData, appVersion string, snapshots []types.ChapterSnapshotRequest) types.SaveResult {
+// history and optionally appending changed chapter snapshots. History is read
+// from sourcePath and written to destPath.
+func WriteWithSnapshots(sourcePath, destPath string, book types.BookData, appVersion string, snapshots []types.ChapterSnapshotRequest) types.SaveResult {
 	history := historyArchive{Entries: []types.ChapterHistoryEntry{}, Contents: map[string][]byte{}}
 	if len(snapshots) > 0 {
 		var err error
-		history, err = loadHistory(path)
+		history, err = loadHistory(sourcePath)
 		if err != nil {
 			return types.SaveResult{Success: false, Error: err.Error()}
 		}
@@ -34,7 +103,7 @@ func WriteWithSnapshots(path string, book types.BookData, appVersion string, sna
 	EnsureBookChapterIDs(&book)
 
 	// Create backup of existing file before overwriting
-	if err := backup.Create(path); err != nil {
+	if err := backup.Create(destPath); err != nil {
 		// Log but don't fail the save - backup is best-effort
 		fmt.Printf("Backup warning: %v\n", err)
 	}
@@ -81,20 +150,19 @@ func WriteWithSnapshots(path string, book types.BookData, appVersion string, sna
 		StyleOptions: book.StyleOptions,
 	}
 
-	addEntry := func(name, content string) error {
-		f, err := w.Create(name)
-		if err != nil {
-			return err
-		}
-		_, err = f.Write([]byte(content))
-		return err
-	}
+	aw := newArchiveWriter(w)
+	addEntry := aw.addEntry
 
-	if len(snapshots) == 0 {
-		if err := copyHistoryEntries(w, path); err != nil {
-			return types.SaveResult{Success: false, Error: err.Error()}
-		}
-	} else {
+	// Carry over everything this save does not rebuild. The snapshot branch is
+	// rewriting chapter history from memory, so it preserves the rest.
+	preserved := preservedArchivePrefixes
+	if len(snapshots) > 0 {
+		preserved = preservedPrefixesExcept(historyPrefix)
+	}
+	if err := copyPreservedEntries(aw, sourcePath, preserved); err != nil {
+		return types.SaveResult{Success: false, Error: err.Error()}
+	}
+	if len(snapshots) > 0 {
 		for _, historyEntry := range history.Entries {
 			content, ok := history.Contents[historyEntry.File]
 			if !ok {
@@ -229,9 +297,9 @@ func WriteWithSnapshots(path string, book types.BookData, appVersion string, sna
 		return types.SaveResult{Success: false, Error: fmt.Sprintf("archive exceeds safety limits: %v", err)}
 	}
 
-	if err := fsutil.WriteFileAtomic(path, buf.Bytes(), 0644); err != nil {
+	if err := fsutil.WriteFileAtomic(destPath, buf.Bytes(), 0644); err != nil {
 		return types.SaveResult{Success: false, Error: err.Error()}
 	}
 
-	return types.SaveResult{Success: true, FilePath: path}
+	return types.SaveResult{Success: true, FilePath: destPath}
 }

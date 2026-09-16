@@ -43,7 +43,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.20.02644"
+const AppVersion = "0.20.02645"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -413,7 +413,7 @@ func (a *App) SaveBookSnapshots(b types.BookData, snapshots []types.ChapterSnaps
 	if current == "" {
 		return types.SaveResult{Success: false, Error: "save the project before creating version history"}
 	}
-	result := book.WriteWithSnapshots(current, b, AppVersion, snapshots)
+	result := book.WriteWithSnapshots(current, current, b, AppVersion, snapshots)
 	if result.Success {
 		a.setCurrentFile(current)
 	}
@@ -1356,15 +1356,20 @@ func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string, pro
 }
 
 func (a *App) writeBook(b types.BookData, path string) types.SaveResult {
+	// The open project is what the save reads preserved members from — chapter
+	// history above all. A Save As must carry the OPEN book's history to the new
+	// file, and must not inherit the history of whatever project it is saving
+	// over; reading them from the destination did both the wrong way round.
+	source := a.getCurrentFile()
 	// Saving to a NEW path (Save As, first save) claims that path's lock, so
 	// two instances can't silently write over each other's book. Saving to
 	// the already-current path keeps the lock it holds.
-	if path != a.getCurrentFile() {
+	if path != source {
 		lock, err := a.claimBookLock(path)
 		if err != nil {
 			return types.SaveResult{Success: false, Error: err.Error()}
 		}
-		result := book.Write(path, b, AppVersion)
+		result := book.Write(source, path, b, AppVersion)
 		if !result.Success {
 			a.discardBookLockClaim(lock)
 			return result
@@ -1373,7 +1378,7 @@ func (a *App) writeBook(b types.BookData, path string) types.SaveResult {
 		a.setCurrentFile(path)
 		return result
 	}
-	result := book.Write(path, b, AppVersion)
+	result := book.Write(source, path, b, AppVersion)
 	if result.Success {
 		a.setCurrentFile(path)
 	}
