@@ -244,8 +244,6 @@ type BookData struct {
 	// Planner is the story-line timeline: lanes, cards, notes. Optional
 	// archive member planner.json; nil for books that never opened it.
 	Planner *PlannerData `json:"planner,omitempty"`
-	// Analysis contains entity resolution and other analysis results.
-	// This is a future-proof container that can be extended without schema changes.
 	// Editions is the book's publishing record: which editions exist, which
 	// formats each one was published in, and the ISBN and specification of
 	// each format. Optional archive member editions/index.json; nil for books
@@ -253,5 +251,7 @@ type BookData struct {
 	// bridge with the rest of the book. Cover images and frozen manuscripts
 	// are bytes and deliberately do NOT join them here.
 	Editions *EditionIndex `json:"editions,omitempty"`
+	// Analysis contains entity resolution and other analysis results.
+	// This is a future-proof container that can be extended without schema changes.
 	Analysis AnalysisData `json:"analysis,omitempty"`
 }
