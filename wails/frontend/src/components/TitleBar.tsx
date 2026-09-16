@@ -55,7 +55,8 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
   }, [dropOpen])
 
   function run(fn: () => void) { setDropOpen(false); fn() }
-  function showStorySearch() { setViewMode('editor'); openStorySearch() }
+  function showStorySearch() { setViewMode('editor'); openStorySearch('continuity') }
+  function showScratchpad() { setViewMode('editor'); openStorySearch('scratch') }
 
   function toggleAuthorPop() {
     if (authorBtnRef.current) {
@@ -257,6 +258,13 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
           <circle cx="5.5" cy="5.5" r="3.8" /><path d="M8.3 8.3 12 12" />
         </svg>
         <span>Plot Inspections…</span><kbd>Ctrl+Shift+F</kbd>
+      </button>
+
+      <button className="titlebar-dropdown-item" onClick={() => run(showScratchpad)} disabled={!book}>
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 1.5h5l2.5 2.5v7.5H3zM8 1.5V4h2.5M4.8 6.5h4M4.8 8.5h2.5" />
+        </svg>
+        <span>Scratchpad…</span>
       </button>
 
       <div className="titlebar-dropdown-sep" />

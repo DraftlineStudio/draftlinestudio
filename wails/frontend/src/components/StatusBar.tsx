@@ -55,7 +55,7 @@ export default function StatusBar() {
         {book && (
           <button
             className="statusbar-tool"
-            onClick={() => { setViewMode('editor'); openStorySearch() }}
+            onClick={() => { setViewMode('editor'); openStorySearch('continuity') }}
             title="Open Plot Inspections (Ctrl+Shift+F)"
           >
             <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.25">
@@ -63,6 +63,18 @@ export default function StatusBar() {
               <path d="M7.6 7.6 10.6 10.6" strokeLinecap="round" />
             </svg>
             Plot Inspections
+          </button>
+        )}
+        {book && (
+          <button
+            className="statusbar-tool"
+            onClick={() => { setViewMode('editor'); openStorySearch('scratch') }}
+            title="Open the scratchpad beside the manuscript"
+          >
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2.5 1.5h4.5l2.5 2.5v6.5h-7zM7 1.5V4h2.5M4 6.5h4M4 8.5h2.5" />
+            </svg>
+            Scratchpad
           </button>
         )}
         {book && (

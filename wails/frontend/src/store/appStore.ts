@@ -93,8 +93,11 @@ interface AppStore {
   openChapterHistory: () => void
   closeChapterHistory: () => void
   bottomToolOpen: boolean
+  /** Which tab the bottom dock should show when it is next opened. */
+  bottomToolView: string | null
   bottomToolHeight: number
-  openStorySearch: () => void
+  openStorySearch: (view?: string) => void
+  clearBottomToolView: () => void
   closeBottomTool: () => void
   setBottomToolHeight: (height: number) => void
 
@@ -202,8 +205,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
   openChapterHistory: () => set({ showChapterHistory: true }),
   closeChapterHistory: () => set({ showChapterHistory: false }),
   bottomToolOpen: false,
+  bottomToolView: null,
   bottomToolHeight: 280,
-  openStorySearch: () => set({ bottomToolOpen: true }),
+  openStorySearch: (view) => set({ bottomToolOpen: true, bottomToolView: view ?? null }),
+  clearBottomToolView: () => set({ bottomToolView: null }),
   closeBottomTool: () => set({ bottomToolOpen: false }),
   setBottomToolHeight: (height) => set({ bottomToolHeight: Math.max(170, Math.min(height, 560)) }),
 

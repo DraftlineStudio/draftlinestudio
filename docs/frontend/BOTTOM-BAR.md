@@ -4,9 +4,15 @@ The bottom tool window (`components/StorySearchToolWindow.tsx`, mounted in
 `App.tsx` above the status bar, resizable 170–560px) is where the manuscript
 is questioned rather than written.
 
-The window is called **Plot Inspections**. It holds two tabs, **Continuity**
-and **Ask Draftline**, plus an icon button for the **Evidence index**. It opens
-on Continuity, the tab that finds things without being asked. The shell owns the 38px header
+The window is called **Plot Inspections**. It holds three tabs, **Continuity**,
+**Ask Draftline** and **Scratchpad**, plus an icon button for the **Evidence
+index**. It opens on Continuity, the tab that finds things without being asked.
+Scratchpad is the Planner's own notes, brought beside the manuscript so an
+outline or a loose idea can be read while writing; it edits the same notes in
+`planner.json` that the Planner edits.
+
+The status bar carries the buttons that open it: **Plot Inspections**,
+**Scratchpad**, and **Character Map**. Each lands on its own tab. The shell owns the 38px header
 (tabs with an accent underline, a per-tab subtitle, continuity badges, and the
 evidence/expand/close buttons); each panel lives under
 `components/storysearch/` and takes

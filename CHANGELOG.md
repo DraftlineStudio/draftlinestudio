@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02639] - 2026-09-15
+
+### Added
+- The Planner scratchpad can now stay open beside the manuscript.
+
 ## [0.20.02638] - 2026-09-15
 
 ### Changed

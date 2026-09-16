@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAppStore } from '../store/appStore'
 import { useBookStore } from '../store/bookStore'
@@ -6,8 +6,9 @@ import type { Section } from '../types/draftline'
 import AskPanel from './storysearch/AskPanel'
 import ContinuityPanel from './storysearch/ContinuityPanel'
 import EvidenceIndexPanel from './storysearch/EvidenceIndexPanel'
+import ScratchpadPanel from './storysearch/ScratchpadPanel'
 
-type ToolView = 'continuity' | 'search' | 'evidence'
+type ToolView = 'continuity' | 'search' | 'scratch' | 'evidence'
 
 /** Collapsed height of the bar; the expand toggle swaps between this and tall. */
 const TALL_HEIGHT = 560
@@ -18,14 +19,22 @@ export default function StorySearchToolWindow() {
     setCurrentChapter: s.setCurrentChapter,
     setViewMode: s.setViewMode,
   })))
-  const { height, close, saveHeight } = useAppStore(useShallow(s => ({
+  const { height, close, saveHeight, requestedView, clearRequestedView } = useAppStore(useShallow(s => ({
     height: s.bottomToolHeight,
     close: s.closeBottomTool,
     saveHeight: s.setBottomToolHeight,
+    requestedView: s.bottomToolView,
+    clearRequestedView: s.clearBottomToolView,
   })))
   const [panelHeight, setPanelHeight] = useState(height)
   const [restoreHeight, setRestoreHeight] = useState(height)
   const [activeView, setActiveView] = useState<ToolView>('continuity')
+  // Opening the dock from a status bar button lands on that button's tab.
+  useEffect(() => {
+    if (!requestedView) return
+    setActiveView(requestedView as ToolView)
+    clearRequestedView()
+  }, [requestedView, clearRequestedView])
   const [continuityCounts, setContinuityCounts] = useState<{ review: number; info: number } | null>(null)
   // Stable identities: the panels report counts from effects, so a new
   // function each render would loop.
@@ -37,6 +46,8 @@ export default function StorySearchToolWindow() {
         return 'review questions · paired sources'
       case 'search':
         return 'answers assembled from evidence · source-backed · no AI'
+      case 'scratch':
+        return 'your own notes · nothing here touches the manuscript'
       case 'evidence':
         return 'everything Draftline has indexed'
     }
@@ -97,6 +108,12 @@ export default function StorySearchToolWindow() {
           </svg>
         </Tab>
 
+        <Tab view="scratch" active={activeView} onSelect={setActiveView} label="Scratchpad">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 3h9l5 5v13H5zM14 3v5h5M8 13h8M8 17h5" />
+          </svg>
+        </Tab>
+
         <span className="story-search-header-hint">{subtitle}</span>
         <div className="story-search-header-spacer" />
 
@@ -153,6 +170,7 @@ export default function StorySearchToolWindow() {
 
       {activeView === 'continuity' && book && <ContinuityPanel book={book} onNavigate={navigateSource} onCounts={reportCounts} />}
       {activeView === 'search' && book && <AskPanel book={book} onNavigate={navigateSource} />}
+      {activeView === 'scratch' && book && <ScratchpadPanel book={book} />}
       {activeView === 'evidence' && book && <EvidenceIndexPanel book={book} onNavigate={navigateSource} />}
     </section>
   )

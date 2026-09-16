@@ -2667,6 +2667,56 @@ html, body, #root {
 .ask-panel-coverage-clear { color: var(--accent) !important; }
 .ask-panel-occurrences { flex: 1; min-height: 0; overflow-y: auto; padding: 2px 8px 8px; }
 
+/* ===== SCRATCHPAD DOCK (bottom window tab) =====
+   The Planner's notes beside the manuscript: a list rail and the note itself.
+   Same notes, same store; only the frame is different.
+   ============================================================================= */
+.scratchpad-dock { display: grid; grid-template-columns: 216px 1fr; height: 100%; min-height: 0; overflow: hidden; }
+.scratchpad-dock-list {
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  background: var(--bg-panel);
+  display: flex;
+  flex-direction: column;
+}
+.scratchpad-dock-list-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 10px 5px; position: sticky; top: 0; background: var(--bg-panel);
+}
+.scratchpad-dock-row {
+  display: flex; flex-direction: column; gap: 2px; width: 100%;
+  padding: 6px 10px; border: 0; border-left: 2px solid transparent;
+  background: transparent; text-align: left; font: inherit; cursor: pointer;
+}
+.scratchpad-dock-row:hover { background: var(--bg-hover); }
+.scratchpad-dock-row.active { background: var(--bg-active); border-left-color: var(--app-accent); }
+.scratchpad-dock-row-title { font-size: 12px; color: var(--text-primary); }
+.scratchpad-dock-row-snippet {
+  font-size: 11px; color: var(--text-secondary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.scratchpad-dock-row-meta { font-size: 10.5px; color: var(--text-muted); }
+.scratchpad-dock-body { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.scratchpad-dock-bar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 10px; border-bottom: 1px solid var(--border-subtle);
+}
+.scratchpad-dock-title {
+  flex: 1; min-width: 0; height: 22px; padding: 0 6px;
+  border: 1px solid transparent; border-radius: 3px;
+  background: transparent; color: var(--text-primary);
+  font: inherit; font-size: 12.5px;
+}
+.scratchpad-dock-title:hover { border-color: var(--border); }
+.scratchpad-dock-title:focus { outline: none; border-color: var(--app-accent); background: var(--bg-input); }
+.scratchpad-dock-text {
+  flex: 1; min-height: 0; width: 100%; resize: none;
+  padding: 10px 12px; border: 0; background: var(--bg-editor);
+  color: var(--text-primary); font-family: var(--font-ui); font-size: 13px; line-height: 1.65;
+}
+.scratchpad-dock-text:focus { outline: none; }
+.scratchpad-dock-text.mono { font-family: var(--font-mono); font-size: 12px; }
+
 /* ===== STATUS BAR ===== */
 .statusbar {
   display: flex;

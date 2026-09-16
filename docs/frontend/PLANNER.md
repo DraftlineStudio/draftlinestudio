@@ -90,6 +90,10 @@ dropped. Accepting adds planned cards, creates any chapters the outline reaches
 past the end of the manuscript (empty, titled from the outline), and keeps the
 pasted text as a Scratchpad note.
 
+The same notes are reachable from the writing window: the Scratchpad tab in
+the bottom Plot Inspections dock reads and edits `planner.notes` directly, so a
+note written while drafting is the note Propose Cards reads.
+
 ## Storage
 
 Planner data is stored in the `.draftline` archive as `planner.json`, written
