@@ -27,6 +27,11 @@ type EPUBOptions struct {
 	TextAlign       string `json:"textAlign"`       // reader, left, justify
 	ChapterStyle    string `json:"chapterStyle"`    // classic, minimal
 	SceneBreakStyle string `json:"sceneBreakStyle"` // asterism, rule, space
+	// DropCap sets the first letter of each chapter's opening paragraph as a
+	// raised initial. It is ordinary CSS (::first-letter) that reading
+	// systems including Kindle honour, so an ebook gets the same choice a
+	// printed page does rather than being told it cannot have one.
+	DropCap bool `json:"dropCap"`
 }
 
 // PDFOptions extends ExportOptions with PDF-specific settings.
@@ -38,6 +43,39 @@ type PDFOptions struct {
 	LineHeight      float64 `json:"lineHeight"`      // 1.3, 1.4, 1.5, 1.6
 	ParagraphIndent string  `json:"paragraphIndent"` // inches
 	TextAlign       string  `json:"textAlign"`       // justify, left
+}
+
+// AudioOptions is the narration script: the file a voice actor reads a book
+// from. It is NOT the reading copy with a different name. A narrator marks up
+// a page, needs the line they are on to be findable after a retake, and needs
+// to be told where a scene turns rather than shown a typographic ornament they
+// cannot say out loud. So it gets its own page: large type, open leading,
+// ragged right, numbered paragraphs, a slate before each chapter, and room in
+// the margin to write a pronunciation down.
+type AudioOptions struct {
+	ExportOptions
+	PageSize         string  `json:"pageSize"`         // letter, a4
+	FontFamily       string  `json:"fontFamily"`       // lato, merriweather
+	FontSize         int     `json:"fontSize"`         // 12, 14, 16
+	LineHeight       float64 `json:"lineHeight"`       // 1.5, 1.8, 2.0
+	ParagraphSpacing string  `json:"paragraphSpacing"` // half, one, two lines between
+	// SlatePage puts each chapter's title on a page of its own, which is the
+	// cue a narrator records against.
+	SlatePage bool `json:"slatePage"`
+	// NumberParagraphs prints a number beside every paragraph so a retake can
+	// be asked for by number instead of by reading the line back.
+	NumberParagraphs bool `json:"numberParagraphs"`
+	// PauseBreaks writes a scene break as [PAUSE]. An asterism is silent.
+	PauseBreaks bool `json:"pauseBreaks"`
+	// PronunciationColumn reserves the outer margin for the narrator to write
+	// names and stresses into.
+	PronunciationColumn bool `json:"pronunciationColumn"`
+	// CoverPage opens the script with the ebook cover, so the narrator has the
+	// book in front of them.
+	CoverPage bool `json:"coverPage"`
+	// ChapterWordCount prints the length of each chapter under its slate, for
+	// estimating session time.
+	ChapterWordCount bool `json:"chapterWordCount"`
 }
 
 // PrintPDFOptions extends PDFOptions with print-ready settings.

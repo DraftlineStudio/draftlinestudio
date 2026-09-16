@@ -11,29 +11,36 @@ import (
 const pointsPerInch = 72.0
 
 type publicationPDFSpec struct {
-	Print                  bool
-	TrimWidth              float64
-	TrimHeight             float64
-	Bleed                  float64
-	CropMarks              bool
-	GutterMargin           float64
-	OuterMargin            float64
-	TopMargin              float64
-	BottomMargin           float64
-	MirroredMargins        bool
-	Font                   embeddedFontFamily
-	HeadingFont            embeddedFontFamily
-	FurnitureFont          embeddedFontFamily
-	TitlePageFont          embeddedFontFamily
-	CodeFont               embeddedFontFamily
-	FontSize               float64
-	LineHeight             float64
-	ParagraphIndent        float64
-	TextAlign              string
-	ChapterStartsRecto     bool
-	DropCap                bool
-	DropCapLines           int
-	SceneBreakStyle        string
+	Print              bool
+	TrimWidth          float64
+	TrimHeight         float64
+	Bleed              float64
+	CropMarks          bool
+	GutterMargin       float64
+	OuterMargin        float64
+	TopMargin          float64
+	BottomMargin       float64
+	MirroredMargins    bool
+	Font               embeddedFontFamily
+	HeadingFont        embeddedFontFamily
+	FurnitureFont      embeddedFontFamily
+	TitlePageFont      embeddedFontFamily
+	CodeFont           embeddedFontFamily
+	FontSize           float64
+	LineHeight         float64
+	ParagraphIndent    float64
+	TextAlign          string
+	ChapterStartsRecto bool
+	DropCap            bool
+	DropCapLines       int
+	SceneBreakStyle    string
+	// ParagraphSpacing is blank space after each paragraph, in points. Zero
+	// for a book, which separates paragraphs by indenting them.
+	ParagraphSpacing float64
+	// The narration script's own furniture. None of these apply to a book.
+	SlatePage              bool
+	NumberParagraphs       bool
+	ChapterWordCount       bool
 	ChapterStyle           string
 	RunningHeaders         bool
 	HeaderStyle            string

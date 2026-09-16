@@ -50,6 +50,9 @@ export interface EPUBOptions extends ExportOptions {
   textAlign: 'reader' | 'left' | 'justify'
   chapterStyle: 'classic' | 'minimal'
   sceneBreakStyle: 'asterism' | 'rule' | 'space'
+  // A raised initial on the first paragraph of each chapter. Ordinary
+  // ::first-letter CSS, which Kindle and other reading systems honour.
+  dropCap: boolean
 }
 
 export interface PDFOptions extends ExportOptions {

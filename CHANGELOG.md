@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02659] - 2026-09-16
+
+### Added
+- Ebooks can now use drop caps.
+- Audiobook export now produces a narration script with numbered paragraphs, chapter slates, and pause markers.
+
 ## [0.20.02657] - 2026-09-16
 
 ### Changed

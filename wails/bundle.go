@@ -141,7 +141,9 @@ func (a *App) renderBundleItem(b types.BookData, item types.BundleItem) ([]byte,
 		data, err := export.PDFBytes(source, item.PDF, a.exportCover(b, item.PDF.ExportOptions))
 		return data, " — reading copy.pdf", err
 	case "audio":
-		data, err := export.PDFBytes(source, item.PDF, a.exportCover(b, item.PDF.ExportOptions))
+		// A narration script, not the reading copy renamed: its own page, its
+		// own aids, its own options.
+		data, err := export.AudioScriptBytes(source, item.Audio, a.exportCover(b, item.Audio.ExportOptions))
 		return data, " — audiobook script.pdf", err
 	case "hc":
 		data, err := export.PrintPDFBytes(source, item.Print)

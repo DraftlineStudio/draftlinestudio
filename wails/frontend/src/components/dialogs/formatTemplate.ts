@@ -124,14 +124,22 @@ export interface TemplateOption {
   glyph?: string
 }
 
+// One card on the settings screen.
+//
+// A choice carries BOTH how it is read and how it is written. That is not
+// tidiness: the two used to live in separate functions — a list of cards and a
+// switch of handlers — and every card whose handler nobody wrote rendered
+// perfectly and did nothing when clicked. Ebook drop caps and every audiobook
+// setting shipped that way. Holding `set` on the choice itself means a card
+// that cannot be stored cannot be declared, and the compiler says so.
 export interface TemplateChoice {
   id: string
   label: string
   hint: string
   value: string
   options: TemplateOption[]
-  /** True when no exporter reads this yet; the screen says so once. */
-  held?: boolean
+  /** Applies one of `options` and returns the answers to save. */
+  set: (options: WizardOptions, value: string) => WizardOptions
 }
 
 const TRIM_OPTIONS: TemplateOption[] = [

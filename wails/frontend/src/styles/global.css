@@ -8606,7 +8606,7 @@ html, body, #root {
 /* ═════════════════════════════════════════════════════════════════════════════
    EXPORT FLOW                                                    prefix export-
    ─────────────────────────────────────────────────────────────────────────────
-   Rebuilt 0.21 against reference-assets/export redesign/Export Flow.dc.html.
+   Rebuilt 0.21 against the Export Flow design canvas.
    It replaces the four-step "EXPORT WIZARD" and "EXPORT FROM AN EDITION"
    sections that used to sit here; nothing of theirs survives except
    .export-ed-frozen and .export-ed-cancelled, which belong to the frozen
@@ -9085,8 +9085,8 @@ html, body, #root {
 /* ═════════════════════════════════════════════════════════════════════════════
    BOOK & EDITIONS v2                                                prefix bi-
    ─────────────────────────────────────────────────────────────────────────────
-   Rebuilt 0.21 against reference-assets/Book editions redesign/Book Info
-   v2.dc.html. It replaces the rail and the panes of the earlier BOOK &
+   Rebuilt 0.21 against the Book Info v2 design canvas. It replaces the rail
+   and the panes of the earlier BOOK &
    EDITIONS sections above; what survives from them is the dialog shell, the
    field and ISBN rows, and the COVER ART card, all of which this reuses
    unchanged (components/dialogs/BookInfoDialog.tsx, EditionPane.tsx,

@@ -2,6 +2,7 @@ package export
 
 import (
 	"bytes"
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -37,9 +38,12 @@ type publicationPDFRenderer struct {
 	trimY      float64
 	y          float64
 	chapter    string
-	pageKind   pdfPageKind
-	tocPages   []int
-	toc        []pdfTOCEntry
+	// paragraphNumber counts paragraphs for a narration script, so a retake
+	// can be asked for by number instead of by reading the line back.
+	paragraphNumber int
+	pageKind        pdfPageKind
+	tocPages        []int
+	toc             []pdfTOCEntry
 }
 
 func renderPublicationPDF(doc Document, spec publicationPDFSpec) ([]byte, error) {
@@ -288,6 +292,15 @@ func (r *publicationPDFRenderer) renderSection(section DocumentSection, includeI
 		r.y += r.spec.LineHeight
 	}
 
+	// A slate is the chapter on a page of its own: the cue a narrator records
+	// a take against. The length under it is how a session is planned.
+	if r.spec.SlatePage && section.Role == SectionBody && section.Title != "" {
+		if r.spec.ChapterWordCount {
+			r.renderHeadingText(sectionLengthLine(section), r.spec.FontSize*0.85, "", "center", r.spec.LineHeight)
+		}
+		r.addPage(pageSection, section.Title)
+	}
+
 	firstParagraph := true
 	for _, block := range section.Blocks {
 		switch block.Kind {
@@ -297,7 +310,12 @@ func (r *publicationPDFRenderer) renderSection(section DocumentSection, includeI
 			size := r.spec.FontSize * math.Max(1.08, 1.55-float64(block.Level)*0.08)
 			r.renderHeadingText(block.PlainText(), size, "B", blockAlignment(block, "left"), r.spec.LineHeight)
 		case BlockParagraph:
+			if r.spec.NumberParagraphs {
+				r.paragraphNumber++
+				r.drawParagraphNumber()
+			}
 			r.renderTextBlock(block, 0, firstParagraph && r.spec.DropCap)
+			r.y += r.spec.ParagraphSpacing
 			firstParagraph = false
 		case BlockBlockquote:
 			r.renderTextBlock(block, 0.35*pointsPerInch, false)
@@ -335,31 +353,6 @@ func (r *publicationPDFRenderer) renderHeadingText(text string, size float64, st
 	r.y += size + after
 }
 
-// runningHead is what the header says on this page.
-//
-// A verso and a recto carry different things, which is the whole point of a
-// running head: a reader who opens the book in the middle can see whose book
-// it is on one side and where they are on the other.
-func (r *publicationPDFRenderer) runningHead(page int) string {
-	verso := page%2 == 0
-	switch strings.ToLower(strings.TrimSpace(r.spec.HeaderContent)) {
-	case "chapter":
-		return r.chapter
-	case "title-chapter":
-		if verso {
-			return r.doc.Title
-		}
-		return r.chapter
-	default:
-		// author-title, and anything a later build writes that this one does
-		// not know: the author's own name is never the wrong thing to print.
-		if verso {
-			return r.doc.Author
-		}
-		return r.doc.Title
-	}
-}
-
 func (r *publicationPDFRenderer) renderSceneBreak() {
 	style := strings.ToLower(strings.TrimSpace(r.spec.SceneBreakStyle))
 	if style == "space" {
@@ -373,6 +366,11 @@ func (r *publicationPDFRenderer) renderSceneBreak() {
 	mark := "*  *  *"
 	if style == "rule" {
 		mark = "———"
+	}
+	// A narration script says the break out loud, because an asterism is
+	// silent and a narrator cannot act on it.
+	if style == "pause" {
+		mark = "[PAUSE]"
 	}
 	// ASCII asterisks are intentionally used rather than U+2042. Not every
 	// author-selected body face contains the asterism glyph, which produced a
@@ -705,96 +703,23 @@ func takeDropCap(runs []DocumentRun) (string, string, []DocumentRun) {
 	return "", "", runs
 }
 
-// drawFurniture puts the running head and the folio on the page.
-//
-// The two can share a line. With folios set top-outside they sit on the same
-// baseline at the same outside edge, so the head is indented inside the folio
-// by its own width plus a space — otherwise the page number is printed on top
-// of the author's name, which is what happened before this measured anything.
-func (r *publicationPDFRenderer) drawFurniture() {
-	page := r.pdf.PageNo()
-	leftMargin, rightMargin := r.margins(page)
-	left := r.trimX + leftMargin
-	width := r.spec.TrimWidth - leftMargin - rightMargin
-	recto := page%2 == 1
-	headerY := r.trimY + r.spec.TopMargin*0.48
-	furnitureSize := r.spec.FontSize * 0.72
-
-	// The folio first, because the head has to know how much room it left.
-	folio := ""
-	folioWidth := 0.0
-	if r.spec.PageNumberPosition != "" {
-		r.pdf.SetFont(r.spec.FurnitureFont.ID, "", furnitureSize)
-		folio = strconv.Itoa(page)
-		folioWidth = r.pdf.GetStringWidth(folio)
-	}
-	sharesTheLine := folio != "" && r.spec.PageNumberPosition == "top-outside"
-
-	if r.spec.RunningHeaders && r.pageKind == pageSection {
-		header := r.runningHead(page)
-		style := ""
-		if strings.EqualFold(r.spec.HeaderStyle, "italic") {
-			style = "I"
-		}
-		if strings.EqualFold(r.spec.HeaderStyle, "smallcaps") {
-			header = strings.ToUpper(header)
-		}
-		if header != "" {
-			r.pdf.SetFont(r.spec.FurnitureFont.ID, style, furnitureSize)
-			inset := 0.0
-			if sharesTheLine {
-				inset = folioWidth + r.pdf.GetStringWidth("  ")
-			}
-			w := r.pdf.GetStringWidth(header)
-			x := left + inset
-			if recto {
-				x = left + width - inset - w
-			}
-			r.pdf.Text(x, headerY, header)
-		}
-	}
-
-	if folio == "" {
-		return
-	}
-	r.pdf.SetFont(r.spec.FurnitureFont.ID, "", furnitureSize)
-	x := left + (width-folioWidth)/2
-	y := r.trimY + r.spec.TrimHeight - r.spec.BottomMargin*0.4
-	if r.spec.PageNumberPosition == "bottom-outside" || r.spec.PageNumberPosition == "top-outside" {
-		if recto {
-			x = r.trimX + r.spec.TrimWidth - rightMargin - folioWidth
-		} else {
-			x = r.trimX + leftMargin
-		}
-	}
-	if r.spec.PageNumberPosition == "top-outside" {
-		y = headerY
-	}
-	r.pdf.Text(x, y, folio)
-}
-
-func (r *publicationPDFRenderer) drawCropMarks() {
-	const length = 12.0
-	const gap = 4.0
-	x1 := r.trimX
-	x2 := r.trimX + r.spec.TrimWidth
-	y1 := r.trimY
-	y2 := r.trimY + r.spec.TrimHeight
-	r.pdf.SetDrawColor(0, 0, 0)
-	r.pdf.SetLineWidth(0.25)
-	for _, x := range []float64{x1, x2} {
-		r.pdf.Line(x, y1-gap, x, y1-gap-length)
-		r.pdf.Line(x, y2+gap, x, y2+gap+length)
-	}
-	for _, y := range []float64{y1, y2} {
-		r.pdf.Line(x1-gap, y, x1-gap-length, y)
-		r.pdf.Line(x2+gap, y, x2+gap+length, y)
-	}
-}
-
 func maxInt(a, b int) int {
 	if a > b {
 		return a
 	}
 	return b
+}
+
+// sectionLengthLine is how long a chapter is, for planning a session. 150
+// words a minute is the working rate for audiobook narration.
+func sectionLengthLine(section DocumentSection) string {
+	words := 0
+	for _, block := range section.Blocks {
+		words += len(strings.Fields(block.PlainText()))
+	}
+	minutes := words / 150
+	if minutes < 1 {
+		minutes = 1
+	}
+	return fmt.Sprintf("%d words, about %d min", words, minutes)
 }

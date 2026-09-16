@@ -59,6 +59,7 @@ func renderEPUBSection(doc Document, section DocumentSection, options types.EPUB
 
 	listOpen := false
 	listOrdered := false
+	firstParagraph := true
 	closeList := func() {
 		if !listOpen {
 			return
@@ -86,7 +87,14 @@ func renderEPUBSection(doc Document, section DocumentSection, options types.EPUB
 			continue
 		}
 		closeList()
-		renderEPUBBlock(&body, block, options, profile)
+		// The first paragraph of a section is the one a drop cap belongs to.
+		// Only this loop knows which that is, so it marks it and the
+		// stylesheet decides whether to do anything about it.
+		opening := firstParagraph && block.Kind == BlockParagraph
+		if opening {
+			firstParagraph = false
+		}
+		renderEPUBBlock(&body, block, options, profile, opening)
 	}
 	closeList()
 	if profile.Three {
@@ -101,7 +109,7 @@ func renderEPUBSection(doc Document, section DocumentSection, options types.EPUB
 		body.String()+"  ")
 }
 
-func renderEPUBBlock(out *strings.Builder, block DocumentBlock, options types.EPUBOptions, profile epubProfile) {
+func renderEPUBBlock(out *strings.Builder, block DocumentBlock, options types.EPUBOptions, profile epubProfile, opening bool) {
 	content := renderEPUBRuns(block.Runs, profile)
 	align := epubAlignmentClass(block.Alignment)
 	switch block.Kind {
@@ -125,8 +133,20 @@ func renderEPUBBlock(out *strings.Builder, block DocumentBlock, options types.EP
 			fmt.Fprintf(out, "      <div class=\"scene-break scene-asterism\"%s>⁂</div>\n", epubHidden(profile))
 		}
 	default:
+		if opening && options.DropCap {
+			align = withEPUBClass(align, "opening")
+		}
 		fmt.Fprintf(out, "      <p%s>%s</p>\n", align, content)
 	}
+}
+
+// withEPUBClass adds a class to an attribute that may already carry one, so a
+// centred opening paragraph keeps its alignment and gains its drop cap.
+func withEPUBClass(attr, name string) string {
+	if attr == "" {
+		return " class=\"" + name + "\""
+	}
+	return strings.TrimSuffix(attr, "\"") + " " + name + "\""
 }
 
 // epubHidden is the ARIA attribute that tells a screen reader to skip a
@@ -273,6 +293,16 @@ nav li, .toc li { margin: 0.35em 0; }
 	switch options.TextAlign {
 	case "left", "justify":
 		fmt.Fprintf(&css, "p { text-align: %s; }\n", options.TextAlign)
+	}
+	// The drop cap. ::first-letter is ordinary CSS that reading systems
+	// including Kindle honour; a reader that ignores it simply shows an
+	// ordinary paragraph, which is why this is safe to offer. The opening
+	// paragraph is never indented — an indent under a raised initial is the
+	// mark of a book nobody set.
+	if options.DropCap {
+		css.WriteString(`p.opening { text-indent: 0; }
+p.opening::first-letter { float: left; font-size: 3.2em; line-height: 0.82; padding: 0.02em 0.08em 0 0; font-weight: 700; }
+`)
 	}
 	if family, ok := embeddedPDFFonts[options.FontFamily]; ok {
 		name := EscapeXML(family.DisplayName)

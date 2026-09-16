@@ -167,3 +167,53 @@ func assertWellFormedXML(t *testing.T, name string, data []byte) {
 		}
 	}
 }
+
+// An ebook can have a drop cap. ::first-letter is ordinary CSS that reading
+// systems including Kindle honour, and it goes on the opening paragraph of
+// each section only - never on the paragraph after a scene break.
+func TestEPUBDropCapMarksOnlyTheOpeningParagraph(t *testing.T) {
+	book := types.BookData{
+		Metadata: types.Metadata{Title: "Wide Water", Author: "A. Marsh"},
+		Body: []types.ChapterItem{{Title: "Chapter One", Type: "chapter",
+			Content: "<p>The first paragraph.</p><hr /><p>After the break.</p>"}},
+	}
+
+	data, err := EPUBBytes(book, types.EPUBOptions{DropCap: true, SceneBreakStyle: "asterism"}, nil)
+	if err != nil {
+		t.Fatalf("rendering: %v", err)
+	}
+	parts := readEPUBParts(t, data)
+	css := string(parts["OEBPS/styles/book.css"])
+	if !strings.Contains(css, "p.opening::first-letter") {
+		t.Error("the stylesheet carries no drop cap rule")
+	}
+	chapter := firstEPUBChapter(t, parts)
+	if got := strings.Count(chapter, `class="opening"`); got != 1 {
+		t.Errorf("wanted exactly one opening paragraph, got %d in %q", got, chapter)
+	}
+
+	// Off, nothing is marked and no rule is written.
+	plain, err := EPUBBytes(book, types.EPUBOptions{SceneBreakStyle: "asterism"}, nil)
+	if err != nil {
+		t.Fatalf("rendering without a drop cap: %v", err)
+	}
+	off := readEPUBParts(t, plain)
+	if strings.Contains(string(off["OEBPS/styles/book.css"]), "first-letter") {
+		t.Error("a drop cap rule was written for a book that did not ask for one")
+	}
+	if strings.Contains(firstEPUBChapter(t, off), `class="opening"`) {
+		t.Error("a paragraph was marked for a book that did not ask for a drop cap")
+	}
+}
+
+// firstEPUBChapter is the body document holding the manuscript.
+func firstEPUBChapter(t *testing.T, parts map[string][]byte) string {
+	t.Helper()
+	for name, body := range parts {
+		if strings.HasPrefix(name, "OEBPS/text/") && strings.Contains(string(body), "paragraph") {
+			return string(body)
+		}
+	}
+	t.Fatal("no chapter document in the epub")
+	return ""
+}

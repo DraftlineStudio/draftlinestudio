@@ -127,6 +127,7 @@ export const EPUB_DEFAULTS = {
   textAlign: 'reader' as EPUBOptions['textAlign'],
   chapterStyle: 'classic' as EPUBOptions['chapterStyle'],
   sceneBreakStyle: 'asterism' as EPUBOptions['sceneBreakStyle'],
+  dropCap: false,
   version: 'EPUB 3.3',
 }
 
@@ -203,6 +204,7 @@ export function defaultWizardOptions(): WizardOptions {
       textAlign: EPUB_DEFAULTS.textAlign,
       chapterStyle: EPUB_DEFAULTS.chapterStyle,
       sceneBreakStyle: EPUB_DEFAULTS.sceneBreakStyle,
+      dropCap: EPUB_DEFAULTS.dropCap,
     },
     pdf,
     print: {
