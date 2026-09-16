@@ -12,6 +12,10 @@ export function AnalyzeBook(arg1:types.BookData):Promise<types.FullAnalysisResul
 
 export function AnalyzeRelationships(arg1:types.BookData):Promise<types.RelationshipAnalysisResult>;
 
+export function AttachCover(arg1:string,arg2:string,arg3:boolean):Promise<types.CoverResult>;
+
+export function AttachCoverDialog(arg1:string,arg2:boolean):Promise<types.CoverResult>;
+
 export function BrowseForDirectory():Promise<string>;
 
 export function BuildContinuityReport(arg1:types.BookData):Promise<types.ContinuityReport>;
@@ -25,6 +29,8 @@ export function CancelRewrite():Promise<void>;
 export function CheckClaudeCode():Promise<types.ClaudeCodeStatus>;
 
 export function CheckCodexCLI():Promise<types.ClaudeCodeStatus>;
+
+export function CheckCoverSource(arg1:string,arg2:string):Promise<types.CoverSourceReport>;
 
 export function CheckForUpdates():Promise<main.UpdateCheckResult>;
 
@@ -101,6 +107,8 @@ export function PluginSetEnabled(arg1:string,arg2:boolean):Promise<void>;
 export function ReadAloudServerURL():Promise<string>;
 
 export function ReadAloudStatus():Promise<readaloud.Status>;
+
+export function RemoveCover(arg1:string):Promise<void>;
 
 export function RemoveReadAloudModel():Promise<void>;
 

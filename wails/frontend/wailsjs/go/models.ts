@@ -1210,12 +1210,77 @@ export namespace types {
 	        this.snapshot_id = source["snapshot_id"];
 	    }
 	}
+	export class EditionCover {
+	    id: string;
+	    file: string;
+	    thumb_file: string;
+	    large_file?: string;
+	    width: number;
+	    height: number;
+	    bytes: number;
+	    thumb_width: number;
+	    thumb_height: number;
+	    thumb_bytes: number;
+	    large_width?: number;
+	    large_height?: number;
+	    large_bytes?: number;
+	    encoding: string;
+	    quality: number;
+	    greyscale?: boolean;
+	    converted_from_cmyk?: boolean;
+	    flattened_alpha?: boolean;
+	    source_path?: string;
+	    source_checksum?: string;
+	    source_bytes?: number;
+	    source_width?: number;
+	    source_height?: number;
+	    source_modified?: string;
+	    source_format?: string;
+	    attached?: string;
+	    notes?: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new EditionCover(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.file = source["file"];
+	        this.thumb_file = source["thumb_file"];
+	        this.large_file = source["large_file"];
+	        this.width = source["width"];
+	        this.height = source["height"];
+	        this.bytes = source["bytes"];
+	        this.thumb_width = source["thumb_width"];
+	        this.thumb_height = source["thumb_height"];
+	        this.thumb_bytes = source["thumb_bytes"];
+	        this.large_width = source["large_width"];
+	        this.large_height = source["large_height"];
+	        this.large_bytes = source["large_bytes"];
+	        this.encoding = source["encoding"];
+	        this.quality = source["quality"];
+	        this.greyscale = source["greyscale"];
+	        this.converted_from_cmyk = source["converted_from_cmyk"];
+	        this.flattened_alpha = source["flattened_alpha"];
+	        this.source_path = source["source_path"];
+	        this.source_checksum = source["source_checksum"];
+	        this.source_bytes = source["source_bytes"];
+	        this.source_width = source["source_width"];
+	        this.source_height = source["source_height"];
+	        this.source_modified = source["source_modified"];
+	        this.source_format = source["source_format"];
+	        this.attached = source["attached"];
+	        this.notes = source["notes"];
+	    }
+	}
 	export class Edition {
 	    id: string;
 	    label: string;
 	    year: string;
 	    status: string;
 	    cover_id?: string;
+	    cover?: EditionCover;
 	    previous_edition_id?: string;
 	    revision_note?: string;
 	    formats: EditionFormat[];
@@ -1231,6 +1296,7 @@ export namespace types {
 	        this.year = source["year"];
 	        this.status = source["status"];
 	        this.cover_id = source["cover_id"];
+	        this.cover = this.convertValues(source["cover"], EditionCover);
 	        this.previous_edition_id = source["previous_edition_id"];
 	        this.revision_note = source["revision_note"];
 	        this.formats = this.convertValues(source["formats"], EditionFormat);
@@ -2170,6 +2236,58 @@ export namespace types {
 	}
 	
 	
+	export class CoverResult {
+	    success: boolean;
+	    error?: string;
+	    cover?: EditionCover;
+	    cancelled?: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new CoverResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.error = source["error"];
+	        this.cover = this.convertValues(source["cover"], EditionCover);
+	        this.cancelled = source["cancelled"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CoverSourceReport {
+	    status: string;
+	    message: string;
+	    path?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CoverSourceReport(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.message = source["message"];
+	        this.path = source["path"];
+	    }
+	}
 	export class EPUBOptions {
 	    includeCopyright: boolean;
 	    includeFrontMatter: boolean;
@@ -2196,6 +2314,7 @@ export namespace types {
 	        this.sceneBreakStyle = source["sceneBreakStyle"];
 	    }
 	}
+	
 	
 	
 	

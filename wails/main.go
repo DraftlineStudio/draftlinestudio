@@ -48,6 +48,14 @@ func main() {
 			// Handler: it must win before the dev server's SPA fallback.
 			Middleware: app.pluginAssetMiddleware(),
 		},
+		// Dropping cover artwork onto the window hands Go the file's PATH,
+		// which is the only form internal/coverart accepts. Without this the
+		// webview would receive the file's contents instead, and a forty
+		// megabyte TIFF would have to cross the JSON bridge to get back to
+		// disk. See cover.go.
+		DragAndDrop: &options.DragAndDrop{
+			EnableFileDrop: true,
+		},
 		BackgroundColour: &options.RGBA{R: 43, G: 45, B: 48, A: 255},
 		OnStartup:        app.startup,
 		OnShutdown:       app.onShutdown,

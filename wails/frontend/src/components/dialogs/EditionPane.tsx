@@ -10,6 +10,7 @@
 // brief's sections live. This file only draws them.
 
 import { useState } from 'react'
+import CoverCard from './CoverCard'
 import { useBookStore } from '../../store/bookStore'
 import type { Edition, EditionFormat, EditionIndex, Metadata } from '../../types/draftline'
 import {
@@ -262,7 +263,7 @@ function FormatPanel({ meta, index, edition, format, handEdited, advOpen, setAdv
 
       <StandingNote />
 
-      <CoverAndTextCard edition={edition} format={format} meta={meta} />
+      <CoverCard edition={edition} format={format} meta={meta} />
 
       {sections.map(section => (
         <section className="bi-section" key={section.label}>
@@ -306,41 +307,6 @@ function FormatPanel({ meta, index, edition, format, handEdited, advOpen, setAdv
         )}
       </section>
     </>
-  )
-}
-
-// ── The cover and the frozen text: drawn, not yet attachable ───────────────
-
-function CoverAndTextCard({ edition, format, meta }: { edition: Edition; format: EditionFormat; meta: Partial<Metadata> }) {
-  return (
-    <section className="bi-ed-card">
-      <div className="bi-ed-cover">
-        <div className="bi-ed-cover-plate">
-          <span className="bi-ed-cover-kicker">{edition.label || 'Edition'}</span>
-          <span className="bi-ed-cover-title">{meta.title || 'Untitled'}</span>
-          <span className="bi-ed-cover-author">{meta.author || ''}</span>
-        </div>
-        <span className="bi-ed-cover-caption">No cover attached</span>
-      </div>
-      <div className="bi-ed-card-body">
-        <div className="bi-section-head">
-          <span className="chapter-section-label">Cover art and frozen text</span>
-          <span className="bi-section-note">Not attachable yet.</span>
-        </div>
-        <div className="bi-ed-facts">
-          <div className="bi-ed-fact"><span>Cover file</span><span>none</span></div>
-          <div className="bi-ed-fact"><span>Ebook derivative</span><span>1600 × 2560</span></div>
-          <div className="bi-ed-fact"><span>Text frozen at export</span><span>{format.snapshot_id ? format.snapshot_id : 'no snapshot'}</span></div>
-          <div className="bi-ed-fact"><span>Exports from</span><span>{format.snapshot_id ? 'the frozen text' : 'the current draft'}</span></div>
-        </div>
-        <p className="bi-ed-note">
-          Cover art belongs to the edition, not to the book, so the art of a first edition stays with
-          the first edition's ISBNs. The ebook derivative is a front cover only, 1600 by 2560 pixels,
-          with no spine, no back and no bleed: it is not a print cover, and the print-ready artwork
-          stays where it is on disk. Attaching one comes next; nothing on this card does anything yet.
-        </p>
-      </div>
-    </section>
   )
 }
 

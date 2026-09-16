@@ -2,6 +2,16 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02649] - 2026-09-16
+
+### Added
+- Formats can now have cover art, processed to 1600 by 2560 pixels in sRGB.
+- Covers accept JPEG, PNG, TIFF, WebP, and BMP, and Draftline tracks whether the original file moves or changes.
+- Added an optional 2400 by 3840 cover for stores that ask for it.
+
+### Changed
+- Covers are resized in linear light and encoded at the smallest quality that still matches the original.
+
 ## [0.20.02648] - 2026-09-16
 
 ### Fixed

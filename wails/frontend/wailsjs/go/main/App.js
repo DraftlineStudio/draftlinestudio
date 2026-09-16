@@ -18,6 +18,14 @@ export function AnalyzeRelationships(arg1) {
   return window['go']['main']['App']['AnalyzeRelationships'](arg1);
 }
 
+export function AttachCover(arg1, arg2, arg3) {
+  return window['go']['main']['App']['AttachCover'](arg1, arg2, arg3);
+}
+
+export function AttachCoverDialog(arg1, arg2) {
+  return window['go']['main']['App']['AttachCoverDialog'](arg1, arg2);
+}
+
 export function BrowseForDirectory() {
   return window['go']['main']['App']['BrowseForDirectory']();
 }
@@ -44,6 +52,10 @@ export function CheckClaudeCode() {
 
 export function CheckCodexCLI() {
   return window['go']['main']['App']['CheckCodexCLI']();
+}
+
+export function CheckCoverSource(arg1, arg2) {
+  return window['go']['main']['App']['CheckCoverSource'](arg1, arg2);
 }
 
 export function CheckForUpdates() {
@@ -196,6 +208,10 @@ export function ReadAloudServerURL() {
 
 export function ReadAloudStatus() {
   return window['go']['main']['App']['ReadAloudStatus']();
+}
+
+export function RemoveCover(arg1) {
+  return window['go']['main']['App']['RemoveCover'](arg1);
 }
 
 export function RemoveReadAloudModel() {

@@ -177,6 +177,19 @@ func unreadableSource(err error) error { return sourceReadError{err: err} }
 // prefixes is not copied, and because every save rebuilds the archive from
 // scratch, not copying a member destroys it.
 func copyPreservedEntries(w *archiveWriter, sourcePath string, prefixes []string) error {
+	return copyPreservedEntriesExcept(w, sourcePath, prefixes, nil)
+}
+
+// copyPreservedEntriesExcept is the same, with a list of prefixes this save is
+// replacing outright.
+//
+// The exception exists because a replaced member does not always keep its
+// name. Cover art is kept as a JPEG or, for flat artwork, as a PNG; attaching
+// new art of the other kind writes cover.png beside a cover.jpg the passthrough
+// would otherwise carry forward for ever. Naming the prefix drops the whole
+// old set, and the assets written before this call have already claimed the
+// names that survive.
+func copyPreservedEntriesExcept(w *archiveWriter, sourcePath string, prefixes, superseded []string) error {
 	if strings.TrimSpace(sourcePath) == "" || len(prefixes) == 0 {
 		return nil
 	}
@@ -192,7 +205,7 @@ func copyPreservedEntries(w *archiveWriter, sourcePath string, prefixes []string
 		return unreadableSource(fmt.Errorf("cannot preserve archived data: %w", err))
 	}
 	for _, file := range r.File {
-		if !hasAnyPrefix(file.Name, prefixes) {
+		if !hasAnyPrefix(file.Name, prefixes) || hasAnyPrefix(file.Name, superseded) {
 			continue
 		}
 		if err := w.copyEntry(file); err != nil {

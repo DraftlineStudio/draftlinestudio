@@ -220,18 +220,29 @@ func (a *App) onShutdown(_ context.Context) {
 // ── Frontend bundle serving ──────────────────────────────────────────────────
 
 // pluginAssetMiddleware intercepts /plugins/* ahead of the rest of the asset
-// chain. It must be assetserver Middleware, not the Handler fallback: in
-// `wails dev` the frontend dev server answers unknown paths with its SPA
-// index.html fallback, so a fallback Handler never sees plugin requests.
+// chain, and /editions/* beside it. It must be assetserver Middleware, not the
+// Handler fallback: in `wails dev` the frontend dev server answers unknown
+// paths with its SPA index.html fallback, so a fallback Handler never sees
+// these requests.
+//
+// /editions/<edition id>/<file> is edition cover art (see cover.go). It is
+// served here, from this process, so the webview can show a cover through an
+// ordinary same-origin <img src>. The alternative - base64 across the Wails
+// bridge - would send a megabyte of JPEG through the JSON channel the book
+// itself uses.
 func (a *App) pluginAssetMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-		serve := a.pluginAssets()
+		servePlugins := a.pluginAssets()
+		serveEditions := a.editionAssets()
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if strings.HasPrefix(r.URL.Path, "/plugins/") {
-				serve.ServeHTTP(w, r)
-				return
+			switch {
+			case strings.HasPrefix(r.URL.Path, "/plugins/"):
+				servePlugins.ServeHTTP(w, r)
+			case strings.HasPrefix(r.URL.Path, editionAssetPrefix):
+				serveEditions.ServeHTTP(w, r)
+			default:
+				next.ServeHTTP(w, r)
 			}
-			next.ServeHTTP(w, r)
 		})
 	}
 }

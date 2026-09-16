@@ -43,7 +43,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.20.02648"
+const AppVersion = "0.20.02649"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -83,6 +83,11 @@ type App struct {
 
 	// bookLock holds the per-book instance lock (see locking.go).
 	bookLock bookLockState
+
+	// covers holds edition cover art (see cover.go). Image bytes are here and
+	// not on types.BookData, which crosses the Wails bridge as JSON on every
+	// autosave. Usable as a zero value.
+	covers coverCache
 
 	// API key state. The key lives in the OS keyring; legacyAPIKey holds a
 	// plaintext key only on machines where no keyring is available, so users
@@ -335,6 +340,7 @@ func (a *App) NewBook() types.BookData {
 	now := time.Now().Format(time.RFC3339)
 	a.setCurrentFile("")
 	a.releaseBookLock()
+	a.covers.reset()
 	newBook := types.BookData{
 		Version: "2.2",
 		Metadata: types.Metadata{
@@ -393,6 +399,8 @@ func (a *App) openBook(path string) (types.BookData, error) {
 		return types.BookData{}, err
 	}
 	a.installBookLock(lock)
+	// A different book has different covers; the cache is per project.
+	a.covers.reset()
 	a.setCurrentFile(path)
 	return b, nil
 }
@@ -413,9 +421,11 @@ func (a *App) SaveBookSnapshots(b types.BookData, snapshots []types.ChapterSnaps
 	if current == "" {
 		return types.SaveResult{Success: false, Error: "save the project before creating version history"}
 	}
-	result := book.WriteWithSnapshots(current, current, b, AppVersion, snapshots)
+	assets, marks := a.covers.pending()
+	result := book.WriteArchive(current, current, b, AppVersion, snapshots, assets)
 	if result.Success {
 		a.setCurrentFile(current)
+		a.covers.settled(marks)
 	}
 	return result
 }
@@ -1364,23 +1374,29 @@ func (a *App) writeBook(b types.BookData, path string) types.SaveResult {
 	// Saving to a NEW path (Save As, first save) claims that path's lock, so
 	// two instances can't silently write over each other's book. Saving to
 	// the already-current path keeps the lock it holds.
+	// Cover art rides beside the book, not on it. Only what has changed since
+	// the last save is handed over; everything else survives by passthrough,
+	// stored and never re-encoded.
+	assets, marks := a.covers.pending()
 	if path != source {
 		lock, err := a.claimBookLock(path)
 		if err != nil {
 			return types.SaveResult{Success: false, Error: err.Error()}
 		}
-		result := book.Write(source, path, b, AppVersion)
+		result := book.WriteArchive(source, path, b, AppVersion, nil, assets)
 		if !result.Success {
 			a.discardBookLockClaim(lock)
 			return result
 		}
 		a.installBookLock(lock)
 		a.setCurrentFile(path)
+		a.covers.settled(marks)
 		return result
 	}
-	result := book.Write(source, path, b, AppVersion)
+	result := book.WriteArchive(source, path, b, AppVersion, nil, assets)
 	if result.Success {
 		a.setCurrentFile(path)
+		a.covers.settled(marks)
 	}
 	return result
 }

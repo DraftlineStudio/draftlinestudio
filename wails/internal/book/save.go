@@ -131,18 +131,42 @@ func sameArchiveFile(a, b string) bool {
 	return os.SameFile(ai, bi)
 }
 
+// Assets are binary archive members this save writes from memory rather than
+// carrying across from the book it is saving.
+//
+// Cover art is the first of them. Bytes never reach BookData - see
+// types/cover.go - so they arrive here beside it instead, and they only arrive
+// at all when they have changed: an unchanged cover survives by the passthrough
+// in history.go, stored and never re-encoded.
+type Assets struct {
+	// Files maps a full archive member name to its contents. Each is written
+	// stored rather than deflated, because a JPEG is already compressed.
+	Files map[string][]byte
+	// Superseded lists member-name prefixes this save replaces. A carried-over
+	// member under one of them is dropped instead of preserved, which is what
+	// lets a cover be replaced by one in a different format: attaching a flat
+	// design as cover.png must not leave the old cover.jpg behind it.
+	Superseded []string
+}
+
 // Write saves a BookData to a .draftline file at destPath. sourcePath is the
 // project the book is open from, which a Save As carries chapter history and
 // other preserved members over from; it is empty for a book never yet saved.
 // appVersion should be the current application version string.
 func Write(sourcePath, destPath string, book types.BookData, appVersion string) types.SaveResult {
-	return WriteWithSnapshots(sourcePath, destPath, book, appVersion, nil)
+	return WriteArchive(sourcePath, destPath, book, appVersion, nil, Assets{})
 }
 
 // WriteWithSnapshots saves the book while preserving its embedded chapter
 // history and optionally appending changed chapter snapshots. History is read
 // from sourcePath and written to destPath.
 func WriteWithSnapshots(sourcePath, destPath string, book types.BookData, appVersion string, snapshots []types.ChapterSnapshotRequest) types.SaveResult {
+	return WriteArchive(sourcePath, destPath, book, appVersion, snapshots, Assets{})
+}
+
+// WriteArchive is the whole save: the book, optional chapter snapshots, and
+// any binary assets that changed since the last one.
+func WriteArchive(sourcePath, destPath string, book types.BookData, appVersion string, snapshots []types.ChapterSnapshotRequest, assets Assets) types.SaveResult {
 	// warnings record what the save could not do without failing outright. The
 	// same unreadable source is reported once however many reads it defeats.
 	var warnings []string
@@ -244,13 +268,22 @@ func WriteWithSnapshots(sourcePath, destPath string, book types.BookData, appVer
 		}
 	}
 
+	// Binary assets go in before the passthrough, for the same reason the
+	// editions index does: they claim their names first, so the passthrough
+	// skips the copies in the old file instead of colliding with them.
+	for name, data := range assets.Files {
+		if err := aw.addBytes(name, data); err != nil {
+			return types.SaveResult{Success: false, Error: err.Error()}
+		}
+	}
+
 	// Carry over everything this save does not rebuild. The snapshot branch is
 	// rewriting chapter history from memory, so it preserves the rest.
 	preserved := preservedArchivePrefixes
 	if len(snapshots) > 0 {
 		preserved = preservedPrefixesExcept(historyPrefix)
 	}
-	if err := copyPreservedEntries(aw, sourcePath, preserved); err != nil {
+	if err := copyPreservedEntriesExcept(aw, sourcePath, preserved, assets.Superseded); err != nil {
 		note, tolerated := toleratedSourceFailure(err, sourcePath, destPath)
 		if !tolerated {
 			return types.SaveResult{Success: false, Error: err.Error()}

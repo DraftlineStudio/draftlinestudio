@@ -8858,3 +8858,65 @@ html, body, #root {
   font-size: 11px; line-height: 1.6; color: var(--text-muted); max-width: 66ch;
 }
 .bi-ed-standing strong { color: var(--text-secondary); font-weight: 600; }
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   BOOK & EDITIONS · COVER ART
+   The cover card on a format panel and the thumbnail beside an edition in the
+   rail (components/dialogs/CoverCard.tsx, BookInfoDialog.tsx, coverModel.ts).
+   Prefix: bi-cover-, plus .bi-ed-group-thumb on the rail row.
+
+   Two things here are load-bearing rather than decoration:
+     · --wails-drop-target: drop on .bi-cover-drop is what makes a dropped
+       file reach Go as a PATH. Wails only reports a drop over an element
+       carrying this property, and the path is the only form the cover
+       pipeline accepts — an <input type="file"> would push the whole image
+       through the webview instead. Removing this line silently turns
+       drag-and-drop off.
+     · the cover image is sized by the same 128 x 192 plate the placeholder
+       uses, and is object-fit: contain rather than cover, because artwork
+       that is not 1.6:1 must be shown in its own proportions. Draftline does
+       not crop a cover, and neither does this card.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.bi-cover-drop { --wails-drop-target: drop; }
+.bi-cover-image {
+  width: 128px; height: 192px; object-fit: contain; object-position: center;
+  border-radius: 2px; box-shadow: var(--shadow-page); background: var(--bg-surface);
+}
+.bi-cover-actions {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.bi-cover-option {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11.5px; color: var(--text-secondary); cursor: pointer;
+}
+.bi-cover-option input { margin: 0; }
+.bi-cover-hint { margin-top: -2px; max-width: 66ch; }
+.bi-cover-error {
+  margin: 0; padding: 8px 10px; border-radius: 4px; max-width: 72ch;
+  background: var(--bg-surface-alt); border-left: 2px solid var(--danger, #e5534b);
+  font-size: 11.5px; line-height: 1.6; color: var(--text-primary);
+}
+/* A notice is not a warning: it reports something Draftline did to the
+   artwork — converted it out of CMYK, laid it on white — that the author can
+   see in the result and would otherwise have to guess at. */
+.bi-cover-notice {
+  margin: 0; padding: 8px 0 8px 12px; border-left: 2px solid var(--app-accent);
+  font-size: 11px; line-height: 1.6; color: var(--text-secondary); max-width: 66ch;
+}
+.bi-cover-source {
+  margin: 0; padding: 8px 0 8px 12px; border-left: 2px solid var(--border);
+  font-size: 11px; line-height: 1.6; color: var(--text-muted); max-width: 66ch;
+}
+.bi-cover-source strong { color: var(--text-secondary); font-weight: 600; }
+.bi-cover-source.ok { border-left-color: var(--success, #4a9d5f); }
+.bi-cover-source.warn { border-left-color: var(--warning, #d0a040); }
+
+/* The rail thumbnail. Small enough that it reads as an identifier rather than
+   as a picture, and it keeps its slot when there is no cover so the rows do
+   not shift as editions gain artwork. */
+.bi-ed-group-thumb {
+  width: 14px; height: 21px; flex: none; border-radius: 1px;
+  object-fit: cover; align-self: center;
+  border: 1px solid var(--border); background: var(--bg-surface);
+}
+.bi-ed-group-thumb.empty { border-style: dashed; opacity: 0.5; }

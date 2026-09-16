@@ -55,8 +55,13 @@ type Edition struct {
 	Year   string `json:"year"`
 	Status string `json:"status"`
 	// CoverID names the cover art attached to this edition. Cover bytes are
-	// not stored here; this is the identifier they will be filed under.
+	// not stored here; this is the identifier they are filed under, and it
+	// mirrors Cover.ID whenever Cover is set.
 	CoverID string `json:"cover_id,omitempty"`
+	// Cover is the record of the attached artwork: its size, what was done to
+	// it, and where the print-ready original was. Still no bytes - see
+	// cover.go. Nil until a cover is attached.
+	Cover *EditionCover `json:"cover,omitempty"`
 	// PreviousEditionID is the edition this one supersedes. It is what makes
 	// the copyright year list cumulative and what marks an edition as later,
 	// which is the only condition under which a revision note is printed.

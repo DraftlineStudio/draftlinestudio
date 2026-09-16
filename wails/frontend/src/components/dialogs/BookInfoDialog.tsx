@@ -15,6 +15,7 @@ import type { EditionIndex, EditionKind, ISBNEntry, Metadata } from '../../types
 import {
   AUDIENCES, ISBN_FORMATS, LANGUAGES, blockingProblems, checkBook, isbnRows, metadataPatch, validISBN,
 } from './bookInfoModel'
+import { coverThumbURL } from './coverModel'
 import { editionBadge, emptyEditionIndex, isbnLocked, kindDot } from './editionModel'
 import EditionPane from './EditionPane'
 
@@ -160,6 +161,14 @@ export default function BookInfoDialog() {
                       type="button" className={`bi-ed-group-head${groupActive ? ' active' : ''}`}
                       onClick={() => setSelection({ editionID: edition.id })}
                     >
+                      {edition.cover
+                        ? (
+                          <img
+                            className="bi-ed-group-thumb" src={coverThumbURL(edition)}
+                            alt="" aria-hidden="true"
+                          />
+                        )
+                        : <span className="bi-ed-group-thumb empty" aria-hidden="true" />}
                       <span className="bi-ed-group-label">{edition.label || 'Untitled edition'}</span>
                       <span className="bi-ed-group-year">{edition.year}</span>
                       <span className={`bi-ed-badge ${badge.kind}`}>{badge.label}</span>

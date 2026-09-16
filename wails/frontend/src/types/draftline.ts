@@ -1,4 +1,9 @@
+import type { EditionCover } from './cover'
 import type { PlannerData } from './planner'
+
+// Re-exported so that a component reading a book has one door to go through
+// for the types on it, rather than having to know which file each lives in.
+export type { CoverSourceReport, EditionCover } from './cover'
 
 export type Section = 'copyright' | 'front_matter' | 'body' | 'back_matter'
 
@@ -664,6 +669,7 @@ export interface Edition {
   year: string
   status: string
   cover_id?: string
+  cover?: EditionCover
   // The edition this one supersedes. It makes the copyright year list
   // cumulative and marks the edition as later, which is the only condition
   // under which a revision note is printed.

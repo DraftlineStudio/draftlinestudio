@@ -54,11 +54,19 @@ func prepareEditionsData(index types.EditionIndex) (types.EditionIndex, error) {
 		if editionIDs[edition.ID] {
 			return types.EditionIndex{}, fmt.Errorf("%s holds two editions with the identifier %q", editionsIndexFile, edition.ID)
 		}
+		if !safeArchiveSegment(edition.ID) {
+			return types.EditionIndex{}, fmt.Errorf(
+				"%s gives an edition the identifier %q, which cannot be a folder name inside the project file",
+				editionsIndexFile, edition.ID)
+		}
 		editionIDs[edition.ID] = true
 		edition.Label = strings.TrimSpace(edition.Label)
 		edition.Year = strings.TrimSpace(edition.Year)
 		edition.Status = strings.TrimSpace(edition.Status)
 		edition.CoverID = strings.TrimSpace(edition.CoverID)
+		if err := prepareCoverRecord(edition); err != nil {
+			return types.EditionIndex{}, err
+		}
 		edition.PreviousEditionID = strings.TrimSpace(edition.PreviousEditionID)
 		edition.RevisionNote = strings.TrimSpace(edition.RevisionNote)
 		if edition.Formats == nil {
@@ -119,4 +127,79 @@ func trimFormatText(format *types.EditionFormat) {
 	} {
 		*field = strings.TrimSpace(*field)
 	}
+}
+
+// ── Cover art ──────────────────────────────────────────────────────────────
+
+// CoverPrefix is the folder one edition's binary assets live in. Everything
+// under editions/ survives a save by passthrough; this is the part of it that
+// holds images.
+func CoverPrefix(editionID string) string {
+	return editionsPrefix + editionID + "/"
+}
+
+// CoverMember is the full archive member name of one of an edition's images.
+func CoverMember(editionID, file string) string {
+	return CoverPrefix(editionID) + file
+}
+
+// prepareCoverRecord tidies an edition's cover record and refuses one that
+// could not be filed.
+//
+// The file names matter more than they look. They become an archive member
+// name and a URL path inside the running app, so a name with a slash or a
+// parent-directory step in it would reach outside the edition's own folder.
+// Draftline writes these names itself, but the project file is a ZIP anyone
+// can edit, and a value read out of one is not a value this code wrote.
+func prepareCoverRecord(edition *types.Edition) error {
+	cover := edition.Cover
+	if cover == nil {
+		return nil
+	}
+	cover.ID = strings.TrimSpace(cover.ID)
+	cover.File = strings.TrimSpace(cover.File)
+	cover.ThumbFile = strings.TrimSpace(cover.ThumbFile)
+	cover.LargeFile = strings.TrimSpace(cover.LargeFile)
+	cover.Encoding = strings.TrimSpace(cover.Encoding)
+	cover.SourcePath = strings.TrimSpace(cover.SourcePath)
+	cover.SourceChecksum = strings.TrimSpace(cover.SourceChecksum)
+
+	if cover.File == "" || cover.ThumbFile == "" {
+		return fmt.Errorf("%s gives edition %q a cover with no image filed under it", editionsIndexFile, edition.ID)
+	}
+	for _, name := range []string{cover.File, cover.ThumbFile, cover.LargeFile} {
+		if name == "" {
+			continue
+		}
+		if !safeArchiveSegment(name) {
+			return fmt.Errorf("%s files edition %q's cover under the name %q, which is not a plain file name", editionsIndexFile, edition.ID, name)
+		}
+	}
+	if cover.Notes == nil {
+		cover.Notes = []string{}
+	}
+	// The identifier on the record and the identifier on the edition are the
+	// same fact written twice; the cover's own is the one that was made when
+	// the art was attached.
+	if cover.ID != "" {
+		edition.CoverID = cover.ID
+	}
+	return nil
+}
+
+// safeArchiveSegment reports whether a string can be one path segment inside
+// the archive and inside a same-origin asset URL.
+func safeArchiveSegment(value string) bool {
+	if value == "" || value == "." || value == ".." || len(value) > 64 {
+		return false
+	}
+	for _, r := range value {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+		case r == '-', r == '_', r == '.':
+		default:
+			return false
+		}
+	}
+	return true
 }
