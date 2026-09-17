@@ -9217,6 +9217,11 @@ html, body, #root {
 .bi-card-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .bi-card-head small { font-size: 11px; color: var(--text-muted); }
 
+/* A card whose contents start shut. It reuses .bi-disclosure so a folded
+   section and the Advanced drawer open the same way. */
+.bi-card > .bi-disclosure { gap: 10px; flex-wrap: wrap; }
+.bi-card > .bi-disclosure .chapter-section-label { cursor: pointer; }
+
 .bi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px 20px; }
 .bi-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .bi-static { height: 32px; display: flex; align-items: center; font-size: 12.5px; color: var(--text-secondary); }

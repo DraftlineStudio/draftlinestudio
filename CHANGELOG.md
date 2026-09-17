@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02661] - 2026-09-16
+
+### Changed
+- ISBNs are now set on edition formats instead of shared book details.
+- Storefront details now start folded away.
+
 ## [0.20.02660] - 2026-09-16
 
 ### Fixed

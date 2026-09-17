@@ -15,7 +15,7 @@
 // is what an export of that edition froze. Releasing it is the one
 // irreversible act here, and it is guarded by a three-step confirmation.
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   AttachWrapDialog, CheckCoverSource, ExportStoredArtwork, RemoveCover, SetWrapStored,
 } from '../../../wailsjs/go/main/App'
@@ -23,7 +23,7 @@ import { useAppStore } from '../../store/appStore'
 import { useBookStore } from '../../store/bookStore'
 import type { Edition, EditionFormat, EditionIndex, ISBNEntry, Metadata } from '../../types/draftline'
 import {
-  AUDIENCES, ISBN_FORMATS, LANGUAGES, blockingProblems, checkBook, isbnRows, metadataPatch, validISBN,
+  AUDIENCES, LANGUAGES, blockingProblems, checkBook, isbnRows, metadataPatch,
 } from './bookInfoModel'
 import { coverThumbURL } from './coverModel'
 import { FORMAT_WORDS, editionBadge, emptyEditionIndex, kindDot, kindForFormat } from './editionModel'
@@ -85,6 +85,28 @@ function Section({ title, note, children }: { title: string; note?: string; chil
   )
 }
 
+// A section that starts shut. Setting a book up is about its title and its
+// author; what a storefront reads can wait until there is a storefront.
+function FoldedSection({ title, note, children }: {
+  title: string
+  note?: string
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <section className="bi-card">
+      <button
+        type="button" className="bi-disclosure" onClick={() => setOpen(!open)} aria-expanded={open}
+      >
+        <span className={`bi-caret${open ? ' open' : ''}`} aria-hidden="true">›</span>
+        <span className="chapter-section-label">{title}</span>
+        {note && <small>{note}</small>}
+      </button>
+      {open && <div className="bi-grid">{children}</div>}
+    </section>
+  )
+}
+
 export default function BookInfoDialog() {
   const book = useBookStore(s => s.book)
   const updateMetadata = useBookStore(s => s.updateMetadata)
@@ -102,7 +124,10 @@ export default function BookInfoDialog() {
   const meta = book?.metadata
 
   const [draft, setDraft] = useState<Draft>(() => ({ ...meta }))
-  const [isbns, setIsbns] = useState<ISBNEntry[]>(() => isbnRows(meta))
+  // The ISBNs already on the record. There is no longer a screen for them —
+  // an ISBN belongs to a format on an edition — but a save must not drop what
+  // an earlier version stored, so they are read and handed straight back.
+  const isbns = useMemo<ISBNEntry[]>(() => isbnRows(meta), [meta])
   const [selection, setSelection] = useState<Selection>(null)
   const [adding, setAdding] = useState<string | null>(null)
   const [advancedOpen, setAdvancedOpen] = useState(false)
@@ -139,8 +164,6 @@ export default function BookInfoDialog() {
 
   const set = (key: keyof Metadata) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setDraft(d => ({ ...d, [key]: e.target.value }))
-  const setEntry = (i: number, patch: Partial<ISBNEntry>) =>
-    setIsbns(list => list.map((entry, n) => (n === i ? { ...entry, ...patch } : entry)))
 
   const problems = checkBook(draft, isbns)
   const blocking = blockingProblems(problems)
@@ -553,7 +576,7 @@ export default function BookInfoDialog() {
                   </Field>
                 </Section>
 
-                <Section title="Catalogue" note="What a storefront reads.">
+                <FoldedSection title="Storefront details" note="What a shop reads. Nothing here is needed to write.">
                   <Field label="BISAC subject" hint="A code such as FIC031000.">
                     <input className="dialog-input" value={draft.bisac_1 ?? ''} onChange={set('bisac_1')} />
                   </Field>
@@ -579,41 +602,8 @@ export default function BookInfoDialog() {
                       placeholder="The blurb a storefront shows."
                     />
                   </div>
-                </Section>
+                </FoldedSection>
 
-                <Section title="Identifiers" note="The fallback for an export made from no edition.">
-                  <div className="bi-field bi-field-wide">
-                    {isbns.map((entry, i) => {
-                      const problem = problemFor(`isbn-${i}`)
-                      const known = entry.value.trim() !== '' && validISBN(entry.value)
-                      return (
-                        <div key={i} className="bi-isbn-row">
-                          <select
-                            className="dialog-select bi-isbn-format" value={entry.format}
-                            onChange={e => setEntry(i, { format: e.target.value })}
-                          >
-                            {ISBN_FORMATS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-                          </select>
-                          <input
-                            className={`dialog-input${problem ? ' invalid' : ''}`}
-                            value={entry.value} placeholder="978-…"
-                            onChange={e => setEntry(i, { value: e.target.value })}
-                          />
-                          <span className={`bi-isbn-mark${known ? ' ok' : problem ? ' bad' : ''}`} title={problem?.message ?? (known ? 'Checks out' : '')}>
-                            {known ? '✓' : problem ? '!' : ''}
-                          </span>
-                          <button className="bi-isbn-remove" onClick={() => setIsbns(l => l.filter((_, n) => n !== i))} title="Remove">✕</button>
-                        </div>
-                      )
-                    })}
-                    <button className="bi-isbn-add" onClick={() => setIsbns(l => [...l, { format: '', value: '' }])}>+ Add ISBN</button>
-                    <div className="bi-field-hint">
-                      An export made from a registered edition uses that edition&apos;s number; one made
-                      from scratch uses this. The last digit of an ISBN checks the ones before it, so a
-                      mistyped digit is caught here.
-                    </div>
-                  </div>
-                </Section>
               </>
             )}
           </div>
