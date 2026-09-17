@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02668] - 2026-09-17
+
+### Changed
+- Draftline now asks draftline.ink for the newest release instead of the code host, so updates keep working if the project moves.
+- Update checks no longer make a wasted request that pre-release builds could never answer.
+
 ## [0.20.02666] - 2026-09-17
 
 ### Added
