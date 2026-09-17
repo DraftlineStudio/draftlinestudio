@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02669] - 2026-09-17
+
+### Changed
+- Rebuilt the export flow and the Book and Editions screens.
+
 ## [0.20.02668] - 2026-09-17
 
 ### Changed
