@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02664] - 2026-09-17
+
+### Changed
+- Renamed Save & Close to Save & Quit.
+
 ## [0.20.02663] - 2026-09-17
 
 ### Added

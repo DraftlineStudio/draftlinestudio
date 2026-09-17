@@ -306,7 +306,7 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
 
           Back to Library puts the writer on the start screen with the book
           shut — which is where New and Open are, so starting something else
-          on top of unsaved work is not reachable. Save & Close saves and
+          on top of unsaved work is not reachable. Save & Quit saves and
           quits outright, for the end of a session. */}
       <button className="titlebar-dropdown-item" onClick={() => run(() => { void OpenNewWindow() })}>
         <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
@@ -329,7 +329,7 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
           <path d="M8.5 1.5h2a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-2" />
           <path d="M6 4l2.5 2.5L6 9M8.5 6.5H1.5" />
         </svg>
-        <span>Save &amp; Close</span>
+        <span>Save &amp; Quit</span>
       </button>
     </div>,
     document.body
