@@ -48,6 +48,7 @@ type publicationPDFSpec struct {
 	PageNumberPosition     string
 	GenerateHalfTitle      bool
 	GenerateTOC            bool
+	OmitTitlePage          bool
 	TitlePageStyle         string
 	TitlePageShowAuthor    bool
 	TitlePageShowPublisher bool
@@ -136,6 +137,7 @@ func readingPDFSpec(options types.PDFOptions) publicationPDFSpec {
 		// a reading copy is read as single pages rather than as spreads and
 		// has no outside edge to sit against.
 		PageNumberPosition:     "bottom-center",
+		OmitTitlePage:          options.OmitTitlePage,
 		TitlePageStyle:         "classic",
 		TitlePageShowAuthor:    true,
 		TitlePageShowPublisher: true,
@@ -203,6 +205,7 @@ func printPDFSpec(options types.PrintPDFOptions) publicationPDFSpec {
 		PageNumberPosition:     normalizedPageNumberPosition(options.PageNumberPosition),
 		GenerateHalfTitle:      options.GenerateHalfTitle,
 		GenerateTOC:            options.GenerateTOC,
+		OmitTitlePage:          options.OmitTitlePage,
 		TitlePageStyle:         normalizedTitlePageStyle(options.TitlePageStyle),
 		TitlePageShowAuthor:    showAuthor,
 		TitlePageShowPublisher: showPublisher,

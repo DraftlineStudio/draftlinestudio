@@ -91,10 +91,22 @@ describe('the settings each format shows', () => {
     expect(version && 'field' in version && version.field).toBeNull()
   })
 
-  it('sends an audiobook script and a reading copy to the same answers', () => {
-    expect(optionGroupFor('audio')).toBe('pdf')
+  // A narration script is its own document. It used to borrow the reading
+  // copy's answers, which is why none of its settings could be changed.
+  it('gives a narration script its own answers, not the reading copy’s', () => {
+    expect(optionGroupFor('audio')).toBe('audio')
     expect(optionGroupFor('pdf')).toBe('pdf')
     expect(optionGroupFor('docx')).toBe('shared')
+  })
+
+  it('binds every narration row to a field the renderer reads', () => {
+    const groups = settingGroups('audio', undefined, defaultWizardOptions())
+    expect(groups.map(g => g.label)).toEqual(['Script layout', 'Narration aids', 'Contents'])
+    const live = groups.flatMap(g => g.rows).filter(r => r.kind !== 'static')
+    expect(live.length).toBeGreaterThan(0)
+    for (const row of live) {
+      expect('field' in row && row.field, `${row.id} reaches no exporter`).toBeTruthy()
+    }
   })
 })
 

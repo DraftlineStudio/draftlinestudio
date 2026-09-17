@@ -129,8 +129,10 @@ func (r *publicationPDFRenderer) render() error {
 	if r.spec.Print && r.pdf.PageNo()%2 == 1 {
 		r.addPage(pageBlank, "")
 	}
-	r.addPage(pageTitle, "")
-	r.renderTitlePage()
+	if !r.spec.OmitTitlePage {
+		r.addPage(pageTitle, "")
+		r.renderTitlePage()
+	}
 
 	for i := range r.doc.Sections {
 		section := r.doc.Sections[i]

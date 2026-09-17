@@ -2,6 +2,17 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02660] - 2026-09-16
+
+### Fixed
+- Fixed drop caps that could not be turned on for an ebook.
+- Fixed audiobook settings that could not be changed at all.
+- Fixed the title page switch having no effect.
+
+### Added
+- Added audiobook settings for page size, typeface, type size, line spacing, and paragraph spacing.
+- Added narration aids for slate pages, paragraph numbers, pause markers, and a pronunciation column.
+
 ## [0.20.02659] - 2026-09-16
 
 ### Added

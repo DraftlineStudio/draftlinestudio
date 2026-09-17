@@ -37,6 +37,9 @@ export interface ExportOptions {
   includeCopyright: boolean
   includeFrontMatter: boolean
   includeBackMatter: boolean
+  // Stated the negative way round on purpose: every export has always made a
+  // title page, so an absent value has to keep meaning "make one".
+  omitTitlePage?: boolean
   // The registered format this export is made against. The backend reads the
   // edition record itself from these, which is how the ISBN, the cover and the
   // copyright page reach the file without any of them crossing the bridge.
@@ -62,6 +65,23 @@ export interface PDFOptions extends ExportOptions {
   lineHeight: 1.3 | 1.4 | 1.5 | 1.6
   paragraphIndent: string
   textAlign: 'justify' | 'left'
+}
+
+// AudioOptions is the narration script: the file a voice actor reads from. It
+// is not the reading copy renamed, which is what it used to be, and why none
+// of its settings could be changed.
+export interface AudioOptions extends ExportOptions {
+  pageSize: 'letter' | 'a4'
+  fontFamily: 'lato' | 'merriweather'
+  fontSize: 12 | 14 | 16
+  lineHeight: 1.5 | 1.8 | 2
+  paragraphSpacing: 'half line between' | 'one line between' | 'two lines between'
+  slatePage: boolean
+  numberParagraphs: boolean
+  pauseBreaks: boolean
+  pronunciationColumn: boolean
+  coverPage: boolean
+  chapterWordCount: boolean
 }
 
 export type TrimSize = '5x8' | '5.25x8' | '5.5x8.5' | '6x9' | 'custom'
@@ -107,6 +127,7 @@ export interface WizardOptions {
   epub: EPUBOptions
   pdf: PDFOptions
   print: PrintPDFOptions
+  audio: AudioOptions
 }
 
 // Every number a new export starts from is in publishingDefaults.ts, which is
@@ -370,7 +391,7 @@ export function printPrefill(format: EditionFormat): Partial<PrintPDFOptions> {
 export function applyStoredSettings(options: WizardOptions, format: EditionFormat): WizardOptions {
   const stored = format.export_settings
   if (!stored || typeof stored !== 'object') return options
-  const merge = <T extends object>(base: T, key: ExportFormat | 'shared'): T => {
+  const merge = <T extends object>(base: T, key: ExportFormat | 'shared' | 'audio'): T => {
     const saved = (stored as Record<string, unknown>)[key]
     if (!saved || typeof saved !== 'object') return base
     const out = { ...base } as Record<string, unknown>
@@ -386,6 +407,7 @@ export function applyStoredSettings(options: WizardOptions, format: EditionForma
     epub: merge(options.epub, 'epub'),
     pdf: merge(options.pdf, 'pdf'),
     print: merge(options.print, 'print-pdf'),
+    audio: merge(options.audio, 'audio'),
   }
 }
 
@@ -436,6 +458,7 @@ export function exportSettingsBlock(options: WizardOptions): Record<string, unkn
     epub: { ...options.epub },
     pdf: { ...options.pdf },
     'print-pdf': { ...options.print },
+    audio: { ...options.audio },
   }
 }
 

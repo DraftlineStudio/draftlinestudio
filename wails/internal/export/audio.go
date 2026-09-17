@@ -102,6 +102,7 @@ func audioScriptSpec(options types.AudioOptions) publicationPDFSpec {
 		NumberParagraphs:   options.NumberParagraphs,
 		SceneBreakStyle:    audioSceneBreak(options.PauseBreaks),
 		ChapterWordCount:   options.ChapterWordCount,
+		OmitTitlePage:      options.OmitTitlePage,
 		TitlePageStyle:     "minimal",
 
 		TitlePageShowAuthor:    true,

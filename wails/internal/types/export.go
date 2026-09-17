@@ -5,6 +5,11 @@ type ExportOptions struct {
 	IncludeCopyright   bool `json:"includeCopyright"`
 	IncludeFrontMatter bool `json:"includeFrontMatter"`
 	IncludeBackMatter  bool `json:"includeBackMatter"`
+	// OmitTitlePage drops the generated title page: the book's name, the
+	// author, the imprint. It is stated the negative way round on purpose —
+	// every export has always produced one, so absence has to keep meaning
+	// "produce it", including for a record written before this field existed.
+	OmitTitlePage bool `json:"omitTitlePage"`
 	// EditionID and FormatID name the registered format this export is made
 	// against. They travel in the options rather than as a separate argument
 	// so that everything the wizard decided about one export arrives in one

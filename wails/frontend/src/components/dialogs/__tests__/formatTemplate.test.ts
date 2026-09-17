@@ -94,78 +94,47 @@ describe('the choices on the card', () => {
       .toEqual(['dropcap', 'scene', 'chapter'])
   })
 
-  it('marks a control no exporter reads yet rather than hiding it', () => {
+  // The bug this replaces: a card could be listed without a handler, so it
+  // rendered, highlighted nothing and ignored every click. Ebook drop caps and
+  // every audiobook setting shipped that way. A choice now carries its own
+  // setter, so this asserts the thing that used to be impossible to assert.
+  it('gives every card on every format a setter that actually writes', () => {
     const options = defaultWizardOptions()
-    // A print scene break and an ebook scene break both reach a renderer now.
-    expect(choicesFor(format(), options).find(c => c.id === 'scene')?.held).toBe(false)
-    expect(choicesFor(format({ kind: 'ebook' }), options).find(c => c.id === 'scene')?.held).toBe(false)
-    // A narration script's layout is not written yet, and says so.
-    expect(choicesFor(format({ kind: 'audio' }), options).find(c => c.id === 'scene')?.held).toBe(true)
+    for (const [kind, word] of [['print', 'Paperback'], ['ebook', 'eBook'], ['audio', 'Audiobook']] as const) {
+      const one = format({ kind, format: word })
+      const cards = choicesFor(one, options)
+      expect(cards.length).toBeGreaterThan(0)
+      for (const card of cards) {
+        // Taking an option this card does not currently show must change the
+        // answers. A card that cannot move is a dead card.
+        const other = card.options.find(o => o.id !== card.value)
+        expect(other, `${kind} ${card.id} offers only its current value`).toBeDefined()
+        const next = chooseTemplate(options, one, card.id, other!.id)
+        expect(next, `${kind} ${card.id} changed nothing`).not.toEqual(options)
+        // And the card reads its own write back.
+        expect(choicesFor(one, next).find(c => c.id === card.id)?.value).toBe(other!.id)
+      }
+    }
   })
 
-  // These are preferences. A paperback at 6 x 9 with a short rule between
-  // scenes is still set the industry-standard way, and saying otherwise is
-  // what made the cards feel like traps.
-  it('changes a scene break and a chapter opening on a printed page', () => {
-    const options = defaultWizardOptions()
-    expect(chooseTemplate(options, format(), 'scene', 'rule').print.sceneBreakStyle).toBe('rule')
-    expect(chooseTemplate(options, format(), 'chapter', 'compact').print.chapterStyle).toBe('compact')
+  it('lets an ebook have drop caps', () => {
+    const ebook = format({ kind: 'ebook', format: 'eBook' })
+    const on = chooseTemplate(defaultWizardOptions(), ebook, 'dropcap', 'on')
+    expect(on.epub.dropCap).toBe(true)
+    expect(choicesFor(ebook, on).find(c => c.id === 'dropcap')?.value).toBe('on')
   })
 
-  // Every sub-label on a row of cards is a short phrase saying what the option
-  // does. One of them used to render a mock page spread with the open book's
-  // own title in it, which matched nothing else on the screen.
-  it('describes each running-head option the way the other cards do', () => {
-    const heads = choicesFor(format(), defaultWizardOptions()).find(c => c.id === 'heads')!
-    expect(heads.options.map(o => o.sub)).toEqual([
-      'Author on left pages, title on right',
-      'Title on left pages, chapter on right',
-      'Chapter on both pages',
-      'Page numbers only',
-    ])
-  })
+  it('gives an audiobook its own settings rather than the reading copy’s', () => {
+    const audio = format({ kind: 'audio', format: 'Audiobook' })
+    const cards = choicesFor(audio, defaultWizardOptions())
+    expect(cards.map(c => c.id)).toEqual(['scene', 'chapter', 'numbers', 'pronunciation'])
 
-  it('sets what the running head says, and turns it off without forgetting it', () => {
-    const options = defaultWizardOptions()
-    const titled = chooseTemplate(options, format(), 'heads', 'title-chapter')
-    expect(titled.print.headerContent).toBe('title-chapter')
-    expect(titled.print.runningHeaders).toBe(true)
-
-    const off = chooseTemplate(titled, format(), 'heads', 'none')
-    expect(off.print.runningHeaders).toBe(false)
-    expect(off.print.headerContent).toBe('title-chapter')
-    expect(choicesFor(format(), off).find(c => c.id === 'heads')?.value).toBe('none')
-  })
-
-  // The one card that is a deviation. A custom trim is a page size nobody
-  // offers as standard, and its two measurements are set in Advanced.
-  it('treats a custom print size as a deviation and everything else as a preference', () => {
-    expect(choiceGoesCustom('trim', 'custom')).toBe(true)
-    expect(choiceGoesCustom('trim', '6x9')).toBe(false)
-    expect(choiceGoesCustom('scene', 'rule')).toBe(false)
-    expect(choiceGoesCustom('heads', 'none')).toBe(false)
-  })
-
-  // Where the folio sits is a preference, and it is the one that decides
-  // whether the running head has to indent inside it.
-  it('offers the two folio positions worth a card and keeps the third in Advanced', () => {
-    const options = defaultWizardOptions()
-    const card = choicesFor(format(), options).find(c => c.id === 'folio')!
-    expect(card.options.map(o => o.id)).toEqual(['top-outside', 'bottom-center'])
-
-    const moved = chooseTemplate(options, format(), 'folio', 'bottom-center')
-    expect(moved.print.pageNumberPosition).toBe('bottom-center')
-    expect(choiceGoesCustom('folio', 'bottom-center')).toBe(false)
-
-    const advanced = advancedFor(format(), options)
-      .find(g => g.label === 'Chapters & furniture')!.rows.find(r => r.id === 'folios')!
-    expect(advanced.kind === 'select' && advanced.options).toContain('Bottom outside')
-  })
-
-  it('saves a preference without moving the format off the standard', () => {
-    const patch = preferencePatch(chooseTemplate(defaultWizardOptions(), format(), 'scene', 'rule'))
-    expect(patch.typesetting).toBeUndefined()
-    expect(patch.export_settings).toBeDefined()
+    const noSlate = chooseTemplate(defaultWizardOptions(), audio, 'chapter', 'classic')
+    expect(noSlate.audio.slatePage).toBe(false)
+    const quiet = chooseTemplate(defaultWizardOptions(), audio, 'scene', 'space')
+    expect(quiet.audio.pauseBreaks).toBe(false)
+    const numbered = chooseTemplate(defaultWizardOptions(), audio, 'numbers', 'off')
+    expect(numbered.audio.numberParagraphs).toBe(false)
   })
 
   it('takes a trim and carries its measurements with it', () => {

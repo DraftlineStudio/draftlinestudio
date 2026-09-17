@@ -18,7 +18,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type {
-  EPUBOptions, ExportOptions, PDFOptions, PrintPDFOptions, TrimSize, WizardOptions,
+  AudioOptions, EPUBOptions, ExportOptions, PDFOptions, PrintPDFOptions, TrimSize, WizardOptions,
 } from './exportSource'
 
 // ── Trim sizes ─────────────────────────────────────────────────────────────
@@ -135,13 +135,21 @@ export const EPUB_DEFAULTS = {
 
 // What a narrator reads from: large type, open leading, no justification, and
 // a slate before each chapter. None of this reaches an exporter yet.
+// The narration script. Large type and open leading because it is read aloud
+// from a music stand; ragged right because justification moves the words
+// between takes; numbered paragraphs because a retake is asked for by number.
 export const AUDIO_SCRIPT = {
-  pageSize: 'US Letter',
-  typeface: 'Lato',
-  typeSize: '14 pt',
-  lineSpacing: 'Open · 1.8',
-  paragraphSpacing: 'One line between',
-  alignment: 'Left aligned, ragged',
+  pageSize: 'letter' as AudioOptions['pageSize'],
+  fontFamily: 'lato' as AudioOptions['fontFamily'],
+  fontSize: 14 as AudioOptions['fontSize'],
+  lineHeight: 1.8 as AudioOptions['lineHeight'],
+  paragraphSpacing: 'one line between' as AudioOptions['paragraphSpacing'],
+  slatePage: true,
+  numberParagraphs: true,
+  pauseBreaks: true,
+  pronunciationColumn: false,
+  coverPage: true,
+  chapterWordCount: true,
 }
 
 // ── What goes in the file ──────────────────────────────────────────────────
@@ -156,7 +164,7 @@ export const CONTENTS_DEFAULTS: Omit<ExportOptions, 'editionID' | 'formatID'> = 
 
 export const PRINT_TYPE_SIZES = [9, 10, 11, 12]
 export const READING_TYPE_SIZES = [11, 12, 14]
-export const AUDIO_TYPE_SIZES = ['12 pt', '14 pt', '16 pt']
+export const AUDIO_TYPE_SIZES = [12, 14, 16]
 
 export const LINE_HEIGHT_CHOICES: Array<{ label: string; value: number }> = [
   { label: 'Tight · 1.3', value: 1.3 },
@@ -207,6 +215,7 @@ export function defaultWizardOptions(): WizardOptions {
       dropCap: EPUB_DEFAULTS.dropCap,
     },
     pdf,
+    audio: { ...shared, ...AUDIO_SCRIPT },
     print: {
       ...pdf,
       pageSize: trim.id as PDFOptions['pageSize'],

@@ -158,6 +158,24 @@ export const STANDARD_HINT: Record<FormatKind, string> = {
   audio: 'Open leading, ragged right, a slate before each chapter.',
 }
 
+const DROPCAP_OPTIONS: TemplateOption[] = [
+  { id: 'on', label: 'On', glyph: 'T' },
+  { id: 'off', label: 'Off' },
+]
+
+const ON_OFF: TemplateOption[] = [{ id: 'on', label: 'On' }, { id: 'off', label: 'Off' }]
+
+const SCENE_OPTIONS: TemplateOption[] = [
+  { id: 'asterism', label: 'Asterism', glyph: '⁂' },
+  { id: 'rule', label: 'Short rule', glyph: '—' },
+  { id: 'space', label: 'Whitespace', sub: 'Blank line' },
+]
+
+const CHAPTER_OPTIONS: TemplateOption[] = [
+  { id: 'classic', label: 'Classic', sub: 'Lowered title, generous space' },
+  { id: 'compact', label: 'Compact', sub: 'Title tight to the text' },
+]
+
 export function choicesFor(format: EditionFormat, options: WizardOptions): TemplateChoice[] {
   const kind = kindOf(format)
   const out: TemplateChoice[] = []
@@ -166,51 +184,106 @@ export function choicesFor(format: EditionFormat, options: WizardOptions): Templ
     out.push({
       id: 'trim', label: 'Print size', hint: 'Trade paperback is 6 × 9.',
       value: options.print.trimSize, options: TRIM_OPTIONS,
+      set: (o, value) => {
+        const preset = TRIM_PRESETS.find(one => one.id === value)
+        return {
+          ...o,
+          print: {
+            ...o.print,
+            trimSize: value as PrintPDFOptions['trimSize'],
+            ...(preset ? { customWidth: String(preset.width), customHeight: String(preset.height) } : {}),
+          },
+        }
+      },
     })
   }
-  if (kind !== 'audio') {
-    out.push({
-      id: 'dropcap', label: 'Drop caps', hint: 'First letter of each chapter.',
-      value: kind === 'print' ? (options.print.dropCap ? 'on' : 'off') : 'off',
-      options: [{ id: 'on', label: 'On', glyph: 'T' }, { id: 'off', label: 'Off' }],
-      held: kind !== 'print',
-    })
-  }
 
-  const sceneOptions: TemplateOption[] = [
-    { id: 'asterism', label: 'Asterism', glyph: '⁂' },
-    { id: 'rule', label: 'Short rule', glyph: '—' },
-    { id: 'space', label: 'Whitespace', sub: 'Blank line' },
-  ]
-  if (kind === 'audio') sceneOptions.push({ id: 'pause', label: '[PAUSE]', sub: 'Narration cue' })
-  out.push({
-    id: 'scene', label: 'Scene breaks', hint: '',
-    value: kind === 'ebook' ? options.epub.sceneBreakStyle
-      : kind === 'print' ? options.print.sceneBreakStyle : 'asterism',
-    options: sceneOptions,
-    held: kind === 'audio',
-  })
-
-  const chapterOptions: TemplateOption[] = [
-    { id: 'classic', label: 'Classic', sub: 'Lowered title, generous space' },
-    { id: 'compact', label: 'Compact', sub: 'Title tight to the text' },
-  ]
-  if (kind === 'audio') chapterOptions.push({ id: 'slate', label: 'Slate page', sub: 'Chapter on its own page' })
-  out.push({
-    id: 'chapter', label: 'Chapter headers', hint: '',
-    value: kind === 'ebook' ? (options.epub.chapterStyle === 'minimal' ? 'compact' : 'classic')
-      : kind === 'print' ? options.print.chapterStyle : 'classic',
-    options: chapterOptions,
-    held: kind === 'audio',
-  })
-
-  // What a reader sees along the top of a spread. The sub-labels draw the
-  // spread rather than describing it: "verso" is not a word an author should
-  // have to learn to pick this.
+  // Drop caps. An ebook has them too — ::first-letter is ordinary CSS that
+  // Kindle honours — which is why this is no longer a print-only card.
   if (kind === 'print') {
     out.push({
-      id: 'heads', label: 'Running heads',
-      hint: 'Along the top of every page of the manuscript.',
+      id: 'dropcap', label: 'Drop caps', hint: 'First letter of each chapter.',
+      value: options.print.dropCap ? 'on' : 'off', options: DROPCAP_OPTIONS,
+      set: (o, value) => ({ ...o, print: { ...o.print, dropCap: value === 'on' } }),
+    })
+  }
+  if (kind === 'ebook') {
+    out.push({
+      id: 'dropcap', label: 'Drop caps', hint: 'First letter of each chapter.',
+      value: options.epub.dropCap ? 'on' : 'off', options: DROPCAP_OPTIONS,
+      set: (o, value) => ({ ...o, epub: { ...o.epub, dropCap: value === 'on' } }),
+    })
+  }
+
+  // Scene breaks. A script says [PAUSE] out loud, because an asterism is
+  // silent and a narrator cannot act on it.
+  if (kind === 'print') {
+    out.push({
+      id: 'scene', label: 'Scene breaks', hint: '',
+      value: options.print.sceneBreakStyle, options: SCENE_OPTIONS,
+      set: (o, value) => ({
+        ...o, print: { ...o.print, sceneBreakStyle: value as 'asterism' | 'rule' | 'space' },
+      }),
+    })
+  }
+  if (kind === 'ebook') {
+    out.push({
+      id: 'scene', label: 'Scene breaks', hint: '',
+      value: options.epub.sceneBreakStyle, options: SCENE_OPTIONS,
+      set: (o, value) => ({
+        ...o, epub: { ...o.epub, sceneBreakStyle: value as 'asterism' | 'rule' | 'space' },
+      }),
+    })
+  }
+  if (kind === 'audio') {
+    out.push({
+      id: 'scene', label: 'Scene breaks', hint: 'A narrator cannot say an asterism.',
+      value: options.audio.pauseBreaks ? 'pause' : 'space',
+      options: [
+        { id: 'pause', label: '[PAUSE]', sub: 'Narration cue' },
+        { id: 'space', label: 'Whitespace', sub: 'Blank line' },
+      ],
+      set: (o, value) => ({ ...o, audio: { ...o.audio, pauseBreaks: value === 'pause' } }),
+    })
+  }
+
+  // Chapter openings. For a script this is the slate: the chapter on a page of
+  // its own, which is the cue a take is recorded against.
+  if (kind === 'print') {
+    out.push({
+      id: 'chapter', label: 'Chapter headers', hint: '',
+      value: options.print.chapterStyle, options: CHAPTER_OPTIONS,
+      set: (o, value) => ({
+        ...o, print: { ...o.print, chapterStyle: value === 'compact' ? 'compact' : 'classic' },
+      }),
+    })
+  }
+  if (kind === 'ebook') {
+    out.push({
+      id: 'chapter', label: 'Chapter headers', hint: '',
+      value: options.epub.chapterStyle === 'minimal' ? 'compact' : 'classic',
+      options: CHAPTER_OPTIONS,
+      set: (o, value) => ({
+        ...o, epub: { ...o.epub, chapterStyle: value === 'compact' ? 'minimal' : 'classic' },
+      }),
+    })
+  }
+  if (kind === 'audio') {
+    out.push({
+      id: 'chapter', label: 'Chapter openings', hint: 'What a take is recorded against.',
+      value: options.audio.slatePage ? 'slate' : 'classic',
+      options: [
+        { id: 'slate', label: 'Slate page', sub: 'Chapter on its own page' },
+        { id: 'classic', label: 'Running', sub: 'Chapter title above the text' },
+      ],
+      set: (o, value) => ({ ...o, audio: { ...o.audio, slatePage: value === 'slate' } }),
+    })
+  }
+
+  // What a reader sees along the top of a spread, and where the folio sits.
+  if (kind === 'print') {
+    out.push({
+      id: 'heads', label: 'Running heads', hint: 'Along the top of every page of the manuscript.',
       value: options.print.runningHeaders ? options.print.headerContent : 'none',
       options: [
         { id: 'author-title', label: 'Author & title', sub: 'Author on left pages, title on right' },
@@ -218,11 +291,19 @@ export function choicesFor(format: EditionFormat, options: WizardOptions): Templ
         { id: 'chapter', label: 'Chapter only', sub: 'Chapter on both pages' },
         { id: 'none', label: 'None', sub: 'Page numbers only' },
       ],
+      // "None" is the absence of a running head rather than a fourth thing one
+      // can say, so it turns them off and leaves the wording alone.
+      set: (o, value) => value === 'none'
+        ? { ...o, print: { ...o.print, runningHeaders: false } }
+        : {
+          ...o,
+          print: {
+            ...o.print,
+            runningHeaders: true,
+            headerContent: value as PrintPDFOptions['headerContent'],
+          },
+        },
     })
-    // The two positions worth a card. The third — bottom outside — stays in
-    // Advanced: it is a real choice and a rarer one. Top outside puts the
-    // folio on the same line as the running head, which is why the head
-    // indents inside it rather than being printed under it.
     out.push({
       id: 'folio', label: 'Page numbers', hint: '',
       value: options.print.pageNumberPosition === 'top-outside' ? 'top-outside' : 'bottom-center',
@@ -230,11 +311,40 @@ export function choicesFor(format: EditionFormat, options: WizardOptions): Templ
         { id: 'top-outside', label: 'Top outside', sub: 'On the running head’s line' },
         { id: 'bottom-center', label: 'Bottom centre', sub: 'Under the text block' },
       ],
+      set: (o, value) => ({
+        ...o,
+        print: { ...o.print, pageNumberPosition: value as PrintPDFOptions['pageNumberPosition'] },
+      }),
+    })
+  }
+
+  // The narrator's own aids. Each one changes the page it is printed on.
+  if (kind === 'audio') {
+    out.push({
+      id: 'numbers', label: 'Paragraph numbers',
+      hint: 'So a retake is asked for by number, not by reading the line back.',
+      value: options.audio.numberParagraphs ? 'on' : 'off', options: ON_OFF,
+      set: (o, value) => ({ ...o, audio: { ...o.audio, numberParagraphs: value === 'on' } }),
+    })
+    out.push({
+      id: 'pronunciation', label: 'Pronunciation column',
+      hint: 'Leaves the outer margin wide to write names into.',
+      value: options.audio.pronunciationColumn ? 'on' : 'off', options: ON_OFF,
+      set: (o, value) => ({ ...o, audio: { ...o.audio, pronunciationColumn: value === 'on' } }),
     })
   }
 
   return out
 }
+
+/** Taking one of the cards above. Returns the same object when nothing moved. */
+export function chooseTemplate(
+  options: WizardOptions, format: EditionFormat, choiceID: string, value: string,
+): WizardOptions {
+  const choice = choicesFor(format, options).find(one => one.id === choiceID)
+  return choice ? choice.set(options, value) : options
+}
+
 
 /**
  * Whether taking this card is a deviation rather than a preference.
@@ -246,65 +356,6 @@ export function choicesFor(format: EditionFormat, options: WizardOptions): Templ
  */
 export function choiceGoesCustom(choiceID: string, value: string): boolean {
   return choiceID === 'trim' && value === 'custom'
-}
-
-/** Taking one of the cards above. Returns the same object when nothing moved. */
-export function chooseTemplate(
-  options: WizardOptions, format: EditionFormat, choiceID: string, value: string,
-): WizardOptions {
-  const kind = kindOf(format)
-  if (choiceID === 'trim') {
-    const preset = TRIM_PRESETS.find(one => one.id === value)
-    return {
-      ...options,
-      print: {
-        ...options.print,
-        trimSize: value as PrintPDFOptions['trimSize'],
-        ...(preset ? { customWidth: String(preset.width), customHeight: String(preset.height) } : {}),
-      },
-    }
-  }
-  if (choiceID === 'dropcap' && kind === 'print') {
-    return { ...options, print: { ...options.print, dropCap: value === 'on' } }
-  }
-  if (choiceID === 'scene') {
-    if (kind === 'ebook') {
-      return { ...options, epub: { ...options.epub, sceneBreakStyle: value as 'asterism' | 'rule' | 'space' } }
-    }
-    if (kind === 'print') {
-      return { ...options, print: { ...options.print, sceneBreakStyle: value as 'asterism' | 'rule' | 'space' } }
-    }
-    return options
-  }
-  if (choiceID === 'chapter') {
-    if (kind === 'ebook') {
-      return { ...options, epub: { ...options.epub, chapterStyle: value === 'compact' ? 'minimal' : 'classic' } }
-    }
-    if (kind === 'print') {
-      return { ...options, print: { ...options.print, chapterStyle: value === 'compact' ? 'compact' : 'classic' } }
-    }
-    return options
-  }
-  if (choiceID === 'folio' && kind === 'print') {
-    return {
-      ...options,
-      print: { ...options.print, pageNumberPosition: value as PrintPDFOptions['pageNumberPosition'] },
-    }
-  }
-  if (choiceID === 'heads' && kind === 'print') {
-    // "None" is the absence of a running head rather than a fourth thing one
-    // can say, so it turns them off and leaves the wording alone.
-    if (value === 'none') return { ...options, print: { ...options.print, runningHeaders: false } }
-    return {
-      ...options,
-      print: {
-        ...options.print,
-        runningHeaders: true,
-        headerContent: value as PrintPDFOptions['headerContent'],
-      },
-    }
-  }
-  return options
 }
 
 // ── Advanced ───────────────────────────────────────────────────────────────

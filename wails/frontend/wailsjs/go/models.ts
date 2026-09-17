@@ -1078,6 +1078,50 @@ export namespace types {
 	        this.plugin_settings = source["plugin_settings"];
 	    }
 	}
+	export class AudioOptions {
+	    includeCopyright: boolean;
+	    includeFrontMatter: boolean;
+	    includeBackMatter: boolean;
+	    omitTitlePage: boolean;
+	    editionID?: string;
+	    formatID?: string;
+	    pageSize: string;
+	    fontFamily: string;
+	    fontSize: number;
+	    lineHeight: number;
+	    paragraphSpacing: string;
+	    slatePage: boolean;
+	    numberParagraphs: boolean;
+	    pauseBreaks: boolean;
+	    pronunciationColumn: boolean;
+	    coverPage: boolean;
+	    chapterWordCount: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new AudioOptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.includeCopyright = source["includeCopyright"];
+	        this.includeFrontMatter = source["includeFrontMatter"];
+	        this.includeBackMatter = source["includeBackMatter"];
+	        this.omitTitlePage = source["omitTitlePage"];
+	        this.editionID = source["editionID"];
+	        this.formatID = source["formatID"];
+	        this.pageSize = source["pageSize"];
+	        this.fontFamily = source["fontFamily"];
+	        this.fontSize = source["fontSize"];
+	        this.lineHeight = source["lineHeight"];
+	        this.paragraphSpacing = source["paragraphSpacing"];
+	        this.slatePage = source["slatePage"];
+	        this.numberParagraphs = source["numberParagraphs"];
+	        this.pauseBreaks = source["pauseBreaks"];
+	        this.pronunciationColumn = source["pronunciationColumn"];
+	        this.coverPage = source["coverPage"];
+	        this.chapterWordCount = source["chapterWordCount"];
+	    }
+	}
 	export class BackupInfo {
 	    number: number;
 	    path: string;
@@ -2026,6 +2070,7 @@ export namespace types {
 	    includeCopyright: boolean;
 	    includeFrontMatter: boolean;
 	    includeBackMatter: boolean;
+	    omitTitlePage: boolean;
 	    editionID?: string;
 	    formatID?: string;
 	    pageSize: string;
@@ -2071,6 +2116,7 @@ export namespace types {
 	        this.includeCopyright = source["includeCopyright"];
 	        this.includeFrontMatter = source["includeFrontMatter"];
 	        this.includeBackMatter = source["includeBackMatter"];
+	        this.omitTitlePage = source["omitTitlePage"];
 	        this.editionID = source["editionID"];
 	        this.formatID = source["formatID"];
 	        this.pageSize = source["pageSize"];
@@ -2112,6 +2158,7 @@ export namespace types {
 	    includeCopyright: boolean;
 	    includeFrontMatter: boolean;
 	    includeBackMatter: boolean;
+	    omitTitlePage: boolean;
 	    editionID?: string;
 	    formatID?: string;
 	    pageSize: string;
@@ -2130,6 +2177,7 @@ export namespace types {
 	        this.includeCopyright = source["includeCopyright"];
 	        this.includeFrontMatter = source["includeFrontMatter"];
 	        this.includeBackMatter = source["includeBackMatter"];
+	        this.omitTitlePage = source["omitTitlePage"];
 	        this.editionID = source["editionID"];
 	        this.formatID = source["formatID"];
 	        this.pageSize = source["pageSize"];
@@ -2144,6 +2192,7 @@ export namespace types {
 	    includeCopyright: boolean;
 	    includeFrontMatter: boolean;
 	    includeBackMatter: boolean;
+	    omitTitlePage: boolean;
 	    editionID?: string;
 	    formatID?: string;
 	    fontFamily: string;
@@ -2151,6 +2200,7 @@ export namespace types {
 	    textAlign: string;
 	    chapterStyle: string;
 	    sceneBreakStyle: string;
+	    dropCap: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new EPUBOptions(source);
@@ -2161,6 +2211,7 @@ export namespace types {
 	        this.includeCopyright = source["includeCopyright"];
 	        this.includeFrontMatter = source["includeFrontMatter"];
 	        this.includeBackMatter = source["includeBackMatter"];
+	        this.omitTitlePage = source["omitTitlePage"];
 	        this.editionID = source["editionID"];
 	        this.formatID = source["formatID"];
 	        this.fontFamily = source["fontFamily"];
@@ -2168,12 +2219,14 @@ export namespace types {
 	        this.textAlign = source["textAlign"];
 	        this.chapterStyle = source["chapterStyle"];
 	        this.sceneBreakStyle = source["sceneBreakStyle"];
+	        this.dropCap = source["dropCap"];
 	    }
 	}
 	export class ExportOptions {
 	    includeCopyright: boolean;
 	    includeFrontMatter: boolean;
 	    includeBackMatter: boolean;
+	    omitTitlePage: boolean;
 	    editionID?: string;
 	    formatID?: string;
 	
@@ -2186,6 +2239,7 @@ export namespace types {
 	        this.includeCopyright = source["includeCopyright"];
 	        this.includeFrontMatter = source["includeFrontMatter"];
 	        this.includeBackMatter = source["includeBackMatter"];
+	        this.omitTitlePage = source["omitTitlePage"];
 	        this.editionID = source["editionID"];
 	        this.formatID = source["formatID"];
 	    }
@@ -2196,6 +2250,7 @@ export namespace types {
 	    shared: ExportOptions;
 	    epub: EPUBOptions;
 	    pdf: PDFOptions;
+	    audio: AudioOptions;
 	    print: PrintPDFOptions;
 	
 	    static createFrom(source: any = {}) {
@@ -2209,6 +2264,7 @@ export namespace types {
 	        this.shared = this.convertValues(source["shared"], ExportOptions);
 	        this.epub = this.convertValues(source["epub"], EPUBOptions);
 	        this.pdf = this.convertValues(source["pdf"], PDFOptions);
+	        this.audio = this.convertValues(source["audio"], AudioOptions);
 	        this.print = this.convertValues(source["print"], PrintPDFOptions);
 	    }
 	

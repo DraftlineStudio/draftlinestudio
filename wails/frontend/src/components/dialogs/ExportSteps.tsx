@@ -157,12 +157,16 @@ function SettingControl({ row, item, options, onField, looseValue, onLoose }: Co
   if (row.kind === 'static') return <div className="export-static">{row.value}</div>
 
   if (row.kind === 'toggle') {
-    const on = row.field ? readField(options, row.field) === true : looseValue(item, row) === true
+    // An inverted toggle shows the opposite of the field it writes: "Title
+    // page" is ticked when omitTitlePage is false.
+    const stored = row.field ? readField(options, row.field) === true : looseValue(item, row) === true
+    const on = row.invert ? !stored : stored
     return (
       <label className="export-toggle">
         <input type="checkbox" checked={on} onChange={event => {
-          if (row.field) onField(item, row.field, event.target.checked)
-          else onLoose(item, row, event.target.checked)
+          const next = row.invert ? !event.target.checked : event.target.checked
+          if (row.field) onField(item, row.field, next)
+          else onLoose(item, row, next)
         }} />
         <span className="export-switch" aria-hidden="true" />
       </label>

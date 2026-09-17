@@ -297,7 +297,6 @@ export default function FormatPane(props: Props) {
           <div className="bi-choice-head">
             <strong>{choice.label}</strong>
             {choice.hint && <small>{choice.hint}</small>}
-            {choice.held && <small className="bi-held">Recorded here; no exporter reads it yet.</small>}
           </div>
           <div className="bi-choice-row">
             {choice.options.map(option => (

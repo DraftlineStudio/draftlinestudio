@@ -60,12 +60,13 @@ export function exportFormatFor(output: FlowOutput): ExportFormat {
 
 // Which set of the wizard's answers a format reads. Contents toggles are per
 // format because the author sets them per format tab.
-export type OptionGroup = 'shared' | 'epub' | 'pdf' | 'print'
+export type OptionGroup = 'shared' | 'epub' | 'pdf' | 'print' | 'audio'
 
 export function optionGroupFor(output: FlowOutput): OptionGroup {
   if (output === 'epub') return 'epub'
   if (output === 'docx') return 'shared'
-  if (output === 'pdf' || output === 'audio') return 'pdf'
+  if (output === 'audio') return 'audio'
+  if (output === 'pdf') return 'pdf'
   return 'print'
 }
 
@@ -166,7 +167,7 @@ export interface Choice { label: string; value: string | number }
 export type SettingRow =
   | { kind: 'select'; id: string; label: string; field: OptionField | null; choices: Choice[] }
   | { kind: 'text'; id: string; label: string; field: OptionField | null }
-  | { kind: 'toggle'; id: string; label: string; field: OptionField | null }
+  | { kind: 'toggle'; id: string; label: string; field: OptionField | null; invert?: boolean }
   | { kind: 'static'; id: string; label: string; value: string }
 
 export interface SettingGroup {
@@ -181,6 +182,12 @@ const txt = (id: string, label: string, field: OptionField | null): SettingRow =
   ({ kind: 'text', id, label, field })
 const tog = (id: string, label: string, field: OptionField | null): SettingRow =>
   ({ kind: 'toggle', id, label, field })
+
+// A toggle whose field is stored the other way round. "Title page" is shown
+// ticked when omitTitlePage is false, because absence has to keep meaning the
+// page is made.
+const togNot = (id: string, label: string, field: OptionField): SettingRow =>
+  ({ kind: 'toggle', id, label, field, invert: true })
 const stat = (id: string, label: string, value: string): SettingRow =>
   ({ kind: 'static', id, label, value })
 
@@ -193,7 +200,7 @@ function contentsGroup(group: OptionGroup, extra: SettingRow[] = []): SettingGro
     label: 'Contents',
     note: 'What goes in the file.',
     rows: [
-      tog('titlePage', 'Title page', null),
+      togNot('titlePage', 'Title page', { group, key: 'omitTitlePage' }),
       tog('includeCopyright', 'Copyright page', { group, key: 'includeCopyright' }),
       tog('includeFrontMatter', 'Front matter', { group, key: 'includeFrontMatter' }),
       tog('includeBackMatter', 'Back matter', { group, key: 'includeBackMatter' }),
@@ -324,27 +331,37 @@ export function settingGroups(
     ]
   }
   if (output === 'audio') {
-    // The narration script is the reading-copy exporter with a layout of its
-    // own, and that layout is not written yet. These controls hold their
-    // answers and reach no exporter until it is.
+    // A narration script is its own document with its own options. Every one
+    // of these reaches the renderer; they were all dead controls before.
+    const a = (key: string): OptionField => ({ group: 'audio', key })
     return [
       { label: 'Script layout', note: 'Built for reading aloud, not for print.', rows: [
-        sel('pageSize', 'Page size', null, plain(['US Letter', 'A4'])),
-        sel('typeface', 'Typeface', null, plain([AUDIO_SCRIPT.typeface, 'Merriweather'])),
-        sel('typeSize', 'Type size', null, plain(AUDIO_TYPE_SIZES)),
-        sel('lineSpacing', 'Line spacing', null, plain(['Relaxed · 1.5', AUDIO_SCRIPT.lineSpacing, 'Double · 2.0'])),
-        sel('paraSpacing', 'Paragraph spacing', null, plain([AUDIO_SCRIPT.paragraphSpacing, 'Half line between', 'Two lines between'])),
-        sel('align', 'Alignment', null, plain([AUDIO_SCRIPT.alignment])),
+        sel('pageSize', 'Page size', a('pageSize'), [
+          { label: 'US Letter', value: 'letter' }, { label: 'A4', value: 'a4' }]),
+        sel('fontFamily', 'Typeface', a('fontFamily'), [
+          { label: 'Lato', value: 'lato' }, { label: 'Merriweather', value: 'merriweather' }]),
+        sel('fontSize', 'Type size', a('fontSize'), PT(AUDIO_TYPE_SIZES)),
+        sel('lineHeight', 'Line spacing', a('lineHeight'), [
+          { label: 'Relaxed · 1.5', value: 1.5 }, { label: 'Open · 1.8', value: 1.8 },
+          { label: 'Double · 2.0', value: 2 }]),
+        sel('paragraphSpacing', 'Paragraph spacing', a('paragraphSpacing'), [
+          { label: 'Half line between', value: 'half line between' },
+          { label: 'One line between', value: 'one line between' },
+          { label: 'Two lines between', value: 'two lines between' }]),
+        // Ragged right is not a preference here. Justification moves words
+        // between takes, and a narrator reading a line twice must see the
+        // same line, so the script has no alignment to choose.
+        stat('align', 'Alignment', 'Left aligned, ragged'),
       ] },
       { label: 'Narration aids', note: '', rows: [
-        tog('slate', 'Chapter slate page', null),
-        tog('numberParagraphs', 'Number every paragraph', null),
-        tog('pauseBreaks', 'Scene breaks as [PAUSE]', null),
-        tog('pronunciation', 'Pronunciation notes column', null),
-        tog('coverPage', 'Opening page with ebook cover', null),
-        tog('wordCount', 'Running word count per chapter', null),
+        tog('slatePage', 'Chapter slate page', a('slatePage')),
+        tog('numberParagraphs', 'Number every paragraph', a('numberParagraphs')),
+        tog('pauseBreaks', 'Scene breaks as [PAUSE]', a('pauseBreaks')),
+        tog('pronunciationColumn', 'Pronunciation notes column', a('pronunciationColumn')),
+        tog('coverPage', 'Opening page with ebook cover', a('coverPage')),
+        tog('chapterWordCount', 'Chapter length on the slate', a('chapterWordCount')),
       ] },
-      contentsGroup('pdf'),
+      contentsGroup('audio'),
     ]
   }
   return [
@@ -573,6 +590,7 @@ export function stamped(options: WizardOptions, editionID: string, formatID: str
     epub: { ...options.epub, ...id },
     pdf: { ...options.pdf, ...id },
     print: { ...options.print, ...id },
+    audio: { ...options.audio, ...id },
   }
 }
 
