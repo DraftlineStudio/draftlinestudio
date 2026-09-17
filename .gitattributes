@@ -2,4 +2,19 @@
 # everywhere: a page that comes back from a checkout with CRLF silently breaks
 # the screenshot markers and the front matter parsing, which is a bug you find
 # by wondering why an image never appeared.
-wiki/** text eol=lf
+# Text only. `wiki/** text eol=lf` was wrong and briefly stored every
+# screenshot as line-ending-converted text: a PNG header begins PNG
+,
+# so the conversion ate the  and the committed image was three bytes short
+# and unreadable. Working files were untouched, but a fresh checkout would
+# have handed someone four broken images.
+wiki/**/*.md   text eol=lf
+wiki/**/*.css  text eol=lf
+
+# Everything else under wiki/ is an asset. Never touch the bytes.
+wiki/**/*.png  -text
+wiki/**/*.jpg  -text
+wiki/**/*.jpeg -text
+wiki/**/*.gif  -text
+wiki/**/*.webp -text
+wiki/**/*.svg  -text
