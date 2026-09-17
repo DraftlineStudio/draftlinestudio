@@ -16,6 +16,7 @@ import ChapterPanel from './components/ChapterPanel'
 import EditorPanel from './components/EditorPanel'
 import ErrorBoundary from './components/ErrorBoundary'
 import BackendErrorNotice from './components/BackendErrorNotice'
+import { firstProjectPath, subscribeFileDrop } from './services/fileDrop'
 import CharactersView from './components/characters/CharactersView'
 import PlannerView from './components/planner/PlannerView'
 import PlannerPanel from './components/planner/PlannerPanel'
@@ -108,6 +109,21 @@ export default function App() {
     // empty editor with no project to close.
     if (useBookStore.getState().book) setShowWelcome(false)
   }, [openRecentBook, setShowWelcome])
+
+  // Dropping a .draftline on the window opens it, the way dropping one on
+  // the application icon does.
+  //
+  // Lowest priority, so a cover dropped on the cover card is claimed there
+  // first and only what nothing else wanted arrives here. Registered for the
+  // life of the app: while nothing is subscribed, Wails removes its drop
+  // listeners and WebView2 treats a dropped file the way a browser does,
+  // which is what used to leave a copy in Downloads and open nothing.
+  useEffect(() => subscribeFileDrop((_x, _y, paths) => {
+    const path = firstProjectPath(paths)
+    if (!path) return false
+    void handleOpenRecent(path)
+    return true
+  }, 0), [handleOpenRecent])
 
   // Handle theme transition with smooth fade animation and sky overlay.
   // Retriggering mid-flight (rapid theme toggling, or the auto-theme hook

@@ -16,7 +16,7 @@ import type { CoverSourceReport, Edition, Metadata } from '../../types/draftline
 import {
   AttachCover, AttachCoverDialog, CheckCoverSource, RemoveCover, RevealInFileManager,
 } from '../../../wailsjs/go/main/App'
-import { OnFileDrop, OnFileDropOff } from '../../../wailsjs/runtime/runtime'
+import { droppedOn, subscribeFileDrop } from '../../services/fileDrop'
 import {
   EDITION_COVER_NOTE, LARGE_COPY_HINT, coverFacts, coverNotices, coverPixels,
   coverThumbURL, firstArtworkPath, sourceStatusTone,
@@ -68,20 +68,24 @@ export default function CoverCard({ edition, meta, onAsk, onSaveCopy }: Props) {
     }
   }, [editionID, large, updateEdition])
 
-  // A drop anywhere on the card is the same act as the button. useDropTarget
-  // is on, so this only fires over an element carrying the drop-target custom
-  // property — see the COVER ART section of global.css.
-  useEffect(() => {
-    OnFileDrop((_x, _y, paths) => {
-      const path = firstArtworkPath(paths ?? [])
-      if (!path) {
-        setError('Draftline reads cover artwork as JPEG, PNG, TIFF, WebP or BMP.')
-        return
-      }
-      void attach(path)
-    }, true)
-    return () => OnFileDropOff()
-  }, [attach])
+  // A drop anywhere on the card is the same act as the button.
+  //
+  // Claimed only when the drop landed on this card, so a project dropped
+  // elsewhere still reaches the handler that opens it. This used to lean on
+  // Wails' own drop-target filtering, which meant registering and removing
+  // the one global handler as this component came and went -- and while it
+  // was gone nothing intercepted a drop at all, so WebView2 downloaded the
+  // file instead. See services/fileDrop.
+  useEffect(() => subscribeFileDrop((x, y, paths) => {
+    if (!droppedOn(x, y, '.bi-cover-drop')) return false
+    const path = firstArtworkPath(paths)
+    if (!path) {
+      setError('Draftline reads cover artwork as JPEG, PNG, TIFF, WebP or BMP.')
+      return true
+    }
+    void attach(path)
+    return true
+  }, 10), [attach])
 
   // Is the print-ready original still where it was? Asked whenever the record
   // changes, because the answer is about the disk and not about the record.

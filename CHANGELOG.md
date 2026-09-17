@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02674] - 2026-09-18
+
+### Fixed
+- Dropping a Draftline file on the window now opens it instead of saving a copy to Downloads.
+
 ## [0.21.02673] - 2026-09-18
 
 ### Added
