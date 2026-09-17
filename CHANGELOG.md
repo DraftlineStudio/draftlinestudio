@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02677] - 2026-09-18
+
+### Fixed
+- Pinching on a trackpad no longer zooms the whole interface like a photograph.
+
 ## [0.21.02676] - 2026-09-18
 
 ### Fixed

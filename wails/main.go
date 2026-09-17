@@ -65,6 +65,13 @@ func main() {
 		Windows: &windows.Options{
 			WebviewIsTransparent: false,
 			WindowIsTranslucent:  false,
+			// A trackpad pinch used to scale the entire interface, the way a
+			// photo viewer zooms a photograph: chrome, panels, menus and all.
+			// WebView2 offers that by default because it is a browser, and a
+			// browser is a thing you look at. Draftline is a thing you work in,
+			// and a writer reaching for two fingers means the TEXT, which is
+			// what the editor font size in settings is for.
+			DisablePinchZoom: true,
 		},
 		Mac: &mac.Options{
 			OnFileOpen: app.onMacFileOpen,
