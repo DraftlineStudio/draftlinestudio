@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02670] - 2026-09-17
+
+### Fixed
+- Fixed New Window starting a window that never appeared.
+
 ## [0.21.02669] - 2026-09-17
 
 ### Changed

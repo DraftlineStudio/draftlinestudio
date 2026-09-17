@@ -28,9 +28,14 @@ func (a *App) OpenNewWindow() types.RevealResult {
 		return types.RevealResult{Error: "Draftline could not find its own program file."}
 	}
 	command := exec.Command(self)
-	// No console flash on Windows, and no shared lifetime on Unix: the new
-	// window outlives the one that opened it.
-	platform.HideWindow(command)
+	// Detach only, so the new window outlives the one that opened it.
+	//
+	// Deliberately NOT platform.HideWindow: that sets STARTF_USESHOWWINDOW
+	// with SW_HIDE in the child's STARTUPINFO, which is right for the console
+	// helpers it was written for and wrong here. Draftline is a GUI binary, so
+	// the child inherits "start hidden" and the new window never appears -- the
+	// process starts, reports success, and nothing shows. There is no console
+	// to flash in the first place.
 	platform.Detach(command)
 	if err := command.Start(); err != nil {
 		return types.RevealResult{Error: "That window could not be opened."}
