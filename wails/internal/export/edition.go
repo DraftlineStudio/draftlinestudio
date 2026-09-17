@@ -202,6 +202,12 @@ func epubProfileFor(name string) epubProfile {
 
 // documentEPUBProfile is the profile a document was built for.
 func documentEPUBProfile(doc Document) epubProfile {
+	// An export made from no edition has no record to read a version out of,
+	// so the wizard's own answer is carried on the document instead. It is
+	// checked first: an author who picked a version meant it.
+	if doc.EPUBProfile != nil {
+		return *doc.EPUBProfile
+	}
 	if doc.Edition != nil && doc.Edition.EPUB.PackageVersion != "" {
 		return doc.Edition.EPUB
 	}

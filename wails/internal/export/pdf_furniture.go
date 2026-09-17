@@ -135,3 +135,22 @@ func (r *publicationPDFRenderer) drawParagraphNumber() {
 	r.pdf.Text(r.trimX+leftMargin-w-6, r.y+r.spec.FontSize, label)
 	r.pdf.SetFont(r.spec.Font.ID, "", r.spec.FontSize)
 }
+
+// drawWatermark prints DRAFT across the page for a copy going out for comment.
+//
+// It is drawn in light grey under the text rather than over it: a watermark
+// that makes the manuscript harder to read defeats the purpose of sending
+// somebody a reading copy.
+func (r *publicationPDFRenderer) drawWatermark() {
+	r.pdf.SetFont(r.spec.FurnitureFont.ID, "B", r.spec.FontSize*4.5)
+	red, green, blue := r.pdf.GetTextColor()
+	r.pdf.SetTextColor(226, 226, 230)
+	text := "DRAFT"
+	width := r.pdf.GetStringWidth(text)
+	r.pdf.TransformBegin()
+	r.pdf.TransformRotate(45, r.trimX+r.spec.TrimWidth/2, r.trimY+r.spec.TrimHeight/2)
+	r.pdf.Text(r.trimX+(r.spec.TrimWidth-width)/2, r.trimY+r.spec.TrimHeight/2, text)
+	r.pdf.TransformEnd()
+	r.pdf.SetTextColor(red, green, blue)
+	r.pdf.SetFont(r.spec.Font.ID, "", r.spec.FontSize)
+}

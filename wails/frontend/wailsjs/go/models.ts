@@ -2079,6 +2079,8 @@ export namespace types {
 	    lineHeight: number;
 	    paragraphIndent: string;
 	    textAlign: string;
+	    hideFolios?: boolean;
+	    draftWatermark?: boolean;
 	    trimSize: string;
 	    customWidth: string;
 	    customHeight: string;
@@ -2125,6 +2127,8 @@ export namespace types {
 	        this.lineHeight = source["lineHeight"];
 	        this.paragraphIndent = source["paragraphIndent"];
 	        this.textAlign = source["textAlign"];
+	        this.hideFolios = source["hideFolios"];
+	        this.draftWatermark = source["draftWatermark"];
 	        this.trimSize = source["trimSize"];
 	        this.customWidth = source["customWidth"];
 	        this.customHeight = source["customHeight"];
@@ -2197,6 +2201,8 @@ export namespace types {
 	    lineHeight: number;
 	    paragraphIndent: string;
 	    textAlign: string;
+	    hideFolios?: boolean;
+	    draftWatermark?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new PDFOptions(source);
@@ -2216,6 +2222,8 @@ export namespace types {
 	        this.lineHeight = source["lineHeight"];
 	        this.paragraphIndent = source["paragraphIndent"];
 	        this.textAlign = source["textAlign"];
+	        this.hideFolios = source["hideFolios"];
+	        this.draftWatermark = source["draftWatermark"];
 	    }
 	}
 	export class EPUBOptions {
@@ -2231,6 +2239,7 @@ export namespace types {
 	    chapterStyle: string;
 	    sceneBreakStyle: string;
 	    dropCap: boolean;
+	    version?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new EPUBOptions(source);
@@ -2250,6 +2259,7 @@ export namespace types {
 	        this.chapterStyle = source["chapterStyle"];
 	        this.sceneBreakStyle = source["sceneBreakStyle"];
 	        this.dropCap = source["dropCap"];
+	        this.version = source["version"];
 	    }
 	}
 	export class ExportOptions {

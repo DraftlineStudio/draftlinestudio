@@ -56,6 +56,9 @@ export interface EPUBOptions extends ExportOptions {
   // A raised initial on the first paragraph of each chapter. Ordinary
   // ::first-letter CSS, which Kindle and other reading systems honour.
   dropCap: boolean
+  // 'EPUB 3.3', 'EPUB 3.0' or 'EPUB 2.0.1'. An edition export reads the
+  // version off its record instead; this is for one made from no edition.
+  version?: string
 }
 
 export interface PDFOptions extends ExportOptions {
@@ -65,6 +68,9 @@ export interface PDFOptions extends ExportOptions {
   lineHeight: 1.3 | 1.4 | 1.5 | 1.6
   paragraphIndent: string
   textAlign: 'justify' | 'left'
+  // Stated the negative way round so an older record keeps its folios.
+  hideFolios?: boolean
+  draftWatermark?: boolean
 }
 
 // DOCXOptions is the editable manuscript: the file that goes to an editor and

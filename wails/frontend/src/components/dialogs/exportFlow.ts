@@ -308,9 +308,9 @@ export function settingGroups(
         sel('sceneBreakStyle', 'Scene breaks', { group: 'epub', key: 'sceneBreakStyle' }, [
           { label: 'Asterism ⁂', value: 'asterism' }, { label: 'Short rule', value: 'rule' },
           { label: 'Open space', value: 'space' }]),
-        sel('epubVersion', 'EPUB version', null, plain(EPUB_VERSION_CHOICES)),
+        sel('version', 'EPUB version', { group: 'epub', key: 'version' }, plain(EPUB_VERSION_CHOICES)),
       ] },
-      contentsGroup('epub', [tog('nav', 'Linked contents (nav)', null)]),
+      contentsGroup('epub'),
     ]
   }
   if (output === 'pdf') {
@@ -326,9 +326,8 @@ export function settingGroups(
         txt('paragraphIndent', 'First-line indent (in)', { group: 'pdf', key: 'paragraphIndent' }),
       ] },
       { label: 'Reading copy', note: '', rows: [
-        tog('pageNumbers', 'Page numbers', null),
-        tog('watermark', '“Draft” watermark', null),
-        tog('lineNumbers', 'Line numbers for notes', null),
+        togNot('pageNumbers', 'Page numbers', { group: 'pdf', key: 'hideFolios' }),
+        tog('draftWatermark', '“Draft” watermark', { group: 'pdf', key: 'draftWatermark' }),
       ] },
       contentsGroup('pdf'),
     ]

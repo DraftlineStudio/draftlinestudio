@@ -37,6 +37,10 @@ type EPUBOptions struct {
 	// systems including Kindle honour, so an ebook gets the same choice a
 	// printed page does rather than being told it cannot have one.
 	DropCap bool `json:"dropCap"`
+	// Version is "EPUB 3.3", "EPUB 3.0" or "EPUB 2.0.1". An export made from
+	// a registered edition takes it from the record instead; this is for one
+	// made from no edition, which has no record to read.
+	Version string `json:"version,omitempty"`
 }
 
 // PDFOptions extends ExportOptions with PDF-specific settings.
@@ -48,6 +52,12 @@ type PDFOptions struct {
 	LineHeight      float64 `json:"lineHeight"`      // 1.3, 1.4, 1.5, 1.6
 	ParagraphIndent string  `json:"paragraphIndent"` // inches
 	TextAlign       string  `json:"textAlign"`       // justify, left
+	// HideFolios drops the page numbers. Stated the negative way round so a
+	// record written before this field existed keeps its folios.
+	HideFolios bool `json:"hideFolios,omitempty"`
+	// DraftWatermark prints DRAFT across every page, for a copy going out
+	// for comment that must not be mistaken for the finished book.
+	DraftWatermark bool `json:"draftWatermark,omitempty"`
 }
 
 // DOCXOptions is the editable manuscript: the file that goes to an editor and

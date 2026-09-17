@@ -167,3 +167,45 @@ func TestPrintSceneBreakStylesAllRender(t *testing.T) {
 		}
 	}
 }
+
+// A reading copy's folios and watermark are choices, not decoration. Both used
+// to be switches on a screen that reached nothing.
+func TestReadingCopyFoliosAndWatermark(t *testing.T) {
+	book := types.BookData{
+		Metadata: types.Metadata{Title: "Wide Water", Author: "A. Marsh"},
+		Body: []types.ChapterItem{{Title: "Chapter One", Type: "chapter", Content: "<p>" +
+			strings.Repeat("Words enough to run onto a second page. ", 60) + "</p>"}},
+	}
+	base := types.PDFOptions{PageSize: "letter", FontFamily: "merriweather", FontSize: 12, LineHeight: 1.5}
+
+	plain, err := PDFBytes(book, base, nil)
+	if err != nil {
+		t.Fatalf("rendering: %v", err)
+	}
+	if readingFolioPosition(base) != "bottom-center" {
+		t.Error("a reading copy does not carry folios by default")
+	}
+
+	hidden := base
+	hidden.HideFolios = true
+	if readingFolioPosition(hidden) != "" {
+		t.Error("turning folios off left them on")
+	}
+	noFolios, err := PDFBytes(book, hidden, nil)
+	if err != nil {
+		t.Fatalf("rendering without folios: %v", err)
+	}
+	if string(noFolios) == string(plain) {
+		t.Error("turning folios off changed nothing in the file")
+	}
+
+	marked := base
+	marked.DraftWatermark = true
+	stamped, err := PDFBytes(book, marked, nil)
+	if err != nil {
+		t.Fatalf("rendering with a watermark: %v", err)
+	}
+	if string(stamped) == string(plain) {
+		t.Error("the draft watermark changed nothing in the file")
+	}
+}

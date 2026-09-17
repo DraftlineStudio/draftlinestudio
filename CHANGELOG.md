@@ -2,6 +2,15 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02666] - 2026-09-17
+
+### Added
+- Added a DRAFT watermark and a page number toggle to reading copies.
+- Exports without an edition can now choose the EPUB version.
+
+### Removed
+- Removed the linked contents switch from EPUB settings.
+
 ## [0.20.02665] - 2026-09-17
 
 ### Added

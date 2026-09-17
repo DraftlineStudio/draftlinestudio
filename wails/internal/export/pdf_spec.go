@@ -49,6 +49,7 @@ type publicationPDFSpec struct {
 	GenerateHalfTitle      bool
 	GenerateTOC            bool
 	OmitTitlePage          bool
+	DraftWatermark         bool
 	TitlePageStyle         string
 	TitlePageShowAuthor    bool
 	TitlePageShowPublisher bool
@@ -136,7 +137,8 @@ func readingPDFSpec(options types.PDFOptions) publicationPDFSpec {
 		// purpose is being read and commented on. Centred at the foot, because
 		// a reading copy is read as single pages rather than as spreads and
 		// has no outside edge to sit against.
-		PageNumberPosition:     "bottom-center",
+		PageNumberPosition:     readingFolioPosition(options),
+		DraftWatermark:         options.DraftWatermark,
 		OmitTitlePage:          options.OmitTitlePage,
 		TitlePageStyle:         "classic",
 		TitlePageShowAuthor:    true,
@@ -289,4 +291,14 @@ func normalizedPageNumberPosition(value string) string {
 	default:
 		return "bottom-center"
 	}
+}
+
+// readingFolioPosition is where a reading copy's page numbers sit, or nowhere.
+// A reviewer marking up a fixed-layout copy has no way to say where they are
+// without them, so they are on unless the author turns them off.
+func readingFolioPosition(options types.PDFOptions) string {
+	if options.HideFolios {
+		return ""
+	}
+	return "bottom-center"
 }

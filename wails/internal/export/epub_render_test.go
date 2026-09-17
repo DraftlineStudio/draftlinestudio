@@ -217,3 +217,41 @@ func firstEPUBChapter(t *testing.T, parts map[string][]byte) string {
 	t.Fatal("no chapter document in the epub")
 	return ""
 }
+
+// An export made from no edition can still choose its EPUB version. An
+// edition export ignores the wizard and uses its record, because the record is
+// what the ISBN was registered against.
+func TestEPUBVersionFromTheWizardWhenThereIsNoEdition(t *testing.T) {
+	book := types.BookData{
+		Metadata: types.Metadata{Title: "Wide Water", Author: "A. Marsh"},
+		Body:     []types.ChapterItem{{Title: "Chapter One", Type: "chapter", Content: "<p>One.</p>"}},
+	}
+
+	two, err := EPUBBytes(book, types.EPUBOptions{Version: "EPUB 2.0.1"}, nil)
+	if err != nil {
+		t.Fatalf("rendering: %v", err)
+	}
+	opf := epubPackageDocument(t, two)
+	if !strings.Contains(opf, `version="2.0"`) {
+		t.Errorf("the package is not EPUB 2:\n%s", opf)
+	}
+
+	three, err := EPUBBytes(book, types.EPUBOptions{}, nil)
+	if err != nil {
+		t.Fatalf("rendering the default: %v", err)
+	}
+	if !strings.Contains(epubPackageDocument(t, three), `version="3.0"`) {
+		t.Error("the default package is not EPUB 3")
+	}
+}
+
+func epubPackageDocument(t *testing.T, data []byte) string {
+	t.Helper()
+	for name, body := range readEPUBParts(t, data) {
+		if strings.HasSuffix(name, ".opf") {
+			return string(body)
+		}
+	}
+	t.Fatal("no package document in the epub")
+	return ""
+}

@@ -2,6 +2,7 @@ package export
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"draftline/internal/types"
@@ -20,6 +21,12 @@ func EPUBBytes(book types.BookData, options types.EPUBOptions, cover *CoverArt) 
 	doc, err := BuildDocument(book, options.ExportOptions)
 	if err != nil {
 		return nil, err
+	}
+	// A version chosen in the wizard belongs to an export with no edition
+	// behind it; where there is an edition, its record has already said.
+	if version := strings.TrimSpace(options.Version); version != "" && doc.Edition == nil {
+		profile := epubProfileFor(version)
+		doc.EPUBProfile = &profile
 	}
 	data, err := renderEPUB(doc, book, normalizeEPUBOptions(options), cover, time.Now().UTC())
 	if err != nil {

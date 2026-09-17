@@ -205,6 +205,10 @@ func (r *publicationPDFRenderer) addPage(kind pdfPageKind, chapter string) {
 	if r.spec.CropMarks {
 		r.drawCropMarks()
 	}
+	// Before the text, so the words sit over it rather than under it.
+	if r.spec.DraftWatermark {
+		r.drawWatermark()
+	}
 	if kind == pageSection || kind == pageTOC {
 		r.drawFurniture()
 	}

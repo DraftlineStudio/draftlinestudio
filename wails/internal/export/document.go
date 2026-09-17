@@ -36,8 +36,11 @@ type Document struct {
 	// the imprint, the rights line, the date and the copyright page all come
 	// from it rather than from the book, so that everything in the file agrees
 	// with the ISBN printed on its cover.
-	Edition  *DocumentEdition
-	Sections []DocumentSection
+	Edition *DocumentEdition
+	// EPUBProfile is the package version an export made from no edition
+	// asked for. An edition export leaves it nil and the record decides.
+	EPUBProfile *epubProfile
+	Sections    []DocumentSection
 }
 
 // SectionRole describes where a section came from in the Draftline archive.

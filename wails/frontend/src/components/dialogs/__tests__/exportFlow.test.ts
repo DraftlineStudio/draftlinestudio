@@ -86,12 +86,6 @@ describe('the settings each format shows', () => {
     expect(contents && 'field' in contents && contents.field).toEqual({ group: 'epub', key: 'includeCopyright' })
   })
 
-  it('leaves a control no exporter reads yet without a field', () => {
-    const epub = settingGroups('epub', undefined, options)
-    const version = epub[0].rows.find(r => r.id === 'epubVersion')
-    expect(version && 'field' in version && version.field).toBeNull()
-  })
-
   // A narration script is its own document. It used to borrow the reading
   // copy's answers, which is why none of its settings could be changed.
   it('gives a narration script its own answers, not the reading copy’s', () => {
@@ -236,5 +230,22 @@ describe('an edition goes out as one archive', () => {
     expect(request.items.map(i => [i.format_id, i.output])).toEqual([['p', 'print-pdf'], ['e', 'epub']])
     expect(request.items[0].print.formatID).toBe('p')
     expect(request.items[1].epub.editionID).toBe('ed1')
+  })
+})
+
+// The guard for the whole class of bug this file kept producing: a control on
+// the settings screen that reaches no exporter. It renders, it remembers what
+// you chose, and the file comes out the same either way.
+describe('no control on the settings screen is decoration', () => {
+  it('binds every row of every format to a field an exporter reads', () => {
+    const options = defaultWizardOptions()
+    for (const output of ['epub', 'docx', 'pdf', 'print-pdf', 'hc', 'audio'] as const) {
+      for (const group of settingGroups(output, undefined, options)) {
+        for (const row of group.rows) {
+          if (row.kind === 'static') continue
+          expect('field' in row && row.field, `${output} / ${group.label} / ${row.id}`).toBeTruthy()
+        }
+      }
+    }
   })
 })
