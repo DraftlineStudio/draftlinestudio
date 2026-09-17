@@ -9,6 +9,13 @@ node_modules/
 # Wails build artifacts
 wails/build/bin/
 wails/frontend/dist/
+# .gitkeep inside it is tracked on purpose. //go:embed all:frontend/dist
+# refuses to compile against a directory with nothing in it, and the `all:`
+# prefix counts a dotfile as something. index.html and logo.svg used to be
+# tracked for that job, but they are build output: every frontend build
+# rewrote index.html with new asset hashes, so a generated file nobody reads
+# turned up in unrelated commits.
+!wails/frontend/dist/.gitkeep
 
 # Compiled binaries
 *.exe
