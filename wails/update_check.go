@@ -27,8 +27,21 @@ import (
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+// Where Draftline asks what the newest release is.
+//
+// The feed is served from draftline.ink rather than read straight off the
+// forge, so the repository can be renamed or moved without stranding every
+// copy already installed: an application in the wild only learns a new address
+// by updating, and it only updates by being told there is an update. One
+// address we control breaks that circle.
+//
+// It also sidesteps the forge's unauthenticated rate limit, which is per IP
+// and low enough that an office or a campus can exhaust it between them.
+//
+// Draftline knows no other address. Where the releases actually live is the
+// feed's business, and changing it does not need a new build.
 const (
-	updateRepoAPI = "https://api.github.com/repos/DraftlineStudio/draftlinestudio/releases"
+	updateFeedURL = "https://draftline.ink/api/update.php"
 	// A release asset larger than this is not a Draftline package.
 	maxUpdateDownloadBytes = 600 << 20
 )
@@ -168,36 +181,32 @@ func updateHTTPClient(timeout time.Duration) *http.Client {
 	return &http.Client{Timeout: timeout}
 }
 
-func githubGet(ctx context.Context, client *http.Client, url string) (*http.Response, error) {
+func updateGet(ctx context.Context, client *http.Client, url string) (*http.Response, error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
 	request.Header.Set("User-Agent", "Draftline/"+AppVersion)
-	request.Header.Set("Accept", "application/vnd.github+json")
+	request.Header.Set("Accept", "application/json")
 	response, err := client.Do(request)
 	if err != nil {
 		return nil, err
 	}
 	if response.StatusCode != http.StatusOK {
 		_ = response.Body.Close()
-		return nil, fmt.Errorf("GitHub responded with %s", response.Status)
+		return nil, fmt.Errorf("the update feed responded with %s", response.Status)
 	}
 	return response, nil
 }
 
-// latestRelease returns the newest published release, preferring the
-// releases/latest endpoint and falling back to the release list so
-// pre-release builds are still offered.
+// latestRelease returns the newest published release.
+//
+// Draftline ships pre-releases, so there is no point asking for the "latest"
+// release the way a forge means it: that endpoint skips pre-releases and would
+// answer nothing on every check. The feed returns the list, newest first, and
+// the first entry that is not a draft is the answer.
 func latestRelease(ctx context.Context, client *http.Client) (*githubRelease, error) {
-	if response, err := githubGet(ctx, client, updateRepoAPI+"/latest"); err == nil {
-		defer func() { _ = response.Body.Close() }()
-		release := &githubRelease{}
-		if decodeErr := json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(release); decodeErr == nil && release.TagName != "" {
-			return release, nil
-		}
-	}
-	response, err := githubGet(ctx, client, updateRepoAPI+"?per_page=10")
+	response, err := updateGet(ctx, client, updateFeedURL)
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +286,7 @@ func (a *App) DownloadUpdate() UpdateDownloadResult {
 	expected := ""
 	for index := range release.Assets {
 		if release.Assets[index].Name == "SHA256SUMS.txt" {
-			sumsResponse, sumsErr := githubGet(ctx, client, release.Assets[index].DownloadURL)
+			sumsResponse, sumsErr := updateGet(ctx, client, release.Assets[index].DownloadURL)
 			if sumsErr != nil {
 				return UpdateDownloadResult{Error: "Could not fetch the release checksums: " + sumsErr.Error()}
 			}
@@ -303,7 +312,7 @@ func (a *App) DownloadUpdate() UpdateDownloadResult {
 	}
 	targetPath := filepath.Join(targetDir, asset.Name)
 
-	response, err := githubGet(ctx, client, asset.DownloadURL)
+	response, err := updateGet(ctx, client, asset.DownloadURL)
 	if err != nil {
 		return UpdateDownloadResult{Error: "Download failed: " + err.Error()}
 	}
