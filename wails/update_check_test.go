@@ -163,3 +163,65 @@ func TestParseSHA256Sums(t *testing.T) {
 		t.Fatalf("junk lines must be ignored: %#v", sums)
 	}
 }
+
+// A release is published before its packages exist, because publishing is what
+// starts the build. The updater must not answer with a release it cannot hand
+// over, or every writer is told to update and then told there is nothing to
+// download -- which is exactly what 0.21.02670 did while its workflow ran.
+func TestChooseReleaseSkipsAReleaseWithNoPackageForThisPlatform(t *testing.T) {
+	building := githubRelease{TagName: "0.21.02670"}
+	ready := githubRelease{TagName: "0.21.02669", Assets: []githubReleaseAsset{
+		{Name: "Draftline-0.21.02669-windows-amd64-setup.exe"},
+		{Name: "Draftline-0.21.02669-macos-universal.dmg"},
+	}}
+	releases := []githubRelease{building, ready}
+
+	if got := chooseRelease(releases, "windows", "amd64", ""); got == nil || got.TagName != "0.21.02669" {
+		t.Fatalf("Windows was not offered the release that has a Windows package: %+v", got)
+	}
+
+	// Assets upload one at a time, so a release can serve one platform and not
+	// another. Each platform gets the newest release that can serve it.
+	partial := githubRelease{TagName: "0.21.02671", Assets: []githubReleaseAsset{
+		{Name: "Draftline-0.21.02671-windows-amd64-setup.exe"},
+	}}
+	releases = []githubRelease{partial, ready}
+	if got := chooseRelease(releases, "windows", "amd64", ""); got == nil || got.TagName != "0.21.02671" {
+		t.Fatalf("Windows should take the newer release that has its package: %+v", got)
+	}
+	if got := chooseRelease(releases, "darwin", "arm64", ""); got == nil || got.TagName != "0.21.02669" {
+		t.Fatalf("macOS should fall back to the release that still has a dmg: %+v", got)
+	}
+}
+
+// A drafted release is not published and must never be offered, even when it
+// is the only one carrying a package.
+func TestChooseReleaseIgnoresDrafts(t *testing.T) {
+	draft := githubRelease{TagName: "0.21.02672", Draft: true, Assets: []githubReleaseAsset{
+		{Name: "Draftline-0.21.02672-windows-amd64-setup.exe"},
+	}}
+	published := githubRelease{TagName: "0.21.02669", Assets: []githubReleaseAsset{
+		{Name: "Draftline-0.21.02669-windows-amd64-setup.exe"},
+	}}
+	if got := chooseRelease([]githubRelease{draft, published}, "windows", "amd64", ""); got == nil || got.TagName != "0.21.02669" {
+		t.Fatalf("a draft was offered as an update: %+v", got)
+	}
+	if got := chooseRelease([]githubRelease{draft}, "windows", "amd64", ""); got != nil {
+		t.Fatalf("a draft-only feed answered with %+v", got)
+	}
+}
+
+// A copy built from source matches no asset at all. It should still learn that
+// a newer version exists; it just never gets handed a package.
+func TestChooseReleaseStillReportsAVersionToASourceBuild(t *testing.T) {
+	newest := githubRelease{TagName: "0.21.02670", Assets: []githubReleaseAsset{
+		{Name: "Draftline-0.21.02670-linux-x86_64.deb"},
+	}}
+	older := githubRelease{TagName: "0.21.02669", Assets: []githubReleaseAsset{
+		{Name: "Draftline-0.21.02669-linux-x86_64.deb"},
+	}}
+	got := chooseRelease([]githubRelease{newest, older}, "linux", "amd64", "")
+	if got == nil || got.TagName != "0.21.02670" {
+		t.Fatalf("a source build was not told about the newest release: %+v", got)
+	}
+}

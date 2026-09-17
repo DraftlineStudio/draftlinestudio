@@ -215,12 +215,38 @@ func latestRelease(ctx context.Context, client *http.Client) (*githubRelease, er
 	if err := json.NewDecoder(io.LimitReader(response.Body, 4<<20)).Decode(&releases); err != nil {
 		return nil, err
 	}
-	for index := range releases {
-		if !releases[index].Draft {
-			return &releases[index], nil
-		}
+	if release := chooseRelease(releases, runtime.GOOS, runtime.GOARCH, installKind()); release != nil {
+		return release, nil
 	}
 	return nil, fmt.Errorf("no published releases")
+}
+
+// chooseRelease picks the newest published release that carries a package for
+// this platform.
+//
+// Publishing a release is what triggers its build, so for the ten or fifteen
+// minutes the workflow takes, the newest release has no assets at all.
+// Answering with it told every writer an update was available and then refused
+// to download it. The same hole swallowed any platform whose build failed:
+// that platform stayed stuck until the next release went out.
+//
+// A source build matches no asset by design, so when nothing matches this
+// falls back to the newest published release. That keeps the version notice
+// working for a build that was never going to be handed a package.
+func chooseRelease(releases []githubRelease, goos, goarch, linuxKind string) *githubRelease {
+	var newest *githubRelease
+	for index := range releases {
+		if releases[index].Draft {
+			continue
+		}
+		if newest == nil {
+			newest = &releases[index]
+		}
+		if pickReleaseAsset(&releases[index], goos, goarch, linuxKind) != nil {
+			return &releases[index]
+		}
+	}
+	return newest
 }
 
 // CheckForUpdates compares the running version against the newest published

@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02671] - 2026-09-18
+
+### Fixed
+- Update checks no longer offer a release whose packages are still being built.
+
 ## [0.21.02670] - 2026-09-17
 
 ### Fixed
