@@ -51,7 +51,8 @@ describe('the formats on offer', () => {
 describe('the shape of the flow', () => {
   it('gives a reading copy two steps and an edition four, ending at the lock', () => {
     expect(stepsFor('reading')).toEqual(['settings', 'review'])
-    expect(stepsFor('custom')).toEqual(['formats', 'settings', 'artwork', 'review'])
+    // Artwork belongs to an edition, so an a la carte export has no such step.
+    expect(stepsFor('custom')).toEqual(['formats', 'settings', 'review'])
     expect(stepsFor('edition')).toEqual(['formats', 'settings', 'artwork', 'finalize'])
   })
 
@@ -96,7 +97,7 @@ describe('the settings each format shows', () => {
   it('gives a narration script its own answers, not the reading copy’s', () => {
     expect(optionGroupFor('audio')).toBe('audio')
     expect(optionGroupFor('pdf')).toBe('pdf')
-    expect(optionGroupFor('docx')).toBe('shared')
+    expect(optionGroupFor('docx')).toBe('docx')
   })
 
   it('binds every narration row to a field the renderer reads', () => {

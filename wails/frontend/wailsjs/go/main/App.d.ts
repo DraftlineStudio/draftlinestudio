@@ -52,7 +52,7 @@ export function DownloadReadAloudNative():Promise<void>;
 
 export function DownloadUpdate():Promise<main.UpdateDownloadResult>;
 
-export function ExportDOCX(arg1:types.BookData,arg2:types.ExportOptions):Promise<types.ExportResult>;
+export function ExportDOCX(arg1:types.BookData,arg2:types.DOCXOptions):Promise<types.ExportResult>;
 
 export function ExportEPUB(arg1:types.BookData,arg2:types.EPUBOptions):Promise<types.ExportResult>;
 

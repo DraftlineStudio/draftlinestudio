@@ -67,6 +67,15 @@ export interface PDFOptions extends ExportOptions {
   textAlign: 'justify' | 'left'
 }
 
+// DOCXOptions is the editable manuscript: the file that goes to an editor and
+// comes back marked up. Its settings are about that round trip.
+export interface DOCXOptions extends ExportOptions {
+  bodyStyle: 'normal' | 'manuscript'
+  chapterBreak: 'page' | 'run'
+  trackChanges: boolean
+  hashSceneBreaks: boolean
+}
+
 // AudioOptions is the narration script: the file a voice actor reads from. It
 // is not the reading copy renamed, which is what it used to be, and why none
 // of its settings could be changed.
@@ -128,6 +137,7 @@ export interface WizardOptions {
   pdf: PDFOptions
   print: PrintPDFOptions
   audio: AudioOptions
+  docx: DOCXOptions
 }
 
 // Every number a new export starts from is in publishingDefaults.ts, which is
@@ -408,6 +418,7 @@ export function applyStoredSettings(options: WizardOptions, format: EditionForma
     pdf: merge(options.pdf, 'pdf'),
     print: merge(options.print, 'print-pdf'),
     audio: merge(options.audio, 'audio'),
+    docx: merge(options.docx, 'docx'),
   }
 }
 
@@ -459,6 +470,7 @@ export function exportSettingsBlock(options: WizardOptions): Record<string, unkn
     pdf: { ...options.pdf },
     'print-pdf': { ...options.print },
     audio: { ...options.audio },
+    docx: { ...options.docx },
   }
 }
 

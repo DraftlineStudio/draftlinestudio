@@ -518,7 +518,6 @@ export default function BookInfoDialog() {
                   setDeletingID(selected.id)
                 }}
                 onOpenSnapshot={() => setStatusMessage('Reading a locked manuscript back is not built yet. The text is safe in the project file.')}
-                onCompare={() => setStatusMessage('Comparing a locked manuscript with the working draft is not built yet.')}
                 onRelease={() => setReleasing(selected.id)}
                 onAskCover={(action, act) => void askArtwork(coverAction(selected, action, act))}
                 onSaveCoverCopy={() => void saveCoverCopy(selected)}

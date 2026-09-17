@@ -18,7 +18,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type {
-  AudioOptions, EPUBOptions, ExportOptions, PDFOptions, PrintPDFOptions, TrimSize, WizardOptions,
+  AudioOptions, DOCXOptions, EPUBOptions, ExportOptions, PDFOptions, PrintPDFOptions,
+  TrimSize, WizardOptions,
 } from './exportSource'
 
 // ── Trim sizes ─────────────────────────────────────────────────────────────
@@ -152,6 +153,19 @@ export const AUDIO_SCRIPT = {
   chapterWordCount: true,
 }
 
+// ── Editable manuscript ────────────────────────────────────────────────────
+
+// What an editor gets. A readable proportional page by default; the Courier
+// double-spaced manuscript format is still what some submissions desks ask
+// for. Revision recording is on, because a document sent to an editor is sent
+// to be marked up.
+export const DOCX_DEFAULTS = {
+  bodyStyle: 'normal' as DOCXOptions['bodyStyle'],
+  chapterBreak: 'page' as DOCXOptions['chapterBreak'],
+  trackChanges: true,
+  hashSceneBreaks: false,
+}
+
 // ── What goes in the file ──────────────────────────────────────────────────
 
 export const CONTENTS_DEFAULTS: Omit<ExportOptions, 'editionID' | 'formatID'> = {
@@ -216,6 +230,7 @@ export function defaultWizardOptions(): WizardOptions {
     },
     pdf,
     audio: { ...shared, ...AUDIO_SCRIPT },
+    docx: { ...shared, ...DOCX_DEFAULTS },
     print: {
       ...pdf,
       pageSize: trim.id as PDFOptions['pageSize'],

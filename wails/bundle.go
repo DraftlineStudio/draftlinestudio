@@ -135,7 +135,7 @@ func (a *App) renderBundleItem(b types.BookData, item types.BundleItem) ([]byte,
 		data, err := export.EPUBBytes(source, item.EPUB, a.exportCover(b, item.EPUB.ExportOptions))
 		return data, ".epub", err
 	case "docx":
-		data, err := export.DOCXBytes(source, item.Shared)
+		data, err := export.DOCXBytes(source, item.DOCX)
 		return data, ".docx", err
 	case "pdf":
 		data, err := export.PDFBytes(source, item.PDF, a.exportCover(b, item.PDF.ExportOptions))

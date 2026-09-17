@@ -60,11 +60,11 @@ export function exportFormatFor(output: FlowOutput): ExportFormat {
 
 // Which set of the wizard's answers a format reads. Contents toggles are per
 // format because the author sets them per format tab.
-export type OptionGroup = 'shared' | 'epub' | 'pdf' | 'print' | 'audio'
+export type OptionGroup = 'shared' | 'epub' | 'pdf' | 'print' | 'audio' | 'docx'
 
 export function optionGroupFor(output: FlowOutput): OptionGroup {
   if (output === 'epub') return 'epub'
-  if (output === 'docx') return 'shared'
+  if (output === 'docx') return 'docx'
   if (output === 'audio') return 'audio'
   if (output === 'pdf') return 'pdf'
   return 'print'
@@ -80,7 +80,10 @@ export type FlowStep = 'formats' | 'settings' | 'artwork' | 'finalize' | 'review
 // only step in the flow the author cannot pass without answering.
 export function stepsFor(mode: FlowMode): FlowStep[] {
   if (mode === 'reading') return ['settings', 'review']
-  if (mode === 'custom') return ['formats', 'settings', 'artwork', 'review']
+  // Artwork belongs to an edition. An export that belongs to no edition has no
+  // cover and no wrap to carry, and the step used to promise files it then did
+  // not write.
+  if (mode === 'custom') return ['formats', 'settings', 'review']
   return ['formats', 'settings', 'artwork', 'finalize']
 }
 
@@ -366,12 +369,16 @@ export function settingGroups(
   }
   return [
     { label: 'Word document', note: 'Familiar styles over locked design.', rows: [
-      sel('bodyStyle', 'Body style', null, plain(['Normal · 12 pt Times', 'Manuscript · 12 pt Courier, double'])),
-      sel('headings', 'Chapter headings', null, plain(['Heading 1, page break before', 'Heading 1, no break'])),
-      tog('trackChanges', 'Track changes ready', null),
-      tog('hashBreaks', 'Scene breaks as #', null),
+      sel('bodyStyle', 'Body style', { group: 'docx', key: 'bodyStyle' }, [
+        { label: 'Normal · 12 pt proportional', value: 'normal' },
+        { label: 'Manuscript · 12 pt Courier, double spaced', value: 'manuscript' }]),
+      sel('chapterBreak', 'Chapter headings', { group: 'docx', key: 'chapterBreak' }, [
+        { label: 'Start a new page', value: 'page' },
+        { label: 'Run on', value: 'run' }]),
+      tog('trackChanges', 'Track changes ready', { group: 'docx', key: 'trackChanges' }),
+      tog('hashSceneBreaks', 'Scene breaks as #', { group: 'docx', key: 'hashSceneBreaks' }),
     ] },
-    contentsGroup('shared'),
+    contentsGroup('docx'),
   ]
 }
 
@@ -591,6 +598,7 @@ export function stamped(options: WizardOptions, editionID: string, formatID: str
     pdf: { ...options.pdf, ...id },
     print: { ...options.print, ...id },
     audio: { ...options.audio, ...id },
+    docx: { ...options.docx, ...id },
   }
 }
 
@@ -600,6 +608,8 @@ export interface BundleItemPayload {
   shared: WizardOptions['shared']
   epub: WizardOptions['epub']
   pdf: WizardOptions['pdf']
+  audio: WizardOptions['audio']
+  docx: WizardOptions['docx']
   print: WizardOptions['print']
 }
 
@@ -624,6 +634,8 @@ export function bundleRequest(
         shared: options.shared,
         epub: options.epub,
         pdf: options.pdf,
+        audio: options.audio,
+        docx: options.docx,
         print: options.print,
       }
     }),

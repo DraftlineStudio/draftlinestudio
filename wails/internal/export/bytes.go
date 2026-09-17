@@ -28,12 +28,12 @@ func EPUBBytes(book types.BookData, options types.EPUBOptions, cover *CoverArt) 
 	return data, nil
 }
 
-func DOCXBytes(book types.BookData, options types.ExportOptions) ([]byte, error) {
-	doc, err := BuildDocument(book, options)
+func DOCXBytes(book types.BookData, options types.DOCXOptions) ([]byte, error) {
+	doc, err := BuildDocument(book, options.ExportOptions)
 	if err != nil {
 		return nil, err
 	}
-	data, err := renderDOCX(doc)
+	data, err := renderDOCX(doc, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to render DOCX: %w", err)
 	}

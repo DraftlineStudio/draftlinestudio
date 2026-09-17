@@ -2154,6 +2154,36 @@ export namespace types {
 	        this.titlePageShowPublisher = source["titlePageShowPublisher"];
 	    }
 	}
+	export class DOCXOptions {
+	    includeCopyright: boolean;
+	    includeFrontMatter: boolean;
+	    includeBackMatter: boolean;
+	    omitTitlePage: boolean;
+	    editionID?: string;
+	    formatID?: string;
+	    bodyStyle: string;
+	    chapterBreak: string;
+	    trackChanges: boolean;
+	    hashSceneBreaks: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new DOCXOptions(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.includeCopyright = source["includeCopyright"];
+	        this.includeFrontMatter = source["includeFrontMatter"];
+	        this.includeBackMatter = source["includeBackMatter"];
+	        this.omitTitlePage = source["omitTitlePage"];
+	        this.editionID = source["editionID"];
+	        this.formatID = source["formatID"];
+	        this.bodyStyle = source["bodyStyle"];
+	        this.chapterBreak = source["chapterBreak"];
+	        this.trackChanges = source["trackChanges"];
+	        this.hashSceneBreaks = source["hashSceneBreaks"];
+	    }
+	}
 	export class PDFOptions {
 	    includeCopyright: boolean;
 	    includeFrontMatter: boolean;
@@ -2251,6 +2281,7 @@ export namespace types {
 	    epub: EPUBOptions;
 	    pdf: PDFOptions;
 	    audio: AudioOptions;
+	    docx: DOCXOptions;
 	    print: PrintPDFOptions;
 	
 	    static createFrom(source: any = {}) {
@@ -2265,6 +2296,7 @@ export namespace types {
 	        this.epub = this.convertValues(source["epub"], EPUBOptions);
 	        this.pdf = this.convertValues(source["pdf"], PDFOptions);
 	        this.audio = this.convertValues(source["audio"], AudioOptions);
+	        this.docx = this.convertValues(source["docx"], DOCXOptions);
 	        this.print = this.convertValues(source["print"], PrintPDFOptions);
 	    }
 	
@@ -2674,6 +2706,7 @@ export namespace types {
 	        this.path = source["path"];
 	    }
 	}
+	
 	
 	
 	

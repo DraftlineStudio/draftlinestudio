@@ -25,7 +25,6 @@ interface Props {
   onDuplicate: () => void
   onRemove: () => void
   onOpenSnapshot: () => void
-  onCompare: () => void
   onRelease: () => void
   /** Removing or replacing the cover goes through the shell's confirmation. */
   onAskCover: (action: 'remove' | 'replace', act: () => void) => void
@@ -171,7 +170,6 @@ export default function EditionPane(props: Props) {
             </div>
             <div className="bi-snap-actions">
               <button type="button" className="dialog-btn sm" onClick={props.onOpenSnapshot}>Open snapshot read-only</button>
-              <button type="button" className="dialog-btn sm" onClick={props.onCompare}>Compare with working draft</button>
               {/* The only destructive act on this screen, and the only one set
                   in the error colour. It opens a three-step confirmation. */}
               <button type="button" className="bi-danger-link" onClick={props.onRelease}>Release snapshot…</button>

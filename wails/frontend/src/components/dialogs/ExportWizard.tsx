@@ -116,9 +116,9 @@ export default function ExportWizard() {
   }
 
   const art = useMemo(() => artworkRows(chosen, edition, title), [chosen, edition, title])
-  const files = fileCount(chosen, mode !== 'reading' && includeArt, art)
+  const files = fileCount(chosen, mode === 'edition' && includeArt, art)
   const review = useMemo(() => reviewRows({
-    mode, edition, items: chosen, includeArt: mode !== 'reading' && includeArt,
+    mode, edition, items: chosen, includeArt: mode === 'edition' && includeArt,
     art, lock, words: stats.words, fileCount: files, title,
   }), [mode, edition, chosen, includeArt, art, lock, stats.words, files, title])
 
@@ -256,7 +256,7 @@ export default function ExportWizard() {
     const options = optionsFor(item)
     const format = exportFormatFor(item.output)
     if (format === 'epub') return await ExportEPUB(outgoing as any, options.epub as any)
-    if (format === 'docx') return await ExportDOCX(outgoing as any, options.shared as any)
+    if (format === 'docx') return await ExportDOCX(outgoing as any, options.docx as any)
     if (format === 'pdf') return await ExportPDF(outgoing as any, options.pdf as any)
     return await ExportPrintPDF(outgoing as any, options.print as any)
   }
@@ -529,7 +529,7 @@ export default function ExportWizard() {
 
   const summaryInput = {
     items: chosen, touched: touched.length > 0, fromEdition: mode === 'edition',
-    includeArt: mode !== 'reading' && includeArt, lock, fileCount: files,
+    includeArt: mode === 'edition' && includeArt, lock, fileCount: files,
   }
 
   return <div className="dialog-overlay" onKeyDown={e => e.key === 'Escape' && closeExportWizard()}>

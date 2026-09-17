@@ -25,6 +25,7 @@ type BundleItem struct {
 	EPUB   EPUBOptions     `json:"epub"`
 	PDF    PDFOptions      `json:"pdf"`
 	Audio  AudioOptions    `json:"audio"`
+	DOCX   DOCXOptions     `json:"docx"`
 	Print  PrintPDFOptions `json:"print"`
 }
 

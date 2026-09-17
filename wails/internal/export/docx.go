@@ -9,7 +9,7 @@ import (
 )
 
 // DOCX exports an editable Word edition from the shared publication document.
-func DOCX(path string, book types.BookData, options types.ExportOptions) types.ExportResult {
+func DOCX(path string, book types.BookData, options types.DOCXOptions) types.ExportResult {
 	data, err := DOCXBytes(book, options)
 	if err != nil {
 		return types.ExportResult{Success: false, Error: err.Error()}
@@ -20,9 +20,9 @@ func DOCX(path string, book types.BookData, options types.ExportOptions) types.E
 	return types.ExportResult{Success: true, FilePath: path}
 }
 
-func renderDOCX(doc Document) ([]byte, error) {
+func renderDOCX(doc Document, options types.DOCXOptions) ([]byte, error) {
 	rels := collectDOCXLinks(doc)
-	parts := buildDOCXParts(doc, rels)
+	parts := buildDOCXParts(doc, rels, options)
 	var output bytes.Buffer
 	zw := zip.NewWriter(&output)
 	for _, part := range parts {

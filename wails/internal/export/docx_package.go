@@ -3,6 +3,8 @@ package export
 import (
 	"fmt"
 	"strings"
+
+	"draftline/internal/types"
 )
 
 type docxPart struct {
@@ -10,16 +12,17 @@ type docxPart struct {
 	Data []byte
 }
 
-func buildDOCXParts(doc Document, links map[string]string) []docxPart {
+func buildDOCXParts(doc Document, links map[string]string, options types.DOCXOptions) []docxPart {
 	return []docxPart{
 		{Name: "[Content_Types].xml", Data: []byte(docxContentTypes)},
 		{Name: "_rels/.rels", Data: []byte(docxRootRels)},
 		{Name: "docProps/core.xml", Data: []byte(renderDOCXCore(doc))},
 		{Name: "docProps/app.xml", Data: []byte(docxAppProperties)},
-		{Name: "word/styles.xml", Data: []byte(docxStyles)},
+		{Name: "word/styles.xml", Data: []byte(renderDOCXStyles(options))},
+		{Name: "word/settings.xml", Data: []byte(renderDOCXSettings(options))},
 		{Name: "word/numbering.xml", Data: []byte(renderDOCXNumbering())},
 		{Name: "word/_rels/document.xml.rels", Data: []byte(renderDOCXRelationships(links))},
-		{Name: "word/document.xml", Data: []byte(renderDOCXDocument(doc, links))},
+		{Name: "word/document.xml", Data: []byte(renderDOCXDocument(doc, links, options))},
 	}
 }
 
@@ -29,6 +32,7 @@ const docxContentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?
   <Default Extension="xml" ContentType="application/xml"/>
   <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
   <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+  <Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>
   <Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/>
   <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
   <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
@@ -95,4 +99,32 @@ func renderDOCXNumbering() string {
   <w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num><w:num w:numId="2"><w:abstractNumId w:val="1"/></w:num>
 </w:numbering>`)
 	return out.String()
+}
+
+// renderDOCXSettings is word/settings.xml. Its whole job today is revision
+// recording: with w:trackChanges present, an editor who opens the file is
+// marking it up from the first keystroke rather than silently rewriting it,
+// which is the difference between getting edits back and getting a new file
+// back.
+func renderDOCXSettings(options types.DOCXOptions) string {
+	var track string
+	if options.TrackChanges {
+		track = "<w:trackChanges/>"
+	}
+	return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">` +
+		track + `</w:settings>`
+}
+
+// renderDOCXStyles is the stylesheet, which differs only in the body face.
+// "Manuscript" is 12 pt Courier double spaced: the format a submissions desk
+// still asks for, and the one an editor's line counts assume.
+func renderDOCXStyles(options types.DOCXOptions) string {
+	if strings.EqualFold(strings.TrimSpace(options.BodyStyle), "manuscript") {
+		return strings.Replace(docxStyles,
+			`<w:pPr><w:spacing w:after="160" w:line="276" w:lineRule="auto"/></w:pPr><w:rPr><w:rFonts w:ascii="Aptos" w:hAnsi="Aptos"/><w:sz w:val="24"/></w:rPr>`,
+			`<w:pPr><w:spacing w:after="0" w:line="480" w:lineRule="auto"/><w:ind w:firstLine="720"/></w:pPr><w:rPr><w:rFonts w:ascii="Courier New" w:hAnsi="Courier New"/><w:sz w:val="24"/></w:rPr>`,
+			1)
+	}
+	return docxStyles
 }

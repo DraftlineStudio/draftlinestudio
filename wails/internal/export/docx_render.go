@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"draftline/internal/types"
 )
 
 func collectDOCXLinks(doc Document) map[string]string {
@@ -29,7 +31,7 @@ func collectDOCXLinks(doc Document) map[string]string {
 	return links
 }
 
-func renderDOCXDocument(doc Document, links map[string]string) string {
+func renderDOCXDocument(doc Document, links map[string]string, options types.DOCXOptions) string {
 	var out strings.Builder
 	out.WriteString(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
@@ -41,7 +43,7 @@ func renderDOCXDocument(doc Document, links map[string]string) string {
 	}
 	writeDOCXPageBreak(&out)
 	for index, section := range doc.Sections {
-		writeDOCXSection(&out, section, links)
+		writeDOCXSection(&out, section, links, options)
 		if index < len(doc.Sections)-1 {
 			writeDOCXPageBreak(&out)
 		}
@@ -52,9 +54,15 @@ func renderDOCXDocument(doc Document, links map[string]string) string {
 	return out.String()
 }
 
-func writeDOCXSection(out *strings.Builder, section DocumentSection, links map[string]string) {
+func writeDOCXSection(out *strings.Builder, section DocumentSection, links map[string]string, options types.DOCXOptions) {
 	if strings.TrimSpace(section.Title) != "" {
-		writeDOCXParagraph(out, "Heading1", "", []DocumentRun{{Text: section.Title}}, links)
+		// Each chapter on its own page unless the author asked for one
+		// continuous run.
+		breakBefore := ""
+		if !strings.EqualFold(strings.TrimSpace(options.ChapterBreak), "run") {
+			breakBefore = "<w:pageBreakBefore/>"
+		}
+		writeDOCXParagraph(out, "Heading1", "", []DocumentRun{{Text: section.Title}}, links, breakBefore)
 	}
 	if strings.TrimSpace(section.Subtitle) != "" {
 		writeDOCXParagraph(out, "Subtitle", "center", []DocumentRun{{Text: section.Subtitle}}, links)
@@ -70,7 +78,13 @@ func writeDOCXSection(out *strings.Builder, section DocumentSection, links map[s
 		case BlockCode:
 			style = "Code"
 		case BlockSceneBreak:
-			writeDOCXParagraph(out, "Normal", "center", []DocumentRun{{Text: "⁂"}}, links)
+			// A manuscript marks a scene break with a hash; an asterism is a
+			// typeset ornament and an editor has no use for one.
+			mark := "⁂"
+			if options.HashSceneBreaks {
+				mark = "#"
+			}
+			writeDOCXParagraph(out, "Normal", "center", []DocumentRun{{Text: mark}}, links)
 			continue
 		case BlockListItem:
 			numID := 1

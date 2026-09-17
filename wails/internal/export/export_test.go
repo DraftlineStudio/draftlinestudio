@@ -132,7 +132,7 @@ func TestDOCXExportStructureAndEscaping(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "book.docx")
 
-	res := DOCX(path, sampleBook(), defaultExportOptions())
+	res := DOCX(path, sampleBook(), types.DOCXOptions{ExportOptions: defaultExportOptions()})
 	if !res.Success {
 		t.Fatalf("DOCX export failed: %s", res.Error)
 	}

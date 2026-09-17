@@ -2,6 +2,18 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02665] - 2026-09-17
+
+### Added
+- DOCX exports now have track changes turned on.
+- Added a Courier double spaced page option for DOCX manuscripts.
+- DOCX chapters can start on a new page or run on.
+- DOCX scene breaks can use a hash instead of an asterism.
+
+### Removed
+- Removed the artwork step from exports that are not tied to an edition.
+- Removed the compare with working draft button from the locked manuscript card.
+
 ## [0.20.02664] - 2026-09-17
 
 ### Changed

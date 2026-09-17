@@ -43,7 +43,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.20.02664"
+const AppVersion = "0.20.02665"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -527,7 +527,7 @@ func (a *App) ExportEPUB(book types.BookData, options types.EPUBOptions) types.E
 }
 
 // ExportDOCX exports the book to DOCX format.
-func (a *App) ExportDOCX(book types.BookData, options types.ExportOptions) types.ExportResult {
+func (a *App) ExportDOCX(book types.BookData, options types.DOCXOptions) types.ExportResult {
 	defaultName := book.Metadata.Title
 	if strings.TrimSpace(defaultName) == "" {
 		defaultName = "Untitled"
@@ -548,7 +548,7 @@ func (a *App) ExportDOCX(book types.BookData, options types.ExportOptions) types
 		path += ".docx"
 	}
 
-	source, err := a.exportSource(book, options)
+	source, err := a.exportSource(book, options.ExportOptions)
 	if err != nil {
 		return types.ExportResult{Success: false, Error: err.Error()}
 	}

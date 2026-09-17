@@ -50,6 +50,26 @@ type PDFOptions struct {
 	TextAlign       string  `json:"textAlign"`       // justify, left
 }
 
+// DOCXOptions is the editable manuscript: the file that goes to an editor and
+// comes back marked up. Its settings are about that round trip, not about
+// looking like a book.
+type DOCXOptions struct {
+	ExportOptions
+	// BodyStyle is "normal" (a readable 12 pt proportional page) or
+	// "manuscript" (12 pt Courier, double spaced) — the format an agent or a
+	// submissions desk still asks for.
+	BodyStyle string `json:"bodyStyle"`
+	// ChapterBreak is "page" (each chapter starts a new page) or "run"
+	// (chapters follow one another).
+	ChapterBreak string `json:"chapterBreak"`
+	// TrackChanges turns revision recording on inside the file, so an editor
+	// opening it is already marking up rather than silently rewriting.
+	TrackChanges bool `json:"trackChanges"`
+	// HashSceneBreaks writes a scene break as "#", which is what a manuscript
+	// uses; an asterism is a typeset ornament.
+	HashSceneBreaks bool `json:"hashSceneBreaks"`
+}
+
 // AudioOptions is the narration script: the file a voice actor reads a book
 // from. It is NOT the reading copy with a different name. A narrator marks up
 // a page, needs the line they are on to be findable after a retake, and needs
