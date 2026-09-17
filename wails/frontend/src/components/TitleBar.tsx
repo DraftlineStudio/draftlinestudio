@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useBookStore } from '../store/bookStore'
 import { useAppStore } from '../store/appStore'
 import { WindowMinimise, WindowToggleMaximise, Quit, BrowserOpenURL } from '../../wailsjs/runtime/runtime'
-import { GetAppVersion } from '../../wailsjs/go/main/App'
+import { GetAppVersion, OpenNewWindow } from '../../wailsjs/go/main/App'
 import { avatarColor, hexToRgba } from '../utils/accentColor'
 import { DOCS_URL, newIssueUrl } from '../services/links'
 
@@ -58,6 +58,14 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
   }, [dropOpen])
 
   function run(fn: () => void) { setDropOpen(false); fn() }
+
+  // Save and leave. closeProject saves first and refuses to go anywhere if
+  // that save fails or is cancelled, so quitting only happens once the work
+  // is on disk — the book being null afterwards is the proof of it.
+  async function saveAndQuit() {
+    await closeProject()
+    if (!useBookStore.getState().book) Quit()
+  }
 
   function toggleAuthorPop() {
     if (authorBtnRef.current) {
@@ -247,6 +255,9 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
         <span>Export</span>
       </button>
 
+      <div className="titlebar-dropdown-sep" />
+
+
       <button className="titlebar-dropdown-item" onClick={() => run(() => BrowserOpenURL(DOCS_URL))}>
         <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3">
           <circle cx="6.5" cy="6.5" r="5.5" />
@@ -280,17 +291,45 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
         <span>Settings</span>
       </button>
 
-      {/* The one door out of a book, and the only way to reach another one.
-          It saves first and refuses to leave if that save fails or is
-          cancelled, then lands on the start screen where New and Open live.
-          Having a single guarded exit is why New and Open are not in this
-          menu: a writer cannot start something else on top of unsaved work. */}
+      <button className="titlebar-dropdown-item" onClick={() => run(() => openSettings('plugins'))}>
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 1.5v2.2M8.2 1.5v2.2" />
+          <rect x="2.2" y="3.7" width="7.8" height="4.3" rx="1" />
+          <path d="M6.1 8v1.6a2 2 0 0 0 2 2h1.3" />
+        </svg>
+        <span>Plugins</span>
+      </button>
+
+      <div className="titlebar-dropdown-sep" />
+
+      {/* Two ways to leave, and both of them save.
+
+          Back to Library puts the writer on the start screen with the book
+          shut — which is where New and Open are, so starting something else
+          on top of unsaved work is not reachable. Save & Close saves and
+          quits outright, for the end of a session. */}
+      <button className="titlebar-dropdown-item" onClick={() => run(() => { void OpenNewWindow() })}>
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="1" y="2.5" width="8" height="7.5" rx="1" />
+          <path d="M4 2.5V1.5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-1" />
+        </svg>
+        <span>New Window</span>
+      </button>
+
       <button className="titlebar-dropdown-item" onClick={() => run(closeProject)} disabled={!book}>
         <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M8 1.5h2.5a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H8" />
-          <path d="M5.5 4 2.5 6.5l3 2.5M2.5 6.5H8.5" />
+          <path d="M5.5 4 2.5 6.5l3 2.5M2.5 6.5H9" />
+          <path d="M9 1.5h2a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H9" />
         </svg>
-        <span>Save &amp; Close Book</span>
+        <span>Back to Library</span>
+      </button>
+
+      <button className="titlebar-dropdown-item" onClick={() => run(() => { void saveAndQuit() })} disabled={!book}>
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M8.5 1.5h2a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-2" />
+          <path d="M6 4l2.5 2.5L6 9M8.5 6.5H1.5" />
+        </svg>
+        <span>Save &amp; Close</span>
       </button>
     </div>,
     document.body

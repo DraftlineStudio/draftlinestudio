@@ -206,6 +206,10 @@ export function OpenCodexAuth() {
   return window['go']['main']['App']['OpenCodexAuth']();
 }
 
+export function OpenNewWindow() {
+  return window['go']['main']['App']['OpenNewWindow']();
+}
+
 export function OpenRecentProject(arg1) {
   return window['go']['main']['App']['OpenRecentProject'](arg1);
 }

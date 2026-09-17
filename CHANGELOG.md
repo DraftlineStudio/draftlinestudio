@@ -2,6 +2,15 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02663] - 2026-09-17
+
+### Added
+- Added New Window, which opens a second Draftline on the start screen.
+- Added Plugins to the main menu.
+
+### Changed
+- Closing a book or quitting now saves first.
+
 ## [0.20.02662] - 2026-09-17
 
 ### Changed

@@ -106,6 +106,8 @@ export function OpenClaudeAuth():Promise<void>;
 
 export function OpenCodexAuth():Promise<void>;
 
+export function OpenNewWindow():Promise<types.RevealResult>;
+
 export function OpenRecentProject(arg1:string):Promise<types.BookData>;
 
 export function PickBookPath():Promise<string>;
