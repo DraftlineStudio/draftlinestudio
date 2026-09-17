@@ -1,0 +1,5 @@
+# The wiki is published to another repository and read by Wiki.js. Keep it LF
+# everywhere: a page that comes back from a checkout with CRLF silently breaks
+# the screenshot markers and the front matter parsing, which is a bug you find
+# by wondering why an image never appeared.
+wiki/** text eol=lf
