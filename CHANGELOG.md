@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02679] - 2026-09-18
+
+### Fixed
+- Paragraphs are indented again in the editor. They had run flush left since 0.20.02604.
+
 ## [0.21.02678] - 2026-09-18
 
 ### Changed

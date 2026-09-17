@@ -1380,6 +1380,17 @@ html, body, #root {
   border: 1px dashed rgba(128, 128, 128, 0.4);
 }
 
+/* Paragraph indents, the way a novel is set: first line in, no blank line
+   between. Lost in 02604, which removed the inline prose prompt and took the
+   three rules sitting next to it as well -- so every paragraph ran flush left
+   and pressing Enter looked like it had done nothing. Restored 0.21.02679. */
+.ProseMirror > * + * { margin-top: 0; }
+.ProseMirror p {
+  margin-bottom: 0.15em;
+  text-indent: 1.5em;
+}
+.ProseMirror p:first-child { margin-top: 0; }
+
 /* First paragraph after headings or hr should not be indented */
 .ProseMirror h1 + p,
 .ProseMirror h2 + p,
