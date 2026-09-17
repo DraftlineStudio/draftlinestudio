@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02675] - 2026-09-18
+
+### Added
+- The start screen now shows each book's cover art, from its newest edition that has any.
+
 ## [0.21.02674] - 2026-09-18
 
 ### Fixed

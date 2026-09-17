@@ -230,16 +230,24 @@ func (a *App) onShutdown(_ context.Context) {
 // ordinary same-origin <img src>. The alternative - base64 across the Wails
 // bridge - would send a megabyte of JPEG through the JSON channel the book
 // itself uses.
+//
+// /recent-cover/<position> is the cover of a recent project, read out of
+// its archive before it is open, so the start screen can show the book
+// rather than a coloured rectangle. By position and never by path: see
+// recentcover.go.
 func (a *App) pluginAssetMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		servePlugins := a.pluginAssets()
 		serveEditions := a.editionAssets()
+		serveRecentCovers := a.recentCovers()
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch {
 			case strings.HasPrefix(r.URL.Path, "/plugins/"):
 				servePlugins.ServeHTTP(w, r)
 			case strings.HasPrefix(r.URL.Path, editionAssetPrefix):
 				serveEditions.ServeHTTP(w, r)
+			case strings.HasPrefix(r.URL.Path, recentCoverPrefix):
+				serveRecentCovers.ServeHTTP(w, r)
 			default:
 				next.ServeHTTP(w, r)
 			}
