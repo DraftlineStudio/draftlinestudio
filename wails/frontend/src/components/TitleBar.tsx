@@ -12,8 +12,11 @@ interface TitleBarProps {
 }
 
 export default function TitleBar({ minimal = false }: TitleBarProps) {
-  const { book, currentSection, newBook, openBook, saveBook, saveBookAs, closeProject, setViewMode, snapshotCurrentChapter } = useBookStore()
-  const { settings, saveSettings, openSettings, openMetadataDialog, openExportWizard, openChapterHistory, openStorySearch, updateAvailable } = useAppStore()
+  // New and Open are not here on purpose: they live on the start screen, which
+  // a writer reaches by closing the book they have open — a route that saves
+  // first. Starting something else on top of unsaved work is not reachable.
+  const { book, currentSection, saveBook, saveBookAs, closeProject } = useBookStore()
+  const { settings, saveSettings, openSettings, openMetadataDialog, openExportWizard, openChapterHistory, updateAvailable } = useAppStore()
   const [dropOpen, setDropOpen] = useState(false)
   const [dropPos, setDropPos] = useState({ top: 0, left: 0 })
   const btnRef = useRef<HTMLButtonElement>(null)
@@ -55,8 +58,6 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
   }, [dropOpen])
 
   function run(fn: () => void) { setDropOpen(false); fn() }
-  function showStorySearch() { setViewMode('editor'); openStorySearch('continuity') }
-  function showScratchpad() { setViewMode('editor'); openStorySearch('scratch') }
 
   function toggleAuthorPop() {
     if (authorBtnRef.current) {
@@ -201,23 +202,6 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
       className="titlebar-dropdown"
       style={{ top: dropPos.top, left: dropPos.left } as React.CSSProperties}
     >
-      <button className="titlebar-dropdown-item" onClick={() => run(newBook)}>
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3">
-          <rect x="1" y="1" width="8" height="11" rx="1.2" />
-          <line x1="9" y1="3.5" x2="12" y2="3.5" /><line x1="12" y1="3.5" x2="12" y2="12" />
-          <line x1="12" y1="12" x2="5.5" y2="12" /><line x1="5.5" y1="12" x2="5.5" y2="9" />
-        </svg>
-        <span>New Book</span><kbd>Ctrl+N</kbd>
-      </button>
-      <button className="titlebar-dropdown-item" onClick={() => run(openBook)}>
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3">
-          <path d="M1 4.5h3.5l1.5 2H12v5H1z" /><path d="M1 4.5V2.5h2.5" />
-        </svg>
-        <span>Open Book…</span><kbd>Ctrl+O</kbd>
-      </button>
-
-      <div className="titlebar-dropdown-sep" />
-
       <button className="titlebar-dropdown-item" onClick={() => run(saveBook)} disabled={!book}>
         <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3">
           <rect x="1" y="1" width="11" height="11" rx="1.2" />
@@ -233,35 +217,14 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
           <line x1="7" y1="2" x2="7" y2="5" />
           <line x1="9.5" y1="9" x2="11.5" y2="9" /><line x1="10.5" y1="8" x2="10.5" y2="10" />
         </svg>
-        <span>Save As…</span><kbd>Ctrl+Shift+S</kbd>
+        <span>Save As</span><kbd>Ctrl+Shift+S</kbd>
       </button>
 
       <button className="titlebar-dropdown-item" onClick={() => run(openChapterHistory)} disabled={!book || currentSection === 'copyright'}>
         <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3">
           <path d="M2.2 4.2A5 5 0 1 1 1.5 7"/><path d="M1 2v3.5h3.5"/><path d="M6.5 3.5V7l2.2 1.3"/>
         </svg>
-        <span>Chapter History…</span>
-      </button>
-
-      <button className="titlebar-dropdown-item" onClick={() => run(() => { void snapshotCurrentChapter() })} disabled={!book?.file_path || currentSection === 'copyright'} title={book && !book.file_path ? 'Save the project first' : 'Store the current chapter as a version before a rewrite'}>
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3">
-          <circle cx="6.5" cy="6.5" r="5.2"/><path d="M6.5 3.6v5.8M3.6 6.5h5.8"/>
-        </svg>
-        <span>Snapshot Chapter Now</span>
-      </button>
-
-      <button className="titlebar-dropdown-item" onClick={() => run(showStorySearch)} disabled={!book}>
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3">
-          <circle cx="5.5" cy="5.5" r="3.8" /><path d="M8.3 8.3 12 12" />
-        </svg>
-        <span>Plot Inspections…</span><kbd>Ctrl+Shift+F</kbd>
-      </button>
-
-      <button className="titlebar-dropdown-item" onClick={() => run(showScratchpad)} disabled={!book}>
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 1.5h5l2.5 2.5v7.5H3zM8 1.5V4h2.5M4.8 6.5h4M4.8 8.5h2.5" />
-        </svg>
-        <span>Scratchpad…</span>
+        <span>Chapter History</span>
       </button>
 
       <div className="titlebar-dropdown-sep" />
@@ -272,7 +235,7 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
           <line x1="6.5" y1="5.5" x2="6.5" y2="10" />
           <circle cx="6.5" cy="3.5" r="0.6" fill="currentColor" stroke="none" />
         </svg>
-        <span>Book &amp; Editions…</span>
+        <span>Book Details &amp; Editions</span>
       </button>
 
       <button className="titlebar-dropdown-item" onClick={() => run(openExportWizard)} disabled={!book}>
@@ -281,18 +244,8 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
           <path d="M6.5 1v7" />
           <path d="M3.5 5l3 3 3-3" />
         </svg>
-        <span>Export…</span>
+        <span>Export</span>
       </button>
-
-      <button className="titlebar-dropdown-item" onClick={() => run(openSettings)}>
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-        </svg>
-        <span>Settings…</span>
-      </button>
-
-      <div className="titlebar-dropdown-sep" />
 
       <button className="titlebar-dropdown-item" onClick={() => run(() => BrowserOpenURL(DOCS_URL))}>
         <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3">
@@ -307,24 +260,37 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
           <path d="M4 5.5a2.5 2.5 0 0 1 5 0v3a2.5 2.5 0 0 1-5 0z" />
           <path d="M6.5 3v-1M4.3 4.2l-1-.9M8.7 4.2l1-.9M2.5 7h1.5M9 7h1.5M3.4 10.3l.9-.8M9.6 10.3l-.9-.8" strokeLinecap="round" />
         </svg>
-        <span>Report an Issue…</span>
+        <span>Report an Issue</span>
       </button>
       <button className="titlebar-dropdown-item" onClick={() => run(() => BrowserOpenURL(newIssueUrl('feature', appVersion)))}>
         <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
           <path d="M4.5 9.5h4M5.2 11.5h2.6" />
           <path d="M6.5 1.5a3.6 3.6 0 0 0-2 6.6c.3.2.5.6.5 1v.4h3v-.4c0-.4.2-.8.5-1a3.6 3.6 0 0 0-2-6.6z" />
         </svg>
-        <span>Request a Feature…</span>
+        <span>Request a Feature</span>
       </button>
 
       <div className="titlebar-dropdown-sep" />
 
-      <button className="titlebar-dropdown-item" onClick={() => run(closeProject)} disabled={!book}>
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3">
-          <rect x="1" y="1" width="8" height="11" rx="1.2" />
-          <path d="M6 5l3 3M6 8l3-3" strokeLinecap="round" />
+      <button className="titlebar-dropdown-item" onClick={() => run(openSettings)}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
-        <span>Close Project</span>
+        <span>Settings</span>
+      </button>
+
+      {/* The one door out of a book, and the only way to reach another one.
+          It saves first and refuses to leave if that save fails or is
+          cancelled, then lands on the start screen where New and Open live.
+          Having a single guarded exit is why New and Open are not in this
+          menu: a writer cannot start something else on top of unsaved work. */}
+      <button className="titlebar-dropdown-item" onClick={() => run(closeProject)} disabled={!book}>
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M8 1.5h2.5a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H8" />
+          <path d="M5.5 4 2.5 6.5l3 2.5M2.5 6.5H8.5" />
+        </svg>
+        <span>Save &amp; Close Book</span>
       </button>
     </div>,
     document.body

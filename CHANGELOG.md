@@ -2,6 +2,16 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.20.02662] - 2026-09-17
+
+### Changed
+- Shortened the main menu and removed the trailing ellipsis from every item.
+- New and Open moved to the start screen.
+
+### Removed
+- Removed Snapshot Chapter Now, Plot Inspections, and Scratchpad from the main menu.
+- Removed two unused keyboard shortcut hints.
+
 ## [0.20.02661] - 2026-09-16
 
 ### Changed
