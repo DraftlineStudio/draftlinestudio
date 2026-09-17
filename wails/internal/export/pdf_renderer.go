@@ -119,9 +119,9 @@ func (r *publicationPDFRenderer) render() error {
 	// The title page belongs on a recto. Trade convention runs half title,
 	// blank, title page, copyright — so the half title opens the book on page
 	// one, its verso is blank, and the title page is the first thing the
-	// reader meets on opening the book flat. Draftline used to put the title
-	// page straight after the half title, which lands it on the back of it:
-	// a verso title page is the mark of a book nobody typeset.
+	// reader meets on opening the book flat. Putting it straight after the
+	// half title lands it on the back of one, and a verso title page is the
+	// mark of a book nobody typeset.
 	//
 	// Only the print interior is arranged this way. A reading PDF is read one
 	// page at a time on a screen, where there is no back of a sheet to land

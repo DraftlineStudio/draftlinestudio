@@ -64,10 +64,10 @@ func WriteFileAtomic(path string, data []byte, perm os.FileMode) error {
 // partial one.
 //
 // It exists because the caller that needs it — the rolling backup taken before
-// every save — copies a whole project file, and a project file now carries
-// cover art and frozen manuscripts. Reading it into a []byte first, as the
-// backup used to, holds the entire book in memory twice for the length of the
-// copy, several times a minute while the author is typing.
+// every save — copies a whole project file, and a project file carries cover
+// art and frozen manuscripts. Reading it into a []byte first would hold the
+// entire book in memory twice for the length of the copy, several times a
+// minute while the author is typing.
 func CopyFileAtomic(src, dst string, perm os.FileMode) error {
 	in, err := os.Open(src)
 	if err != nil {

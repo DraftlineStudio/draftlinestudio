@@ -94,10 +94,9 @@ describe('the choices on the card', () => {
       .toEqual(['dropcap', 'scene', 'chapter'])
   })
 
-  // The bug this replaces: a card could be listed without a handler, so it
-  // rendered, highlighted nothing and ignored every click. Ebook drop caps and
-  // every audiobook setting shipped that way. A choice now carries its own
-  // setter, so this asserts the thing that used to be impossible to assert.
+  // A card listed without a handler renders, highlights nothing and ignores
+  // every click. Because a choice carries its own setter, this can assert that
+  // every card on every format actually writes something.
   it('gives every card on every format a setter that actually writes', () => {
     const options = defaultWizardOptions()
     for (const [kind, word] of [['print', 'Paperback'], ['ebook', 'eBook'], ['audio', 'Audiobook']] as const) {

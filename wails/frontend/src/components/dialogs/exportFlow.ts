@@ -80,9 +80,8 @@ export type FlowStep = 'formats' | 'settings' | 'artwork' | 'finalize' | 'review
 // only step in the flow the author cannot pass without answering.
 export function stepsFor(mode: FlowMode): FlowStep[] {
   if (mode === 'reading') return ['settings', 'review']
-  // Artwork belongs to an edition. An export that belongs to no edition has no
-  // cover and no wrap to carry, and the step used to promise files it then did
-  // not write.
+  // Artwork belongs to an edition, so an export that belongs to none has no
+  // cover and no wrap to carry and is not asked about them.
   if (mode === 'custom') return ['formats', 'settings', 'review']
   return ['formats', 'settings', 'artwork', 'finalize']
 }

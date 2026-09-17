@@ -65,8 +65,8 @@ type publicationPDFSpec struct {
 // upper is a little over the largest page any print-on-demand service will
 // bind — 8.5 by 11.69 at Amazon, 8.5 by 11 at Ingram. Between them sits every
 // book anybody prints. Outside them sits a typing mistake: "99" in a width
-// field is a ninety-nine inch page, which Draftline used to typeset in full
-// and hand over without a word.
+// field is a ninety-nine inch page, which is worth refusing rather than
+// typesetting in full and handing over without a word.
 const (
 	minTrimInches = 3.0
 	maxTrimInches = 12.0

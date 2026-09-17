@@ -88,10 +88,10 @@ type DocumentEdition struct {
 
 // selectEdition finds the format an export was asked for and flattens it.
 //
-// It returns nil for an export that named no edition, which is every export
-// Draftline could make before this, and for one that named a format the book
-// no longer holds — a record deleted between opening the wizard and finishing
-// it. The export then goes ahead from the book alone rather than failing,
+// It returns nil for an export that named no edition, and for one that named
+// a format the book no longer holds — a record deleted between opening the
+// wizard and finishing it. The export then goes ahead from the book alone
+// rather than failing,
 // because the author asked for a file, not for a lecture about a record.
 func selectEdition(book types.BookData, options types.ExportOptions) *DocumentEdition {
 	formatID := strings.TrimSpace(options.FormatID)

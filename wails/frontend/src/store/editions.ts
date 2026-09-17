@@ -4,8 +4,7 @@
 // Editions go through the same dirty/autosave funnel as the manuscript: an
 // ISBN typed into the Book & Editions screen is saved by the same five-second
 // autosave that saves a sentence typed into a chapter. There is no separate
-// Save, which is the point — export and edition settings used to live in
-// component state and were thrown away when the dialog closed.
+// Save, so nothing is lost by closing the dialog.
 //
 // Each creating action returns the identifier of what it made, because the
 // screen selects it straight afterwards.

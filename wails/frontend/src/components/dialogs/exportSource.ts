@@ -1,13 +1,10 @@
 // Where an export comes from, and what it carries over.
 //
-// The export wizard used to ask one question on its first step — what kind of
-// file? — and hold every answer after that in component state, which was
-// thrown away when the dialog closed. An author who had spent ten minutes
-// setting a trim, a gutter and a title page did it again the next time.
-//
-// Step one now offers the editions the book is actually registered in. Picking
-// one prefills the rest of the wizard from the record, and anything changed
-// afterwards can be written back to it. This file is that translation, in both
+// Step one offers the editions the book is registered in. Picking one prefills
+// the rest of the wizard from the record, and anything changed afterwards can
+// be written back to it. Answers live on the record rather than in component
+// state, so a trim, a gutter and a title page are set once rather than every
+// time the dialog opens. This file is that translation, in both
 // directions, as pure functions:
 //
 //   record  → cards, sidebar summary, prefilled options   (what the author sees)
@@ -82,9 +79,8 @@ export interface DOCXOptions extends ExportOptions {
   hashSceneBreaks: boolean
 }
 
-// AudioOptions is the narration script: the file a voice actor reads from. It
-// is not the reading copy renamed, which is what it used to be, and why none
-// of its settings could be changed.
+// AudioOptions is the narration script: the file a voice actor reads from,
+// with its own page and its own settings rather than the reading copy's.
 export interface AudioOptions extends ExportOptions {
   pageSize: 'letter' | 'a4'
   fontFamily: 'lato' | 'merriweather'

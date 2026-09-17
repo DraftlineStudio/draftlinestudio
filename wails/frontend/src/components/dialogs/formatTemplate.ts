@@ -126,12 +126,10 @@ export interface TemplateOption {
 
 // One card on the settings screen.
 //
-// A choice carries BOTH how it is read and how it is written. That is not
-// tidiness: the two used to live in separate functions — a list of cards and a
-// switch of handlers — and every card whose handler nobody wrote rendered
-// perfectly and did nothing when clicked. Ebook drop caps and every audiobook
-// setting shipped that way. Holding `set` on the choice itself means a card
-// that cannot be stored cannot be declared, and the compiler says so.
+// A choice carries both how it is read and how it is written. Keeping `set` on
+// the choice rather than in a separate switch means a card that has nowhere to
+// store its answer cannot be declared at all, so the compiler catches it
+// instead of the card rendering and quietly ignoring every click.
 export interface TemplateChoice {
   id: string
   label: string

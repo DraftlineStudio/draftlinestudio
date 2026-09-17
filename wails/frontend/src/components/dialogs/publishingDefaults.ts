@@ -48,7 +48,7 @@ export const CUSTOM_TRIM_LABEL = 'Custom…'
 // The bounds a page has to fall inside to be printable at all. They mirror
 // internal/export/pdf_spec.go: a page smaller than the smallest mass-market
 // paperback or larger than anything a print-on-demand service will bind is a
-// typing mistake, and "99" used to be typeset in full.
+// typing mistake rather than a page, and is refused on both sides.
 export const MIN_TRIM_INCHES = 3
 export const MAX_TRIM_INCHES = 12
 

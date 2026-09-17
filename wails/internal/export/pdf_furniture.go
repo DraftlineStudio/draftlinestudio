@@ -17,8 +17,8 @@ import (
 //
 // The two can share a line. With folios set top-outside they sit on the same
 // baseline at the same outside edge, so the head is indented inside the folio
-// by its own width plus a space — otherwise the page number is printed on top
-// of the author's name, which is what happened before this measured anything.
+// by its own width plus a space. Without the inset the page number prints on
+// top of the author's name.
 func (r *publicationPDFRenderer) drawFurniture() {
 	page := r.pdf.PageNo()
 	leftMargin, rightMargin := r.margins(page)

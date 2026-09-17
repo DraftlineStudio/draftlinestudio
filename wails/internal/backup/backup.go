@@ -41,13 +41,11 @@ func Dir(filePath string) string {
 // Create copies the current file to the backup directory before saving.
 // Rotates existing backups: backup.5 deleted, backup.4 -> backup.5, etc.
 //
-// The copy is streamed rather than read into memory. It used to be an
-// os.ReadFile followed by a whole-buffer write, which was fair enough when a
-// .draftline was a few hundred kilobytes of HTML. It is not fair enough now:
-// cover art and frozen manuscripts mean a project can be tens of megabytes,
-// this runs before every save, and autosave fires five seconds after a
-// keystroke — so the old form allocated the whole book twice over, several
-// times a minute, while the author was typing.
+// The copy is streamed rather than read into memory. Cover art and frozen
+// manuscripts mean a project can be tens of megabytes, this runs before every
+// save, and autosave fires five seconds after a keystroke, so reading the
+// whole file into a buffer would allocate the book twice over several times a
+// minute while the author is typing.
 func Create(filePath string) error {
 	// Only backup if the file exists (skip for new files)
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {

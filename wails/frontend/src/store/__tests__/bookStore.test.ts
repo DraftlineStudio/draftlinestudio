@@ -1,13 +1,14 @@
-// Regression tests for the save pipeline (audit findings 1 and 2).
+// Regression tests for the save pipeline, guarding two ways a save can lose
+// work.
 //
-// Finding 2: an edit made while an autosave was in flight used to be wiped
-// clean (isDirty=false) when the stale save completed, silently dropping the
-// newer content. Fixed by the module-scoped saveRevision counter + serialized
-// saveChain in bookStore.ts.
+// An edit made while an autosave is in flight must not be marked clean when
+// the stale save completes, or the newer content is silently dropped. The
+// module-scoped saveRevision counter and the serialized saveChain keep them
+// apart.
 //
-// Finding 1: a failed or cancelled save used to fall through in
-// saveAndProceed / closeProject, discarding the unsaved book anyway. Fixed by
-// performSave outcomes gating every transition.
+// A failed or cancelled save must not fall through in saveAndProceed or
+// closeProject and discard the unsaved book anyway. performSave outcomes gate
+// every transition.
 //
 // Environment: plain node, no jsdom. The only boundary mocked is the
 // generated Wails binding module; wailsjs/go/models stays real.

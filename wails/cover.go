@@ -63,9 +63,9 @@ type coverEntry struct {
 	unsaved map[string]bool
 	// dropped names edition-relative prefixes the next save must not carry
 	// forward: the old cover when a new one replaces it, the stored wrap when
-	// the author stops keeping a copy. Superseding the whole edition here
-	// would take the wraps with the cover, which is exactly the bug this
-	// replaced.
+	// the author stops keeping a copy. Prefixes are per member rather than per
+	// edition, because superseding the whole edition would take the wraps with
+	// the cover.
 	dropped []string
 	// version rises on every hold, so a save that started before a second
 	// attach cannot mark the newer bytes as written.

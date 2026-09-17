@@ -1,11 +1,9 @@
 // Author Settings Section - the writer's identity, pre-filled into every new
 // book.
 //
-// The copyright template that used to live here is gone. It advertised [YEAR]
-// and [AUTHOR] placeholders that nothing ever substituted, and it was never
-// applied to a new book either. The copyright page is now written from the
+// There is no copyright template here. A copyright page is written from the
 // book's own fields, on Book & Editions, where the year, the holder, the
-// edition and the ISBN of the format actually live.
+// edition and the ISBN of the format live.
 
 import type { AuthorSectionProps } from './types'
 
