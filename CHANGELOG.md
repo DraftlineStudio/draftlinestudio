@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02673] - 2026-09-18
+
+### Added
+- When something goes wrong in the background, Draftline now says so instead of leaving the screen looking frozen.
+
 ## [0.21.02672] - 2026-09-18
 
 ### Fixed

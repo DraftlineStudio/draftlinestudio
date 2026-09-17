@@ -15,6 +15,7 @@ import TitleBar from './components/TitleBar'
 import ChapterPanel from './components/ChapterPanel'
 import EditorPanel from './components/EditorPanel'
 import ErrorBoundary from './components/ErrorBoundary'
+import BackendErrorNotice from './components/BackendErrorNotice'
 import CharactersView from './components/characters/CharactersView'
 import PlannerView from './components/planner/PlannerView'
 import PlannerPanel from './components/planner/PlannerPanel'
@@ -290,6 +291,7 @@ export default function App() {
         {showNewUniverse && <NewUniverseWizard />}
         {showSettings && <AppSettingsDialog />}
         {openingOverlay}
+        <BackendErrorNotice />
       </div>
     )
   }
@@ -330,6 +332,7 @@ export default function App() {
       {showChapterHistory && <Suspense fallback={null}><ChapterHistoryDialog /></Suspense>}
       {showSettings && <AppSettingsDialog />}
       {openingOverlay}
+      <BackendErrorNotice />
     </div>
   )
 }
