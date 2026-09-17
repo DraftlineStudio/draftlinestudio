@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02672] - 2026-09-18
+
+### Fixed
+- The mouse pointer no longer goes invisible over the manuscript after switching theme.
+
+### Changed
+- The blinking cursor in the manuscript is now the colour of the text instead of the accent colour.
+
 ## [0.21.02671] - 2026-09-18
 
 ### Fixed

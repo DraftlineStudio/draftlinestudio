@@ -1307,13 +1307,31 @@ html, body, #root {
   font-size: var(--editor-font-size, 14px);
   line-height: 1.85;
   color: var(--text-primary);
-  caret-color: var(--accent);
+  /* The blinking insertion point, in the colour of the text it sits in
+     rather than the accent: at 14px Merriweather an accent-blue caret reads
+     as a stray character mid-word. */
+  caret-color: var(--text-primary);
   /* Explicit (visually identical to the page card behind it): Chromium
      picks the I-beam pointer's light/dark variant from the computed
      background of the element under the cursor; transparent here made it
      fall back to the OS scheme — a white I-beam over the light canvas on
      dark-mode Windows. */
   background: var(--bg-page);
+  /* The mouse pointer, not the caret above.
+     Chromium ships two I-beam bitmaps and resolves light or dark from the
+     background under the pointer. That resolution is cached below the web
+     layer, so a live theme flip left the old bitmap in place and the beam
+     went invisible over the new canvas — a dark beam on the dark page.
+     Fixed 2026-09-12 through 2026-09-18 by four failed attempts at the
+     colour (color-scheme, explicit canvas backgrounds, forcing cursor
+     re-resolution, a native redraw) before the realisation that there is no
+     colour to fix: it is a choice between two images.
+     So the choice is taken away. An image cursor is drawn exactly as given,
+     and this one is white with a black edge — the way the macOS beam is
+     built — so it reads on either theme and there is no variant left to go
+     stale. Hotspot is the centre of the stem. `text` stays as the fallback
+     for any engine that will not take the image. */
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='26' viewBox='-1 -1 11 26'%3E%3Cpath d='M0 0H9V2H5.5V22H9V24H0V22H3.5V2H0Z' fill='%23fff' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E") 5 13, text;
 }
 
 /* Character name highlighting (from sidebar) */

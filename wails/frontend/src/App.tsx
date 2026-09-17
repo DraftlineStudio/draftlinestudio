@@ -129,12 +129,10 @@ export default function App() {
 
     themeTimersRef.current.push(
       // Reset transition state after UI colors finish (0.8s)
-      // KNOWN ISSUE (2026-09-12, parked): after a live theme flip the
-      // I-beam can keep its previous light/dark bitmap over the canvas.
-      // It is a WebView2/compositor-level cursor cache — CSS color-scheme,
-      // explicit canvas backgrounds, and forcing cursor re-resolution here
-      // were all tried and don't reach it; a native window redraw does
-      // (minimise/restore fixes it, as does reopening the book).
+      // The I-beam bug that used to be parked here is fixed in global.css:
+      // the editor names its mouse cursor as an image now, instead of
+      // letting Chromium resolve a light or dark bitmap that it then caches
+      // below the web layer. Nothing about the cursor needs doing here.
       window.setTimeout(() => {
         document.documentElement.classList.remove('theme-transitioning')
       }, 900),
