@@ -88,7 +88,13 @@ interface PlannerStore {
 }
 
 const initialUI = {
-  view: 'timeline' as PlannerView, panelOpen: true, selected: null, drag: null, boardBy: 'chapter' as const,
+  // The card view opens grouped by story line, not by chapter.
+  //
+  // Grouped by chapter it was the timeline again in a different shape: same
+  // columns, same order, same reading. By line it answers a question the
+  // timeline cannot -- what this thread does across the book -- so the two
+  // views are worth having separately. The toolbar still switches it.
+  view: 'timeline' as PlannerView, panelOpen: true, selected: null, drag: null, boardBy: 'line' as const,
   noteId: null, noteMono: false, linkOpen: false, lineDialog: null, noteDeleteId: null as string | null,
   importOpen: false, importText: '', importFromNoteId: null, proposals: null,
 }

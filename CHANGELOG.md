@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02678] - 2026-09-18
+
+### Changed
+- The planner's card view now opens grouped by story line instead of by chapter.
+
 ## [0.21.02677] - 2026-09-18
 
 ### Fixed
