@@ -2896,6 +2896,7 @@ export namespace types {
 	    path: string;
 	    name: string;
 	    lastOpened: string;
+	    coverKey: string;
 	    stats: RecentProjectStats;
 	
 	    static createFrom(source: any = {}) {
@@ -2908,6 +2909,7 @@ export namespace types {
 	        this.path = source["path"];
 	        this.name = source["name"];
 	        this.lastOpened = source["lastOpened"];
+	        this.coverKey = source["coverKey"];
 	        this.stats = this.convertValues(source["stats"], RecentProjectStats);
 	    }
 	

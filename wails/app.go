@@ -43,7 +43,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.21.02675"
+const AppVersion = "0.21.02676"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -826,6 +826,12 @@ func (a *App) GetRecentProjects() []types.RecentProject {
 	var projects []types.RecentProject
 	if err := json.Unmarshal(data, &projects); err != nil {
 		return []types.RecentProject{}
+	}
+	// Stamped here rather than stored, so it is always right for the path the
+	// record actually holds and a hand-edited recents file cannot disagree
+	// with itself.
+	for i := range projects {
+		projects[i].CoverKey = recentCoverKey(projects[i].Path)
 	}
 	return projects
 }

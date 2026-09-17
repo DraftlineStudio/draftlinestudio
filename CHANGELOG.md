@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02676] - 2026-09-18
+
+### Fixed
+- Books with no cover art no longer show the artwork of the book you just opened.
+
 ## [0.21.02675] - 2026-09-18
 
 ### Added

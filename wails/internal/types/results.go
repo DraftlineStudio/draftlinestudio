@@ -67,6 +67,13 @@ type RecentProject struct {
 	Path       string             `json:"path"`
 	Name       string             `json:"name"`
 	LastOpened string             `json:"lastOpened"` // ISO 8601 timestamp
+	// CoverKey addresses this project's cover art at /recent-cover/<key>.
+	// It is derived from the path and is stable while the path is, so it
+	// survives the list reordering when a book is opened -- addressing the
+	// art by POSITION did not, and every book briefly wore the art of
+	// whichever one had moved into its place. The path itself never crosses
+	// to the webview: a handler taking one would read any file on request.
+	CoverKey   string             `json:"coverKey"`
 	Stats      RecentProjectStats `json:"stats"`
 }
 

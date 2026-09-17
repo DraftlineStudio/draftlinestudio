@@ -7,8 +7,8 @@
 // same whichever is showing.
 //
 // The image arrives over an ordinary same-origin URL served by this process
-// (see recentcover.go), addressed by the project's position in the recents
-// list. Nothing is base64-encoded and no path crosses the bridge.
+// (see recentcover.go), addressed by a key that process gave us. Nothing is
+// base64-encoded and no path crosses the bridge.
 //
 // The title lettering is hidden once art loads, because a cover already has
 // its title on it and printing ours over the top looks like a mistake.
@@ -16,8 +16,10 @@
 import { useState } from 'react'
 
 interface Props {
-  /** Position in the recents list. The URL is addressed by this, not by path. */
-  index: number
+  /** The key the backend gave this project. Not a path, and stable while
+   *  the path is -- addressing by list position meant a book wore the art of
+   *  whichever one took its place when the list reordered. */
+  coverKey: string
   name: string
   /** The book's colour: the ground under the art, and its stand-in without. */
   accent: string
@@ -25,7 +27,7 @@ interface Props {
   size: 'hero' | 'mini'
 }
 
-export default function RecentCover({ index, name, accent, size }: Props) {
+export default function RecentCover({ coverKey, name, accent, size }: Props) {
   // 'idle' until the image resolves, so nothing flickers on a book with no art:
   // the letter or title simply stays put and the img never becomes visible.
   const [art, setArt] = useState<'idle' | 'shown' | 'none'>('idle')
@@ -36,15 +38,19 @@ export default function RecentCover({ index, name, accent, size }: Props) {
   return (
     <span className={`${className} rc-wrap`} style={{ background: accent }}>
       {art === 'shown' ? null : <span>{label}</span>}
-      <img
-        className="rc-art"
-        src={`/recent-cover/${index}`}
-        alt=""
-        aria-hidden="true"
-        hidden={art !== 'shown'}
-        onLoad={() => setArt('shown')}
-        onError={() => setArt('none')}
-      />
+      {/* No key, nothing to ask for. A recents file written before covers
+          were shown has none, and /recent-cover/ would only 404. */}
+      {coverKey ? (
+        <img
+          className="rc-art"
+          src={`/recent-cover/${coverKey}`}
+          alt=""
+          aria-hidden="true"
+          hidden={art !== 'shown'}
+          onLoad={() => setArt('shown')}
+          onError={() => setArt('none')}
+        />
+      ) : null}
     </span>
   )
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"image"
 	"net/http"
+	"path/filepath"
 	"testing"
 
 	"draftline/internal/types"
@@ -22,7 +23,7 @@ func TestTheStartScreenServesARecentProjectsCover(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res := fetch(t, app.recentCovers(), "/recent-cover/0")
+	res := fetch(t, app.recentCovers(), "/recent-cover/"+recentCoverKey(path))
 	if res.Code != http.StatusOK {
 		t.Fatalf("the recent project's cover came back %d", res.Code)
 	}
@@ -45,14 +46,15 @@ func TestARecentProjectWithNoArtworkIsNotFound(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if res := fetch(t, app.recentCovers(), "/recent-cover/0"); res.Code != http.StatusNotFound {
+	if res := fetch(t, app.recentCovers(), "/recent-cover/"+recentCoverKey(path)); res.Code != http.StatusNotFound {
 		t.Errorf("a book with no cover answered %d, want 404", res.Code)
 	}
 }
 
-// Only a position is accepted. A handler that took a path would read any file
-// on the machine on request, which is not a trade worth making for a thumbnail.
-func TestTheRecentCoverHandlerTakesOnlyAPosition(t *testing.T) {
+// Only a key this process issued is accepted. A handler that took a path
+// would read any file on the machine on request, which is not a trade worth
+// making for a thumbnail.
+func TestTheRecentCoverHandlerTakesOnlyAKeyItIssued(t *testing.T) {
 	app, path := openedProject(t)
 	cover := attachTestCover(t, app, "ed-1", 1800, 2880, 1.0, false)
 	if result := app.writeBook(bookWithEdition(cover), path); !result.Success {
@@ -64,12 +66,11 @@ func TestTheRecentCoverHandlerTakesOnlyAPosition(t *testing.T) {
 
 	server := app.recentCovers()
 	for _, target := range []string{
-		"/recent-cover/" + path,             // the archive by name
-		"/recent-cover/../../etc/passwd",    // a traversal
-		"/recent-cover/-1",                  // before the list
-		"/recent-cover/99",                  // past the list
-		"/recent-cover/",                    // nothing at all
-		"/recent-cover/0x0",                 // not a number
+		"/recent-cover/" + path,          // the archive by name
+		"/recent-cover/../../etc/passwd", // a traversal
+		"/recent-cover/0",                // the old position-based address
+		"/recent-cover/",                 // nothing at all
+		"/recent-cover/deadbeefdeadbeef", // a key belonging to nothing
 	} {
 		if res := fetch(t, server, target); res.Code != http.StatusNotFound {
 			t.Errorf("%q answered %d, want 404", target, res.Code)
@@ -102,12 +103,52 @@ func TestTheNewestEditionsArtworkIsTheOneShown(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res := fetch(t, app.recentCovers(), "/recent-cover/0")
+	res := fetch(t, app.recentCovers(), "/recent-cover/"+recentCoverKey(path))
 	if res.Code != http.StatusOK {
 		t.Fatalf("the cover came back %d", res.Code)
 	}
 	if got := res.Body.Len(); got != second.ThumbBytes {
 		t.Errorf("served %d bytes; the second edition's thumbnail is %d and the first is %d",
 			got, second.ThumbBytes, first.ThumbBytes)
+	}
+}
+
+// The bug that position-based addressing caused, pinned.
+//
+// Opening a book moves it to the front of the recents list. Addressed by
+// position, every other book then asked for the art of whichever project had
+// taken its place, so a shelf of books with no covers all wore the cover of
+// the one just opened. A key belongs to a path, so reordering cannot do it.
+func TestReorderingTheRecentsDoesNotMoveArtworkBetweenBooks(t *testing.T) {
+	app, withArt := openedProject(t)
+	cover := attachTestCover(t, app, "ed-1", 1800, 2880, 1.0, false)
+	if result := app.writeBook(bookWithEdition(cover), withArt); !result.Success {
+		t.Fatal(result.Error)
+	}
+
+	// A second book, with no artwork at all.
+	bare := filepath.Join(t.TempDir(), "No Cover.draftline")
+	if result := app.writeBook(bookWithEdition(nil), bare); !result.Success {
+		t.Fatal(result.Error)
+	}
+
+	for _, p := range []string{withArt, bare} {
+		if err := app.AddRecentProject(types.RecentProject{Type: "book", Path: p, Name: "x", LastOpened: "2026-09-18T00:00:00Z"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// `bare` was added last, so it is now first: the exact reordering that
+	// broke position-based addressing.
+	recents := app.GetRecentProjects()
+	if len(recents) < 2 || recents[0].Path != bare {
+		t.Fatalf("expected the bare book at the front, got %+v", recents)
+	}
+
+	server := app.recentCovers()
+	if res := fetch(t, server, "/recent-cover/"+recentCoverKey(bare)); res.Code != http.StatusNotFound {
+		t.Errorf("the book with no artwork answered %d, want 404 -- it is wearing another book's cover", res.Code)
+	}
+	if res := fetch(t, server, "/recent-cover/"+recentCoverKey(withArt)); res.Code != http.StatusOK {
+		t.Errorf("the book with artwork answered %d after the list reordered", res.Code)
 	}
 }

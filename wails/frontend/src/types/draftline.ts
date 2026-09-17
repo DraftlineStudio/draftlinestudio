@@ -19,6 +19,9 @@ export interface RecentProject {
   path: string
   name: string
   lastOpened: string  // ISO date string
+  /** Addresses this project's cover art at /recent-cover/<key>. Given by
+   *  the backend; never built here, and not a path. */
+  coverKey: string
   stats: {
     books?: number
     chapters: number

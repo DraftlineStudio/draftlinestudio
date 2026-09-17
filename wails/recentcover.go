@@ -1,9 +1,10 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -17,15 +18,22 @@ import (
 // a small prepared thumbnail beside the full-size art, and this reads only
 // that one member.
 //
-// Addressed by position in the recents list, never by path. The webview asks
-// for /recent-cover/0 and the answer comes from whatever is first in the list
-// this process holds, so no path crosses the boundary and there is nothing to
-// traverse. A handler taking a path would be a handler that reads any file on
-// the machine on request, which is not a trade worth making for a thumbnail.
+// Addressed by a key derived from the path, never by the path itself. The
+// webview only ever repeats a key this process gave it, and a key that matches
+// no recent project is a 404 -- so no path crosses the boundary and there is
+// nothing to traverse. A handler taking a path would be a handler that reads
+// any file on the machine on request, which is not a trade worth making for a
+// thumbnail.
+//
+// It was addressed by POSITION first, and that was wrong: opening a book moves
+// it to the front of the recents list, so a position meant one book to the
+// start screen and a different one to this handler, and every book without art
+// briefly wore the art of whichever had taken its place. A key is stable while
+// the path is, which is exactly as long as it needs to be.
 
 const recentCoverPrefix = "/recent-cover/"
 
-// recentCovers serves the cover thumbnail of a recent project, by position.
+// recentCovers serves the cover thumbnail of a recent project, by its key.
 func (a *App) recentCovers() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
@@ -37,18 +45,24 @@ func (a *App) recentCovers() http.Handler {
 			http.NotFound(w, r)
 			return
 		}
-		index, err := strconv.Atoi(strings.TrimSuffix(rest, "/"))
-		if err != nil || index < 0 {
+		key := strings.TrimSuffix(rest, "/")
+		if key == "" {
 			http.NotFound(w, r)
 			return
 		}
-		recents := a.GetRecentProjects()
-		if index >= len(recents) {
+		archive := ""
+		for _, recent := range a.GetRecentProjects() {
+			if recent.CoverKey == key {
+				archive = recent.Path
+				break
+			}
+		}
+		if archive == "" {
 			http.NotFound(w, r)
 			return
 		}
 
-		data, file, err := newestCoverThumb(recents[index].Path)
+		data, file, err := newestCoverThumb(archive)
 		if err != nil || data == nil {
 			// A book with no editions, or none with artwork, is the ordinary
 			// case rather than a fault. The start screen falls back to its
@@ -58,8 +72,8 @@ func (a *App) recentCovers() http.Handler {
 		}
 
 		w.Header().Set("Content-Type", coverContentType(file))
-		// Not cacheable by address: position 0 is a different book as soon as
-		// another is opened, and the art behind one edition can be replaced.
+		// The key is stable but what it points at is not: attaching new artwork
+		// to an edition changes the bytes behind the same address.
 		w.Header().Set("Cache-Control", "no-store")
 		http.ServeContent(w, r, file, time.Time{}, newByteSeeker(data))
 	})
@@ -101,4 +115,18 @@ func newestCoverThumb(archivePath string) ([]byte, string, error) {
 		return data, file, nil
 	}
 	return nil, "", nil
+}
+
+// recentCoverKey is the address a project's cover art is served from.
+//
+// A truncated SHA-256 of the path: stable for as long as the path is, and
+// not the path, which is the only property that matters here. Collisions do
+// not need guarding against -- two books would have to share 64 bits of
+// digest to show each other's covers on one start screen.
+func recentCoverKey(path string) string {
+	if strings.TrimSpace(path) == "" {
+		return ""
+	}
+	sum := sha256.Sum256([]byte(path))
+	return hex.EncodeToString(sum[:8])
 }

@@ -144,7 +144,7 @@ export default function WelcomeScreen({ onNewBook, onOpenFile, onOpenRecent }: W
                   onClick={() => onOpenRecent(hero.path)}
                   onContextMenu={(e) => handleContextMenu(e, hero)}
                 >
-                    <RecentCover index={0} name={hero.name} accent={heroAccent!} size="hero" />
+                    <RecentCover coverKey={hero.coverKey} name={hero.name} accent={heroAccent!} size="hero" />
                   <div className="sgw-hero-text">
                     <div className="sgw-hero-title">{hero.name}</div>
                     <div className="sgw-hero-meta">{metaLine(hero)}</div>
@@ -164,14 +164,14 @@ export default function WelcomeScreen({ onNewBook, onOpenFile, onOpenRecent }: W
                       <button className="sgw-clear" onClick={clearRecentProjects}>Clear All</button>
                     </div>
                     <div className="sgw-list">
-                      {rest.map((project, i) => (
+                      {rest.map((project) => (
                         <div
                           key={project.path}
                           className="sgw-row"
                           onClick={() => onOpenRecent(project.path)}
                           onContextMenu={(e) => handleContextMenu(e, project)}
                         >
-                            <RecentCover index={i + 1} name={project.name} accent={avatarColor(project.name)} size="mini" />
+                            <RecentCover coverKey={project.coverKey} name={project.name} accent={avatarColor(project.name)} size="mini" />
                           <span className="sgw-row-text">
                             <span className="sgw-row-title">{project.name}</span>
                             <span className="sgw-row-meta">{metaLine(project)}</span>
