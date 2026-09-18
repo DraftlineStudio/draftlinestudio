@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02680] - 2026-09-18
+
+### Changed
+- Help and Documentation now opens the Draftline help site instead of the code repository.
+
 ## [0.21.02679] - 2026-09-18
 
 ### Fixed
