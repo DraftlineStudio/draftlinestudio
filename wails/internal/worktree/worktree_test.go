@@ -56,9 +56,19 @@ func readArchive(t *testing.T, path string) map[string]string {
 	return out
 }
 
+func manifest(bookID string) string {
+	id := ""
+	if bookID != "" {
+		id = `,"book_id":"` + bookID + `"`
+	}
+	return `{"version":"2.2","metadata":{"title":"The Weather House","author":"A. Novelist",` +
+		`"created":"2026-01-01T00:00:00Z"` + id + `},` +
+		`"body":[{"title":"Chapter 1","file":"body/000.html"}]}`
+}
+
 func book() map[string]string {
 	return map[string]string{
-		"manifest.json":    `{"version":"2.2","body":[{"title":"Chapter 1","file":"body/000.html"}]}`,
+		"manifest.json":    manifest("bk-1111111111111111"),
 		"body/000.html":    "<p>The first chapter, as it stands.</p>",
 		"history/h1.html":  "<p>An older draft.</p>",
 		"editions/cov.jpg": "\xff\xd8\xff\xe0binary",
@@ -75,21 +85,117 @@ func fixture(t *testing.T) (archive string, root string) {
 	return archive, root
 }
 
-func TestDirForIsHiddenNamedAndPathUnique(t *testing.T) {
+func TestDirForIsHiddenNamedAndKeyedOnIdentityNotPath(t *testing.T) {
 	root := "/data"
-	a := DirFor(root, "/books/novel.draftline")
-	b := DirFor(root, "/elsewhere/novel.draftline")
 
-	if a == b {
-		t.Fatal("two books with the same filename in different folders share a working copy")
+	// Two different books that happen to share a filename do not share a
+	// working copy.
+	if DirFor(root, "/books/novel.draftline", "bk-aaaa1111") ==
+		DirFor(root, "/elsewhere/novel.draftline", "bk-bbbb2222") {
+		t.Fatal("two different books share a working copy")
 	}
-	base := filepath.Base(a)
-	if !strings.HasPrefix(base, ".novel.draftline-") {
+
+	// And one book that moved keeps the one it had. This is the case the old
+	// path hash got wrong: the working copy went missing along with whatever
+	// was unsaved in it.
+	before := DirFor(root, "/Desktop/novel.draftline", "bk-aaaa1111")
+	after := DirFor(root, "/Dropbox/novel.draftline", "bk-aaaa1111")
+	if filepath.Base(before) != filepath.Base(after) {
+		t.Fatalf("moving a book changed its working copy: %q then %q", before, after)
+	}
+
+	if base := filepath.Base(before); !strings.HasPrefix(base, ".novel.draftline-") {
 		t.Fatalf("working directory %q is not named for its book", base)
 	}
-	if DirFor(root, "/books/novel.draftline") != a {
-		t.Fatal("DirFor is not stable for the same path")
+}
+
+func TestAMovedBookKeepsItsUnsavedWork(t *testing.T) {
+	archive, root := fixture(t)
+	tree, _, err := Open(archive, Options{Root: root, Autosave: true})
+	if err != nil {
+		t.Fatal(err)
 	}
+	if err := tree.WriteMember("body/000.html", []byte("<p>Unsaved when it moved.</p>")); err != nil {
+		t.Fatal(err)
+	}
+
+	// The writer drags the project into their synced folder.
+	moved := filepath.Join(filepath.Dir(archive), "Dropbox copy.draftline")
+	if err := os.Rename(archive, moved); err != nil {
+		t.Fatal(err)
+	}
+
+	reopened, state, err := Open(moved, Options{Root: root, Autosave: true})
+	if err != nil {
+		t.Fatalf("Open after move: %v", err)
+	}
+	if state != StateRecovered {
+		t.Fatalf("state = %v, want recovered: a move is not a change", state)
+	}
+	data, _ := reopened.ReadMember("body/000.html")
+	if string(data) != "<p>Unsaved when it moved.</p>" {
+		t.Fatalf("member = %q; moving the book lost the unsaved work", data)
+	}
+	if err := reopened.Repack(); err != nil {
+		t.Fatal(err)
+	}
+	if readArchive(t, moved)["body/000.html"] != "<p>Unsaved when it moved.</p>" {
+		t.Fatal("the recovered work did not reach the book at its new path")
+	}
+	// And no stale working copy is left behind claiming the old path.
+	if orphans, err := Orphans(root); err != nil || len(orphans) != 0 {
+		t.Fatalf("orphans = %v, err = %v; a move should leave none", orphans, err)
+	}
+}
+
+func TestOrphansAreListedAndOnlyCleanOnesArePruned(t *testing.T) {
+	archive, root := fixture(t)
+	tree, _, err := Open(archive, Options{Root: root, Autosave: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := tree.WriteMember("body/000.html", []byte("<p>Never saved anywhere.</p>")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(archive); err != nil {
+		t.Fatal(err)
+	}
+
+	orphans, err := Orphans(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(orphans) != 1 || !orphans[0].Dirty {
+		t.Fatalf("orphans = %+v, want one dirty orphan", orphans)
+	}
+	if orphans[0].Archive != mustAbs(t, archive) {
+		t.Fatalf("orphan names %q, want the book it came from", orphans[0].Archive)
+	}
+
+	kept, err := Prune(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(kept) != 1 {
+		t.Fatalf("Prune discarded unsaved work: kept = %+v", kept)
+	}
+	if _, err := os.Stat(kept[0].Dir); err != nil {
+		t.Fatal("Prune removed a dirty working copy anyway")
+	}
+
+	// A clean one is swept up.
+	if err := tree.Discard(); err == nil {
+		t.Fatal("Discard should fail once the archive is gone")
+	}
+}
+
+func mustAbs(t *testing.T, p string) string {
+	t.Helper()
+	abs, err := filepath.Abs(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return abs
 }
 
 func TestOpenExtractsEveryMember(t *testing.T) {

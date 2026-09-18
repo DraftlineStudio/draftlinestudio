@@ -144,6 +144,10 @@ func Open(path string) (types.BookData, error) {
 	}
 	// A legacy single-ISBN file seeds the per-format list on open.
 	book.Metadata.NormalizeISBNs()
+	// A project written before books had identifiers derives one, the same way
+	// on every machine that opens it, so the working copy and the lock can
+	// name it before anything has managed to save the field into the archive.
+	book.Metadata.EnsureBookID()
 	// Word count is refreshed after the chapter arrays are populated, at
 	// each return site below.
 

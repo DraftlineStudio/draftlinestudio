@@ -49,6 +49,12 @@ type Metadata struct {
 	// save so the frontend never re-counts a whole book on its main thread.
 	// Additive field; older readers of the format ignore it.
 	WordCount int `json:"word_count,omitempty"`
+	// BookID names this book rather than its file. A path cannot do the job:
+	// dragging a project into a Dropbox folder renames its path and would
+	// orphan the working copy holding its unsaved work, and a book opened on
+	// a laptop and a phone has two paths and is one book. Additive field;
+	// older readers of the format ignore it. See EnsureBookID.
+	BookID string `json:"book_id,omitempty"`
 }
 
 // NormalizeISBNs reconciles the per-format ISBN list with the legacy single

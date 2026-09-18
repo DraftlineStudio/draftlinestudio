@@ -370,6 +370,9 @@ func (a *App) NewBook() types.BookData {
 			Title:    "Untitled",
 			Created:  now,
 			Modified: now,
+			// Minted here rather than derived, so two books started in the
+			// same second are two books.
+			BookID: types.NewBookID(),
 		},
 		Copyright:   "",
 		FrontMatter: []types.ChapterItem{},
@@ -486,6 +489,11 @@ func (a *App) SaveBookAs(book types.BookData) types.SaveResult {
 	if !strings.HasSuffix(strings.ToLower(path), ".draftline") {
 		path += ".draftline"
 	}
+	// A copy is a different book. Leaving the identifier alone would give two
+	// files one identity, and everything keyed on it — the working copy
+	// holding unsaved changes, the lock naming the device that has it open —
+	// would treat them as the same project and let one overwrite the other.
+	book.Metadata.BookID = types.NewBookID()
 	return a.writeBook(book, path)
 }
 

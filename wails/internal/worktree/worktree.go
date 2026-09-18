@@ -25,16 +25,21 @@
 // own data directory, one per book, named for the book so a human looking at
 // the folder can tell what it is:
 //
-//	<root>/.The Weather House.draftline-3f9a21c7/
+//	<root>/.The Weather House.draftline-4c1e7a90b332/
 //	    content/       the archive, extracted member for member
 //	    session.json   what this working copy is and how it stands
 //
 // The leading dot hides the directory on macOS and Linux; on Windows the
-// application data directory is out of the way already. The eight hex digits
-// are the start of a SHA-256 of the archive's absolute path, and they are the
-// part that matters: two books can easily be called novel.draftline in two
-// different folders, and without the path in the name they would silently
-// share one working copy and overwrite each other.
+// application data directory is out of the way already.
+//
+// The suffix is the book's own identifier (types.Metadata.BookID), NOT a hash
+// of its path. Keying on the path is the obvious thing and it is wrong: drag a
+// project into a Dropbox folder and its path changes, so the working copy
+// holding its unsaved chapters is stranded under a name nothing will look for
+// again. An identifier survives the move, the rename, and the same book being
+// opened on a second device. Only the suffix is load-bearing: a renamed book
+// is found by it and the readable half is brought back into line, so the
+// directory listing stays honest without the name ever being the key.
 //
 // # THE TWO MODES
 //
@@ -57,6 +62,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -65,6 +71,7 @@ import (
 	"time"
 
 	"draftline/internal/fsutil"
+	"draftline/internal/types"
 	"draftline/internal/ziputil"
 )
 
@@ -120,12 +127,17 @@ func (s State) String() string {
 // content rather than inside it so it never lands in the archive.
 type session struct {
 	Version int    `json:"version"`
+	BookID  string `json:"book_id"`
+	// Archive is where the book was last seen. It is informational: the
+	// working copy is found by identifier, and this is what lets a caller say
+	// which book an orphaned working copy belonged to.
 	Archive string `json:"archive"`
-	// ArchiveSize and ArchiveModified are how a changed archive is noticed:
-	// a sync client replacing the file underneath a working copy has to be
-	// caught, or a phone would quietly write its stale copy back over it.
-	ArchiveSize     int64     `json:"archive_size"`
-	ArchiveModified time.Time `json:"archive_modified"`
+	// ArchiveHash is the archive as it stood when this working copy last
+	// agreed with it. It is a content hash rather than a size and a timestamp
+	// because a book that moves between folders keeps its content and loses
+	// its timestamp, and confusing "moved" with "changed" either re-extracts
+	// over unsaved work or writes a stale copy over a newer one.
+	ArchiveHash string `json:"archive_hash"`
 	// Autosave records the mode the session was opened in, because what to do
 	// with an unsaved working copy depends entirely on it.
 	Autosave   bool      `json:"autosave"`
@@ -134,10 +146,27 @@ type session struct {
 	RepackedAt time.Time `json:"repacked_at,omitempty"`
 }
 
+// hashArchive fingerprints a .draftline. Opening a book is not a hot path and
+// a manuscript is a few hundred kilobytes, so this costs milliseconds and buys
+// an unambiguous answer to "is this the same file I left".
+func hashArchive(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", fmt.Errorf("worktree: read %q: %w", path, err)
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", fmt.Errorf("worktree: read %q: %w", path, err)
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
 // Tree is one book, open as a directory.
 type Tree struct {
 	dir     string
 	archive string
+	bookID  string
 	state   session
 }
 
@@ -172,20 +201,79 @@ const (
 // have both moved on and Options.Resolve is ResolveAsk.
 var ErrConflict = errors.New("the working copy and the book on disk have both changed")
 
-// DirFor reports the working directory for an archive, without touching disk.
-// It is exported so a caller can show a writer where their work is.
-func DirFor(root, archivePath string) string {
-	abs, err := filepath.Abs(archivePath)
-	if err != nil {
-		abs = archivePath
+// DirFor reports the working directory for a book, without touching disk.
+//
+// The key is the book's identifier, never its path. Keying on the path looked
+// obvious and was wrong: dragging a project into a Dropbox folder would strand
+// the working copy holding its unsaved chapters under the old path's name,
+// where nothing would ever look for it again. An identifier survives the move,
+// the rename, and being opened on a second device.
+//
+// The filename is only there so a human can read the directory listing, and it
+// is allowed to go stale when a book is renamed.
+func DirFor(root, archivePath, bookID string) string {
+	name := filepath.Base(archivePath)
+	return filepath.Join(root, fmt.Sprintf(".%s-%s", name, types.ShortBookID(bookID)))
+}
+
+// locateDir finds this book's existing working copy whatever the book is
+// called now, and brings its name back into line if the book was renamed.
+//
+// The identifier is the key and the filename is decoration, but the filename
+// is part of the directory name, so a rename has to be followed or the working
+// copy is lost exactly the way keying on the path lost it.
+func locateDir(root, archivePath, bookID string) string {
+	want := DirFor(root, archivePath, bookID)
+	if _, err := os.Stat(filepath.Join(want, sessionFile)); err == nil {
+		return want
 	}
-	// Windows paths are case-insensitive, so the same book reached by two
-	// spellings must hash the same. Lowercasing is wrong for case-sensitive
-	// filesystems in principle; in practice a book opened as two different
-	// cases on Linux is not a case worth splitting a working copy over.
-	sum := sha256.Sum256([]byte(strings.ToLower(filepath.Clean(abs))))
-	name := filepath.Base(abs)
-	return filepath.Join(root, fmt.Sprintf(".%s-%s", name, hex.EncodeToString(sum[:4])))
+
+	suffix := "-" + types.ShortBookID(bookID)
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return want
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() || !strings.HasSuffix(entry.Name(), suffix) {
+			continue
+		}
+		found := filepath.Join(root, entry.Name())
+		if _, err := os.Stat(filepath.Join(found, sessionFile)); err != nil {
+			continue
+		}
+		// Follow the rename. If the move fails — something holding the
+		// directory open — the working copy is still usable where it is,
+		// which matters more than its name being tidy.
+		if err := os.Rename(found, want); err != nil {
+			return found
+		}
+		return want
+	}
+	return want
+}
+
+// IdentifyArchive reads a book's identifier out of its manifest without
+// unpacking the manuscript, deriving one the way every other reader derives it
+// if the project predates the field.
+func IdentifyArchive(archivePath string) (string, error) {
+	r, err := zip.OpenReader(archivePath)
+	if err != nil {
+		return "", fmt.Errorf("worktree: open %q: %w", archivePath, err)
+	}
+	defer r.Close()
+
+	data, err := ziputil.ReadNamed(r.File, "manifest.json", false)
+	if err != nil {
+		return "", fmt.Errorf("worktree: %q has no manifest: %w", archivePath, err)
+	}
+	var manifest struct {
+		Metadata types.Metadata `json:"metadata"`
+	}
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return "", fmt.Errorf("worktree: manifest of %q could not be read: %w", archivePath, err)
+	}
+	manifest.Metadata.EnsureBookID()
+	return manifest.Metadata.BookID, nil
 }
 
 // Open prepares a working copy of archivePath and reports what it had to do.
@@ -197,17 +285,27 @@ func Open(archivePath string, opts Options) (*Tree, State, error) {
 	if err != nil {
 		return nil, StateExtracted, fmt.Errorf("worktree: resolve %q: %w", archivePath, err)
 	}
-	info, err := os.Stat(abs)
-	if err != nil {
+	if _, err := os.Stat(abs); err != nil {
 		return nil, StateExtracted, fmt.Errorf("worktree: open %q: %w", archivePath, err)
 	}
 
-	dir := DirFor(opts.Root, abs)
-	tree := &Tree{dir: dir, archive: abs}
+	bookID, err := IdentifyArchive(abs)
+	if err != nil {
+		return nil, StateExtracted, err
+	}
+	hash, err := hashArchive(abs)
+	if err != nil {
+		return nil, StateExtracted, err
+	}
+
+	dir := locateDir(opts.Root, abs, bookID)
+	tree := &Tree{dir: dir, archive: abs, bookID: bookID}
 
 	previous, hasPrevious := readSession(dir)
-	archiveMoved := hasPrevious &&
-		(previous.ArchiveSize != info.Size() || !previous.ArchiveModified.Equal(info.ModTime()))
+	// A book that has simply moved — dragged into a synced folder, renamed —
+	// is the same book with the same contents, and its working copy comes with
+	// it. Only the contents changing matters, which is what the hash answers.
+	archiveChanged := hasPrevious && previous.ArchiveHash != hash
 
 	state := StateExtracted
 	switch {
@@ -218,13 +316,13 @@ func Open(archivePath string, opts Options) (*Tree, State, error) {
 		// Nothing unsaved. Reuse the tree when the archive is untouched,
 		// re-extract when it is not: an unchanged tree is worth nothing and
 		// the archive is always right in this branch.
-		if archiveMoved {
+		if archiveChanged {
 			state = StateExtracted
 		} else {
 			state = StateReused
 		}
 
-	case previous.Dirty && archiveMoved:
+	case previous.Dirty && archiveChanged:
 		switch opts.Resolve {
 		case ResolveKeepWorkingCopy:
 			state = StateRecovered
@@ -249,11 +347,11 @@ func Open(archivePath string, opts Options) (*Tree, State, error) {
 	}
 
 	tree.state = session{
-		Version:         sessionVersion,
-		Archive:         abs,
-		ArchiveSize:     info.Size(),
-		ArchiveModified: info.ModTime(),
-		Autosave:        opts.Autosave,
+		Version:     sessionVersion,
+		BookID:      bookID,
+		Archive:     abs,
+		ArchiveHash: hash,
+		Autosave:    opts.Autosave,
 		// A recovered tree is still ahead of the archive until it is packed.
 		Dirty:    state == StateRecovered,
 		OpenedAt: time.Now().UTC(),
@@ -275,6 +373,82 @@ func (t *Tree) ContentDir() string { return filepath.Join(t.dir, contentDir) }
 
 // Archive is the .draftline this working copy belongs to.
 func (t *Tree) Archive() string { return t.archive }
+
+// BookID is the identifier this working copy is filed under.
+func (t *Tree) BookID() string { return t.bookID }
+
+// Orphan is a working copy whose book is no longer where it was last seen.
+type Orphan struct {
+	Dir string
+	// BookID and Archive say which book it was, so a caller can offer to
+	// restore it somewhere rather than describing a hex string to a writer.
+	BookID  string
+	Archive string
+	// Dirty working copies hold writing that never reached a .draftline.
+	// Those are the ones worth telling somebody about.
+	Dirty    bool
+	OpenedAt time.Time
+}
+
+// Orphans lists working copies whose archive is no longer at its last known
+// path. Two things make one: a book deleted, and a book moved by something
+// other than Draftline while it was closed — in which case the next open finds
+// it again by identifier, and the orphan is this one's stale twin.
+//
+// Nothing is deleted here. A caller decides, because a dirty orphan is
+// somebody's unsaved afternoon.
+func Orphans(root string) ([]Orphan, error) {
+	entries, err := os.ReadDir(root)
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("worktree: list %q: %w", root, err)
+	}
+	var out []Orphan
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		dir := filepath.Join(root, entry.Name())
+		state, ok := readSession(dir)
+		if !ok {
+			continue
+		}
+		if _, err := os.Stat(state.Archive); err == nil {
+			continue
+		}
+		out = append(out, Orphan{
+			Dir:      dir,
+			BookID:   state.BookID,
+			Archive:  state.Archive,
+			Dirty:    state.Dirty,
+			OpenedAt: state.OpenedAt,
+		})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Dir < out[j].Dir })
+	return out, nil
+}
+
+// Prune removes orphaned working copies that hold nothing unsaved, and reports
+// the ones it left behind because they do.
+func Prune(root string) ([]Orphan, error) {
+	orphans, err := Orphans(root)
+	if err != nil {
+		return nil, err
+	}
+	var kept []Orphan
+	for _, orphan := range orphans {
+		if orphan.Dirty {
+			kept = append(kept, orphan)
+			continue
+		}
+		if err := os.RemoveAll(orphan.Dir); err != nil {
+			return kept, fmt.Errorf("worktree: remove %q: %w", orphan.Dir, err)
+		}
+	}
+	return kept, nil
+}
 
 // Dirty reports whether the working copy holds anything the archive does not.
 func (t *Tree) Dirty() bool { return t.state.Dirty }
@@ -417,12 +591,11 @@ func (t *Tree) Repack() error {
 		return fmt.Errorf("worktree: replace %q: %w", t.archive, err)
 	}
 
-	info, err := os.Stat(t.archive)
+	hash, err := hashArchive(t.archive)
 	if err != nil {
-		return fmt.Errorf("worktree: stat %q: %w", t.archive, err)
+		return err
 	}
-	t.state.ArchiveSize = info.Size()
-	t.state.ArchiveModified = info.ModTime()
+	t.state.ArchiveHash = hash
 	t.state.Dirty = false
 	t.state.RepackedAt = time.Now().UTC()
 	return t.writeSession()
@@ -434,12 +607,11 @@ func (t *Tree) Discard() error {
 	if err := extract(t.archive, t.dir); err != nil {
 		return err
 	}
-	info, err := os.Stat(t.archive)
+	hash, err := hashArchive(t.archive)
 	if err != nil {
-		return fmt.Errorf("worktree: stat %q: %w", t.archive, err)
+		return err
 	}
-	t.state.ArchiveSize = info.Size()
-	t.state.ArchiveModified = info.ModTime()
+	t.state.ArchiveHash = hash
 	t.state.Dirty = false
 	return t.writeSession()
 }
