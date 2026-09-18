@@ -3,7 +3,7 @@ package book
 import (
 	"strings"
 
-	"draftline/internal/indexing"
+	"draftline/internal/plaintext"
 	"draftline/internal/types"
 )
 
@@ -15,7 +15,7 @@ func RefreshWordCount(b *types.BookData) {
 	total := 0
 	for _, sections := range [][]types.ChapterItem{b.FrontMatter, b.Body, b.BackMatter} {
 		for _, chapter := range sections {
-			total += len(strings.Fields(indexing.StripHTMLForAnalysis(chapter.Content)))
+			total += len(strings.Fields(plaintext.StripHTMLForAnalysis(chapter.Content)))
 		}
 	}
 	b.Metadata.WordCount = total
