@@ -18,3 +18,14 @@ wiki/**/*.jpeg -text
 wiki/**/*.gif  -text
 wiki/**/*.webp -text
 wiki/**/*.svg  -text
+
+# The Android project. Gradle's wrapper script is run by /bin/sh on Linux and
+# macOS: checked out with CRLF it fails with "bad interpreter", which is a
+# confusing way to find out about line endings. Its Windows twin needs the
+# opposite. Everything else here is bytes — see the note above about what
+# eol conversion did to the wiki's screenshots.
+capacitor/android/gradlew      text eol=lf
+capacitor/android/gradlew.bat  text eol=crlf
+capacitor/**/*.png             -text
+capacitor/**/*.jar             -text
+capacitor/**/*.aar             -text
