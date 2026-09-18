@@ -1,9 +1,10 @@
 // Glyph icons for the ToolsPanel sidebar
 
+import type { ReactElement } from 'react'
 import type { GlyphSection } from './types'
 
 export default function GlyphIcon({ section }: { section: Exclude<GlyphSection, null> }) {
-  const icons: Record<Exclude<GlyphSection, null>, JSX.Element> = {
+  const icons: Record<Exclude<GlyphSection, null>, ReactElement> = {
     dashboard: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="7" height="9" rx="1" />
