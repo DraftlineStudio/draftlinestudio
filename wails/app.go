@@ -83,6 +83,10 @@ type App struct {
 
 	// bookLock holds the per-book instance lock (see locking.go).
 	bookLock bookLockState
+	// device holds the cross-device claim on the open book, which is a
+	// different question from bookLock and answered differently. See
+	// devicelock.go.
+	device deviceClaim
 
 	// covers holds edition cover art (see cover.go). Image bytes are here and
 	// not on types.BookData, which crosses the Wails bridge as JSON on every
@@ -425,6 +429,10 @@ func (a *App) openBook(path string) (types.BookData, error) {
 		return types.BookData{}, err
 	}
 	a.installBookLock(lock)
+	// And tell any other device that this one has it. The author has already
+	// been past whatever warning InspectBookLock produced, so this takes the
+	// claim rather than asking again.
+	a.claimDeviceLock(path)
 	// A different book has different covers and a different publishing
 	// history; both caches are per project.
 	a.covers.reset()
@@ -1444,6 +1452,9 @@ func (a *App) writeBook(b types.BookData, path string) types.SaveResult {
 			return result
 		}
 		a.installBookLock(lock)
+		// Save As: the claim moves to the new file, and the old one is freed
+		// so the original is not left looking busy forever.
+		a.claimDeviceLock(path)
 		a.setCurrentFile(path)
 		settled()
 		return result

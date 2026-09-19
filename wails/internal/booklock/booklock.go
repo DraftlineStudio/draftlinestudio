@@ -14,7 +14,7 @@
 // beside the archive, which the sync client carries to the other device along
 // with everything else in the folder.
 //
-// WHY IT IS ADVISORY, AND MUST STAY ADVISORY
+// # WHY IT IS ADVISORY, AND MUST STAY ADVISORY
 //
 // Sync is not a lock service. A sidecar written on a phone may take seconds or
 // minutes to reach a laptop, and may arrive after that laptop has written its
@@ -237,6 +237,9 @@ func write(file, bookID string, id Identity, openedAt, now time.Time) (*Lock, er
 	if err := fsutil.WriteFileAtomic(file, data, 0o644); err != nil {
 		return nil, fmt.Errorf("booklock: write claim: %w", err)
 	}
+	// The atomic write renames a fresh temp file into place, so the hidden
+	// attribute has to be reapplied every time rather than set once.
+	hide(file)
 	return &Lock{file: file, state: state}, nil
 }
 
@@ -254,6 +257,7 @@ func (l *Lock) Heartbeat() error {
 	if err := fsutil.WriteFileAtomic(l.file, data, 0o644); err != nil {
 		return fmt.Errorf("booklock: refresh claim: %w", err)
 	}
+	hide(l.file)
 	return nil
 }
 

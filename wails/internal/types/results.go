@@ -63,18 +63,18 @@ type BackupInfo struct {
 
 // RecentProject represents a recently opened project in the start screen.
 type RecentProject struct {
-	Type       string             `json:"type"` // "book" | "universe"
-	Path       string             `json:"path"`
-	Name       string             `json:"name"`
-	LastOpened string             `json:"lastOpened"` // ISO 8601 timestamp
+	Type       string `json:"type"` // "book" | "universe"
+	Path       string `json:"path"`
+	Name       string `json:"name"`
+	LastOpened string `json:"lastOpened"` // ISO 8601 timestamp
 	// CoverKey addresses this project's cover art at /recent-cover/<key>.
 	// It is derived from the path and is stable while the path is, so it
 	// survives the list reordering when a book is opened -- addressing the
 	// art by POSITION did not, and every book briefly wore the art of
 	// whichever one had moved into its place. The path itself never crosses
 	// to the webview: a handler taking one would read any file on request.
-	CoverKey   string             `json:"coverKey"`
-	Stats      RecentProjectStats `json:"stats"`
+	CoverKey string             `json:"coverKey"`
+	Stats    RecentProjectStats `json:"stats"`
 }
 
 // RecentProjectStats contains statistics for a recent project.
@@ -91,4 +91,24 @@ type RevealResult struct {
 	Success bool   `json:"success"`
 	Error   string `json:"error,omitempty"`
 	Note    string `json:"note,omitempty"`
+}
+
+// BookLockInfo says whether a book looks open on another device.
+//
+// Every field is a hint, never a fact: the claim it comes from travels by
+// whatever syncs the author's folder, and that can be minutes behind. The
+// wording in Message is hedged for that reason and the UI should not
+// un-hedge it. See internal/booklock.
+type BookLockInfo struct {
+	// Held is false when nothing claims the book, or when this session does.
+	Held bool `json:"held"`
+	// Stale means nobody has refreshed the claim recently, so the device
+	// holding it has most likely stopped running.
+	Stale    bool   `json:"stale"`
+	Device   string `json:"device"`
+	Platform string `json:"platform"`
+	App      string `json:"app"`
+	LastSeen string `json:"last_seen"`
+	// Message is the sentence to show the author.
+	Message string `json:"message"`
 }

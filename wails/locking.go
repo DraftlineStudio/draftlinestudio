@@ -74,6 +74,10 @@ func (a *App) releaseBookLock() {
 	a.bookLock.lock = nil
 	a.bookLock.mu.Unlock()
 	old.Release()
+	// The cross-device claim is freed at the same moments and for the same
+	// reasons, so it rides along here rather than needing every caller to
+	// remember a second call. See devicelock.go.
+	a.releaseDeviceLock()
 }
 
 // CloseBookFile tells the backend the frontend returned to the launch
