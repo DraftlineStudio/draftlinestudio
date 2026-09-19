@@ -1953,6 +1953,7 @@ export namespace types {
 	    created: string;
 	    modified: string;
 	    word_count?: number;
+	    book_id?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Metadata(source);
@@ -1980,6 +1981,7 @@ export namespace types {
 	        this.created = source["created"];
 	        this.modified = source["modified"];
 	        this.word_count = source["word_count"];
+	        this.book_id = source["book_id"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
