@@ -2,6 +2,13 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02686] - 2026-09-20
+
+### Changed
+- AI tasks now pick a model by how demanding the work is. A copy pass uses the fast model, a line edit or smooth pass the standard one, and expanding or a free-form prompt the most capable.
+- Line edits moved up from the fast model to the standard one.
+- Claude Code is asked for a tier rather than a version, so a retired model can no longer strand it.
+
 ## [0.21.02685] - 2026-09-20
 
 ### Added

@@ -42,17 +42,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.21.02685"
-
-type aiRequestProfile struct {
-	lightweight bool
-}
-
-var standardAIRequest = aiRequestProfile{}
-
-func rewriteRequestProfile(mode string) aiRequestProfile {
-	return aiRequestProfile{lightweight: mode == "line_edit" || mode == "copy_edit"}
-}
+const AppVersion = "0.21.02686"
 
 // App is the main application struct bound to the frontend.
 type App struct {
@@ -1140,15 +1130,15 @@ func (a *App) callCodexCLIAtPath(ctx context.Context, path, system, userMsg stri
 
 	lastMsg := filepath.Join(tempHome, "last-message.txt")
 	model := providers.CodexModelOverride(a.getSettings().AIModel)
-	if profile.lightweight {
+	if profile.tier == tierLite {
+		// Prefer a fast model this installation actually advertises; an empty
+		// override falls through to the CLI's own default.
 		model = providers.ResolveCodexLightweightModel(realHome)
 		if model != "" {
 			runtime.EventsEmit(a.ctx, "ai:log", "Fast edit model: "+model)
 		}
 	}
-	// Lightweight editing prefers a model advertised by this CLI installation;
-	// otherwise no hardcoded override is used, avoiding model-churn failures.
-	cmd := codexExec(ctx, path, providers.CodexExecArgs(model, lastMsg, profile.lightweight)...)
+	cmd := codexExec(ctx, path, providers.CodexExecArgs(model, lastMsg, profile.tier == tierLite)...)
 	cmd.Stdin = strings.NewReader(system + "\n\n" + userMsg)
 	cmd.Dir = tempHome
 
@@ -1297,23 +1287,14 @@ func (a *App) resolveAIModel(defaultModel string) string {
 	return defaultModel
 }
 
-func (a *App) resolveRequestModel(defaultModel, lightweightModel string, profile aiRequestProfile) string {
-	if profile.lightweight && lightweightModel != "" {
-		return lightweightModel
-	}
-	return a.resolveAIModel(defaultModel)
-}
-
 // callClaudeCode handles the "claudecode" AI mode. If the credentials file
 // contains a direct API key it calls the Anthropic API with streaming directly —
 // faster and more reliable than the CLI subprocess. Falls back to the CLI when
 // only OAuth credentials are present.
 func (a *App) callClaudeCode(ctx context.Context, system, userMsg string, profile aiRequestProfile) types.AIRewriteResult {
 	if apiKey := readClaudeAPIKey(); apiKey != "" {
-		model := a.resolveRequestModel("claude-sonnet-4-6", "claude-haiku-4-5-20251001", profile)
-		if profile.lightweight {
-			runtime.EventsEmit(a.ctx, "ai:log", "Fast edit model: Claude Haiku")
-		}
+		model := a.resolveTierModel(claudeAPITierModels, profile)
+		runtime.EventsEmit(a.ctx, "ai:log", "Using the "+profile.tier.label()+" model: "+model)
 		runtime.EventsEmit(a.ctx, "ai:log", "Connecting to Anthropic API…")
 		result, err := providers.StreamAnthropic(providers.Request{
 			Ctx: ctx, System: system, UserMsg: userMsg,
@@ -1334,10 +1315,8 @@ func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string, pro
 	if path == "" {
 		return types.AIRewriteResult{Error: "Claude Code is not installed — open Settings › AI Studio to set it up"}
 	}
-	model := a.resolveRequestModel("claude-sonnet-4-6", "claude-haiku-4-5-20251001", profile)
-	if profile.lightweight {
-		runtime.EventsEmit(a.ctx, "ai:log", "Fast edit model: Claude Haiku")
-	}
+	model := a.claudeCodeModel(profile)
+	runtime.EventsEmit(a.ctx, "ai:log", "Using the "+profile.tier.label()+" model: "+model)
 
 	// Create an isolated home directory: real credentials so auth works, but no
 	// MCP server config. MCP servers are started between init and the first API
@@ -1363,7 +1342,7 @@ func (a *App) callClaudeCodeCLI(ctx context.Context, system, userMsg string, pro
 	// .cmd-shim fallback, where argv metacharacters would be interpreted) and
 	// sidesteps the ~32K Windows command-line length limit.
 	fullPrompt := system + "\n\n" + userMsg
-	claudeArgs := providers.ClaudeCodeExecArgs(model, profile.lightweight)
+	claudeArgs := providers.ClaudeCodeExecArgs(model, profile.tier == tierLite)
 	cmd := claudeExec(ctx, path, claudeArgs...)
 	cmd.Stdin = strings.NewReader(fullPrompt)
 	prepareClaudeRequestCommand(cmd, tempHome)
