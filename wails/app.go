@@ -43,7 +43,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.21.02681"
+const AppVersion = "0.21.02682"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -83,9 +83,7 @@ type App struct {
 
 	// bookLock holds the per-book instance lock (see locking.go).
 	bookLock bookLockState
-	// device holds the cross-device claim on the open book, which is a
-	// different question from bookLock and answered differently. See
-	// devicelock.go.
+	// device holds the cross-device claim (see devicelock.go).
 	device deviceClaim
 
 	// covers holds edition cover art (see cover.go). Image bytes are here and
@@ -374,8 +372,6 @@ func (a *App) NewBook() types.BookData {
 			Title:    "Untitled",
 			Created:  now,
 			Modified: now,
-			// Minted here rather than derived, so two books started in the
-			// same second are two books.
 			BookID: types.NewBookID(),
 		},
 		Copyright:   "",
@@ -429,9 +425,6 @@ func (a *App) openBook(path string) (types.BookData, error) {
 		return types.BookData{}, err
 	}
 	a.installBookLock(lock)
-	// And tell any other device that this one has it. The author has already
-	// been past whatever warning InspectBookLock produced, so this takes the
-	// claim rather than asking again.
 	a.claimDeviceLock(path, b.Metadata.BookID)
 	// A different book has different covers and a different publishing
 	// history; both caches are per project.
@@ -497,10 +490,7 @@ func (a *App) SaveBookAs(book types.BookData) types.SaveResult {
 	if !strings.HasSuffix(strings.ToLower(path), ".draftline") {
 		path += ".draftline"
 	}
-	// A copy is a different book. Leaving the identifier alone would give two
-	// files one identity, and everything keyed on it — the working copy
-	// holding unsaved changes, the lock naming the device that has it open —
-	// would treat them as the same project and let one overwrite the other.
+	// A copy is a different book.
 	book.Metadata.BookID = types.NewBookID()
 	return a.writeBook(book, path)
 }
@@ -1452,8 +1442,6 @@ func (a *App) writeBook(b types.BookData, path string) types.SaveResult {
 			return result
 		}
 		a.installBookLock(lock)
-		// Save As: the claim moves to the new file, and the old one is freed
-		// so the original is not left looking busy forever.
 		a.claimDeviceLock(path, b.Metadata.BookID)
 		a.setCurrentFile(path)
 		settled()

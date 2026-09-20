@@ -8,9 +8,12 @@ import (
 	"testing"
 )
 
+// The space in the path is the point of this test: an unquoted path with a
+// space in it splits into two arguments, and Windows runs whatever the first
+// half happens to name. Keep one in any replacement fixture.
 func TestBatchCommandCmdLineSafeArgs(t *testing.T) {
 	cmd := BatchCommand(context.Background(),
-		`C:\Users\JL Griffin\AppData\Roaming\npm\claude.cmd`,
+		`C:\Users\Example User\AppData\Roaming\npm\claude.cmd`,
 		"--version", "hello world")
 	if cmd.Err != nil {
 		t.Fatalf("unexpected cmd.Err for safe args: %v", cmd.Err)
@@ -18,7 +21,7 @@ func TestBatchCommandCmdLineSafeArgs(t *testing.T) {
 	if cmd.SysProcAttr == nil {
 		t.Fatal("SysProcAttr not set for safe args")
 	}
-	want := `cmd.exe /S /C ""C:\Users\JL Griffin\AppData\Roaming\npm\claude.cmd" --version "hello world""`
+	want := `cmd.exe /S /C ""C:\Users\Example User\AppData\Roaming\npm\claude.cmd" --version "hello world""`
 	if got := cmd.SysProcAttr.CmdLine; got != want {
 		t.Errorf("CmdLine mismatch:\n got: %s\nwant: %s", got, want)
 	}

@@ -1,18 +1,9 @@
-// Package plaintext turns chapter HTML into the plain text every other stage
-// measures against. It is the shared coordinate space: mention offsets, scene
-// boundaries, dialogue ranges and the manuscript word count all refer to the
-// string StripHTML returns.
+// Package plaintext turns chapter HTML into the plain text the word count and
+// the character pipeline both measure against.
 //
-// It is a leaf on purpose. These helpers used to live in internal/indexing
-// beside the character pipeline, which imports a natural-language toolkit and
-// its trained models; that made the word count — three regexes and a split —
-// drag eight megabytes of NLP into anything that wanted it. The mobile build
-// binds internal/book into a native library, so that cost was the difference
-// between a 3.6 MB and a 15 MB shared object for a function that counts words.
-//
-// Nothing in here may import anything but the standard library and
-// internal/types. If a helper needs the NLP toolkit, it belongs in
-// internal/indexing instead.
+// A leaf on purpose: it used to live in internal/indexing, which links a
+// trained NLP toolkit, and that cost the mobile build 10 MB to count words.
+// Nothing here may import more than the standard library and internal/types.
 package plaintext
 
 import (

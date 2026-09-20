@@ -305,6 +305,7 @@ export default function App() {
           onOpenRecent={handleOpenRecent}
         />
         {dialogs.showNewBookWizard && <NewBookWizard onCreated={() => setShowWelcome(false)} />}
+        {dialogs.bookLockWarning && <BookLockDialog />}
         {showNewUniverse && <NewUniverseWizard />}
         {showSettings && <AppSettingsDialog />}
         {openingOverlay}

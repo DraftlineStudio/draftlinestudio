@@ -499,7 +499,7 @@ describe('external file opens', () => {
 // The cross-device claim. The mechanism has its own tests in Go
 // (internal/booklock); these cover what the app does with what it reports.
 describe('a book that may be open on another device', () => {
-  const claimed = { held: true, stale: false, device: 'JL-LAPTOP', platform: 'windows', app: 'Draftline 0.21', last_seen: '', message: 'This book may be open on JL-LAPTOP.' }
+  const claimed = { held: true, stale: false, device: 'OTHER-LAPTOP', platform: 'windows', app: 'Draftline 0.21', last_seen: '', message: 'This book may be open on OTHER-LAPTOP.' }
 
   it('warns instead of opening, and opens nothing until asked', async () => {
     mocks.InspectBookLock.mockResolvedValue(claimed)
@@ -507,7 +507,7 @@ describe('a book that may be open on another device', () => {
     await store().openRecentBook('C:/books/novel.draftline')
 
     expect(store().dialogs.bookLockWarning?.path).toBe('C:/books/novel.draftline')
-    expect(store().dialogs.bookLockWarning?.info.device).toBe('JL-LAPTOP')
+    expect(store().dialogs.bookLockWarning?.info.device).toBe('OTHER-LAPTOP')
     expect(mocks.OpenRecentProject).not.toHaveBeenCalled()
   })
 

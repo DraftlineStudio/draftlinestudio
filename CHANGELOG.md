@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02682] - 2026-09-20
+
+### Fixed
+- The warning that a book may be open on another device now appears when opening a book from the welcome screen.
+- Draftline no longer warns that a book may be open on the computer you are already using.
+
 ## [0.21.02681] - 2026-09-19
 
 ### Added

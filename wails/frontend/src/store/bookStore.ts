@@ -25,6 +25,7 @@ const setStatus = (msg: string) => useAppStore.getState().setStatusMessage(msg)
 // open action prevents a second open racing the first — large archives take
 // a moment and the UI stays live while Go parses them.
 async function loadBookFromPath(path: string, force = false): Promise<void> {
+  useBookStore.setState(s => ({ dialogs: { ...s.dialogs, bookLockWarning: null } }))
   if (!force) {
     const holder = await deviceHoldingBook(path)
     if (holder) {

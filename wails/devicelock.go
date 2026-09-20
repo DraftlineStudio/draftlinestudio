@@ -1,21 +1,7 @@
 package main
 
-// Cross-device book claims. See internal/booklock for the mechanism and, more
-// importantly, for why it is advisory and must stay that way.
-//
-// This is the second of two locks and they answer different questions:
-//
-//	instancelock  is this book open in another window ON THIS MACHINE?
-//	              Exact. Checks whether the owning process is alive, steals a
-//	              dead one's lock, and refuses the second copy outright.
-//	booklock      might this book be open on ANOTHER MACHINE?
-//	              A guess, carried by whatever syncs the folder. Never refuses
-//	              anything; the author is told and decides.
-//
-// The second exists because a book in a Dropbox or OneDrive folder can be open
-// on a laptop and a desktop at once, both saving, and the sync client cannot
-// merge two versions of a ZIP. One of the two afternoons is simply lost, with
-// nothing on screen beforehand to suggest it might be.
+// The cross-device claim on the open book. instancelock covers this machine;
+// booklock covers the others. See internal/booklock.
 
 import (
 	"errors"
@@ -56,7 +42,7 @@ func (a *App) deviceIdentity() booklock.Identity {
 //
 // Everything about the result is a hint. See booklock's package comment.
 func (a *App) InspectBookLock(path string) types.BookLockInfo {
-	holder := booklock.Inspect(path, sessionID)
+	holder := booklock.Inspect(path, a.deviceIdentity())
 	if holder == nil || holder.Mine {
 		return types.BookLockInfo{}
 	}

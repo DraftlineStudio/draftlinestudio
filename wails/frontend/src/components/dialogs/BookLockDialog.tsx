@@ -1,14 +1,7 @@
 import { useBookStore } from '../../store/bookStore'
 
-// Shown when a book about to be opened carries a claim from another device.
-//
-// The wording hedges on purpose and should stay that way. The claim reaches
-// this machine through whatever syncs the author's folder, which can be
-// minutes behind, so "may be open" is the strongest thing that is true. See
-// internal/booklock.
-//
-// Opening a copy is offered first and styled as the recommendation, because it
-// is the only choice here that cannot lose anybody's afternoon.
+// Opening a copy is the recommendation: it is the only choice that cannot lose
+// anybody's work.
 export default function BookLockDialog() {
   const { dialogs, openBookAnyway, openBookAsCopy, cancelBookLockWarning } = useBookStore()
   const warning = dialogs.bookLockWarning

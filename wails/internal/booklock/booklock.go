@@ -1,32 +1,9 @@
-// Package booklock says which device has a book open, across devices.
+// Package booklock says which device has a book open, using a sidecar beside
+// the archive that the author's sync client carries to their other machines.
 //
-// HOW THIS DIFFERS FROM internal/instancelock
-//
-// instancelock stops one machine opening the same .draftline twice. It lives
-// in the user's config directory, holds a process ID, and checks whether that
-// process is alive, so it is exact: a crashed instance's lock is stolen and the
-// writer never sees it. It cannot see another device at all.
-//
-// This is the other half. A book in a Dropbox or Drive folder can be open on a
-// laptop and a phone at once, and neither sync client merges: the second device
-// to save wins and the first device's afternoon is replaced. Nothing local can
-// detect that, so the claim has to travel with the book — a small sidecar file
-// beside the archive, which the sync client carries to the other device along
-// with everything else in the folder.
-//
-// # WHY IT IS ADVISORY, AND MUST STAY ADVISORY
-//
-// Sync is not a lock service. A sidecar written on a phone may take seconds or
-// minutes to reach a laptop, and may arrive after that laptop has written its
-// own. Two devices can hold what each believes is the only claim. There is no
-// fix for that short of a server, so this never blocks and never promises: it
-// reports what it knows, the caller warns, and the writer decides. Any wording
-// built on this must say a book MAY be open elsewhere, never that it IS.
-//
-// A device that goes offline, sleeps, or is put in a drawer stops refreshing
-// its claim. A claim nobody has refreshed for StaleAfter is treated as
-// abandoned and can be taken, because the alternative is a book locked forever
-// by a phone that was reset.
+// Advisory and must stay so: sync is not a lock service, two devices can each
+// hold what looks like the only claim, so the wording says a book MAY be open
+// elsewhere. instancelock answers the same-machine question exactly.
 package booklock
 
 import (
@@ -44,28 +21,18 @@ import (
 
 const claimVersion = 1
 
-// StaleAfter is how long a claim survives without being refreshed. It is long
-// because the clocks on two devices disagree, sync is slow, and a laptop lid
-// closed over lunch is not an abandoned book.
+// StaleAfter is how long a claim survives unrefreshed.
 const StaleAfter = 15 * time.Minute
 
-// HeartbeatEvery is how often a holder should refresh its claim. Well inside
-// StaleAfter, so a device has to miss several in a row to look abandoned.
+// HeartbeatEvery is how often a holder refreshes its claim.
 const HeartbeatEvery = 2 * time.Minute
 
 // Identity is the device making a claim.
 type Identity struct {
-	// Device is what a writer will be shown: a hostname, because that is the
-	// name they gave the machine themselves.
-	Device string
-	// Platform is windows, darwin, linux, android or ios.
+	Device   string
 	Platform string
-	// App names the build, so "Draftline Mobile 0.1.0" can be distinguished
-	// from the desktop in the warning.
-	App string
-	// Session is unique to one opening of one book, and is how a device
-	// recognises its own claim after a restart rather than stealing it.
-	Session string
+	App      string
+	Session  string
 }
 
 // ThisDevice fills in what the operating system can answer for itself.
@@ -97,31 +64,21 @@ type Holder struct {
 	Session  string
 	OpenedAt time.Time
 	LastSeen time.Time
-	// Stale means nobody has refreshed this claim for StaleAfter, so the
-	// device holding it is probably not running any more.
-	Stale bool
-	// Mine means this claim belongs to the session asking about it.
-	Mine bool
+	Stale    bool
+	Mine     bool
 }
 
-// Lock is a held claim. Heartbeat it while the book is open and Release it
-// when it closes.
+// Lock is a held claim.
 type Lock struct {
 	file  string
 	state claim
 }
 
-// ErrHeldElsewhere is returned when a live claim from another device is in the
-// way. It is a fact to report, not a failure to retry.
+// ErrHeldElsewhere means a live claim from another device is in the way.
 var ErrHeldElsewhere = errors.New("this book is open on another device")
 
 // SidecarFor is where a book's claim lives: beside the archive, so it travels
 // with it through whatever is syncing the folder.
-//
-// The dot keeps it out of the way on macOS and Linux. It is deliberately not
-// inside the archive: writing a claim into the ZIP would mean rewriting the
-// whole book merely to open it, and every device that opened it would produce
-// a new version of the file for the sync client to carry.
 func SidecarFor(archivePath string) string {
 	dir := filepath.Dir(archivePath)
 	return filepath.Join(dir, "."+filepath.Base(archivePath)+".lock")
@@ -139,7 +96,7 @@ func read(file string) (claim, bool) {
 	return c, true
 }
 
-func (c claim) holder(now time.Time, session string) *Holder {
+func (c claim) holder(now time.Time, self Identity) *Holder {
 	return &Holder{
 		Device:   c.Device,
 		Platform: c.Platform,
@@ -148,19 +105,27 @@ func (c claim) holder(now time.Time, session string) *Holder {
 		OpenedAt: c.OpenedAt,
 		LastSeen: c.LastSeen,
 		Stale:    now.Sub(c.LastSeen) > StaleAfter,
-		Mine:     c.Session != "" && c.Session == session,
+		Mine:     isSelf(c, self),
 	}
 }
 
-// Inspect reports the current claim on a book without making one, which is
-// what a library listing wants so it can show a marker beside a book that is
-// open somewhere else.
-func Inspect(archivePath, session string) *Holder {
+// isSelf reports whether a claim is this machine's own. instancelock answers
+// the same-device question properly, so a claim naming this device is not a
+// warning to raise.
+func isSelf(c claim, self Identity) bool {
+	if c.Session != "" && c.Session == self.Session {
+		return true
+	}
+	return c.Device != "" && strings.EqualFold(c.Device, self.Device)
+}
+
+// Inspect reports the current claim without making one.
+func Inspect(archivePath string, self Identity) *Holder {
 	c, ok := read(SidecarFor(archivePath))
 	if !ok {
 		return nil
 	}
-	return c.holder(time.Now().UTC(), session)
+	return c.holder(time.Now().UTC(), self)
 }
 
 // Claim takes the claim on a book.
@@ -181,7 +146,7 @@ func Claim(archivePath, bookID string, id Identity) (*Lock, *Holder, error) {
 	now := time.Now().UTC()
 
 	if existing, ok := read(file); ok {
-		holder := existing.holder(now, id.Session)
+		holder := existing.holder(now, id)
 		if !holder.Mine && !holder.Stale {
 			return nil, holder, ErrHeldElsewhere
 		}
@@ -210,7 +175,7 @@ func Force(archivePath, bookID string, id Identity) (*Lock, *Holder, error) {
 	now := time.Now().UTC()
 	var previous *Holder
 	if existing, ok := read(file); ok {
-		previous = existing.holder(now, id.Session)
+		previous = existing.holder(now, id)
 	}
 	lock, err := write(file, bookID, id, now, now)
 	if err != nil {

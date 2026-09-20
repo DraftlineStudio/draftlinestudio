@@ -18,7 +18,13 @@ func fixture(t *testing.T) string {
 }
 
 func laptop(session string) Identity {
-	return Identity{Device: "JL-DESKTOP", Platform: "windows", App: "Draftline 0.21", Session: session}
+	return Identity{Device: "OTHER-DESKTOP", Platform: "windows", App: "Draftline 0.21", Session: session}
+}
+
+// observer is somebody neither of the fixtures is: a third machine looking at
+// the claim. Tests that want "is this ours" pass laptop() or phone() instead.
+func observer(session string) Identity {
+	return Identity{Device: "THIRD-MACHINE", Platform: "linux", App: "Draftline 0.21", Session: session}
 }
 
 func phone(session string) Identity {
@@ -114,7 +120,7 @@ func TestAnAbandonedClaimIsTakenOverAndReported(t *testing.T) {
 	if previous == nil || previous.Device != "Pixel" || !previous.Stale {
 		t.Fatalf("previous = %+v, want the phone's abandoned claim", previous)
 	}
-	if holder := Inspect(archive, "laptop-session"); holder == nil || !holder.Mine {
+	if holder := Inspect(archive, observer("laptop-session")); holder == nil || !holder.Mine {
 		t.Fatalf("after taking over, Inspect = %+v, want the laptop's own claim", holder)
 	}
 }
@@ -126,13 +132,13 @@ func TestHeartbeatKeepsAClaimAlive(t *testing.T) {
 		t.Fatal(err)
 	}
 	age(t, archive, StaleAfter+time.Minute)
-	if holder := Inspect(archive, "other"); holder == nil || !holder.Stale {
+	if holder := Inspect(archive, observer("other")); holder == nil || !holder.Stale {
 		t.Fatal("the claim should have gone stale")
 	}
 	if err := lock.Heartbeat(); err != nil {
 		t.Fatalf("Heartbeat: %v", err)
 	}
-	if holder := Inspect(archive, "other"); holder == nil || holder.Stale {
+	if holder := Inspect(archive, observer("other")); holder == nil || holder.Stale {
 		t.Fatal("a heartbeat did not bring the claim back to life")
 	}
 }
@@ -149,7 +155,7 @@ func TestForceTakesTheBookAndSaysWhoHadIt(t *testing.T) {
 	if previous == nil || previous.Device != "Pixel" {
 		t.Fatalf("previous = %+v, want the phone that was overridden", previous)
 	}
-	if holder := Inspect(archive, "laptop-session"); holder == nil || !holder.Mine {
+	if holder := Inspect(archive, observer("laptop-session")); holder == nil || !holder.Mine {
 		t.Fatalf("Force did not leave the laptop holding the book: %+v", holder)
 	}
 }
@@ -163,7 +169,7 @@ func TestReleaseFreesTheBook(t *testing.T) {
 	if err := lock.Release(); err != nil {
 		t.Fatalf("Release: %v", err)
 	}
-	if holder := Inspect(archive, "s1"); holder != nil {
+	if holder := Inspect(archive, observer("s1")); holder != nil {
 		t.Fatalf("Inspect = %+v, want nothing after a release", holder)
 	}
 }
@@ -181,14 +187,14 @@ func TestReleaseDoesNotDeleteAnotherDevicesClaim(t *testing.T) {
 	if err := lock.Release(); err != nil {
 		t.Fatalf("Release: %v", err)
 	}
-	holder := Inspect(archive, "phone-session")
+	holder := Inspect(archive, observer("phone-session"))
 	if holder == nil || holder.Device != "Pixel" {
 		t.Fatalf("the laptop's release deleted the phone's claim: %+v", holder)
 	}
 }
 
 func TestInspectOfABookNobodyHasOpen(t *testing.T) {
-	if holder := Inspect(fixture(t), "s1"); holder != nil {
+	if holder := Inspect(fixture(t), observer("s1")); holder != nil {
 		t.Fatalf("Inspect = %+v, want nothing", holder)
 	}
 }
@@ -198,7 +204,7 @@ func TestAnUnreadableSidecarIsTreatedAsNoClaim(t *testing.T) {
 	if err := os.WriteFile(SidecarFor(archive), []byte("{ this is not json"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if holder := Inspect(archive, "s1"); holder != nil {
+	if holder := Inspect(archive, observer("s1")); holder != nil {
 		t.Fatalf("Inspect = %+v; a damaged sidecar must not lock a writer out", holder)
 	}
 	if lock, _, err := Claim(archive, "bk-1", laptop("s1")); err != nil || lock == nil {
