@@ -18,11 +18,18 @@ package main
 // nothing on screen beforehand to suggest it might be.
 
 import (
+	"errors"
+	"fmt"
 	"log"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
+	"draftline/internal/book"
 	"draftline/internal/booklock"
+	"draftline/internal/fsutil"
 	"draftline/internal/types"
 )
 
@@ -64,16 +71,73 @@ func (a *App) InspectBookLock(path string) types.BookLockInfo {
 	}
 }
 
+// OpenBookAsCopy duplicates a book and opens the duplicate, leaving the
+// original untouched and still claimed by whichever device has it.
+//
+// This is the safe answer to "it may be open on your laptop": neither copy can
+// overwrite the other, and the author can reconcile them later by reading both,
+// which beats discovering at midnight that a sync client picked one.
+//
+// The copy is a DIFFERENT BOOK and is given its own identifier, for the same
+// reason Save As mints one. Two files sharing an identifier would share a
+// claim, and later a working copy, and would overwrite each other — which is
+// the failure this whole feature exists to avoid.
+func (a *App) OpenBookAsCopy(path string) (types.BookData, error) {
+	copyPath, err := uniqueCopyPath(path)
+	if err != nil {
+		return types.BookData{}, err
+	}
+	if err := fsutil.CopyFileAtomic(path, copyPath, 0o644); err != nil {
+		return types.BookData{}, fmt.Errorf("could not copy the book: %w", err)
+	}
+
+	b, err := a.openBook(copyPath)
+	if err != nil {
+		// Nothing was opened, so the half-made copy is litter. Leaving it
+		// would put a second file beside the author's book with no
+		// explanation of where it came from.
+		_ = os.Remove(copyPath)
+		return types.BookData{}, err
+	}
+
+	b.Metadata.BookID = types.NewBookID()
+	if result := book.Write(copyPath, copyPath, b, AppVersion); !result.Success {
+		// The copy is open and usable; it just has not been stamped with its
+		// new identity yet, and the next save will do that.
+		log.Printf("could not stamp the copy with a new book id: %s", result.Error)
+	}
+	return b, nil
+}
+
+// uniqueCopyPath picks a name beside the original that is not taken.
+func uniqueCopyPath(path string) (string, error) {
+	dir := filepath.Dir(path)
+	ext := filepath.Ext(path)
+	stem := strings.TrimSuffix(filepath.Base(path), ext)
+
+	for n := 1; n < 1000; n++ {
+		suffix := " (copy)"
+		if n > 1 {
+			suffix = fmt.Sprintf(" (copy %d)", n)
+		}
+		candidate := filepath.Join(dir, stem+suffix+ext)
+		if _, err := os.Stat(candidate); os.IsNotExist(err) {
+			return candidate, nil
+		}
+	}
+	return "", errors.New("there are already too many copies of this book beside it")
+}
+
 // claimDeviceLock takes the cross-device claim for a book that has just been
 // opened, and starts the heartbeat.
 //
 // It always takes it. By the time this runs the author has either seen no
 // warning or has read one and chosen to continue, and a claim that refused at
 // this point would only strand them with a book they cannot edit.
-func (a *App) claimDeviceLock(path string) {
+func (a *App) claimDeviceLock(path, bookID string) {
 	a.releaseDeviceLock()
 
-	lock, previous, err := booklock.Force(path, "", a.deviceIdentity())
+	lock, previous, err := booklock.Force(path, bookID, a.deviceIdentity())
 	if err != nil {
 		// A folder that will not take a sidecar is not a reason to stop
 		// somebody working. They lose the warning, which is what they had

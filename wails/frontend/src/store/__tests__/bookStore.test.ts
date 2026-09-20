@@ -29,6 +29,8 @@ const mocks = vi.hoisted(() => ({
   SaveBookAs: vi.fn(),
   SaveBookSnapshots: vi.fn(),
   OpenRecentProject: vi.fn(),
+  OpenBookAsCopy: vi.fn(),
+  InspectBookLock: vi.fn(),
   AddRecentProject: vi.fn(),
   IndexBook: vi.fn(),
   MergeEntities: vi.fn(),
@@ -491,5 +493,82 @@ describe('external file opens', () => {
     )
     expect(mocks.OpenRecentProject).not.toHaveBeenCalled()
     expect(store().book).toBe(null)
+  })
+})
+
+// The cross-device claim. The mechanism has its own tests in Go
+// (internal/booklock); these cover what the app does with what it reports.
+describe('a book that may be open on another device', () => {
+  const claimed = { held: true, stale: false, device: 'JL-LAPTOP', platform: 'windows', app: 'Draftline 0.21', last_seen: '', message: 'This book may be open on JL-LAPTOP.' }
+
+  it('warns instead of opening, and opens nothing until asked', async () => {
+    mocks.InspectBookLock.mockResolvedValue(claimed)
+
+    await store().openRecentBook('C:/books/novel.draftline')
+
+    expect(store().dialogs.bookLockWarning?.path).toBe('C:/books/novel.draftline')
+    expect(store().dialogs.bookLockWarning?.info.device).toBe('JL-LAPTOP')
+    expect(mocks.OpenRecentProject).not.toHaveBeenCalled()
+  })
+
+  it('opens normally when the claim has gone stale', async () => {
+    // A stale claim means the other machine stopped without releasing it.
+    // Asking about that every time would train the author to click through.
+    mocks.InspectBookLock.mockResolvedValue({ ...claimed, stale: true })
+    mocks.OpenRecentProject.mockResolvedValue(makeBook({ file_path: 'C:/books/novel.draftline' }))
+
+    await store().openRecentBook('C:/books/novel.draftline')
+
+    expect(store().dialogs.bookLockWarning).toBe(null)
+    expect(mocks.OpenRecentProject).toHaveBeenCalledWith('C:/books/novel.draftline')
+  })
+
+  it('opens the book itself when the author says open anyway', async () => {
+    mocks.InspectBookLock.mockResolvedValue(claimed)
+    await store().openRecentBook('C:/books/novel.draftline')
+    mocks.OpenRecentProject.mockResolvedValue(makeBook({ file_path: 'C:/books/novel.draftline' }))
+
+    await store().openBookAnyway()
+
+    expect(store().dialogs.bookLockWarning).toBe(null)
+    // Asking twice would warn about the claim the author just overrode.
+    expect(mocks.OpenRecentProject).toHaveBeenCalledWith('C:/books/novel.draftline')
+    expect(mocks.OpenBookAsCopy).not.toHaveBeenCalled()
+  })
+
+  it('makes a copy when the author asks for one', async () => {
+    mocks.InspectBookLock.mockResolvedValue(claimed)
+    await store().openRecentBook('C:/books/novel.draftline')
+    mocks.OpenBookAsCopy.mockResolvedValue(makeBook({ file_path: 'C:/books/novel (copy).draftline' }))
+
+    await store().openBookAsCopy()
+
+    expect(store().dialogs.bookLockWarning).toBe(null)
+    expect(mocks.OpenBookAsCopy).toHaveBeenCalledWith('C:/books/novel.draftline')
+    expect(mocks.OpenRecentProject).not.toHaveBeenCalled()
+    expect(store().book?.file_path).toBe('C:/books/novel (copy).draftline')
+  })
+
+  it('opens nothing when the author cancels', async () => {
+    mocks.InspectBookLock.mockResolvedValue(claimed)
+    await store().openRecentBook('C:/books/novel.draftline')
+
+    store().cancelBookLockWarning()
+
+    expect(store().dialogs.bookLockWarning).toBe(null)
+    expect(mocks.OpenRecentProject).not.toHaveBeenCalled()
+    expect(mocks.OpenBookAsCopy).not.toHaveBeenCalled()
+  })
+
+  it('opens the book when the claim cannot be read at all', async () => {
+    // A warning that fails must never stand between an author and their own
+    // manuscript. Without the feature they had no warning either.
+    mocks.InspectBookLock.mockRejectedValue(new Error('no such file'))
+    mocks.OpenRecentProject.mockResolvedValue(makeBook({ file_path: 'C:/books/novel.draftline' }))
+
+    await store().openRecentBook('C:/books/novel.draftline')
+
+    expect(store().dialogs.bookLockWarning).toBe(null)
+    expect(mocks.OpenRecentProject).toHaveBeenCalledWith('C:/books/novel.draftline')
   })
 })

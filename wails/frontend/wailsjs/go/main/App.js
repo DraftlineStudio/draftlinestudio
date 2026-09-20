@@ -174,6 +174,10 @@ export function IndexBook(arg1) {
   return window['go']['main']['App']['IndexBook'](arg1);
 }
 
+export function InspectBookLock(arg1) {
+  return window['go']['main']['App']['InspectBookLock'](arg1);
+}
+
 export function ListBackups() {
   return window['go']['main']['App']['ListBackups']();
 }
@@ -192,6 +196,10 @@ export function MergeEntities(arg1, arg2, arg3) {
 
 export function NewBook() {
   return window['go']['main']['App']['NewBook']();
+}
+
+export function OpenBookAsCopy(arg1) {
+  return window['go']['main']['App']['OpenBookAsCopy'](arg1);
 }
 
 export function OpenBookDialog() {

@@ -2068,6 +2068,30 @@ export namespace types {
 		    return a;
 		}
 	}
+	export class BookLockInfo {
+	    held: boolean;
+	    stale: boolean;
+	    device: string;
+	    platform: string;
+	    app: string;
+	    last_seen: string;
+	    message: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new BookLockInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.held = source["held"];
+	        this.stale = source["stale"];
+	        this.device = source["device"];
+	        this.platform = source["platform"];
+	        this.app = source["app"];
+	        this.last_seen = source["last_seen"];
+	        this.message = source["message"];
+	    }
+	}
 	export class PrintPDFOptions {
 	    includeCopyright: boolean;
 	    includeFrontMatter: boolean;

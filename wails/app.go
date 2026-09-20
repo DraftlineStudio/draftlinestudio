@@ -432,7 +432,7 @@ func (a *App) openBook(path string) (types.BookData, error) {
 	// And tell any other device that this one has it. The author has already
 	// been past whatever warning InspectBookLock produced, so this takes the
 	// claim rather than asking again.
-	a.claimDeviceLock(path)
+	a.claimDeviceLock(path, b.Metadata.BookID)
 	// A different book has different covers and a different publishing
 	// history; both caches are per project.
 	a.covers.reset()
@@ -1454,7 +1454,7 @@ func (a *App) writeBook(b types.BookData, path string) types.SaveResult {
 		a.installBookLock(lock)
 		// Save As: the claim moves to the new file, and the old one is freed
 		// so the original is not left looking busy forever.
-		a.claimDeviceLock(path)
+		a.claimDeviceLock(path, b.Metadata.BookID)
 		a.setCurrentFile(path)
 		settled()
 		return result

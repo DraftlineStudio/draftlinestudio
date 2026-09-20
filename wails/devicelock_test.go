@@ -23,7 +23,7 @@ func TestInspectBookLockIsSilentAboutThisSession(t *testing.T) {
 	app := &App{}
 	path := writeTestBook(t)
 
-	app.claimDeviceLock(path)
+	app.claimDeviceLock(path, "bk-test")
 	t.Cleanup(app.releaseDeviceLock)
 
 	// A book this window has open must not warn the author about itself.
@@ -68,7 +68,7 @@ func TestClaimingTakesOverAndReleasingFreesTheBook(t *testing.T) {
 	}
 
 	// The author has read the warning and opened it anyway.
-	app.claimDeviceLock(path)
+	app.claimDeviceLock(path, "bk-test")
 	if info := app.InspectBookLock(path); info.Held {
 		t.Fatalf("after taking over, InspectBookLock = %+v, want it to be ours", info)
 	}
@@ -83,7 +83,7 @@ func TestReleasingTwiceIsHarmless(t *testing.T) {
 	app := &App{}
 	path := writeTestBook(t)
 
-	app.claimDeviceLock(path)
+	app.claimDeviceLock(path, "bk-test")
 	app.releaseDeviceLock()
 	app.releaseDeviceLock() // closing a book that is already closed
 }

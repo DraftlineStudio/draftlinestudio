@@ -90,6 +90,8 @@ export function ImportEPUBDialog():Promise<types.ImportResult>;
 
 export function IndexBook(arg1:types.BookData):Promise<types.IndexResult>;
 
+export function InspectBookLock(arg1:string):Promise<types.BookLockInfo>;
+
 export function ListBackups():Promise<Array<types.BackupInfo>>;
 
 export function ListChapterHistory(arg1:string):Promise<Array<types.ChapterHistoryEntry>>;
@@ -99,6 +101,8 @@ export function LoadSettings():Promise<types.AppSettings>;
 export function MergeEntities(arg1:types.BookData,arg2:Array<string>,arg3:string):Promise<types.SplitEntityResult>;
 
 export function NewBook():Promise<types.BookData>;
+
+export function OpenBookAsCopy(arg1:string):Promise<types.BookData>;
 
 export function OpenBookDialog():Promise<types.BookData>;
 

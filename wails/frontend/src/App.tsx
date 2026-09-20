@@ -29,6 +29,7 @@ import NewChapterDialog from './components/dialogs/NewChapterDialog'
 import NewBookWizard from './components/dialogs/NewBookWizard'
 import NewUniverseWizard from './components/dialogs/NewUniverseWizard'
 import UnsavedChangesDialog from './components/dialogs/UnsavedChangesDialog'
+import BookLockDialog from './components/dialogs/BookLockDialog'
 import AppSettingsDialog from './components/dialogs/AppSettingsDialog'
 import ExportWizard from './components/dialogs/ExportWizard'
 
@@ -344,6 +345,7 @@ export default function App() {
       {dialogs.showNewBookWizard && <NewBookWizard />}
       {showNewUniverse && <NewUniverseWizard />}
       {dialogs.showUnsavedWarning && <UnsavedChangesDialog />}
+      {dialogs.bookLockWarning && <BookLockDialog />}
       {showExportWizard && <ExportWizard />}
       {showChapterHistory && <Suspense fallback={null}><ChapterHistoryDialog /></Suspense>}
       {showSettings && <AppSettingsDialog />}

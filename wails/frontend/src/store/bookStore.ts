@@ -7,12 +7,13 @@ import { DEFAULT_STYLE_OPTIONS } from '../types/draftline'
 import type { ParagraphDiff, DiffChange } from '../utils/diff'
 import { countBookWords } from '../utils/textUtils'
 
-import { NewBook, PickBookPath, SaveBook, SaveBookAs, SaveBookSnapshots, OpenRecentProject, IndexBook, MergeEntities, SplitEntity, ImportEPUB, ImportDOCX, ShowInfoDialog, CloseBookFile } from '../../wailsjs/go/main/App'
+import { NewBook, PickBookPath, SaveBook, SaveBookAs, SaveBookSnapshots, OpenRecentProject, OpenBookAsCopy, IndexBook, MergeEntities, SplitEntity, ImportEPUB, ImportDOCX, ShowInfoDialog, CloseBookFile } from '../../wailsjs/go/main/App'
 import { types } from '../../wailsjs/go/models'
 import { useAppStore } from './appStore'
 import { useEditorStore, type DiffTarget, type EditorInstance, type EditorSelection } from './editorStore'
 import { useStoryBibleStore } from './storyBibleStore'
 import { createEditionActions, type EditionActions } from './editions'
+import { deviceHoldingBook, type BookLockWarning } from './bookLock'
 import { resetChapterHistorySession, saveAIChapterHistory, saveManualChapterSnapshot, scheduleChapterHistory as queueChapterHistory, type ChapterHistoryDependencies } from './chapterHistory'
 
 // Status-bar text lives in appStore (app-level UI state); this is the funnel
@@ -23,11 +24,25 @@ const setStatus = (msg: string) => useAppStore.getState().setStatusMessage(msg)
 // full-screen overlay (feedback + input shield); the entry guard in each
 // open action prevents a second open racing the first — large archives take
 // a moment and the UI stays live while Go parses them.
-async function loadBookFromPath(path: string): Promise<void> {
+async function loadBookFromPath(path: string, force = false): Promise<void> {
+  if (!force) {
+    const holder = await deviceHoldingBook(path)
+    if (holder) {
+      useBookStore.setState(s => ({ dialogs: { ...s.dialogs, bookLockWarning: { path, info: holder } } }))
+      return
+    }
+  }
+  await adoptBook(() => OpenRecentProject(path), path)
+}
+
+// Opens the book a given call produces and puts it on screen. The two callers
+// differ only in which backend call they make: the book itself, or a copy of
+// it made because another device may have the original open.
+async function adoptBook(open: () => Promise<BookData>, path: string): Promise<void> {
   useBookStore.setState({ isOpening: true })
   const t0 = performance.now()
   try {
-    const book: BookData = await OpenRecentProject(path)
+    const book: BookData = await open()
     const tLoaded = performance.now()
     if (!book?.version) return
     const section: Section = book.body.length > 0 ? 'body' : 'front_matter'
@@ -203,6 +218,9 @@ interface DialogState {
   // (recent projects, OS file associations) through the unsaved-changes flow.
   pendingAction: 'new' | 'open' | { openPath: string } | { importPath: string } | null
   showNewBookWizard: boolean
+  // Set when a book about to be opened carries a claim from another device.
+  // Nothing is blocked; the author is told and chooses. See internal/booklock.
+  bookLockWarning: BookLockWarning | null
 }
 
 interface BookStore extends EditionActions {
@@ -279,6 +297,12 @@ interface BookStore extends EditionActions {
 
   // UI actions
   closeUnsavedWarning: () => void
+  // Answers to "this book may be open on another device". Opening anyway is
+  // allowed on purpose: the warning is a guess, and the author knows things
+  // the sidecar does not — that the laptop is shut, that it was them.
+  openBookAnyway: () => Promise<void>
+  openBookAsCopy: () => Promise<void>
+  cancelBookLockWarning: () => void
   saveAndProceed: () => Promise<void>
   discardAndProceed: () => Promise<void>
   initBook: () => Promise<void>
@@ -395,7 +419,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
   analysisRevision: 0,
 
   // UI state
-  dialogs: { showUnsavedWarning: false, pendingAction: null, showNewBookWizard: false },
+  dialogs: { showUnsavedWarning: false, pendingAction: null, showNewBookWizard: false, bookLockWarning: null },
 
   viewMode: 'editor',
   setViewMode: (mode) => set({ viewMode: mode }),
@@ -857,6 +881,22 @@ export const useBookStore = create<BookStore>((set, get) => ({
   // UI actions
 
   closeUnsavedWarning: () => set(s => ({ dialogs: { ...s.dialogs, showUnsavedWarning: false, pendingAction: null } })),
+
+  openBookAnyway: async () => {
+    const warning = get().dialogs.bookLockWarning
+    if (!warning) return
+    set(s => ({ dialogs: { ...s.dialogs, bookLockWarning: null } }))
+    await loadBookFromPath(warning.path, true)
+  },
+
+  openBookAsCopy: async () => {
+    const warning = get().dialogs.bookLockWarning
+    if (!warning) return
+    set(s => ({ dialogs: { ...s.dialogs, bookLockWarning: null } }))
+    await adoptBook(() => OpenBookAsCopy(warning.path), warning.path)
+  },
+
+  cancelBookLockWarning: () => set(s => ({ dialogs: { ...s.dialogs, bookLockWarning: null } })),
 
   initBook: async () => {
     try {
