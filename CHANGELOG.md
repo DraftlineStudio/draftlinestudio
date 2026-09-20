@@ -2,10 +2,15 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02684] - 2026-09-20
+
+### Changed
+- New books are saved to a Draftline folder inside Documents instead of Documents itself.
+
 ## [0.21.02683] - 2026-09-20
 
 ### Fixed
-- Turning AI features off now removes AI Studio from the settings menu.
+- Bug where AI Plugin disabled Failed to remove the "AI Studio" options area from the settings menu.
 
 ## [0.21.02682] - 2026-09-20
 

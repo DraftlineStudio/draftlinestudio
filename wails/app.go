@@ -43,7 +43,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.21.02683"
+const AppVersion = "0.21.02684"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -372,7 +372,7 @@ func (a *App) NewBook() types.BookData {
 			Title:    "Untitled",
 			Created:  now,
 			Modified: now,
-			BookID: types.NewBookID(),
+			BookID:   types.NewBookID(),
 		},
 		Copyright:   "",
 		FrontMatter: []types.ChapterItem{},
@@ -401,7 +401,7 @@ func (a *App) OpenBookDialog() (types.BookData, error) {
 func (a *App) PickBookPath() (string, error) {
 	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title:            "Open Draftline Project",
-		DefaultDirectory: a.getSettings().DefaultSaveDir,
+		DefaultDirectory: a.bookDialogDir(),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "Draftline Files (*.draftline)", Pattern: "*.draftline"},
 		},
@@ -479,7 +479,7 @@ func (a *App) SaveBookAs(book types.BookData) types.SaveResult {
 	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
 		Title:            "Save Draftline Project",
 		DefaultFilename:  defaultName + ".draftline",
-		DefaultDirectory: a.getSettings().DefaultSaveDir,
+		DefaultDirectory: a.bookDialogDir(),
 		Filters: []runtime.FileFilter{
 			{DisplayName: "Draftline Files (*.draftline)", Pattern: "*.draftline"},
 		},
@@ -633,8 +633,38 @@ func (a *App) settingsPath() string {
 
 // loadSettingsFromDisk reads settings.json verbatim (including a legacy
 // plaintext API key, which only startup's migration may see).
+// defaultSaveDir is Documents/Draftline. A writer's Documents folder is
+// usually already crowded, and projects bring lock files and exports with
+// them; a folder of their own is also somewhere a sync client can be pointed
+// at without capturing everything else.
+func defaultSaveDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	parent := filepath.Join(home, "Documents")
+	if info, err := os.Stat(parent); err != nil || !info.IsDir() {
+		parent = home
+	}
+	return filepath.Join(parent, "Draftline")
+}
+
+// bookDialogDir is the folder the open and save dialogs start in, created if
+// it is missing so the dialog does not silently fall back elsewhere.
+func (a *App) bookDialogDir() string {
+	dir := a.getSettings().DefaultSaveDir
+	if strings.TrimSpace(dir) == "" {
+		return ""
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return ""
+	}
+	return dir
+}
+
 func (a *App) loadSettingsFromDisk() types.AppSettings {
 	defaults := types.AppSettings{
+		DefaultSaveDir:          defaultSaveDir(),
 		AIEnabled:               false,
 		AIMode:                  "claudecode",
 		AITaskRoutes:            map[string]string{},
@@ -674,6 +704,11 @@ func (a *App) loadSettingsFromDisk() types.AppSettings {
 	s := defaults
 	if err := json.Unmarshal(data, &s); err != nil {
 		return defaults
+	}
+	// Settings written before this field had a default carry an empty string,
+	// which decodes over the default rather than leaving it alone.
+	if strings.TrimSpace(s.DefaultSaveDir) == "" {
+		s.DefaultSaveDir = defaults.DefaultSaveDir
 	}
 	return s
 }

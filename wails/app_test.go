@@ -3,7 +3,11 @@ package main
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
+
+	"draftline/internal/types"
 )
 
 // TestAcquireAISerializes covers the single AI-request slot semantics:
@@ -94,5 +98,46 @@ func TestProviderModelOverridesDoNotLeakAcrossTaskRoutes(t *testing.T) {
 	}
 	if got := app.resolveAIModel("claude-sonnet-4-6"); got != "claude-opus-4-6" {
 		t.Fatalf("compatible Claude override was not retained: %q", got)
+	}
+}
+
+func TestDefaultSaveDirIsAFolderOfItsOwn(t *testing.T) {
+	dir := defaultSaveDir()
+	if dir == "" {
+		t.Skip("no home directory on this machine")
+	}
+	if filepath.Base(dir) != "Draftline" {
+		t.Fatalf("defaultSaveDir = %q, want it to end in Draftline", dir)
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	parent := filepath.Dir(dir)
+	if parent != filepath.Join(home, "Documents") && parent != home {
+		t.Fatalf("defaultSaveDir = %q, want it under Documents or the home directory", dir)
+	}
+}
+
+func TestBookDialogDirCreatesTheFolderItPointsAt(t *testing.T) {
+	app := &App{}
+	want := filepath.Join(t.TempDir(), "Draftline")
+	app.setSettings(types.AppSettings{DefaultSaveDir: want})
+
+	// A dialog handed a directory that does not exist falls back to wherever
+	// the operating system feels like, which is the mess being avoided.
+	if got := app.bookDialogDir(); got != want {
+		t.Fatalf("bookDialogDir = %q, want %q", got, want)
+	}
+	if info, err := os.Stat(want); err != nil || !info.IsDir() {
+		t.Fatalf("the folder was not created: %v", err)
+	}
+}
+
+func TestBookDialogDirStaysEmptyWhenUnset(t *testing.T) {
+	app := &App{}
+	app.setSettings(types.AppSettings{DefaultSaveDir: "  "})
+	if got := app.bookDialogDir(); got != "" {
+		t.Fatalf("bookDialogDir = %q, want empty so the dialog picks", got)
 	}
 }
