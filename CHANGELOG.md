@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02683] - 2026-09-20
+
+### Fixed
+- Turning AI features off now removes AI Studio from the settings menu.
+
 ## [0.21.02682] - 2026-09-20
 
 ### Fixed

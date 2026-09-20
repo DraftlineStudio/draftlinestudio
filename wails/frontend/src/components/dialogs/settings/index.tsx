@@ -70,6 +70,11 @@ export default function AppSettingsDialog() {
 
   // AI state
   const [aiEnabled, setAiEnabled]         = useState(settings.ai_enabled)
+
+  useEffect(() => {
+    if (!aiEnabled && section === 'ai') setSection('plugins')
+  }, [aiEnabled, section])
+
   const [aiMode, setAiMode]               = useState<AIMode>(settings.ai_mode)
   const [taskRoutes, setTaskRoutes]        = useState(settings.ai_task_routes)
   const [provider, setProvider]           = useState<AIProvider>(settings.ai_provider)
@@ -343,12 +348,14 @@ export default function AppSettingsDialog() {
               </svg>
               Plugins
             </button>
-            <button className={`settings-nav-item${section === 'ai' ? ' active' : ''}`} onClick={() => setSection('ai')}>
-              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
-                <rect x="1" y="3" width="12" height="8" rx="2"/><circle cx="4.5" cy="7" r="1"/><circle cx="7" cy="7" r="1"/><circle cx="9.5" cy="7" r="1"/>
-              </svg>
-              AI Studio
-            </button>
+            {aiEnabled && (
+              <button className={`settings-nav-item${section === 'ai' ? ' active' : ''}`} onClick={() => setSection('ai')}>
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
+                  <rect x="1" y="3" width="12" height="8" rx="2"/><circle cx="4.5" cy="7" r="1"/><circle cx="7" cy="7" r="1"/><circle cx="9.5" cy="7" r="1"/>
+                </svg>
+                AI Studio
+              </button>
+            )}
             {readAloudEnabled && (
               <button className={`settings-nav-item${section === 'readaloud' ? ' active' : ''}`} onClick={() => setSection('readaloud')}>
                 <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
@@ -403,7 +410,7 @@ export default function AppSettingsDialog() {
               <PluginsSection enabled={pluginEnabled} onToggle={handlePluginToggle} />
             )}
 
-            {section === 'ai' && (
+            {section === 'ai' && aiEnabled && (
               <AIStudioSection
                 aiEnabled={aiEnabled} setAiEnabled={setAiEnabled}
                 aiMode={aiMode} setAiMode={setAiMode}
