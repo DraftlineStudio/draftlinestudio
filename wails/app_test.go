@@ -94,14 +94,14 @@ func TestNormalizeAIProviderMode(t *testing.T) {
 func TestProviderModelOverridesDoNotLeakAcrossTaskRoutes(t *testing.T) {
 	app := &App{}
 	app.settings.AIModel = "gpt-5.4"
-	if got := app.resolveAIModel("claude-sonnet-4-6"); got != "claude-sonnet-4-6" {
+	if got := app.resolveAIModel("claude-sonnet-5"); got != "claude-sonnet-5" {
 		t.Fatalf("OpenAI model leaked into Claude route: %q", got)
 	}
-	app.settings.AIModel = "claude-opus-4-6"
+	app.settings.AIModel = "claude-opus-5"
 	if got := app.resolveAIModel("gpt-4o"); got != "gpt-4o" {
 		t.Fatalf("Claude model leaked into OpenAI route: %q", got)
 	}
-	if got := app.resolveAIModel("claude-sonnet-4-6"); got != "claude-opus-4-6" {
+	if got := app.resolveAIModel("claude-sonnet-5"); got != "claude-opus-5" {
 		t.Fatalf("compatible Claude override was not retained: %q", got)
 	}
 }

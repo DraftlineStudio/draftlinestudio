@@ -94,9 +94,13 @@ export function IndexBook(arg1:types.BookData):Promise<types.IndexResult>;
 
 export function InspectBookLock(arg1:string):Promise<types.BookLockInfo>;
 
+export function ListAIProviderModels(arg1:string,arg2:string,arg3:string):Promise<Array<string>>;
+
 export function ListBackups():Promise<Array<types.BackupInfo>>;
 
 export function ListChapterHistory(arg1:string):Promise<Array<types.ChapterHistoryEntry>>;
+
+export function ListProviderModels(arg1:string):Promise<Array<string>>;
 
 export function LoadSettings():Promise<types.AppSettings>;
 

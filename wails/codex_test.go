@@ -22,12 +22,13 @@ func TestRewriteProfileTiersAndProviderModels(t *testing.T) {
 	}
 
 	a := &App{}
-	a.settings.AIModel = "claude-opus-4-6"
+	a.settings.AIModel = "claude-opus-5"
+	// No key, so the catalogue listing fails and the first preference is used.
 	// A bulk copy pass stays cheap even when a model is configured by hand.
-	if got := a.resolveTierModel(claudeAPITierModels, rewriteRequestProfile("copy_edit")); got != claudeAPITierModels[tierLite] {
+	if got := a.resolveTierModel(claudeLadder, "", rewriteRequestProfile("copy_edit")); got != claudeLadder.tiers[tierLite][0] {
 		t.Fatalf("copy edit did not stay on the lite model: %q", got)
 	}
-	if got := a.resolveTierModel(claudeAPITierModels, standardAIRequest); got != "claude-opus-4-6" {
+	if got := a.resolveTierModel(claudeLadder, "", standardAIRequest); got != "claude-opus-5" {
 		t.Fatalf("standard request did not preserve configured model: %q", got)
 	}
 }
@@ -44,8 +45,8 @@ func TestClaudeCodeUsesTierAliasesNotPinnedVersions(t *testing.T) {
 			t.Fatalf("%s asked for %q, want %q", mode, got, want)
 		}
 	}
-	a.settings.AIModel = "claude-sonnet-4-6"
-	if got := a.claudeCodeModel(standardAIRequest); got != "claude-sonnet-4-6" {
+	a.settings.AIModel = "claude-sonnet-5"
+	if got := a.claudeCodeModel(standardAIRequest); got != "claude-sonnet-5" {
 		t.Fatalf("a model set by hand should win: %q", got)
 	}
 	a.settings.AIModel = "gpt-4o"

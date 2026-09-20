@@ -42,7 +42,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.21.02686"
+const AppVersion = "0.21.02687"
 
 // App is the main application struct bound to the frontend.
 type App struct {
@@ -1293,7 +1293,7 @@ func (a *App) resolveAIModel(defaultModel string) string {
 // only OAuth credentials are present.
 func (a *App) callClaudeCode(ctx context.Context, system, userMsg string, profile aiRequestProfile) types.AIRewriteResult {
 	if apiKey := readClaudeAPIKey(); apiKey != "" {
-		model := a.resolveTierModel(claudeAPITierModels, profile)
+		model := a.resolveTierModel(claudeLadder, apiKey, profile)
 		runtime.EventsEmit(a.ctx, "ai:log", "Using the "+profile.tier.label()+" model: "+model)
 		runtime.EventsEmit(a.ctx, "ai:log", "Connecting to Anthropic API…")
 		result, err := providers.StreamAnthropic(providers.Request{

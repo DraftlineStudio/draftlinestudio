@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { SaveAIProvider, DeleteAIProvider, SetProviderKey, TestAIEndpoint } from '../../../../wailsjs/go/main/App'
+import { SaveAIProvider, DeleteAIProvider, SetProviderKey, TestAIEndpoint, ListAIProviderModels } from '../../../../wailsjs/go/main/App'
 import type { types } from '../../../../wailsjs/go/models'
 
 type Draft = { id: string; nickname: string; kind: string; base_url: string; model: string }
@@ -23,6 +23,7 @@ export default function AIProviders({ providers, onChanged }: Props) {
   const [apiKey, setApiKey] = useState('')
   const [status, setStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle')
   const [msg, setMsg] = useState('')
+  const [models, setModels] = useState<string[]>([])
 
   function edit(p?: types.AIProvider) {
     setDraft(p
@@ -31,6 +32,7 @@ export default function AIProviders({ providers, onChanged }: Props) {
     setApiKey('')
     setStatus('idle')
     setMsg('')
+    setModels([])
   }
 
   async function test() {
@@ -38,8 +40,13 @@ export default function AIProviders({ providers, onChanged }: Props) {
     setStatus('testing'); setMsg('')
     try {
       const res = await TestAIEndpoint(draft.base_url, apiKey)
-      if (res.error) { setStatus('error'); setMsg(res.error) }
-      else { setStatus('ok'); setMsg('Connected') }
+      if (res.error) { setStatus('error'); setMsg(res.error); return }
+      setStatus('ok')
+      // The same call that proves the endpoint answers also tells us what it
+      // serves, so the model field stops being a guess.
+      const ids = await ListAIProviderModels(draft.base_url, apiKey, draft.id).catch(() => [])
+      setModels(ids ?? [])
+      setMsg(ids?.length ? `Connected, ${ids.length} models` : 'Connected')
     } catch (e) {
       setStatus('error'); setMsg(String(e))
     }
@@ -159,7 +166,14 @@ export default function AIProviders({ providers, onChanged }: Props) {
               value={draft.model}
               onChange={e => setDraft({ ...draft, model: e.target.value })}
               placeholder={draft.kind === 'cloud' ? 'the model name this provider uses' : 'e.g. llama3, mistral, phi3'}
+              list="draftline-provider-models"
             />
+            <datalist id="draftline-provider-models">
+              {models.map(id => <option key={id} value={id} />)}
+            </datalist>
+            {models.length > 0 && (
+              <div className="settings-hint">Pick from the {models.length} this endpoint serves, or type your own.</div>
+            )}
           </div>
 
           {draft.kind === 'cloud' && (

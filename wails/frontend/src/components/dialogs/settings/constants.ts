@@ -1,15 +1,17 @@
 // Settings Dialog Constants
 
 export const CLAUDE_MODELS = [
-  { value: 'claude-opus-4-6',           label: 'Claude Opus 4.6 (most capable)' },
-  { value: 'claude-sonnet-4-6',         label: 'Claude Sonnet 4.6 (recommended)' },
+  { value: 'claude-opus-5',             label: 'Claude Opus 5 (most capable)' },
+  { value: 'claude-sonnet-5',           label: 'Claude Sonnet 5 (recommended)' },
   { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (fastest)' },
 ]
 
 export const OPENAI_MODELS = [
-  { value: 'gpt-4o',      label: 'GPT-4o (recommended)' },
-  { value: 'gpt-4o-mini', label: 'GPT-4o Mini (faster)' },
-  { value: 'o3',          label: 'o3 (reasoning)' },
+  { value: 'gpt-6-astra',   label: 'GPT-6 Astra (most capable)' },
+  { value: 'gpt-5.6-sol',   label: 'GPT-5.6 Sol' },
+  { value: 'gpt-5.6-terra', label: 'GPT-5.6 Terra (recommended)' },
+  { value: 'gpt-5.6-luna',  label: 'GPT-5.6 Luna (fastest)' },
+  { value: 'gpt-5.5',       label: 'GPT-5.5 (previous generation)' },
 ]
 
 export const BOOK_FONTS = [
@@ -26,6 +28,6 @@ export const TRIM_SIZES = [
 ]
 
 export const DEFAULT_MODELS: Record<string, string> = {
-  claude: 'claude-sonnet-4-6',
-  openai: 'gpt-4o',
+  claude: 'claude-sonnet-5',
+  openai: 'gpt-5.6-terra',
 }

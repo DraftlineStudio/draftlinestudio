@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
+	"sort"
 	"strings"
 	"time"
 
+	"draftline/internal/ai/providers"
 	"draftline/internal/types"
 
 	"github.com/zalando/go-keyring"
@@ -207,4 +210,43 @@ func (a *App) migrateAIProvidersOnce(s types.AppSettings) types.AppSettings {
 		log.Printf("could not save migrated AI providers: %v", err)
 	}
 	return migrated
+}
+
+// chatModelFilter drops ids that cannot answer a chat request, so the model
+// dropdown lists prose models rather than the whole catalogue.
+var nonChatModel = regexp.MustCompile(`(?i)embed|whisper|tts|audio|speech|image|dall-e|moderation|rerank|transcribe|realtime|search|codex`)
+
+// ListProviderModels asks a built-in provider what it serves, so the model
+// dropdown shows what the account can actually use today.
+func (a *App) ListProviderModels(provider string) []string {
+	switch provider {
+	case "claude":
+		return sortedChatModels(providers.ListModels(claudeLadder.baseURL, a.getAPIKey(), true))
+	case "openai":
+		return sortedChatModels(providers.ListModels(openAILadder.baseURL, a.getAPIKey(), false))
+	}
+	return nil
+}
+
+// ListAIProviderModels does the same for an endpoint the writer configured.
+// baseURL and apiKey come from the form so the list can be checked before the
+// provider is saved.
+func (a *App) ListAIProviderModels(baseURL, apiKey, id string) []string {
+	if strings.TrimSpace(apiKey) == "" && id != "" {
+		if p, ok := findAIProvider(a.getSettings().AIProviders, id); ok {
+			apiKey = a.providerKey(p)
+		}
+	}
+	return sortedChatModels(providers.ListModels(baseURL, apiKey, false))
+}
+
+func sortedChatModels(models map[string]bool) []string {
+	out := make([]string, 0, len(models))
+	for id := range models {
+		if !nonChatModel.MatchString(id) {
+			out = append(out, id)
+		}
+	}
+	sort.Strings(out)
+	return out
 }

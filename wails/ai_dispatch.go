@@ -40,10 +40,10 @@ func (a *App) dispatchAIWithMode(system, userMsg string, profile aiRequestProfil
 		}
 		switch s.AIProvider {
 		case "claude":
-			req.Model = a.resolveTierModel(claudeAPITierModels, profile)
+			req.Model = a.resolveTierModel(claudeLadder, req.APIKey, profile)
 			return providers.Claude(req)
 		case "openai":
-			req.Model = a.resolveTierModel(openAITierModels, profile)
+			req.Model = a.resolveTierModel(openAILadder, req.APIKey, profile)
 			return providers.OpenAI(req)
 		default:
 			return types.AIRewriteResult{Error: "unknown provider: " + s.AIProvider}

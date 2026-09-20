@@ -116,7 +116,7 @@ func TestSelectCodexLightweightModelUsesAvailableFastTier(t *testing.T) {
 }
 
 func TestCodexModelOverrideRejectsOtherProviders(t *testing.T) {
-	for _, model := range []string{"claude-sonnet-4-6", " Gemini-2.5-pro ", "grok-2", "llama3"} {
+	for _, model := range []string{"claude-sonnet-5", " Gemini-2.5-pro ", "grok-2", "llama3"} {
 		if got := CodexModelOverride(model); got != "" {
 			t.Fatalf("provider-specific model %q leaked into Codex as %q", model, got)
 		}
@@ -129,10 +129,10 @@ func TestCodexModelOverrideRejectsOtherProviders(t *testing.T) {
 func TestCodexFailureMessageDoesNotEchoPrompt(t *testing.T) {
 	stderr := `OpenAI Codex v0.149.0
 --------
-model: claude-sonnet-4-6
+model: claude-sonnet-5
 user
 You are a skilled literary prose editor. Rewrite this private manuscript.
-ERROR: {"detail":"The model claude-sonnet-4-6 is not supported."}`
+ERROR: {"detail":"The model claude-sonnet-5 is not supported."}`
 	message := CodexFailureMessage(stderr, errors.New("exit status 1"))
 	if strings.Contains(message, "private manuscript") || strings.Contains(message, "skilled literary") {
 		t.Fatalf("prompt leaked into error message: %q", message)

@@ -2,7 +2,8 @@
 
 import type { AIStudioSectionProps, AIProvider } from './types'
 import { CLAUDE_MODELS, OPENAI_MODELS, DEFAULT_MODELS } from './constants'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { ListProviderModels } from '../../../../wailsjs/go/main/App'
 import type { AIEditingTask, AIProviderMode } from '../../../services/aiRouting'
 import { setTaskProvider } from '../../../services/aiRouting'
 import AIProvidersList from './AIProviders'
@@ -38,10 +39,27 @@ export default function AIStudioSection({
   onCheckCx, onSetupCx, onOpenCxAuth,
 }: AIStudioSectionProps) {
   const [showKey, setShowKey] = useState(false)
+  const [liveModels, setLiveModels] = useState<string[]>([])
 
-  const modelOptions = provider === 'claude' ? CLAUDE_MODELS
+  // Ask the provider what it serves. The built-in list is only the fallback
+  // for an account that cannot be reached, so a retired model never sits in
+  // the dropdown looking selectable.
+  useEffect(() => {
+    setLiveModels([])
+    if (!aiEnabled || aiMode !== 'api' || !provider || !hasStoredKey) return
+    let cancelled = false
+    ListProviderModels(provider)
+      .then(ids => { if (!cancelled && ids?.length) setLiveModels(ids) })
+      .catch(() => { /* the built-in list stands in */ })
+    return () => { cancelled = true }
+  }, [aiEnabled, aiMode, provider, hasStoredKey])
+
+  const fallbackModels = provider === 'claude' ? CLAUDE_MODELS
     : provider === 'openai' ? OPENAI_MODELS
     : []
+  const modelOptions = liveModels.length
+    ? liveModels.map(id => ({ value: id, label: id }))
+    : fallbackModels
 
   const activeProvider = providers.find(p => p.id === aiMode)
   const modeName = (m: string) =>
@@ -54,7 +72,7 @@ export default function AIStudioSection({
 
   function handleModeChange(m: typeof aiMode) {
     setAiMode(m)
-    if (m === 'claudecode' && !model) setModel('claude-sonnet-4-6')
+    if (m === 'claudecode' && !model) setModel('claude-sonnet-5')
     // Codex: no default model — the CLI's own current default is used.
     if (m === 'codex' && model.startsWith('claude')) setModel('')
   }
@@ -171,6 +189,11 @@ export default function AIStudioSection({
               <select className="dialog-select" value={model} onChange={e => setModel(e.target.value)}>
                 {modelOptions.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
               </select>
+              <div className="settings-hint">
+                {liveModels.length
+                  ? `${liveModels.length} models available on your account.`
+                  : 'Add a key to list the models your account can actually use.'}
+              </div>
             </div>
             <div className="dialog-field">
               <label className="dialog-label">API Key</label>
@@ -376,7 +399,7 @@ function CLISetupSection({
         flavor === 'claude' ? (
           <div className="dialog-field" style={{ marginTop: 12 }}>
             <label className="dialog-label">Model</label>
-            <select className="dialog-select" value={model || 'claude-sonnet-4-6'} onChange={e => setModel(e.target.value)}>
+            <select className="dialog-select" value={model || 'claude-sonnet-5'} onChange={e => setModel(e.target.value)}>
               {CLAUDE_MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
             </select>
           </div>

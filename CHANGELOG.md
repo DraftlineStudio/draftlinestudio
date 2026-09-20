@@ -2,6 +2,16 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02687] - 2026-09-20
+
+### Added
+- The model list in AI settings now comes from your own account, so it shows what you can actually use rather than a built-in list.
+- Testing a provider you configured also lists the models that endpoint serves, and offers them in the model field.
+
+### Changed
+- Draftline asks each provider what it serves before choosing a model for a task, and moves down its preferences when one is gone.
+- Updated the Claude and OpenAI model names to the current generations.
+
 ## [0.21.02686] - 2026-09-20
 
 ### Changed

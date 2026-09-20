@@ -182,12 +182,20 @@ export function InspectBookLock(arg1) {
   return window['go']['main']['App']['InspectBookLock'](arg1);
 }
 
+export function ListAIProviderModels(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ListAIProviderModels'](arg1, arg2, arg3);
+}
+
 export function ListBackups() {
   return window['go']['main']['App']['ListBackups']();
 }
 
 export function ListChapterHistory(arg1) {
   return window['go']['main']['App']['ListChapterHistory'](arg1);
+}
+
+export function ListProviderModels(arg1) {
+  return window['go']['main']['App']['ListProviderModels'](arg1);
 }
 
 export function LoadSettings() {
