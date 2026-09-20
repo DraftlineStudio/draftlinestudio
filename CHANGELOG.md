@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02681] - 2026-09-19
+
+### Added
+- Draftline warns before opening a book that may already be open on another device, and offers to open a copy instead.
+
 ## [0.21.02680] - 2026-09-18
 
 ### Changed
