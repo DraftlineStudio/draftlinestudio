@@ -248,6 +248,28 @@ export namespace readaloud {
 
 export namespace types {
 	
+	export class AIProvider {
+	    id: string;
+	    nickname: string;
+	    kind: string;
+	    base_url: string;
+	    model: string;
+	    api_key?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AIProvider(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.nickname = source["nickname"];
+	        this.kind = source["kind"];
+	        this.base_url = source["base_url"];
+	        this.model = source["model"];
+	        this.api_key = source["api_key"];
+	    }
+	}
 	export class AIRewriteResult {
 	    result: string;
 	    error?: string;
@@ -1004,12 +1026,13 @@ export namespace types {
 	    ai_mode: string;
 	    ai_task_routes?: Record<string, string>;
 	    ai_provider: string;
+	    ai_providers?: AIProvider[];
 	    ai_api_key?: string;
 	    has_api_key: boolean;
 	    ai_debug_logging: boolean;
 	    ai_model: string;
-	    ai_local_endpoint: string;
-	    ai_local_model: string;
+	    ai_local_endpoint?: string;
+	    ai_local_model?: string;
 	    prose_guide: string;
 	    book_font: string;
 	    editor_font_size: string;
@@ -1058,6 +1081,7 @@ export namespace types {
 	        this.ai_mode = source["ai_mode"];
 	        this.ai_task_routes = source["ai_task_routes"];
 	        this.ai_provider = source["ai_provider"];
+	        this.ai_providers = this.convertValues(source["ai_providers"], AIProvider);
 	        this.ai_api_key = source["ai_api_key"];
 	        this.has_api_key = source["has_api_key"];
 	        this.ai_debug_logging = source["ai_debug_logging"];
@@ -1077,6 +1101,24 @@ export namespace types {
 	        this.plugins_enabled = source["plugins_enabled"];
 	        this.plugin_settings = source["plugin_settings"];
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class AudioOptions {
 	    includeCopyright: boolean;

@@ -51,16 +51,13 @@ export default function AiStudioTab() {
       .finally(() => setCxChecking(false))
   }
 
-  // Check both CLIs on mount so the provider quick-switcher shows accurate
-  // ready states without a trip through settings.
+  // Check both CLIs on mount so the quick-switcher shows real ready states.
   useEffect(() => {
     void refreshClaudeStatus()
     void refreshCodexStatus()
   }, [])
 
-  // The settings dialog owns its own setup-status state. Re-check when it
-  // closes so this already-mounted sidebar cannot keep displaying the stale
-  // result it captured before a CLI was installed or authenticated.
+  // Re-check on close: settings owns its own status, so ours goes stale.
   useEffect(() => {
     if (showSettings) {
       settingsWasOpen.current = true
@@ -72,22 +69,23 @@ export default function AiStudioTab() {
     void refreshCodexStatus()
   }, [showSettings])
 
-  // Authentication can finish while settings remains open or after the user
-  // closes it. Refresh immediately in either case.
+  // Authentication can finish with settings still open, so refresh either way.
   useEffect(() => {
     const offClaude = EventsOn('claude:auth_complete', () => { void refreshClaudeStatus() })
     const offCodex = EventsOn('codex:auth_complete', () => { void refreshCodexStatus() })
     return () => { offClaude(); offCodex() }
   }, [])
 
-  const taskProvider = resolveTaskProvider(settings.ai_mode, settings.ai_task_routes, aiMode)
+  const customProviders = settings.ai_providers ?? []
+  const taskProvider = resolveTaskProvider(settings.ai_mode, settings.ai_task_routes, aiMode, customProviders.map(p => p.id))
+  const activeCustom = customProviders.find(p => p.id === taskProvider)
 
   // Determine if the provider assigned to this editing task is configured.
   const aiConfigured = settings.ai_enabled && (
     (taskProvider === 'claudecode' && ccStatus?.installed && ccStatus?.authenticated) ||
     (taskProvider === 'codex' && cxStatus?.installed && cxStatus?.authenticated) ||
     (taskProvider === 'api' && settings.ai_provider !== '' && settings.has_api_key) ||
-    (taskProvider === 'local' && settings.ai_local_endpoint !== '' && settings.ai_local_model !== '')
+    (!!activeCustom && activeCustom.base_url !== '' && activeCustom.model !== '')
   )
 
   function getCurrentHTML(): string {
@@ -102,7 +100,7 @@ export default function AiStudioTab() {
   function getAiLabel(): string {
     if (taskProvider === 'claudecode') return 'Claude Code'
     if (taskProvider === 'codex') return 'Codex'
-    if (taskProvider === 'local') return settings.ai_local_model || 'Local AI'
+    if (activeCustom) return activeCustom.model || activeCustom.nickname
     const providerLabels: Record<string, string> = {
       claude: 'Claude',
       openai: 'OpenAI',
@@ -114,11 +112,10 @@ export default function AiStudioTab() {
 
   const currentMode = AI_MODES.find(m => m.id === aiMode)!
 
-  // Provider quick-switcher routes, derived from what's actually configured
-  // in AI Studio settings. One API row: the app stores a single key for the
-  // currently selected provider (see docs/frontend/AI-STUDIO-GAPS.md).
-  const providerLabels: Record<string, string> = { claude: 'Claude', openai: 'OpenAI', gemini: 'Gemini', grok: 'Grok' }
-  const routes: { mode: typeof settings.ai_mode; name: string; mono: string; ready: boolean; model: string }[] = [
+  // Quick-switcher routes. One API row: a single key is stored for the
+  // selected built-in provider (docs/frontend/AI-STUDIO-GAPS.md).
+  const providerLabels: Record<string, string> = { claude: 'Claude', openai: 'OpenAI' }
+  const routes: { mode: string; name: string; mono: string; ready: boolean; model: string }[] = [
     {
       mode: 'claudecode', name: 'Claude Code', mono: 'C',
       ready: !!(ccStatus?.installed && ccStatus?.authenticated),
@@ -127,7 +124,7 @@ export default function AiStudioTab() {
     {
       mode: 'codex', name: 'Codex', mono: 'O',
       ready: !!(cxStatus?.installed && cxStatus?.authenticated),
-      model: taskProvider === 'codex' && !/^(claude|gemini|grok|llama|mistral)/i.test(settings.ai_model)
+      model: taskProvider === 'codex' && !/^(claude|llama|mistral)/i.test(settings.ai_model)
         ? settings.ai_model || 'ChatGPT account'
         : 'ChatGPT account',
     },
@@ -139,11 +136,13 @@ export default function AiStudioTab() {
       model: (taskProvider === 'api' && settings.ai_model)
         || (settings.ai_provider ? providerLabels[settings.ai_provider] : 'no key stored'),
     },
-    {
-      mode: 'local', name: 'Local', mono: 'L',
-      ready: settings.ai_local_endpoint !== '' && settings.ai_local_model !== '',
-      model: settings.ai_local_model || settings.ai_local_endpoint || 'no endpoint',
-    },
+    ...customProviders.map(p => ({
+      mode: p.id,
+      name: p.nickname,
+      mono: (p.nickname[0] || 'P').toUpperCase(),
+      ready: p.base_url !== '' && p.model !== '',
+      model: p.model || 'no model set',
+    })),
   ]
   const activeRoute = routes.find(r => r.mode === taskProvider) ?? routes[0]
 
@@ -155,8 +154,7 @@ export default function AiStudioTab() {
   }
 
   async function handleRun() {
-    // Read directly from TipTap when available. The book-store copy is
-    // debounced while typing and may lag behind the visible chapter.
+    // TipTap first: the book-store copy is debounced and can lag.
     const fullHtml = useEditorStore.getState().editorRef?.getHTML() ?? getCurrentHTML()
     if (!fullHtml || fullHtml === '<p></p>') return
     const requestSection = currentSection
@@ -549,7 +547,7 @@ interface AiSetupGuidanceProps {
   ccChecking: boolean
   cxStatus: types.ClaudeCodeStatus | null
   cxChecking: boolean
-  settings: { ai_mode: string; ai_provider: string; has_api_key: boolean; ai_local_endpoint: string; ai_local_model: string }
+  settings: { ai_mode: string; ai_provider: string; has_api_key: boolean; ai_providers?: types.AIProvider[] }
   providerMode: string
   onOpenSettings: () => void
 }
@@ -559,18 +557,16 @@ function AiSetupGuidance({ ccStatus, ccChecking, cxStatus, cxChecking, settings,
   const ccInstalled = ccStatus?.installed
   const ccAuthenticated = ccStatus?.authenticated
   const hasApiKey = settings.ai_provider !== '' && settings.has_api_key
-  const hasLocalEndpoint = settings.ai_local_endpoint !== '' && settings.ai_local_model !== ''
+  const hasConfiguredProvider = (settings.ai_providers ?? []).some(p => p.base_url !== '' && p.model !== '')
 
-  // Do not steer a fresh installation toward one vendor simply because the
-  // legacy default mode happens to be Claude Code. Wait for both checks, then
-  // present the provider-neutral setup route when nothing is installed or
-  // configured yet.
+  // Wait for both checks before steering, so a fresh install is not pushed
+  // toward Claude Code just because it is the legacy default mode.
   const checksComplete = ccStatus !== null && cxStatus !== null && !ccChecking && !cxChecking
   const hasNoProvider = checksComplete
     && !ccStatus.installed
     && !cxStatus.installed
     && !hasApiKey
-    && !hasLocalEndpoint
+    && !hasConfiguredProvider
   if (hasNoProvider) {
     return <NoAIProviderSetup onOpenSettings={onOpenSettings} />
   }
@@ -691,8 +687,9 @@ function AiSetupGuidance({ ccStatus, ccChecking, cxStatus, cxChecking, settings,
     )
   }
 
-  // If Local mode is selected but no endpoint
-  if (providerMode === 'local' && !hasLocalEndpoint) {
+  // A configured provider that is missing an endpoint or a model.
+  const selected = (settings.ai_providers ?? []).find(p => p.id === providerMode)
+  if (selected && (selected.base_url === '' || selected.model === '')) {
     return (
       <div className="ai-setup-pane">
         <div className="ai-setup-icon">
@@ -701,9 +698,9 @@ function AiSetupGuidance({ ccStatus, ccChecking, cxStatus, cxChecking, settings,
             <path d="M8 21h8m-4-4v4"/>
           </svg>
         </div>
-        <div className="ai-setup-title">Local AI Not Configured</div>
+        <div className="ai-setup-title">{selected.nickname} Not Configured</div>
         <p className="ai-setup-desc">
-          Configure your local AI endpoint (e.g., Ollama, LM Studio) in Settings.
+          Set an endpoint and a model for {selected.nickname} in Settings.
         </p>
         <button className="ai-run-btn" onClick={onOpenSettings}>
           Configure Endpoint

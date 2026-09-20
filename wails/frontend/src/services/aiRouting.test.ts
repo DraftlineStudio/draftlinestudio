@@ -7,11 +7,16 @@ describe('AI task routing', () => {
   })
 
   it('routes each editing task independently', () => {
-    const routes = { line_edit: 'claudecode', expand: 'api', smooth: 'local' } as const
-    expect(resolveTaskProvider('codex', routes, 'line_edit')).toBe('claudecode')
-    expect(resolveTaskProvider('codex', routes, 'copy_edit')).toBe('codex')
-    expect(resolveTaskProvider('codex', routes, 'expand')).toBe('api')
-    expect(resolveTaskProvider('codex', routes, 'smooth')).toBe('local')
+    const routes = { line_edit: 'claudecode', expand: 'api', smooth: 'ollama' } as const
+    expect(resolveTaskProvider('codex', routes, 'line_edit', ['ollama'])).toBe('claudecode')
+    expect(resolveTaskProvider('codex', routes, 'copy_edit', ['ollama'])).toBe('codex')
+    expect(resolveTaskProvider('codex', routes, 'expand', ['ollama'])).toBe('api')
+    expect(resolveTaskProvider('codex', routes, 'smooth', ['ollama'])).toBe('ollama')
+  })
+
+  it('falls back to the default when a route names a deleted provider', () => {
+    const routes = { expand: 'ollama' } as const
+    expect(resolveTaskProvider('codex', routes, 'expand', [])).toBe('codex')
   })
 
   it('can restore a task to the default without disturbing other routes', () => {

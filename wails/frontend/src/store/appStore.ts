@@ -40,15 +40,14 @@ export interface AppSettings {
   read_aloud_glow: boolean
   // AI
   ai_enabled: boolean
-  ai_mode: 'claudecode' | 'codex' | 'api' | 'local'
+  ai_mode: string
   ai_task_routes: AITaskRoutes
-  ai_provider: 'claude' | 'openai' | 'gemini' | 'grok' | ''
+  ai_provider: 'claude' | 'openai' | ''
   characters_lane_view: 'grid' | 'heat' | 'weave'
   has_api_key: boolean
   ai_debug_logging: boolean
   ai_model: string
-  ai_local_endpoint: string
-  ai_local_model: string
+  ai_providers: types.AIProvider[]
   prose_guide: string
   // Book defaults
   book_font: string
@@ -168,8 +167,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   has_api_key: false,
   ai_debug_logging: false,
   ai_model: '',
-  ai_local_endpoint: 'http://localhost:11434/v1',
-  ai_local_model: '',
+  ai_providers: [],
   prose_guide: '',
   book_font: 'Merriweather',
   editor_font_size: 'normal',
@@ -262,7 +260,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     // and writes are ordered — no lost update from interleaving.
     const run = saveChain.then(async () => {
       try {
-        await SaveSettings(get().settings)
+        await SaveSettings(types.AppSettings.createFrom(get().settings))
       } catch (e) {
         console.error('Failed to save settings:', e)
       }

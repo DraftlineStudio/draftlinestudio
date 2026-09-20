@@ -49,12 +49,15 @@ type AppSettings struct {
 	CharactersLaneView string `json:"characters_lane_view"`
 	// AI
 	AIEnabled bool   `json:"ai_enabled"`
-	AIMode    string `json:"ai_mode"` // "claudecode" | "codex" | "api" | "local"
+	AIMode    string `json:"ai_mode"` // "claudecode" | "codex" | "api" | an AIProviders id
 	// AITaskRoutes optionally overrides AIMode for individual editing tasks.
 	// Missing keys inherit AIMode. Supported keys are line_edit, copy_edit,
 	// expand, smooth, and custom.
 	AITaskRoutes map[string]string `json:"ai_task_routes,omitempty"`
 	AIProvider   string            `json:"ai_provider"` // "claude" | "openai" | ""
+	// AIProviders are endpoints the writer configured themselves. Anything
+	// beyond Claude and OpenAI is reached this way rather than being built in.
+	AIProviders []AIProvider `json:"ai_providers,omitempty"`
 	// AIAPIKey is legacy: keys now live in the OS keyring. The tag is kept
 	// (with omitempty) so old settings.json files can still be read and
 	// migrated; it is never returned to the frontend or written back once the
@@ -65,8 +68,10 @@ type AppSettings struct {
 	// AIDebugLogging opts in to writing prompts/manuscript text to local logs.
 	AIDebugLogging  bool   `json:"ai_debug_logging"`
 	AIModel         string `json:"ai_model"`
-	AILocalEndpoint string `json:"ai_local_endpoint"` // e.g. http://localhost:11434/v1
-	AILocalModel    string `json:"ai_local_model"`
+	// AILocalEndpoint and AILocalModel are legacy: the local endpoint is now
+	// one AIProviders entry. Kept so older settings files migrate.
+	AILocalEndpoint string `json:"ai_local_endpoint,omitempty"`
+	AILocalModel    string `json:"ai_local_model,omitempty"`
 	ProseGuide      string `json:"prose_guide"`
 	// Book defaults
 	BookFont          string `json:"book_font"`
@@ -97,4 +102,16 @@ type ClaudeCodeStatus struct {
 	NpmAvailable  bool   `json:"npm_available"`
 	Version       string `json:"version"`
 	Error         string `json:"error,omitempty"`
+}
+
+// AIProvider is an OpenAI-compatible endpoint the writer configured. Kind
+// "cloud" sends the stored key as a bearer token; "local" sends no credentials.
+type AIProvider struct {
+	ID       string `json:"id"`
+	Nickname string `json:"nickname"`
+	Kind     string `json:"kind"` // "cloud" | "local"
+	BaseURL  string `json:"base_url"`
+	Model    string `json:"model"`
+	// APIKey is the fallback for machines with no keyring, mirroring AIAPIKey.
+	APIKey string `json:"api_key,omitempty"`
 }

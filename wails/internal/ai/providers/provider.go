@@ -1,9 +1,5 @@
-// Package providers contains the AI provider transport layer: direct HTTP
-// clients for the Anthropic, OpenAI, Gemini, Grok, and local
-// (OpenAI-compatible) endpoints, plus the pure helpers shared by the CLI
-// drivers that remain in package main. It imports only the standard library
-// and internal/types — never the Wails runtime; the app injects an emit
-// closure so runtime events stay decoupled.
+// Package providers holds the AI transport layer: HTTP clients for Anthropic,
+// OpenAI and user-configured endpoints, plus the helpers the CLI drivers share.
 package providers
 
 import (
@@ -14,8 +10,8 @@ import (
 	"draftline/internal/types"
 )
 
-// Request carries everything a provider needs; app.go resolves the model and
-// API key and injects an emit closure so the Wails runtime never leaks in here.
+// Request carries everything a provider needs. The app resolves the model and
+// key, and injects emit so the Wails runtime never leaks in here.
 type Request struct {
 	Ctx      context.Context
 	System   string
@@ -26,23 +22,17 @@ type Request struct {
 	Emit     func(event string, data any)
 }
 
-// emit forwards an event to the app's emit closure, tolerating a nil Emit so
-// providers can be exercised in tests without wiring up an event sink.
+// emit tolerates a nil Emit so providers can be tested without an event sink.
 func (r Request) emit(event string, data any) {
 	if r.Emit != nil {
 		r.Emit(event, data)
 	}
 }
 
-// maxAIResponseBytes caps how much of a provider HTTP response body we will
-// read into memory. It sits comfortably above any plausible max-output-tokens
-// payload while preventing a hostile or malfunctioning endpoint from exhausting
-// memory via an unbounded body (audit Sol SEC-007).
+// maxAIResponseBytes stops a hostile or broken endpoint exhausting memory.
 const maxAIResponseBytes = 16 << 20 // 16 MB
 
-// readAIResponseBody reads a provider response body up to maxAIResponseBytes.
-// If the body exceeds the cap it returns a clear "response too large" error
-// instead of buffering it all.
+// readAIResponseBody reads a response body up to maxAIResponseBytes.
 func readAIResponseBody(r io.Reader) ([]byte, error) {
 	body, err := io.ReadAll(io.LimitReader(r, maxAIResponseBytes+1))
 	if err != nil {

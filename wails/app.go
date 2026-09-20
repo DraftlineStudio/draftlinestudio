@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -43,7 +42,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.21.02684"
+const AppVersion = "0.21.02685"
 
 type aiRequestProfile struct {
 	lightweight bool
@@ -348,6 +347,8 @@ func (a *App) startup(ctx context.Context) {
 	}
 	raw.AIAPIKey = ""
 	a.setSettings(raw)
+	// After setSettings: moving the legacy key reads and rewrites settings.
+	a.setSettings(a.migrateAIProvidersOnce(raw))
 	logging.SetEnabled(raw.AIDebugLogging)
 
 	a.initPlugins(pluginDevDir(os.Args[1:]))
@@ -718,6 +719,11 @@ func (a *App) loadSettingsFromDisk() types.AppSettings {
 func (a *App) LoadSettings() types.AppSettings {
 	s := a.loadSettingsFromDisk()
 	s.AIAPIKey = ""
+	// Provider keys are stored outside the keyring on machines without one.
+	// They must not cross the bridge any more than the main key does.
+	for i := range s.AIProviders {
+		s.AIProviders[i].APIKey = ""
+	}
 	s.HasAPIKey = a.HasAPIKey()
 	return s
 }
@@ -734,6 +740,9 @@ func (a *App) writeSettingsFile(settings types.AppSettings) error {
 func (a *App) SaveSettings(settings types.AppSettings) error {
 	// Never trust a key from the frontend; keys arrive via SetAPIKey only.
 	settings.AIAPIKey = ""
+	// Providers have their own calls. A settings round-trip must not revert
+	// them, and cannot: the frontend's copy has the keys stripped.
+	settings.AIProviders = a.getSettings().AIProviders
 	a.setSettings(settings)
 	logging.SetEnabled(settings.AIDebugLogging)
 
@@ -929,24 +938,6 @@ func (a *App) ClearRecentProjects() error {
 // OpenRecentProject opens a project from the recent list by path.
 func (a *App) OpenRecentProject(path string) (types.BookData, error) {
 	return a.openBook(path)
-}
-
-// TestLocalAI makes a quick connectivity check to a local OpenAI-compatible endpoint.
-func (a *App) TestLocalAI(endpoint string) types.AIRewriteResult {
-	if endpoint == "" {
-		return types.AIRewriteResult{Error: "No endpoint URL configured"}
-	}
-	url := strings.TrimRight(endpoint, "/") + "/models"
-	client := &http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Get(url)
-	if err != nil {
-		return types.AIRewriteResult{Error: "Could not connect: " + err.Error()}
-	}
-	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode >= 400 {
-		return types.AIRewriteResult{Error: fmt.Sprintf("Server returned %d", resp.StatusCode)}
-	}
-	return types.AIRewriteResult{Result: "Connected"}
 }
 
 // RewriteText sends the HTML chapter content to the configured AI provider.

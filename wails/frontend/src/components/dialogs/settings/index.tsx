@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useAppStore } from '../../../store/appStore'
-import { TestLocalAI, CheckClaudeCode, SetupClaudeCode, OpenClaudeAuth, CheckCodexCLI, SetupCodexCLI, OpenCodexAuth, GetAppVersion, SetAPIKey, ClearAPIKey } from '../../../../wailsjs/go/main/App'
+import { CheckClaudeCode, SetupClaudeCode, OpenClaudeAuth, CheckCodexCLI, SetupCodexCLI, OpenCodexAuth, GetAppVersion, SetAPIKey, ClearAPIKey } from '../../../../wailsjs/go/main/App'
 import { EventsOn } from '../../../../wailsjs/runtime/runtime'
 import type { types } from '../../../../wailsjs/go/models'
-import type { SettingsSection, AIMode, AIProvider, ThemeMode, EditorFontSize, AnalysisCPUProfile, ClaudeCodeSetupStep, TestStatus } from './types'
+import type { SettingsSection, AIMode, AIProvider, ThemeMode, EditorFontSize, AnalysisCPUProfile, ClaudeCodeSetupStep } from './types'
 import ApplicationSection from './ApplicationSection'
 import AuthorSection from './AuthorSection'
 import AIStudioSection from './AIStudioSection'
@@ -84,11 +84,8 @@ export default function AppSettingsDialog() {
   const [hasStoredKey, setHasStoredKey]   = useState(settings.has_api_key)
   const [debugLogging, setDebugLogging]   = useState(settings.ai_debug_logging)
   const [model, setModel]                 = useState(settings.ai_model)
-  const [localEndpoint, setLocalEndpoint] = useState(settings.ai_local_endpoint)
-  const [localModel, setLocalModel]       = useState(settings.ai_local_model)
+  const [providers, setProviders]         = useState(settings.ai_providers ?? [])
   const [proseGuide, setProseGuide]       = useState(settings.prose_guide)
-  const [testStatus, setTestStatus]       = useState<TestStatus>('idle')
-  const [testMsg, setTestMsg]             = useState('')
   const [ccStatus, setCcStatus]           = useState<types.ClaudeCodeStatus | null>(null)
   const [ccChecking, setCcChecking]       = useState(false)
   const [ccSetupStep, setCcSetupStep]     = useState<ClaudeCodeSetupStep>('idle')
@@ -216,16 +213,11 @@ export default function AppSettingsDialog() {
     try { await OpenCodexAuth() } catch { /* ignore */ }
   }
 
-  async function handleTestLocal() {
-    setTestStatus('testing')
-    setTestMsg('')
-    try {
-      const res = await TestLocalAI(localEndpoint)
-      if (res.error) { setTestStatus('error'); setTestMsg(res.error) }
-      else { setTestStatus('ok'); setTestMsg('Connected') }
-    } catch (e) {
-      setTestStatus('error'); setTestMsg(String(e))
-    }
+  // Providers save immediately, so the list is reloaded rather than
+  // collected with the rest of the form.
+  async function handleProvidersChanged() {
+    await loadSettings()
+    setProviders(useAppStore.getState().settings.ai_providers ?? [])
   }
 
   async function handleBrowse() {
@@ -280,8 +272,6 @@ export default function AppSettingsDialog() {
       ai_provider: provider,
       ai_debug_logging: debugLogging,
       ai_model: model,
-      ai_local_endpoint: localEndpoint.trim(),
-      ai_local_model: localModel.trim(),
       prose_guide: proseGuide,
       book_font: bookFont,
       editor_font_size: editorFontSize,
@@ -420,8 +410,7 @@ export default function AppSettingsDialog() {
                 hasStoredKey={hasStoredKey} onClearKey={handleClearKey}
                 debugLogging={debugLogging} setDebugLogging={setDebugLogging}
                 model={model} setModel={setModel}
-                localEndpoint={localEndpoint} setLocalEndpoint={setLocalEndpoint}
-                localModel={localModel} setLocalModel={setLocalModel}
+                providers={providers} onProvidersChanged={handleProvidersChanged}
                 proseGuide={proseGuide} setProseGuide={setProseGuide}
                 ccStatus={ccStatus} ccChecking={ccChecking}
                 ccSetupStep={ccSetupStep} ccSetupLog={ccSetupLog}
@@ -429,7 +418,6 @@ export default function AppSettingsDialog() {
                 cxStatus={cxStatus} cxChecking={cxChecking}
                 cxSetupStep={cxSetupStep} cxSetupLog={cxSetupLog}
                 onCheckCx={handleCheckCx} onSetupCx={handleSetupCx} onOpenCxAuth={handleOpenCxAuth}
-                testStatus={testStatus} testMsg={testMsg} onTestLocal={handleTestLocal}
               />
             )}
 

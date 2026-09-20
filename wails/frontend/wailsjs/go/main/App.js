@@ -82,6 +82,10 @@ export function CloseBookFile() {
   return window['go']['main']['App']['CloseBookFile']();
 }
 
+export function DeleteAIProvider(arg1) {
+  return window['go']['main']['App']['DeleteAIProvider'](arg1);
+}
+
 export function DeleteCharacterEvent(arg1, arg2) {
   return window['go']['main']['App']['DeleteCharacterEvent'](arg1, arg2);
 }
@@ -274,6 +278,10 @@ export function RewriteTextCustom(arg1, arg2, arg3) {
   return window['go']['main']['App']['RewriteTextCustom'](arg1, arg2, arg3);
 }
 
+export function SaveAIProvider(arg1) {
+  return window['go']['main']['App']['SaveAIProvider'](arg1);
+}
+
 export function SaveBook(arg1) {
   return window['go']['main']['App']['SaveBook'](arg1);
 }
@@ -296,6 +304,10 @@ export function SearchStory(arg1, arg2) {
 
 export function SetAPIKey(arg1) {
   return window['go']['main']['App']['SetAPIKey'](arg1);
+}
+
+export function SetProviderKey(arg1, arg2) {
+  return window['go']['main']['App']['SetProviderKey'](arg1, arg2);
 }
 
 export function SetWrapStored(arg1, arg2, arg3, arg4) {
@@ -334,8 +346,8 @@ export function TakePendingOpenPath() {
   return window['go']['main']['App']['TakePendingOpenPath']();
 }
 
-export function TestLocalAI(arg1) {
-  return window['go']['main']['App']['TestLocalAI'](arg1);
+export function TestAIEndpoint(arg1, arg2) {
+  return window['go']['main']['App']['TestAIEndpoint'](arg1, arg2);
 }
 
 export function VerifyReadAloudModel() {

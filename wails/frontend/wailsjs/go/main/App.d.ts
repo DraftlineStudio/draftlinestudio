@@ -44,6 +44,8 @@ export function ClearRecentProjects():Promise<void>;
 
 export function CloseBookFile():Promise<void>;
 
+export function DeleteAIProvider(arg1:string):Promise<void>;
+
 export function DeleteCharacterEvent(arg1:types.BookData,arg2:string):Promise<types.BookData>;
 
 export function DiscardSnapshot(arg1:string):Promise<void>;
@@ -140,6 +142,8 @@ export function RewriteText(arg1:string,arg2:string,arg3:string,arg4:string):Pro
 
 export function RewriteTextCustom(arg1:string,arg2:string,arg3:string):Promise<types.AIRewriteResult>;
 
+export function SaveAIProvider(arg1:types.AIProvider):Promise<string>;
+
 export function SaveBook(arg1:types.BookData):Promise<types.SaveResult>;
 
 export function SaveBookAs(arg1:types.BookData):Promise<types.SaveResult>;
@@ -151,6 +155,8 @@ export function SaveSettings(arg1:types.AppSettings):Promise<void>;
 export function SearchStory(arg1:types.BookData,arg2:types.StorySearchRequest):Promise<types.StorySearchResult>;
 
 export function SetAPIKey(arg1:string):Promise<void>;
+
+export function SetProviderKey(arg1:string,arg2:string):Promise<void>;
 
 export function SetWrapStored(arg1:string,arg2:string,arg3:types.EditionWrap,arg4:boolean):Promise<types.WrapResult>;
 
@@ -170,6 +176,6 @@ export function StopReadAloudMemLog():Promise<void>;
 
 export function TakePendingOpenPath():Promise<string>;
 
-export function TestLocalAI(arg1:string):Promise<types.AIRewriteResult>;
+export function TestAIEndpoint(arg1:string,arg2:string):Promise<types.AIRewriteResult>;
 
 export function VerifyReadAloudModel():Promise<readaloud.VerifyResult>;

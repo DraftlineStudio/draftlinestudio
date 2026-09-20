@@ -6,7 +6,7 @@ import type { AIProviderMode, AITaskRoutes } from '../../../services/aiRouting'
 export type SettingsSection = 'author' | 'application' | 'plugins' | 'ai' | 'readaloud' | 'book' | 'plugin'
 
 export type AIMode = AIProviderMode
-export type AIProvider = 'claude' | 'openai' | 'gemini' | 'grok' | ''
+export type AIProvider = 'claude' | 'openai' | ''
 export type ThemeMode = 'light' | 'dark' | 'auto'
 export type EditorFontSize = 'small' | 'normal' | 'large'
 export type AnalysisCPUProfile = 'adaptive' | 'gentle' | 'balanced' | 'fast'
@@ -56,10 +56,8 @@ export interface AIStudioSectionProps {
   setDebugLogging: (v: boolean) => void
   model: string
   setModel: (v: string) => void
-  localEndpoint: string
-  setLocalEndpoint: (v: string) => void
-  localModel: string
-  setLocalModel: (v: string) => void
+  providers: types.AIProvider[]
+  onProvidersChanged: () => void
   proseGuide: string
   setProseGuide: (v: string) => void
   // Claude Code state
@@ -78,10 +76,6 @@ export interface AIStudioSectionProps {
   onCheckCx: () => void
   onSetupCx: () => void
   onOpenCxAuth: () => void
-  // Test state
-  testStatus: TestStatus
-  testMsg: string
-  onTestLocal: () => void
 }
 
 export interface ReadAloudSectionProps {

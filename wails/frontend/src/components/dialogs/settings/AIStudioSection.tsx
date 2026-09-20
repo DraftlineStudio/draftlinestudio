@@ -1,10 +1,11 @@
-// AI Studio Settings Section - Claude Code, API, Local Model
+// AI Studio settings: Claude Code, Codex, API keys, and configured providers.
 
 import type { AIStudioSectionProps, AIProvider } from './types'
-import { CLAUDE_MODELS, OPENAI_MODELS, GEMINI_MODELS, GROK_MODELS, DEFAULT_MODELS } from './constants'
+import { CLAUDE_MODELS, OPENAI_MODELS, DEFAULT_MODELS } from './constants'
 import { useState } from 'react'
 import type { AIEditingTask, AIProviderMode } from '../../../services/aiRouting'
 import { setTaskProvider } from '../../../services/aiRouting'
+import AIProvidersList from './AIProviders'
 
 const TASK_ROUTES: { id: AIEditingTask; label: string }[] = [
   { id: 'line_edit', label: 'Line Edit' },
@@ -14,11 +15,10 @@ const TASK_ROUTES: { id: AIEditingTask; label: string }[] = [
   { id: 'custom', label: 'Custom Prompt' },
 ]
 
-const PROVIDER_NAMES: Record<AIProviderMode, string> = {
+const BUILT_IN_NAMES: Record<string, string> = {
   claudecode: 'Claude Code',
   codex: 'Codex',
   api: 'API Key',
-  local: 'Local Model',
 }
 
 export default function AIStudioSection({
@@ -30,22 +30,22 @@ export default function AIStudioSection({
   hasStoredKey, onClearKey,
   debugLogging, setDebugLogging,
   model, setModel,
-  localEndpoint, setLocalEndpoint,
-  localModel, setLocalModel,
+  providers, onProvidersChanged,
   proseGuide, setProseGuide,
   ccStatus, ccChecking, ccSetupStep, ccSetupLog,
   onCheckCC, onSetup, onOpenAuth,
   cxStatus, cxChecking, cxSetupStep, cxSetupLog,
   onCheckCx, onSetupCx, onOpenCxAuth,
-  testStatus, testMsg, onTestLocal,
 }: AIStudioSectionProps) {
   const [showKey, setShowKey] = useState(false)
 
   const modelOptions = provider === 'claude' ? CLAUDE_MODELS
     : provider === 'openai' ? OPENAI_MODELS
-    : provider === 'gemini' ? GEMINI_MODELS
-    : provider === 'grok' ? GROK_MODELS
     : []
+
+  const activeProvider = providers.find(p => p.id === aiMode)
+  const modeName = (m: string) =>
+    BUILT_IN_NAMES[m] ?? providers.find(p => p.id === m)?.nickname ?? m
 
   function handleProviderChange(p: AIProvider) {
     setProvider(p)
@@ -83,9 +83,13 @@ export default function AIStudioSection({
             <button className={`settings-theme-btn${aiMode === 'api' ? ' active' : ''}`} onClick={() => handleModeChange('api')}>
               API Key
             </button>
-            <button className={`settings-theme-btn${aiMode === 'local' ? ' active' : ''}`} onClick={() => handleModeChange('local')}>
-              Local Model
-            </button>
+            {providers.map(p => (
+              <button
+                key={p.id}
+                className={`settings-theme-btn${aiMode === p.id ? ' active' : ''}`}
+                onClick={() => handleModeChange(p.id)}
+              >{p.nickname}</button>
+            ))}
           </div>
           <div className="settings-hint">Used for every task unless it has an override below.</div>
         </div>
@@ -105,11 +109,13 @@ export default function AIStudioSection({
                     (e.target.value || null) as AIProviderMode | null,
                   ))}
                 >
-                  <option value="">Default ({PROVIDER_NAMES[aiMode]})</option>
+                  <option value="">Default ({modeName(aiMode)})</option>
                   <option value="claudecode">Claude Code</option>
                   <option value="codex">Codex</option>
                   <option value="api">API Key</option>
-                  <option value="local">Local Model</option>
+                  {providers.map(p => (
+                    <option key={p.id} value={p.id}>{p.nickname}</option>
+                  ))}
                 </select>
               </label>
             ))}
@@ -156,9 +162,8 @@ export default function AIStudioSection({
             <div className="settings-provider-row">
               <button className={`settings-provider-btn${provider === 'claude' ? ' active' : ''}`} onClick={() => handleProviderChange('claude')}>Claude</button>
               <button className={`settings-provider-btn${provider === 'openai' ? ' active' : ''}`} onClick={() => handleProviderChange('openai')}>OpenAI</button>
-              <button className={`settings-provider-btn${provider === 'gemini' ? ' active' : ''}`} onClick={() => handleProviderChange('gemini')}>Gemini</button>
-              <button className={`settings-provider-btn${provider === 'grok' ? ' active' : ''}`} onClick={() => handleProviderChange('grok')}>Grok</button>
             </div>
+            <div className="settings-hint">Anything else goes under Your Providers below.</div>
           </div>
           {provider !== '' && <>
             <div className="dialog-field">
@@ -194,41 +199,15 @@ export default function AIStudioSection({
           </>}
         </>}
 
-        {/* Local Model */}
-        {aiMode === 'local' && <>
+        {activeProvider && (
           <div className="settings-local-info">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
-              <circle cx="7" cy="7" r="6"/><line x1="7" y1="5" x2="7" y2="7.5"/><circle cx="7" cy="9.5" r="0.6" fill="currentColor" stroke="none"/>
-            </svg>
-            Compatible with <strong>Ollama</strong>, <strong>LM Studio</strong>, and any OpenAI-compatible local server.
+            Using <strong>{activeProvider.nickname}</strong>
+            {activeProvider.model ? <> with <strong>{activeProvider.model}</strong></> : ' — no model set yet'}.
+            Edit it under Your Providers below.
           </div>
-          <div className="dialog-field">
-            <label className="dialog-label">API Endpoint</label>
-            <input
-              className="dialog-input"
-              value={localEndpoint}
-              onChange={e => setLocalEndpoint(e.target.value)}
-              placeholder="http://localhost:11434/v1"
-            />
-            <div className="settings-hint">Default: Ollama at http://localhost:11434/v1</div>
-          </div>
-          <div className="dialog-field">
-            <label className="dialog-label">Model Name</label>
-            <input
-              className="dialog-input"
-              value={localModel}
-              onChange={e => setLocalModel(e.target.value)}
-              placeholder="e.g. llama3, mistral, phi3"
-            />
-          </div>
-          <div className="settings-local-test-row">
-            <button className="dialog-btn" onClick={onTestLocal} disabled={testStatus === 'testing'}>
-              {testStatus === 'testing' ? 'Testing…' : 'Test Connection'}
-            </button>
-            {testStatus === 'ok' && <span className="settings-test-ok">✓ {testMsg}</span>}
-            {testStatus === 'error' && <span className="settings-test-error">{testMsg}</span>}
-          </div>
-        </>}
+        )}
+
+        <AIProvidersList providers={providers} onChanged={onProvidersChanged} />
 
         {/* Prose guide — always visible when AI enabled */}
         <div className="settings-section-label">Prose Style Guide</div>

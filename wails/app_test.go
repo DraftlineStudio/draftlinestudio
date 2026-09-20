@@ -70,19 +70,24 @@ func TestAcquireAISerializes(t *testing.T) {
 }
 
 func TestNormalizeAIProviderMode(t *testing.T) {
-	for _, mode := range []string{"claudecode", "codex", "api", "local"} {
-		if got := normalizeAIProviderMode(mode, "claudecode"); got != mode {
+	list := []types.AIProvider{{ID: "p1", Nickname: "Mine", Kind: "cloud"}}
+	for _, mode := range []string{"claudecode", "codex", "api", "p1"} {
+		if got := normalizeAIProviderMode(mode, "claudecode", list); got != mode {
 			t.Fatalf("explicit mode %q resolved as %q", mode, got)
 		}
 	}
-	if got := normalizeAIProviderMode("", "codex"); got != "codex" {
+	if got := normalizeAIProviderMode("", "codex", list); got != "codex" {
 		t.Fatalf("empty task route should inherit default, got %q", got)
 	}
-	if got := normalizeAIProviderMode("not-a-provider", "local"); got != "local" {
+	if got := normalizeAIProviderMode("not-a-provider", "p1", list); got != "p1" {
 		t.Fatalf("invalid task route should inherit valid default, got %q", got)
 	}
-	if got := normalizeAIProviderMode("", "not-a-provider"); got != "claudecode" {
+	if got := normalizeAIProviderMode("", "not-a-provider", list); got != "claudecode" {
 		t.Fatalf("invalid default should use safe legacy default, got %q", got)
+	}
+	// A provider the writer deleted must not keep routing work to it.
+	if got := normalizeAIProviderMode("p1", "codex", nil); got != "codex" {
+		t.Fatalf("removed provider should fall back, got %q", got)
 	}
 }
 

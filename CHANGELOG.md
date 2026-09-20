@@ -2,6 +2,19 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02685] - 2026-09-20
+
+### Added
+- Add your own AI provider, cloud or local, with its own name, endpoint, model and key.
+- Each configured provider can be assigned to individual editing tasks like any built-in one.
+
+### Changed
+- Gemini and Grok are no longer built in. Existing setups are converted to configured providers and keep working.
+- The local model settings became a provider you name and can have more than one of.
+
+### Fixed
+- A failed AI request now reports the status the server returned instead of a parsing error.
+
 ## [0.21.02684] - 2026-09-20
 
 ### Changed

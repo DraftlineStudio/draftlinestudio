@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -16,26 +17,20 @@ func OpenAI(req Request) types.AIRewriteResult {
 	return openAICompatible(req, "https://api.openai.com/v1/chat/completions", "OpenAI", true)
 }
 
-// Grok sends the request to the xAI (Grok) OpenAI-compatible API.
-func Grok(req Request) types.AIRewriteResult {
-	return openAICompatible(req, "https://api.x.ai/v1/chat/completions", "Grok", true)
-}
-
-// Local sends the request to a local OpenAI-compatible endpoint (Ollama,
-// LM Studio, …). No auth header is sent; the model comes from settings with a
-// llama3 fallback.
-func Local(req Request) types.AIRewriteResult {
-	req.Model = req.Settings.AILocalModel
-	if req.Model == "" {
-		req.Model = "llama3"
+// Custom sends the request to an endpoint the writer configured. Cloud
+// providers get the key as a bearer token; local ones get no credentials.
+func Custom(req Request, p types.AIProvider) types.AIRewriteResult {
+	req.Model = p.Model
+	label := strings.TrimSpace(p.Nickname)
+	if label == "" {
+		label = "the configured provider"
 	}
-	endpoint := strings.TrimRight(req.Settings.AILocalEndpoint, "/") + "/chat/completions"
-	return openAICompatible(req, endpoint, "local AI", false)
+	endpoint := strings.TrimRight(p.BaseURL, "/") + "/chat/completions"
+	return openAICompatible(req, endpoint, label, p.Kind == "cloud")
 }
 
-// openAICompatible implements the shared chat-completions transport used by
-// OpenAI, Grok, and local endpoints. withAuth controls whether the API key is
-// sent as a Bearer token (local endpoints receive no credentials).
+// openAICompatible is the shared chat-completions transport. withAuth controls
+// whether the key is sent as a bearer token.
 func openAICompatible(req Request, url, providerLabel string, withAuth bool) types.AIRewriteResult {
 	reqBody, _ := json.Marshal(map[string]any{
 		"model": req.Model,
@@ -54,8 +49,7 @@ func openAICompatible(req Request, url, providerLabel string, withAuth bool) typ
 		httpReq.Header.Set("Authorization", "Bearer "+req.APIKey)
 	}
 
-	// No client timeout: the request context's 180-second deadline governs,
-	// and a shorter competing timeout would mask cancellation.
+	// No client timeout: the request context's deadline governs.
 	resp, err := http.DefaultClient.Do(httpReq)
 	if err != nil {
 		if errors.Is(req.Ctx.Err(), context.Canceled) {
@@ -79,14 +73,28 @@ func openAICompatible(req Request, url, providerLabel string, withAuth bool) typ
 			Message string `json:"message"`
 		} `json:"error"`
 	}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return types.AIRewriteResult{Error: "failed to parse " + providerLabel + " response"}
-	}
-	if result.Error != nil && result.Error.Message != "" {
+	parsed := json.Unmarshal(body, &result) == nil
+	if parsed && result.Error != nil && result.Error.Message != "" {
 		return types.AIRewriteResult{Error: result.Error.Message}
+	}
+	// A wrong path or a proxy answers in HTML or plain text, so the status has
+	// to carry the message when the body cannot.
+	if resp.StatusCode >= 400 {
+		return types.AIRewriteResult{Error: fmt.Sprintf("%s returned %d: %s", providerLabel, resp.StatusCode, bodySnippet(body))}
+	}
+	if !parsed {
+		return types.AIRewriteResult{Error: "failed to parse " + providerLabel + " response"}
 	}
 	if len(result.Choices) == 0 {
 		return types.AIRewriteResult{Error: "empty response from " + providerLabel}
 	}
 	return types.AIRewriteResult{Result: strings.TrimSpace(result.Choices[0].Message.Content)}
+}
+
+func bodySnippet(body []byte) string {
+	s := strings.TrimSpace(string(body))
+	if len(s) > 200 {
+		return s[:200] + "…"
+	}
+	return s
 }

@@ -12,17 +12,6 @@ export const OPENAI_MODELS = [
   { value: 'o3',          label: 'o3 (reasoning)' },
 ]
 
-export const GEMINI_MODELS = [
-  { value: 'gemini-1.5-pro',   label: 'Gemini 1.5 Pro (recommended)' },
-  { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (faster)' },
-  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (latest)' },
-]
-
-export const GROK_MODELS = [
-  { value: 'grok-2',      label: 'Grok 2 (recommended)' },
-  { value: 'grok-beta',   label: 'Grok Beta' },
-]
-
 export const BOOK_FONTS = [
   'Merriweather', 'EB Garamond', 'Lora', 'Palatino Linotype', 'Georgia', 'Times New Roman',
 ]
@@ -39,6 +28,4 @@ export const TRIM_SIZES = [
 export const DEFAULT_MODELS: Record<string, string> = {
   claude: 'claude-sonnet-4-6',
   openai: 'gpt-4o',
-  gemini: 'gemini-1.5-pro',
-  grok: 'grok-2',
 }
