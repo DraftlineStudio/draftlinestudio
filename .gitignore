@@ -65,3 +65,6 @@ nul
 # ─────────────────────────────────────────────────────────────────────────────
 *.sarif
 *.sarif.json
+
+# Book claim sidecars, written beside a book while it is open
+*.draftline.lock

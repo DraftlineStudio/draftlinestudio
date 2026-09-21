@@ -1,11 +1,8 @@
-//go:build !windows
+//go:build !windows && !darwin
 
 package booklock
 
-// hide is a no-op everywhere but Windows: the sidecar's name begins with a
-// dot, which is all macOS and Linux need. See hide_windows.go.
-//
-// The build constraint is the load-bearing line in this file. The name says
-// "other", which is not a platform, so without it this would compile on
-// Windows too and collide with the real implementation.
+// Linux and the BSDs hide by a leading dot, which sync clients refuse to
+// upload, so the sidecar stays visible there. A visible lock beats one that
+// never reaches the other device.
 func hide(string) {}

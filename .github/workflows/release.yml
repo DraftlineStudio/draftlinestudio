@@ -313,23 +313,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "${{ github.event.release.tag_name }}" dist/* --clobber --repo "${{ github.repository }}"
 
-      # Tell the update feed a release happened. It is a push feed: it never
-      # polls, so until this runs it does not know.
-      #
-      # This must stay the last step. Publishing a release is what starts this
-      # workflow, so the release exists with no packages for as long as the
-      # build takes. A feed refreshed before the upload above would advertise
-      # a release nobody can download, which is the exact failure the push
-      # design exists to prevent.
+      # Tell the feed a release happened; it never polls. Kept last so the
+      # refresh sees the finished assets, though the feed now skips any
+      # release that has none.
       - name: Refresh the update feed
-        env:
-          FEED_KEY: ${{ secrets.DRAFTLINE_FEED_KEY }}
         run: |
-          if [ -z "$FEED_KEY" ]; then
-            echo "DRAFTLINE_FEED_KEY is not set; the feed will renew itself within a day."
-            exit 0
-          fi
-          code="$(curl -sS -o feed.json -w '%{http_code}'             --get --data-urlencode "new-release=$FEED_KEY"             https://draftline.ink/api/update.php)"
+          code="$(curl -sS -o feed.json -w '%{http_code}' "https://draftline.ink/api/update.php?new-release")"
           cat feed.json; echo
           if [ "$code" != "200" ]; then
             echo "::error::The update feed refused the refresh (HTTP $code). The release is published but installs will not see it until the feed renews."

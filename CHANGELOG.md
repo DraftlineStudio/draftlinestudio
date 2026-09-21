@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02688] - 2026-09-21
+
+### Fixed
+- The warning that a book is open on another device now works through cloud providers. After the 0.21.02687 release it was discovered that OneDrive, Dropbox, Mega Sync, iCloud, and Google Drive all refuse to sync dotfiles (files with a preceeding . such as the .filename.draftline.lock files). The entire point of the lock file is to avoid cloud sync providers overwriting the open book on one device or another via the last-saved-wins method which is common with cloud providers. The lock is now hidden in a best-effort capacity and should be hidden on Mac, and Windows though linux, the dotfile is the hiding method so on linux the lock file will be visible. It is what it is.
+
 ## [0.21.02687] - 2026-09-20
 
 ### Added

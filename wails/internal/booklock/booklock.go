@@ -79,9 +79,29 @@ var ErrHeldElsewhere = errors.New("this book is open on another device")
 
 // SidecarFor is where a book's claim lives: beside the archive, so it travels
 // with it through whatever is syncing the folder.
+//
+// The name is deliberately plain. Originally dotfiles were used, however all of the
+// name-brand sync services refuse to upload dotfiles so now we hide best-effort
+// per platform to avoid last-write-wins data loss with sync providers.
 func SidecarFor(archivePath string) string {
 	dir := filepath.Dir(archivePath)
+	return filepath.Join(dir, filepath.Base(archivePath)+".lock")
+}
+
+// legacySidecarFor is the dot-prefixed name used before sync clients were
+// found to skip it. Read so an upgrade mid-session still sees a live claim.
+// this function is to be deleted by build 02690.
+func legacySidecarFor(archivePath string) string {
+	dir := filepath.Dir(archivePath)
 	return filepath.Join(dir, "."+filepath.Base(archivePath)+".lock")
+}
+
+// readEither prefers the current name and falls back to the legacy one.
+func readEither(archivePath string) (claim, bool) {
+	if c, ok := read(SidecarFor(archivePath)); ok {
+		return c, true
+	}
+	return read(legacySidecarFor(archivePath))
 }
 
 func read(file string) (claim, bool) {
@@ -121,7 +141,7 @@ func isSelf(c claim, self Identity) bool {
 
 // Inspect reports the current claim without making one.
 func Inspect(archivePath string, self Identity) *Holder {
-	c, ok := read(SidecarFor(archivePath))
+	c, ok := readEither(archivePath)
 	if !ok {
 		return nil
 	}
@@ -145,7 +165,7 @@ func Claim(archivePath, bookID string, id Identity) (*Lock, *Holder, error) {
 	file := SidecarFor(archivePath)
 	now := time.Now().UTC()
 
-	if existing, ok := read(file); ok {
+	if existing, ok := readEither(archivePath); ok {
 		holder := existing.holder(now, id)
 		if !holder.Mine && !holder.Stale {
 			return nil, holder, ErrHeldElsewhere
@@ -154,6 +174,7 @@ func Claim(archivePath, bookID string, id Identity) (*Lock, *Holder, error) {
 		if err != nil {
 			return nil, nil, err
 		}
+		dropLegacy(archivePath)
 		if holder.Mine {
 			return lock, nil, nil
 		}
@@ -164,7 +185,14 @@ func Claim(archivePath, bookID string, id Identity) (*Lock, *Holder, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	dropLegacy(archivePath)
 	return lock, nil, nil
+}
+
+// dropLegacy removes the dot-prefixed claim once the syncable one is written,
+// so the two names cannot disagree.
+func dropLegacy(archivePath string) {
+	_ = os.Remove(legacySidecarFor(archivePath))
 }
 
 // Force takes the claim regardless of who holds it. This is the writer saying
@@ -174,13 +202,14 @@ func Force(archivePath, bookID string, id Identity) (*Lock, *Holder, error) {
 	file := SidecarFor(archivePath)
 	now := time.Now().UTC()
 	var previous *Holder
-	if existing, ok := read(file); ok {
+	if existing, ok := readEither(archivePath); ok {
 		previous = existing.holder(now, id)
 	}
 	lock, err := write(file, bookID, id, now, now)
 	if err != nil {
 		return nil, previous, err
 	}
+	dropLegacy(archivePath)
 	return lock, previous, nil
 }
 
