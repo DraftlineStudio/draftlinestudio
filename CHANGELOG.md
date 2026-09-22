@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02701] - 2026-09-22
+
+### Changed
+- The start screen opens faster when you have many recent books.
+
 ## [0.21.02700] - 2026-09-22
 
 ### Changed

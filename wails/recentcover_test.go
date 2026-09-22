@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"image"
 	"net/http"
+	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"draftline/internal/types"
 )
@@ -150,5 +152,46 @@ func TestReorderingTheRecentsDoesNotMoveArtworkBetweenBooks(t *testing.T) {
 	}
 	if res := fetch(t, server, "/recent-cover/"+recentCoverKey(withArt)); res.Code != http.StatusOK {
 		t.Errorf("the book with artwork answered %d after the list reordered", res.Code)
+	}
+}
+
+// Replacing a book's artwork changes the bytes behind an address that does not
+// change, so the cache has to notice on its own. It stamps what it holds with
+// the archive's size and modification time; a rewritten archive stops matching.
+func TestNewArtworkReplacesTheCachedThumbnail(t *testing.T) {
+	app, path := openedProject(t)
+	first := attachTestCover(t, app, "ed-1", 1800, 2880, 1.0, false)
+	if result := app.writeBook(bookWithEdition(first), path); !result.Success {
+		t.Fatal(result.Error)
+	}
+	if err := app.AddRecentProject(types.RecentProject{Type: "book", Path: path, Name: "The Lantern", LastOpened: "2026-09-18T00:00:00Z"}); err != nil {
+		t.Fatal(err)
+	}
+
+	url := "/recent-cover/" + recentCoverKey(path)
+	if res := fetch(t, app.recentCovers(), url); res.Code != http.StatusOK || res.Body.Len() != first.ThumbBytes {
+		t.Fatalf("first read came back %d with %d bytes, want 200 with %d", res.Code, res.Body.Len(), first.ThumbBytes)
+	}
+
+	second := attachTestCover(t, app, "ed-1", 1600, 2560, 0.4, false)
+	if second.ThumbBytes == first.ThumbBytes {
+		t.Skip("the two test thumbnails are the same size; this test cannot tell them apart")
+	}
+	if result := app.writeBook(bookWithEdition(second), path); !result.Success {
+		t.Fatal(result.Error)
+	}
+	// Archive timestamps have coarse resolution on some filesystems; make the
+	// rewrite unambiguously newer than the read that cached the first one.
+	future := time.Now().Add(2 * time.Second)
+	if err := os.Chtimes(path, future, future); err != nil {
+		t.Fatal(err)
+	}
+
+	res := fetch(t, app.recentCovers(), url)
+	if res.Code != http.StatusOK {
+		t.Fatalf("after replacing the artwork the cover came back %d", res.Code)
+	}
+	if got := res.Body.Len(); got != second.ThumbBytes {
+		t.Errorf("served %d bytes, still the old thumbnail; the new one is %d", got, second.ThumbBytes)
 	}
 }

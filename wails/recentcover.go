@@ -5,8 +5,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
+	"os"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"draftline/internal/types"
@@ -63,20 +65,31 @@ func (a *App) recentCovers() http.Handler {
 			return
 		}
 
-		data, file, err := newestCoverThumb(archive)
-		if err != nil || data == nil {
-			// A book with no editions, or none with artwork, is the ordinary
-			// case rather than a fault. The start screen falls back to its
-			// colour on a 404.
+		info, err := os.Stat(archive)
+		if err != nil {
 			http.NotFound(w, r)
 			return
 		}
+		entry, ok := a.recentThumbs.get(key, info.ModTime(), info.Size())
+		if !ok {
+			data, file, err := newestCoverThumb(archive)
+			if err != nil || data == nil {
+				// A book with no editions, or none with artwork, is the
+				// ordinary case rather than a fault. The start screen falls
+				// back to its colour on a 404.
+				http.NotFound(w, r)
+				return
+			}
+			entry = recentCoverEntry{modTime: info.ModTime(), size: info.Size(), data: data, file: file}
+			a.recentThumbs.put(key, entry)
+		}
 
-		w.Header().Set("Content-Type", coverContentType(file))
-		// The key is stable but what it points at is not: attaching new artwork
-		// to an edition changes the bytes behind the same address.
-		w.Header().Set("Cache-Control", "no-store")
-		http.ServeContent(w, r, file, time.Time{}, newByteSeeker(data))
+		w.Header().Set("Content-Type", coverContentType(entry.file))
+		// Revalidate rather than refetch: the address stays the same when the
+		// artwork behind it is replaced, and the archive timestamp ServeContent
+		// sends is what tells the two apart.
+		w.Header().Set("Cache-Control", "no-cache")
+		http.ServeContent(w, r, entry.file, entry.modTime, newByteSeeker(entry.data))
 	})
 }
 
@@ -129,4 +142,40 @@ func recentCoverKey(path string) string {
 	}
 	sum := sha256.Sum256([]byte(path))
 	return hex.EncodeToString(sum[:8])
+}
+
+// recentCoverCache holds thumbnails already read out of an archive.
+//
+// Stamped with the archive's size and modification time, because the address a
+// thumbnail is served from stays the same when its artwork is replaced. A stamp
+// that no longer matches is a miss, so attaching a new cover shows the new one.
+type recentCoverCache struct {
+	mu      sync.Mutex
+	entries map[string]recentCoverEntry
+}
+
+type recentCoverEntry struct {
+	modTime time.Time
+	size    int64
+	data    []byte
+	file    string
+}
+
+func (c *recentCoverCache) get(key string, modTime time.Time, size int64) (recentCoverEntry, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	entry, ok := c.entries[key]
+	if !ok || entry.size != size || !entry.modTime.Equal(modTime) {
+		return recentCoverEntry{}, false
+	}
+	return entry, true
+}
+
+func (c *recentCoverCache) put(key string, entry recentCoverEntry) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.entries == nil {
+		c.entries = map[string]recentCoverEntry{}
+	}
+	c.entries[key] = entry
 }

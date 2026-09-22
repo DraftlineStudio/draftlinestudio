@@ -42,7 +42,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.21.02700"
+const AppVersion = "0.21.02701"
 
 // App is the main application struct bound to the frontend.
 type App struct {
@@ -79,6 +79,10 @@ type App struct {
 	// not on types.BookData, which crosses the Wails bridge as JSON on every
 	// autosave. Usable as a zero value.
 	covers coverCache
+
+	// recentThumbs holds start-screen cover art already read out of an
+	// archive (see recentcover.go). Usable as a zero value.
+	recentThumbs recentCoverCache
 
 	// snapshots holds frozen manuscripts that have not reached the project
 	// file yet (see snapshot.go). Frozen text is a whole novel and stays off
