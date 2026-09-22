@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02724] - 2026-09-22
+
+### Changed
+- The temporary lock file fallback for cloud sync is now scheduled for removal at 0.21.02729 rather than 0.21.02690, which this run of fixes passed through on its way up.
+
 ## [0.21.02723] - 2026-09-22
 
 ### Fixed

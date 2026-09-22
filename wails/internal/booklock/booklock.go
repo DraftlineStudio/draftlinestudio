@@ -90,7 +90,7 @@ func SidecarFor(archivePath string) string {
 
 // legacySidecarFor is the dot-prefixed name used before sync clients were
 // found to skip it. Read so an upgrade mid-session still sees a live claim.
-// this function is to be deleted by build 02690.
+// this function is to be deleted by build 02729.
 func legacySidecarFor(archivePath string) string {
 	dir := filepath.Dir(archivePath)
 	return filepath.Join(dir, "."+filepath.Base(archivePath)+".lock")
