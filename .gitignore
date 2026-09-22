@@ -68,3 +68,4 @@ nul
 
 # Book claim sidecars, written beside a book while it is open
 *.draftline.lock
+docs/ai-audit/sarif-CI/
