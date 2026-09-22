@@ -231,13 +231,23 @@ func (a *App) ListProviderModels(provider string) []string {
 // ListAIProviderModels does the same for an endpoint the writer configured.
 // baseURL and apiKey come from the form so the list can be checked before the
 // provider is saved.
+//
+// A stored key is filled in only when the form still names the address that
+// key was saved for. Editing a provider blanks the key field, so without that
+// check this would hand the saved key to whatever address was typed over it.
 func (a *App) ListAIProviderModels(baseURL, apiKey, id string) []string {
 	if strings.TrimSpace(apiKey) == "" && id != "" {
-		if p, ok := findAIProvider(a.getSettings().AIProviders, id); ok {
+		if p, ok := findAIProvider(a.getSettings().AIProviders, id); ok && sameEndpoint(p.BaseURL, baseURL) {
 			apiKey = a.providerKey(p)
 		}
 	}
 	return sortedChatModels(providers.ListModels(baseURL, apiKey, false))
+}
+
+// sameEndpoint compares two endpoint URLs the way a writer means them: case
+// and a trailing slash are not a different server.
+func sameEndpoint(a, b string) bool {
+	return strings.EqualFold(strings.TrimRight(strings.TrimSpace(a), "/"), strings.TrimRight(strings.TrimSpace(b), "/"))
 }
 
 func sortedChatModels(models map[string]bool) []string {

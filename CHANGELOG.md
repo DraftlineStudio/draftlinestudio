@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02702] - 2026-09-22
+
+### Security
+- A saved provider key is only ever sent to the endpoint it was saved for.
+
 ## [0.21.02701] - 2026-09-22
 
 ### Changed
