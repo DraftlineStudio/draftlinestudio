@@ -13,6 +13,14 @@ import type {
 
 export interface ChapterActions {
   updateCurrentContent: (html: string) => void
+  /**
+   * Write content to a named chapter rather than whatever is selected now.
+   *
+   * The editor debounces keystrokes, so an edit can still be in hand when the
+   * writer moves to another chapter. It belongs to the chapter it was typed
+   * into, and this is how it gets there.
+   */
+  updateChapterContent: (section: Section, index: number, html: string) => void
   updateChapterTitle: (section: Section, index: number, title: string) => void
   updateChapterSubtitle: (section: Section, index: number, subtitle: string) => void
   addChapter: (section: Section, item: ChapterItem) => void
@@ -64,21 +72,32 @@ export function setSectionArray(book: BookData, section: Section, items: Chapter
 }
 
 export function createChapterActions(host: ChapterHost): ChapterActions {
-  return {
-    updateCurrentContent: (html) => {
-      const { book, currentSection, currentIndex } = host.read()
-      if (!book) return
-      if (currentSection === 'copyright') {
-        host.apply({ book: { ...book, copyright: html }, prose: true })
-        host.autosave()
-        return
-      }
-      const items = getSectionArray(book, currentSection)
-      if (!items[currentIndex]) return
-      const updated = items.map((item, i) => i === currentIndex ? { ...item, content: html } : item)
-      host.apply({ book: setSectionArray(book, currentSection, updated), prose: true })
-      host.noteHistory(items[currentIndex].id)
+  const updateChapterContent = (section: Section, index: number, html: string) => {
+    const { book } = host.read()
+    if (!book) return
+    if (section === 'copyright') {
+      if (book.copyright === html) return
+      host.apply({ book: { ...book, copyright: html }, prose: true })
       host.autosave()
+      return
+    }
+    const items = getSectionArray(book, section)
+    if (!items[index]) return
+    // A flush that arrives with nothing new must not dirty the book, or
+    // closing a project would always have something left to save.
+    if (items[index].content === html) return
+    const updated = items.map((item, i) => i === index ? { ...item, content: html } : item)
+    host.apply({ book: setSectionArray(book, section, updated), prose: true })
+    host.noteHistory(items[index].id)
+    host.autosave()
+  }
+
+  return {
+    updateChapterContent,
+
+    updateCurrentContent: (html) => {
+      const { currentSection, currentIndex } = host.read()
+      updateChapterContent(currentSection, currentIndex, html)
     },
 
     updateChapterTitle: (section, index, title) => {

@@ -4,6 +4,7 @@ import { useBookStore } from '../store/bookStore'
 import { useEditorStore } from '../store/editorStore'
 import { useAppStore } from '../store/appStore'
 import { getCurrentContent } from '../utils/textUtils'
+import type { Section } from '../types/draftline'
 import RichEditor from './editor/RichEditor'
 
 const EDITOR_FONT_SIZES = { small: '12px', normal: '14px', large: '16px' }
@@ -195,15 +196,16 @@ function DiffPanel({ label, name, selectionReview = false }: { label: string; na
 }
 
 export default function EditorPanel() {
-  const { book, currentSection, currentIndex, updateCurrentContent, updateChapterTitle, updateChapterSubtitle } = useBookStore(useShallow(s => ({
+  const { book, currentSection, currentIndex, updateChapterContent, updateChapterTitle, updateChapterSubtitle } = useBookStore(useShallow(s => ({
     book: s.book,
     currentSection: s.currentSection,
     currentIndex: s.currentIndex,
-    updateCurrentContent: s.updateCurrentContent,
+    updateChapterContent: s.updateChapterContent,
     updateChapterTitle: s.updateChapterTitle,
     updateChapterSubtitle: s.updateChapterSubtitle,
   })))
   const pendingDiff = useEditorStore(s => s.pendingDiff)
+  const setFlushPendingEdit = useEditorStore(s => s.setFlushPendingEdit)
   const { settings } = useAppStore()
 
   const content = getCurrentContent(book, currentSection, currentIndex)
@@ -228,40 +230,45 @@ export default function EditorPanel() {
     [currentSection, currentIndex, updateChapterSubtitle],
   )
 
-  // Debounced content update for smoother typing
-  // CRITICAL: We must capture section/index at typing time, not cleanup time
+  // Keystrokes reach the store on a debounce so typing stays smooth. The
+  // address is captured when the writer types, not when the timer fires, so a
+  // pending edit always knows which chapter it belongs to.
   const updateTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const pendingUpdate = useRef<{ section: string; index: number; content: string } | null>(null)
+  const pendingUpdate = useRef<{ section: Section; index: number; content: string } | null>(null)
 
-  const handleUpdate = useCallback(
-    (html: string) => {
-      // Capture the current section/index NOW, not when the timer fires
-      pendingUpdate.current = { section: currentSection, index: currentIndex, content: html }
-      if (updateTimer.current) clearTimeout(updateTimer.current)
-      updateTimer.current = setTimeout(() => {
-        if (pendingUpdate.current) {
-          const { section, index, content } = pendingUpdate.current
-          // Only update if we're still on the same chapter
-          const state = useBookStore.getState()
-          if (state.currentSection === section && state.currentIndex === index) {
-            updateCurrentContent(content)
-          }
-          pendingUpdate.current = null
-        }
-      }, CONTENT_UPDATE_DEBOUNCE)
-    },
-    [currentSection, currentIndex, updateCurrentContent],
-  )
-
-  // Clear pending updates when switching chapters - DO NOT flush to wrong chapter
-  useEffect(() => {
-    // Reset pending update when chapter changes - the old content belongs to old chapter
-    pendingUpdate.current = null
+  // Write the pending edit to the chapter it was typed into, whatever is on
+  // screen by the time this runs. Safe to call at any moment: with nothing
+  // pending, or nothing changed, it does nothing.
+  const flushPendingUpdate = useCallback(() => {
     if (updateTimer.current) {
       clearTimeout(updateTimer.current)
       updateTimer.current = null
     }
-  }, [currentSection, currentIndex])
+    const pending = pendingUpdate.current
+    if (!pending) return
+    pendingUpdate.current = null
+    updateChapterContent(pending.section, pending.index, pending.content)
+  }, [updateChapterContent])
+
+  const handleUpdate = useCallback(
+    (html: string) => {
+      pendingUpdate.current = { section: currentSection, index: currentIndex, content: html }
+      if (updateTimer.current) clearTimeout(updateTimer.current)
+      updateTimer.current = setTimeout(flushPendingUpdate, CONTENT_UPDATE_DEBOUNCE)
+    },
+    [currentSection, currentIndex, flushPendingUpdate],
+  )
+
+  // Moving to another chapter flushes what was typed into the last one. The
+  // cleanup runs on unmount too, so closing the editor does not drop it either.
+  useEffect(() => flushPendingUpdate, [currentSection, currentIndex, flushPendingUpdate])
+
+  // A save or a close reads the book expecting it to be current, so it drains
+  // the editor first (see editorStore.drainPendingEdit).
+  useEffect(() => {
+    setFlushPendingEdit(flushPendingUpdate)
+    return () => setFlushPendingEdit(null)
+  }, [flushPendingUpdate, setFlushPendingEdit])
 
   // CSS custom properties for editor styling
   const editorStyle = {

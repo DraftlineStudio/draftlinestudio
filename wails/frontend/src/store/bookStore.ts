@@ -349,6 +349,8 @@ export const useBookStore = create<BookStore>((set, get) => ({
   },
 
   saveBook: async () => {
+    // Whatever is still in the editor belongs in this save.
+    useEditorStore.getState().drainPendingEdit()
     if (!get().book) return
     const outcome = await performSave('save')
     if (outcome.status === 'saved') {
@@ -361,6 +363,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
   },
 
   saveBookAs: async () => {
+    useEditorStore.getState().drainPendingEdit()
     if (!get().book) return
     const outcome = await performSave('saveAs')
     if (outcome.status === 'saved') {
@@ -400,6 +403,8 @@ export const useBookStore = create<BookStore>((set, get) => ({
     saveManualChapterSnapshot(reason, get, useEditorStore.getState().editorRef?.getHTML(), chapterHistoryDependencies()),
 
   closeProject: async () => {
+    // A close reads isDirty, so the editor has to have handed over first.
+    useEditorStore.getState().drainPendingEdit()
     const { book, isDirty } = get()
     if (book && isDirty) {
       const outcome = await performSave('save')
@@ -615,6 +620,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
 
 
   saveAndProceed: async () => {
+    useEditorStore.getState().drainPendingEdit()
     // The dialog stays open until the save actually succeeds: a failed or
     // cancelled save must not let the pending new/open action discard the book.
     const { book, dialogs } = get()

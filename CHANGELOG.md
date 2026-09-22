@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02715] - 2026-09-22
+
+### Fixed
+- The last words you typed are kept when you switch chapters instead of being discarded.
+
 ## [0.21.02714] - 2026-09-22
 
 ### Changed

@@ -572,3 +572,84 @@ describe('a book that may be open on another device', () => {
     expect(mocks.OpenRecentProject).toHaveBeenCalledWith('C:/books/novel.draftline')
   })
 })
+
+// Typing, then switching chapters before the editor's 150ms debounce fired,
+// used to throw the pending edit away on two separate paths: the timer
+// checked whether the chapter had moved and dropped the edit if it had, and
+// the chapter-change effect cleared it outright. The words never reached the
+// book, never set isDirty, and were gone from the editor the moment it
+// re-seeded from the new chapter.
+//
+// The edit belongs to the chapter it was typed into. updateChapterContent is
+// how it gets there, and it is what the editor's flush calls.
+describe('an edit in hand when the chapter changes', () => {
+  it('writes to the chapter it was typed into, not the one now selected', () => {
+    const book = makeBook({
+      body: [
+        { title: 'Chapter 1', type: 'chapter', content: '<p>original</p>' },
+        { title: 'Chapter 2', type: 'chapter', content: '<p>second</p>' },
+      ],
+    })
+    bookStoreMod.useBookStore.setState({ book, currentSection: 'body', currentIndex: 0, isDirty: false })
+
+    // The writer has moved on before the flush lands.
+    store().setCurrentChapter('body', 1)
+    store().updateChapterContent('body', 0, '<p>original and the last word</p>')
+
+    const saved = store().book!
+    expect(saved.body[0].content).toBe('<p>original and the last word</p>')
+    expect(saved.body[1].content).toBe('<p>second</p>')
+    expect(store().isDirty).toBe(true)
+  })
+
+  it('reaches a chapter in another section', () => {
+    const book = makeBook({
+      front_matter: [{ title: 'Preface', type: 'preface', content: '<p>preface</p>' }],
+    })
+    bookStoreMod.useBookStore.setState({ book, currentSection: 'front_matter', currentIndex: 0, isDirty: false })
+
+    store().setCurrentChapter('body', 0)
+    store().updateChapterContent('front_matter', 0, '<p>preface, finished</p>')
+
+    expect(store().book!.front_matter[0].content).toBe('<p>preface, finished</p>')
+    expect(store().book!.body[0].content).toBe('<p>original</p>')
+  })
+
+  it('leaves the book alone when the flush carries nothing new', () => {
+    const book = makeBook()
+    bookStoreMod.useBookStore.setState({ book, currentSection: 'body', currentIndex: 0, isDirty: false })
+
+    store().updateChapterContent('body', 0, '<p>original</p>')
+
+    expect(store().isDirty).toBe(false)
+  })
+
+  it('ignores a chapter that is no longer there', () => {
+    const book = makeBook()
+    bookStoreMod.useBookStore.setState({ book, currentSection: 'body', currentIndex: 0, isDirty: false })
+
+    store().updateChapterContent('body', 7, '<p>into the void</p>')
+
+    expect(store().book).toBe(book)
+    expect(store().isDirty).toBe(false)
+  })
+
+  // A save reads the book expecting the editor to have handed over already.
+  it('a save drains whatever the editor is still holding', async () => {
+    const book = makeBook()
+    bookStoreMod.useBookStore.setState({ book, currentSection: 'body', currentIndex: 0, isDirty: false })
+    mocks.SaveBook.mockResolvedValue(okSave())
+
+    // Stand in for the editor with an edit still in hand.
+    const editorStoreMod = await import('../editorStore')
+    editorStoreMod.useEditorStore.getState().setFlushPendingEdit(() => {
+      store().updateChapterContent('body', 0, '<p>typed just before Ctrl+S</p>')
+    })
+
+    await store().saveBook()
+
+    expect(mocks.SaveBook).toHaveBeenCalledTimes(1)
+    const sent = mocks.SaveBook.mock.calls[0][0] as BookData
+    expect(sent.body[0].content).toBe('<p>typed just before Ctrl+S</p>')
+  })
+})

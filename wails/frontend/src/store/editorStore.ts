@@ -95,6 +95,13 @@ interface EditorStore {
   setEditorRef: (editor: EditorInstance | null) => void
   getEditorSelection: () => EditorSelection | null
 
+  // The editor debounces keystrokes, so an edit can be in hand that the book
+  // has not seen. Anything that reads the book expecting it to be current —
+  // a save, a close — drains it through here first.
+  flushPendingEdit: (() => void) | null
+  setFlushPendingEdit: (flush: (() => void) | null) => void
+  drainPendingEdit: () => void
+
   // Diff/review state
   pendingDiff: {
     diffs: ParagraphDiff[]
@@ -121,6 +128,10 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   // Editor reference
   editorRef: null,
   setEditorRef: (editor) => set({ editorRef: editor }),
+
+  flushPendingEdit: null,
+  setFlushPendingEdit: (flush) => set({ flushPendingEdit: flush }),
+  drainPendingEdit: () => get().flushPendingEdit?.(),
 
   getEditorSelection: () => {
     const { editorRef } = get()
