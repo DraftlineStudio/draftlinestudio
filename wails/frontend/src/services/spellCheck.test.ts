@@ -14,6 +14,7 @@ import {
   parseSupplement,
   setIgnoredWords,
 } from './spellCheck'
+import { buildWordBuckets } from './spellSuggestions'
 
 describe('spell-check word normalization', () => {
   it('canonicalizes typographic apostrophes before dictionary lookup', () => {
@@ -105,5 +106,36 @@ describe('bundled dictionary supplement', () => {
   it('lists only words the base dictionary rejects, so upgrades prune it honestly', () => {
     const redundant = supplement.filter(word => dictionary.check(word))
     expect(redundant).toEqual([])
+  })
+})
+
+// The suggestion index is built in a worker, so it mirrors the tokenizer's
+// apostrophe set rather than importing it. A word the tokenizer can produce
+// but the index rejects is a word that gets underlined and then offered
+// nothing — and the editor inserts the curly apostrophe, not the straight one.
+describe('the suggestion index accepts what the tokenizer produces', () => {
+  const tokenize = (text: string) => text.match(/\p{Script=Latin}+(?:['’‘ʼ＇]\p{Script=Latin}+)*/gu) ?? []
+
+  it('indexes words carrying every apostrophe the tokenizer allows', () => {
+    const words = ["couldn't", 'couldn’t', 'couldn‘t', 'couldnʼt', 'couldn＇t']
+    for (const word of words) {
+      expect(tokenize(word)).toEqual([word])
+      const buckets = buildWordBuckets([word])
+      expect([...buckets.values()].flat(), `${word} was dropped from the index`)
+        .toEqual([word.toLocaleLowerCase()])
+    }
+  })
+
+  it('still indexes hyphenated and plain entries', () => {
+    for (const word of ['mother-in-law', 'tesseract']) {
+      const buckets = buildWordBuckets([word])
+      expect([...buckets.values()].flat()).toEqual([word])
+    }
+  })
+
+  it('still refuses entries that are not words', () => {
+    for (const entry of ['', 'a', '123', '<p>', 'two words']) {
+      expect([...buildWordBuckets([entry]).values()].flat()).toEqual([])
+    }
   })
 })

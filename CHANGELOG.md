@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02708] - 2026-09-22
+
+### Fixed
+- Spelling suggestions now work for words written with a curly apostrophe.
+
 ## [0.21.02707] - 2026-09-22
 
 ### Fixed

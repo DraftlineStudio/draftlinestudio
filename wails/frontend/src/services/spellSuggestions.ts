@@ -7,11 +7,18 @@ interface Candidate {
 
 export type WordBuckets = Map<number, string[]>
 
+// Keep the apostrophes in sync with spellWordPattern in services/spellCheck.ts
+// and the matching pattern in extensions/SpellCheck.ts. This file is bundled
+// into a worker, so it mirrors the set rather than importing it. An entry the
+// tokenizer can produce but this rejects is a word that is checked and then
+// never offered a suggestion — and the editor inserts the curly apostrophe.
+const suggestibleEntry = /^\p{Script=Latin}[\p{Script=Latin}'’‘ʼ＇-]*$/u
+
 export function buildWordBuckets(entries: string[]): WordBuckets {
   const buckets: WordBuckets = new Map()
   const seen = new Set<string>()
   entries.forEach(entry => {
-    if (!/^\p{Script=Latin}[\p{Script=Latin}'-]*$/u.test(entry)) return
+    if (!suggestibleEntry.test(entry)) return
     const word = entry.toLocaleLowerCase()
     if (word.length < 2 || seen.has(word)) return
     seen.add(word)
