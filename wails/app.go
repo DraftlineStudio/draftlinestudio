@@ -42,7 +42,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.21.02697"
+const AppVersion = "0.21.02698"
 
 // App is the main application struct bound to the frontend.
 type App struct {
@@ -612,14 +612,25 @@ func (a *App) ExportPrintPDF(book types.BookData, options types.PrintPDFOptions)
 
 // ── Settings ─────────────────────────────────────────────────────────────────
 
-func (a *App) settingsPath() string {
-	configDir, err := os.UserConfigDir()
+// configDir is the per-user directory holding settings and the recents list.
+// It is 0700 because settings.json carries a plaintext API key on machines
+// with no keyring; an existing looser directory from an older build is
+// tightened best-effort.
+func configDir() string {
+	base, err := os.UserConfigDir()
 	if err != nil {
-		configDir = "."
+		if base, err = os.UserHomeDir(); err != nil {
+			return ""
+		}
 	}
-	dir := filepath.Join(configDir, "draftline")
-	_ = os.MkdirAll(dir, 0755)
-	return filepath.Join(dir, "settings.json")
+	dir := filepath.Join(base, "draftline")
+	_ = os.MkdirAll(dir, 0700)
+	_ = os.Chmod(dir, 0700)
+	return dir
+}
+
+func (a *App) settingsPath() string {
+	return filepath.Join(configDir(), "settings.json")
 }
 
 // loadSettingsFromDisk reads settings.json verbatim (including a legacy
@@ -842,17 +853,9 @@ func (a *App) BrowseForDirectory() string {
 // ── Recent Projects ─────────────────────────────────────────────────────────
 
 func (a *App) recentProjectsPath() string {
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		configDir = "."
-	}
-	dir := filepath.Join(configDir, "draftline")
-	_ = os.MkdirAll(dir, 0700)
-	// Best-effort: tighten an existing directory created by an older version.
-	_ = os.Chmod(dir, 0700)
-	path := filepath.Join(dir, "recent_projects.json")
-	// Best-effort: tighten an existing recent-projects file written with
-	// looser permissions by an older version. Ignore errors.
+	path := filepath.Join(configDir(), "recent_projects.json")
+	// Best-effort: tighten a file written with looser permissions by an older
+	// version. Ignore errors.
 	_ = os.Chmod(path, 0600)
 	return path
 }

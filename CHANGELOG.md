@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02698] - 2026-09-21
+
+### Changed
+- The settings and recent projects folder is created once, with one permission mode, instead of two callers disagreeing about it.
+
 ## [0.21.02697] - 2026-09-21
 
 ### Changed
