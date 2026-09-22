@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02720] - 2026-09-22
+
+### Changed
+- Book session handling moved out of the application entry point, which had grown to hold six unrelated responsibilities.
+
 ## [0.21.02719] - 2026-09-22
 
 ### Changed
