@@ -7,11 +7,6 @@ import (
 	"draftline/internal/types"
 )
 
-// dispatchAI routes a request through the configured default provider.
-func (a *App) dispatchAI(system, userMsg string, profile aiRequestProfile) types.AIRewriteResult {
-	return a.dispatchAIWithMode(system, userMsg, profile, "")
-}
-
 // dispatchAIWithMode routes one request through an explicit task provider.
 // There is deliberately no fallback chain: a task assigned to Codex either uses
 // Codex or reports that Codex needs setup, rather than silently sending

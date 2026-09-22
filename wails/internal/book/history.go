@@ -168,20 +168,17 @@ func (e sourceReadError) Unwrap() error { return e.err }
 
 func unreadableSource(err error) error { return sourceReadError{err: err} }
 
-// copyPreservedEntries carries members of the source archive into the archive
-// being written, byte for byte and without inflating or recompressing them.
-// This is the hot path for ordinary autosaves.
+// copyPreservedEntriesExcept carries members of the source archive into the
+// archive being written, byte for byte and without inflating or recompressing
+// them. This is the hot path for ordinary autosaves.
 //
 // sourcePath is the book being saved FROM, which during a Save As is not the
 // file being written. A member whose name starts with none of the given
 // prefixes is not copied, and because every save rebuilds the archive from
 // scratch, not copying a member destroys it.
-func copyPreservedEntries(w *archiveWriter, sourcePath string, prefixes []string) error {
-	return copyPreservedEntriesExcept(w, sourcePath, prefixes, nil, nil, nil)
-}
-
-// copyPreservedEntriesExcept is the same, with a list of prefixes this save is
-// replacing outright and the set of editions it still has.
+//
+// superseded lists the prefixes this save is replacing outright, and
+// liveEditions the editions it still has.
 //
 // The exception exists because a replaced member does not always keep its
 // name. Cover art is kept as a JPEG or, for flat artwork, as a PNG; attaching

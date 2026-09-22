@@ -42,13 +42,6 @@ func analyzeLinguisticEvidence(text string) linguisticEvidence {
 	return evidence
 }
 
-// analyzeBookLinguisticEvidence classifies bounded chapter batches concurrently.
-// prose models are immutable and shared process-wide, so batching amortizes
-// document setup while the worker limit avoids multiplying model memory.
-func analyzeBookLinguisticEvidence(chapters []string) []linguisticEvidence {
-	return analyzeBookLinguisticEvidenceWithOptions(chapters, defaultAnalysisPoolOptions())
-}
-
 type linguisticBatch struct {
 	start int
 	end   int

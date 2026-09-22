@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02694] - 2026-09-21
+
+### Removed
+- Unused wrapper functions that their options-taking replacements had already superseded.
+
 ## [0.21.02693] - 2026-09-21
 
 ### Removed

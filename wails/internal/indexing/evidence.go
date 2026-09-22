@@ -202,16 +202,6 @@ func evidenceChapterHash(text string) string {
 	return hex.EncodeToString(sum[:16])
 }
 
-// ContentHash is the revision token of the analyzed manuscript text: a hash
-// over every analyzable chapter's global index, ID, title, and stripped text
-// in reading order. It is the hash the evidence index and the manuscript
-// memory record as their ContentHash, so any consumer can tell whether a
-// stored analysis still describes the text in front of the writer by
-// recomputing it here — without running any analysis.
-func ContentHash(book *types.BookData) string {
-	return contentHash(evidenceChapters(book))
-}
-
 func contentHash(chapters []evidenceChapter) string {
 	hasher := sha256.New()
 	for _, item := range chapters {

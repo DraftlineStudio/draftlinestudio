@@ -21,18 +21,6 @@ import (
 // paragraph, a slate before each chapter, and the outer margin left empty when
 // the narrator wants it for notes.
 
-// AudioScript renders the narration script and writes it to path.
-func AudioScript(path string, book types.BookData, options types.AudioOptions, cover *CoverArt) types.ExportResult {
-	data, err := AudioScriptBytes(book, options, cover)
-	if err != nil {
-		return types.ExportResult{Success: false, Error: err.Error()}
-	}
-	if err := writeExportFile(path, data); err != nil {
-		return types.ExportResult{Success: false, Error: fmt.Sprintf("failed to write file: %v", err)}
-	}
-	return types.ExportResult{Success: true, FilePath: path}
-}
-
 func AudioScriptBytes(book types.BookData, options types.AudioOptions, cover *CoverArt) ([]byte, error) {
 	doc, err := BuildDocument(book, options.ExportOptions)
 	if err != nil {

@@ -56,8 +56,8 @@ type mentionCandidate struct {
 
 // ExtractMentions scans stripped chapter text and returns all name mentions
 // in document order with deterministic IDs and exact byte offsets.
-// Corroboration is chapter-local; IndexBook uses ExtractBookMentions for
-// book-wide corroboration.
+// Corroboration is chapter-local; IndexBook uses ExtractBookMentionsWithOptions
+// for book-wide corroboration.
 func ExtractMentions(text string, chapter int) []entityresolution.Mention {
 	candidates, attested := scanChapter(text, chapter)
 	knowledge := collectCandidateKnowledge([][]mentionCandidate{candidates})
@@ -65,15 +65,11 @@ func ExtractMentions(text string, chapter int) []entityresolution.Mention {
 	return filterCandidates(candidates, attested, knowledge)
 }
 
-// ExtractBookMentions extracts mentions for every chapter with BOOK-WIDE
-// corroboration: a name attested anywhere validates its sentence-initial
-// uses everywhere.
-func ExtractBookMentions(chapterTexts []string) []entityresolution.Mention {
-	return ExtractBookMentionsWithOptions(chapterTexts, defaultAnalysisPoolOptions())
-}
-
-// ExtractBookMentionsWithOptions bounds only the ProseV3 work used to classify
-// chapter candidates. Candidate resolution remains deterministic and ordered.
+// ExtractBookMentionsWithOptions extracts mentions for every chapter with
+// BOOK-WIDE corroboration: a name attested anywhere validates its
+// sentence-initial uses everywhere. The options bound only the ProseV3 work
+// used to classify chapter candidates; candidate resolution remains
+// deterministic and ordered.
 func ExtractBookMentionsWithOptions(chapterTexts []string, pool AnalysisPoolOptions) []entityresolution.Mention {
 	allCandidates := make([][]mentionCandidate, len(chapterTexts))
 	attested := map[string]bool{}

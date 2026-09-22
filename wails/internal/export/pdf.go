@@ -22,14 +22,3 @@ func PDF(path string, book types.BookData, options types.PDFOptions, cover *Cove
 	}
 	return types.ExportResult{Success: true, FilePath: path}
 }
-
-// generatePDF remains package-private test support while the exported path
-// returns renderer errors to the application.
-func generatePDF(book types.BookData, options types.PDFOptions) []byte {
-	doc, err := BuildDocument(book, options.ExportOptions)
-	if err != nil {
-		return nil
-	}
-	data, _ := renderPublicationPDF(doc, readingPDFSpec(options))
-	return data
-}
