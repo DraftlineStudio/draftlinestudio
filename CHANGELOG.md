@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02714] - 2026-09-22
+
+### Changed
+- Opening a book moved into its own module.
+
 ## [0.21.02713] - 2026-09-22
 
 ### Changed

@@ -7,7 +7,7 @@ import { DEFAULT_STYLE_OPTIONS } from '../types/draftline'
 import type { ParagraphDiff, DiffChange } from '../utils/diff'
 import { countBookWords } from '../utils/textUtils'
 
-import { NewBook, PickBookPath, SaveBook, SaveBookAs, SaveBookSnapshots, OpenRecentProject, OpenBookAsCopy, ImportEPUB, ImportDOCX, ShowInfoDialog, CloseBookFile } from '../../wailsjs/go/main/App'
+import { NewBook, PickBookPath, SaveBook, SaveBookAs, SaveBookSnapshots, OpenBookAsCopy, ShowInfoDialog, CloseBookFile } from '../../wailsjs/go/main/App'
 import { types } from '../../wailsjs/go/models'
 import { useAppStore } from './appStore'
 import { useEditorStore, type DiffTarget, type EditorInstance, type EditorSelection } from './editorStore'
@@ -16,62 +16,15 @@ import { createEditionActions, type EditionActions } from './editions'
 import { createChapterActions, getSectionArray, newChapterID, type ChapterActions } from './chapters'
 import { createCharacterIndexActions, type CharacterIndexActions } from './characterIndex'
 import { createSavePipeline, type SaveOutcome } from './bookSave'
+import { createBookAdoption } from './bookOpen'
 
 export type { SaveOutcome }
-import { deviceHoldingBook, type BookLockWarning } from './bookLock'
+import type { BookLockWarning } from './bookLock'
 import { resetChapterHistorySession, saveAIChapterHistory, saveManualChapterSnapshot, scheduleChapterHistory as queueChapterHistory, type ChapterHistoryDependencies } from './chapterHistory'
 
 // Status-bar text lives in appStore (app-level UI state); this is the funnel
 // bookStore's save/index flows report through.
 const setStatus = (msg: string) => useAppStore.getState().setStatusMessage(msg)
-
-// Opens a book archive by path with loading feedback. isOpening drives the
-// full-screen overlay (feedback + input shield); the entry guard in each
-// open action prevents a second open racing the first — large archives take
-// a moment and the UI stays live while Go parses them.
-async function loadBookFromPath(path: string, force = false): Promise<void> {
-  useBookStore.setState(s => ({ dialogs: { ...s.dialogs, bookLockWarning: null } }))
-  if (!force) {
-    const holder = await deviceHoldingBook(path)
-    if (holder) {
-      useBookStore.setState(s => ({ dialogs: { ...s.dialogs, bookLockWarning: { path, info: holder } } }))
-      return
-    }
-  }
-  await adoptBook(() => OpenRecentProject(path), path)
-}
-
-// Opens the book a given call produces and puts it on screen. The two callers
-// differ only in which backend call they make: the book itself, or a copy of
-// it made because another device may have the original open.
-async function adoptBook(open: () => Promise<BookData>, path: string): Promise<void> {
-  useBookStore.setState({ isOpening: true })
-  try {
-    const book: BookData = await open()
-    if (!book?.version) return
-    const section: Section = book.body.length > 0 ? 'body' : 'front_matter'
-    beginBookSession()
-    useBookStore.setState({ book, currentSection: section, currentIndex: 0, isDirty: false, analysisRevision: 0 })
-    setStatus(`Opened: ${book.metadata.title}`)
-    useEditorStore.getState().clearPendingDiff()
-    // Recents bookkeeping runs AFTER the book is on screen, off the
-    // critical path. The word count comes from metadata (computed by Go on
-    // open/save); counting in JS is only a fallback for books that predate
-    // the field.
-    setTimeout(() => {
-      const wordCount = book.metadata.word_count || countBookWords(book)
-      const chapterCount = book.front_matter.length + book.body.length + book.back_matter.length
-      void useAppStore.getState().addRecentProject(types.RecentProject.createFrom({
-        type: 'book', path: book.file_path || path, name: book.metadata.title || 'Untitled',
-        lastOpened: new Date().toISOString(), stats: { chapters: chapterCount, words: wordCount }
-      }))
-    }, 0)
-  } catch (e) {
-    setStatus(`Error opening file: ${e}`)
-  } finally {
-    useBookStore.setState({ isOpening: false })
-  }
-}
 
 // The save pipeline, with the store wired into it. Destructured so the call
 // sites below read the same as when these were plain functions.
@@ -89,6 +42,29 @@ const savePipeline = createSavePipeline({
   onSessionBegin: resetChapterHistorySession,
 })
 const { performSave, scheduleAutoSave, enqueueSaveTask, beginBookSession } = savePipeline
+
+// Getting a book on screen, with the store wired into it.
+const { loadBookFromPath, adoptBook, importExternalBook } = createBookAdoption({
+  setLockWarning: (bookLockWarning) => useBookStore.setState(s => ({ dialogs: { ...s.dialogs, bookLockWarning } })),
+  setOpening: (isOpening) => useBookStore.setState({ isOpening }),
+  placeBook: (book, currentSection) => useBookStore.setState({
+    book, currentSection, currentIndex: 0, isDirty: false, analysisRevision: 0,
+  }),
+  beginSession: () => beginBookSession(),
+  setStatus,
+  clearPendingDiff: () => useEditorStore.getState().clearPendingDiff(),
+  rememberRecent: (book, path) => {
+    // The word count comes from metadata (computed by Go on open/save);
+    // counting in JS is only a fallback for books that predate the field.
+    const wordCount = book.metadata.word_count || countBookWords(book)
+    const chapterCount = book.front_matter.length + book.body.length + book.back_matter.length
+    void useAppStore.getState().addRecentProject(types.RecentProject.createFrom({
+      type: 'book', path: book.file_path || path, name: book.metadata.title || 'Untitled',
+      lastOpened: new Date().toISOString(), stats: { chapters: chapterCount, words: wordCount }
+    }))
+  },
+  loadImported: (book) => useBookStore.getState().loadImportedBook(book),
+})
 
 function ensureFrontendChapterIDs(book: BookData): BookData {
   const assign = (items: ChapterItem[]) => items.map(item => ({ ...item, id: item.id || newChapterID() }))
@@ -231,24 +207,6 @@ interface BookStore extends EditionActions, ChapterActions, CharacterIndexAction
 
 // Direct import for OS "Open with" on .epub/.docx — same importers the
 // New Book wizard uses, minus the file picker and preview step.
-async function importExternalBook(path: string) {
-  const ext = (path.split('.').pop() || '').toLowerCase()
-  try {
-    const result = ext === 'epub' ? await ImportEPUB(path) : await ImportDOCX(path)
-    if (!result.success || !result.book) {
-      if (result.error !== 'cancelled') setStatus(`Import failed: ${result.error || 'unknown error'}`)
-      return
-    }
-    useBookStore.getState().loadImportedBook(result.book as unknown as BookData)
-    const warnings = result.warnings?.length || 0
-    if (warnings > 0) {
-      setStatus(`Imported: ${result.book.metadata?.title || path} (${warnings} import warning${warnings === 1 ? '' : 's'})`)
-    }
-  } catch (e) {
-    setStatus(`Import failed: ${e}`)
-  }
-}
-
 // Shared tail of the unsaved-changes dialog: run whatever the user was
 // trying to do before the dialog interrupted.
 async function proceedWithAction(action: DialogState['pendingAction']) {
