@@ -107,7 +107,8 @@ interface AppStore {
   setBottomToolHeight: (height: number) => void
 
   loadSettings: () => Promise<void>
-  saveSettings: (patch: Partial<AppSettings>) => Promise<void>
+  /** Resolves false when the write failed; the failure is also shown to the writer. */
+  saveSettings: (patch: Partial<AppSettings>) => Promise<boolean>
   // Optional target lets callers deep-link a specific settings section
   // (e.g. the Read Aloud rail icon when the voice model needs setup).
   openSettings: (section?: string) => void
@@ -130,7 +131,7 @@ interface AppStore {
 // saveSettings calls can never interleave (and drop a setting) on the Go side.
 // Each call merges into in-memory state synchronously, then chains the backend
 // write; the chained write always snapshots the newest merged state.
-let saveChain: Promise<void> = Promise.resolve()
+let saveChain: Promise<unknown> = Promise.resolve()
 
 const DEFAULT_SETTINGS: AppSettings = {
   default_author: '',
@@ -255,11 +256,16 @@ export const useAppStore = create<AppStore>((set, get) => ({
     // Chain the backend write. Snapshot the latest merged state INSIDE the
     // chained callback so a queued save always persists the newest values,
     // and writes are ordered — no lost update from interleaving.
-    const run = saveChain.then(async () => {
+    const run = saveChain.then(async (): Promise<boolean> => {
       try {
         await SaveSettings(types.AppSettings.createFrom(get().settings))
+        return true
       } catch (e) {
-        console.error('Failed to save settings:', e)
+        // The screen is already showing the new value, so saying nothing here
+        // is how a setting quietly reverts on the next launch. Reported rather
+        // than thrown: most callers fire and forget.
+        get().setStatusMessage(`Could not save settings: ${e}`)
+        return false
       }
     })
     saveChain = run

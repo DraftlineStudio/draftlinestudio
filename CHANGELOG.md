@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02707] - 2026-09-22
+
+### Fixed
+- A setting that could not be saved now says so instead of appearing to work until the next restart.
+
 ## [0.21.02706] - 2026-09-22
 
 ### Changed

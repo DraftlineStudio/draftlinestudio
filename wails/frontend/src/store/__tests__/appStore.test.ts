@@ -105,3 +105,42 @@ describe('analysis CPU profile migration', () => {
     expect(store().settings.analysis_cpu_profile).toBe('gentle')
   })
 })
+
+// A settings write that fails on the Go side used to be caught, logged to the
+// console, and resolved as though it had worked. The screen kept showing the
+// new value and the writer found out at the next launch, when it was gone.
+describe('a settings write that fails says so', () => {
+  it('reports the failure to the writer and to the caller', async () => {
+    mocks.SaveSettings.mockRejectedValueOnce(new Error('disk is full'))
+
+    const saved = await store().saveSettings({ sidebar_panel_width: 420 })
+
+    expect(saved).toBe(false)
+    expect(store().statusMessage).toContain('Could not save settings')
+    expect(store().statusMessage).toContain('disk is full')
+  })
+
+  it('a successful write reports success and says nothing', async () => {
+    mocks.SaveSettings.mockResolvedValueOnce(undefined)
+
+    const saved = await store().saveSettings({ sidebar_panel_width: 420 })
+
+    expect(saved).toBe(true)
+    expect(store().statusMessage).not.toContain('Could not save settings')
+  })
+
+  // The chain is assigned the same promise saveSettings returns. A rejection
+  // left on it would skip every later callback, so one failed write would mean
+  // no setting ever reached disk again for the rest of the session.
+  it('a later write still reaches the backend after a failure', async () => {
+    mocks.SaveSettings
+      .mockRejectedValueOnce(new Error('disk is full'))
+      .mockResolvedValueOnce(undefined)
+
+    expect(await store().saveSettings({ sidebar_panel_width: 420 })).toBe(false)
+    expect(await store().saveSettings({ characters_lane_view: 'heat' })).toBe(true)
+
+    expect(mocks.SaveSettings).toHaveBeenCalledTimes(2)
+    expect(store().settings.characters_lane_view).toBe('heat')
+  })
+})
