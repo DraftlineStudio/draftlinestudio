@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02716] - 2026-09-22
+
+### Changed
+- Settings and key storage moved out of the application entry point.
+
 ## [0.21.02715] - 2026-09-22
 
 ### Fixed
