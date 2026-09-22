@@ -97,24 +97,26 @@ var (
 
 func sharedNativeCallback() uintptr {
 	nativeCallbackOnce.Do(func() {
-		// Windows' callback trampoline accepts only uintptr-sized arguments and
-		// results. Those are ABI-compatible with C pointers/int32 here; avoiding
-		// a float progress argument also keeps this callback portable.
-		nativeCallbackPointer = purego.NewCallback(func(samples, n, key uintptr) uintptr {
+		// Every argument must be pointer-sized: that is all the callback
+		// trampoline carries. Avoiding a float progress argument keeps this
+		// portable across the three platforms' calling conventions.
+		//
+		// samples is sherpa's own buffer of n float32s, valid only for the
+		// length of this call, so the bytes are copied out before returning.
+		nativeCallbackPointer = purego.NewCallback(func(samples unsafe.Pointer, n, key uintptr) uintptr {
 			value, ok := nativeCallbackStates.Load(key)
 			if !ok {
 				return 0
 			}
 			state := value.(*nativeCallbackState)
-			if n == 0 || samples == 0 {
+			if n == 0 || samples == nil {
 				return 1
 			}
 			if err := state.ctx.Err(); err != nil {
 				state.err = err
 				return 0
 			}
-			floats := unsafe.Slice((*float32)(unsafe.Pointer(samples)), int(n))
-			view := unsafe.Slice((*byte)(unsafe.Pointer(&floats[0])), int(n)*4)
+			view := unsafe.Slice((*byte)(samples), int(n)*4)
 			if err := state.emit(append([]byte(nil), view...)); err != nil {
 				state.err = err
 				return 0

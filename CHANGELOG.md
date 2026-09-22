@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02691] - 2026-09-21
+
+### Changed
+- The read aloud audio callback narrows and documents its pointer conversion so the standard Go vet suite passes clean.
+
 ## [0.21.02690] - 2026-09-21
 
 ### Changed
