@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02710] - 2026-09-22
+
+### Fixed
+- Dragging the sidebar edge no longer re-registers its listeners on every frame.
+
 ## [0.21.02709] - 2026-09-22
 
 ### Fixed

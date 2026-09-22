@@ -36,6 +36,11 @@ export default function ToolsPanel() {
   const [panelWidth, setPanelWidth] = useState(280)
   const [isResizing, setIsResizing] = useState(false)
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null)
+  // The live width during a drag. Mouse-up needs the latest value, and reading
+  // it from state would put panelWidth in the resize effect's dependencies,
+  // re-running it — tearing down and re-adding both document listeners — on
+  // every frame of the drag.
+  const widthRef = useRef(panelWidth)
   const restoredRef = useRef(false)
   const { settings, saveSettings, loaded } = useAppStore()
   const reviewCount = useReviewCount()
@@ -83,6 +88,7 @@ export default function ToolsPanel() {
     e.preventDefault()
     setIsResizing(true)
     resizeRef.current = { startX: e.clientX, startWidth: panelWidth }
+    widthRef.current = panelWidth
     document.body.style.cursor = 'ew-resize'
     document.body.style.userSelect = 'none'
   }
@@ -94,6 +100,7 @@ export default function ToolsPanel() {
       if (!resizeRef.current) return
       const delta = resizeRef.current.startX - e.clientX
       const newWidth = Math.min(500, Math.max(280, resizeRef.current.startWidth + delta))
+      widthRef.current = newWidth
       setPanelWidth(newWidth)
     }
 
@@ -102,7 +109,7 @@ export default function ToolsPanel() {
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
       // Save width to settings (serialized through the store's save chain)
-      void saveSettings({ sidebar_panel_width: panelWidth })
+      void saveSettings({ sidebar_panel_width: widthRef.current })
     }
 
     document.addEventListener('mousemove', handleMouseMove)
@@ -111,7 +118,7 @@ export default function ToolsPanel() {
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isResizing, panelWidth, saveSettings])
+  }, [isResizing, saveSettings])
 
   const handleGlyphClick = (section: Exclude<GlyphSection, null>) => {
     setSection(activeSection === section ? null : section)
