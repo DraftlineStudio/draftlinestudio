@@ -22,6 +22,7 @@ import type { Section } from '../types/draftline'
 import { FRONT_MATTER_TYPES, BODY_TYPES, BACK_MATTER_TYPES } from '../types/draftline'
 import ContextMenu, { ContextMenuItem } from './ContextMenu'
 import { countBookWords } from '../utils/textUtils'
+import { useSettledBook } from '../hooks/useSettledBook'
 import PlannerSidebar from './planner/PlannerSidebar'
 
 interface SortableItemProps {
@@ -297,11 +298,11 @@ export default function ChapterPanel() {
     toggleLeftPanel: s.toggleLeftPanel,
   })))
 
-  // Whole-book recount re-parses every chapter's HTML; memoize on the book
-  // reference so it only runs when content changes, not on unrelated store
-  // updates (isDirty / statusMessage / isAutoSaving) that used to re-render this
-  // panel via a bare store subscription.
-  const totalWords = useMemo(() => (book ? countBookWords(book) : 0), [book])
+  // A whole-book recount re-parses every chapter's HTML, so it runs against a
+  // settled snapshot rather than the book object the editor replaces on every
+  // flush.
+  const settledBook = useSettledBook(book)
+  const totalWords = useMemo(() => (settledBook ? countBookWords(settledBook) : 0), [settledBook])
   // Manuscript | Planner tabs switch the whole center + right side of the app.
   const viewMode = useBookStore(s => s.viewMode)
   const setViewMode = useBookStore(s => s.setViewMode)

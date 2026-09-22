@@ -7,6 +7,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { useBookStore } from '../../../store/bookStore'
 import { analyzeText, getScoreColor } from '../../../services/aiDetection'
 import { countWords, countBookWords, getCurrentContent, htmlToText } from '../../../utils/textUtils'
+import { useSettledBook } from '../../../hooks/useSettledBook'
 import { bookKey, openToolsSection } from '../Analysis/shared'
 import { recordTodayWords, getLastNDays, todayISO } from './history'
 
@@ -68,9 +69,11 @@ export default function DashboardTab() {
     return () => { if (analysisTimer.current) clearTimeout(analysisTimer.current) }
   }, [currentContent])
 
-  // Whole-book count re-parses every chapter's HTML, so memoize on the book
-  // reference — it must not re-run on unrelated store updates.
-  const totalWords = useMemo(() => (book ? countBookWords(book) : 0), [book])
+  // A whole-book count re-parses every chapter's HTML, so it runs against a
+  // settled snapshot rather than the book object the editor replaces on every
+  // flush.
+  const settledBook = useSettledBook(book)
+  const totalWords = useMemo(() => (settledBook ? countBookWords(settledBook) : 0), [settledBook])
 
   // Session baseline — captured when a book first appears in this panel (and
   // re-captured when a DIFFERENT book is opened), not at mount time: mounting
@@ -86,12 +89,15 @@ export default function DashboardTab() {
   const sessionStart = session.current?.startTime ?? Date.now()
   const sessionStartWords = session.current?.startWords ?? 0
 
+  // Per-chapter counts are the same whole-book parse as totalWords, so they
+  // read the same settled snapshot. A chapter added in the last moment has no
+  // count yet, hence the fallback where the rows are built.
   const sectionCounts = useMemo(() => {
-    const bodyCounts = (book?.body ?? []).map(ch => countWords(ch.content || ''))
-    const frontWords = (book?.front_matter ?? []).reduce((sum, ch) => sum + countWords(ch.content || ''), 0)
-    const backWords = (book?.back_matter ?? []).reduce((sum, ch) => sum + countWords(ch.content || ''), 0)
+    const bodyCounts = (settledBook?.body ?? []).map(ch => countWords(ch.content || ''))
+    const frontWords = (settledBook?.front_matter ?? []).reduce((sum, ch) => sum + countWords(ch.content || ''), 0)
+    const backWords = (settledBook?.back_matter ?? []).reduce((sum, ch) => sum + countWords(ch.content || ''), 0)
     return { bodyCounts, frontWords, backWords }
-  }, [book])
+  }, [settledBook])
 
   const targetWords = book?.writing_goals?.target_word_count || 0
   const dailyGoal = book?.writing_goals?.daily_word_goal || 0
@@ -153,7 +159,7 @@ export default function DashboardTab() {
     breakdownRows.push({ key: 'front', label: 'Front matter', words: frontWords, muted: true })
   }
   chapters.forEach((ch, i) => {
-    breakdownRows.push({ key: `body-${i}`, label: `${i + 1} · ${ch.title || 'Untitled'}`, words: bodyCounts[i], muted: false })
+    breakdownRows.push({ key: `body-${i}`, label: `${i + 1} · ${ch.title || "Untitled"}`, words: bodyCounts[i] ?? 0, muted: false })
   })
   if ((book.back_matter || []).length > 0) {
     breakdownRows.push({ key: 'back', label: 'Back matter', words: backWords, muted: true })

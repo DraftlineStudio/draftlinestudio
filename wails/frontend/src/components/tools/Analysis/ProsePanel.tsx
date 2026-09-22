@@ -10,7 +10,8 @@ import { useBookStore } from '../../../store/bookStore'
 import { useAnalysisStore } from '../../../store/analysisStore'
 import { useAppStore } from '../../../store/appStore'
 import { getCurrentContent, htmlToText } from '../../../utils/textUtils'
-import { aggregateWordClasses, bookKey } from './shared'
+import { aggregateWordClasses } from './shared'
+import { useSettledBook } from '../../../hooks/useSettledBook'
 
 const LONG_SENTENCE_WORDS = 25
 const SHORT_SENTENCE_WORDS = 8
@@ -52,18 +53,9 @@ export default function ProsePanel() {
   const runAnalysis = useAnalysisStore(state => state.run)
   const analysisEnabled = useAppStore(state => state.settings.analysis_enabled)
 
-  // ── Debounced book snapshot ───────────────────────────────────────────────
-  // bookStore replaces the book object on every editor flush (~150ms while
-  // typing), so anything memoized on `book` would re-run per keystroke. The
-  // rhythm strip and the whole-manuscript pass both read this 2s-debounced
-  // snapshot instead; a *different* project (bookKey change, incl. open/close)
-  // swaps in immediately so the previous book's stats never linger.
-  const [debouncedBook, setDebouncedBook] = useState(book)
-  useEffect(() => {
-    setDebouncedBook(prev => (prev && book && bookKey(prev) === bookKey(book) ? prev : book))
-    const timer = window.setTimeout(() => setDebouncedBook(book), RHYTHM_DEBOUNCE_MS)
-    return () => window.clearTimeout(timer)
-  }, [book])
+  // The rhythm strip and the whole-manuscript pass both read a settled
+  // snapshot, not the book object the editor replaces on every flush.
+  const debouncedBook = useSettledBook(book, RHYTHM_DEBOUNCE_MS)
 
   // ── Rhythm: last N sentences of the current chapter ───────────────────────
   // Chapter switches update instantly (section/index are not debounced); only

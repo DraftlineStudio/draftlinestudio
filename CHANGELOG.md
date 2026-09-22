@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02709] - 2026-09-22
+
+### Fixed
+- The word count updates on a rhythm so typing stays smooth in long books.
+
 ## [0.21.02708] - 2026-09-22
 
 ### Fixed
