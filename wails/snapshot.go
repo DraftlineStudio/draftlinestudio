@@ -21,6 +21,7 @@ package main
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 	"sync"
 	"time"
@@ -119,9 +120,7 @@ func (c *snapshotCache) pending() (book.Assets, map[string]uint64) {
 	marks := map[string]uint64{}
 	for id, entry := range c.entries {
 		marks[id] = entry.version
-		for name, data := range entry.files {
-			assets.Files[name] = data
-		}
+		maps.Copy(assets.Files, entry.files)
 	}
 	return assets, marks
 }
@@ -184,14 +183,10 @@ func (a *App) pendingAssets() (book.Assets, func()) {
 	// not enough to let go of them; "the save wrote this one" is.
 	written := map[string]bool{}
 	merged := book.Assets{Files: map[string][]byte{}, Superseded: coverAssets.Superseded, Written: written}
-	for name, data := range coverAssets.Files {
-		merged.Files[name] = data
-	}
+	maps.Copy(merged.Files, coverAssets.Files)
 	// A frozen manuscript is filed under the hash of its own contents, so no
 	// two of them can want the same member name and nothing can supersede one.
-	for name, data := range snapshotAssets.Files {
-		merged.Files[name] = data
-	}
+	maps.Copy(merged.Files, snapshotAssets.Files)
 	if len(merged.Files) == 0 && len(merged.Superseded) == 0 {
 		return book.Assets{}, func() {}
 	}

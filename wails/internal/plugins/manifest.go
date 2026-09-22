@@ -6,6 +6,7 @@
 package plugins
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -104,7 +105,7 @@ func ParseManifest(dir string) (Manifest, error) {
 	if err != nil {
 		return m, err
 	}
-	dec := json.NewDecoder(strings.NewReader(string(data)))
+	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&m); err != nil {
 		return m, fmt.Errorf("manifest.json: %w", err)

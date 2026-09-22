@@ -240,7 +240,7 @@ func (c *coverCache) dropClean() {
 // The dialog returns a path, which is the only form this whole pipeline
 // accepts. Dismissing it is not an error and does not produce one on screen.
 func (a *App) AttachCoverDialog(editionID string, large bool) types.CoverResult {
-	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+	chosen, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title:            "Choose cover artwork",
 		DefaultDirectory: a.getSettings().DefaultSaveDir,
 		Filters: []runtime.FileFilter{
@@ -250,10 +250,10 @@ func (a *App) AttachCoverDialog(editionID string, large bool) types.CoverResult 
 	if err != nil {
 		return types.CoverResult{Error: err.Error()}
 	}
-	if path == "" {
+	if chosen == "" {
 		return types.CoverResult{Cancelled: true}
 	}
-	return a.AttachCover(editionID, path, large)
+	return a.AttachCover(editionID, chosen, large)
 }
 
 // AttachCover prepares the artwork at path and attaches it to one edition.

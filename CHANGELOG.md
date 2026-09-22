@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02699] - 2026-09-21
+
+### Changed
+- Hand written copy and reverse loops replaced with their standard library equivalents.
+
 ## [0.21.02698] - 2026-09-21
 
 ### Changed

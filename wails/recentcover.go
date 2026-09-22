@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -97,8 +98,7 @@ func newestCoverThumb(archivePath string) ([]byte, string, error) {
 	if err := json.Unmarshal(raw, &index); err != nil {
 		return nil, "", nil
 	}
-	for i := len(index.Editions) - 1; i >= 0; i-- {
-		edition := index.Editions[i]
+	for _, edition := range slices.Backward(index.Editions) {
 		if edition.Cover == nil {
 			continue
 		}
