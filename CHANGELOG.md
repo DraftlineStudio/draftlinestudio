@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02689] - 2026-09-21
+
+### Changed
+- Plugin command keys use an escaped separator so the source file stays plain text and searchable.
+
 ## [0.21.02688] - 2026-09-21
 
 ### Fixed
