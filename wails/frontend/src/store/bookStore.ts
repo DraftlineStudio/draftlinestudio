@@ -13,6 +13,7 @@ import { useAppStore } from './appStore'
 import { useEditorStore, type DiffTarget, type EditorInstance, type EditorSelection } from './editorStore'
 import { useStoryBibleStore } from './storyBibleStore'
 import { createEditionActions, type EditionActions } from './editions'
+import { createChapterActions, getSectionArray, newChapterID, type ChapterActions } from './chapters'
 import { deviceHoldingBook, type BookLockWarning } from './bookLock'
 import { resetChapterHistorySession, saveAIChapterHistory, saveManualChapterSnapshot, scheduleChapterHistory as queueChapterHistory, type ChapterHistoryDependencies } from './chapterHistory'
 
@@ -99,12 +100,6 @@ function beginBookSession() {
     autoSaveTimer = null
   }
   resetChapterHistorySession()
-}
-
-function newChapterID(): string {
-  return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-    ? `ch-${crypto.randomUUID().replace(/-/g, '')}`
-    : `ch-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
 }
 
 function ensureFrontendChapterIDs(book: BookData): BookData {
@@ -221,7 +216,7 @@ interface DialogState {
   bookLockWarning: BookLockWarning | null
 }
 
-interface BookStore extends EditionActions {
+interface BookStore extends EditionActions, ChapterActions {
   // Core state
   book: BookData | null
   currentSection: Section
@@ -262,17 +257,7 @@ interface BookStore extends EditionActions {
   // Navigation
   setCurrentChapter: (section: Section, index: number) => void
 
-  // Chapter operations
-  updateCurrentContent: (html: string) => void
-  updateChapterTitle: (section: Section, index: number, title: string) => void
-  updateChapterSubtitle: (section: Section, index: number, subtitle: string) => void
-  addChapter: (section: Section, item: ChapterItem) => void
-  deleteChapter: (section: Section, index: number) => void
-  moveChapter: (section: Section, from: number, to: number) => void
-  updateMetadata: (metadata: Partial<Metadata>) => void
-  updateCopyright: (html: string) => void
-  // Read Aloud voice casting persists with the book (read_aloud_cast.json).
-  updateReadAloudCast: (cast: ReadAloudCast) => void
+  // Chapter and record mutations come from ChapterActions (see chapters.ts).
 
   // Story Bible (delegates to storyBibleStore)
   addCharacter: (char: Character) => void
@@ -376,24 +361,6 @@ async function proceedWithAction(action: DialogState['pendingAction']) {
     } catch (e) {
       setStatus(`Error opening file: ${e}`)
     }
-  }
-}
-
-function getSectionArray(book: BookData, section: Section): ChapterItem[] {
-  switch (section) {
-    case 'front_matter': return book.front_matter
-    case 'body': return book.body
-    case 'back_matter': return book.back_matter
-    default: return []
-  }
-}
-
-function setSectionArray(book: BookData, section: Section, items: ChapterItem[]): BookData {
-  switch (section) {
-    case 'front_matter': return { ...book, front_matter: items }
-    case 'body': return { ...book, body: items }
-    case 'back_matter': return { ...book, back_matter: items }
-    default: return book
   }
 }
 
@@ -640,106 +607,22 @@ export const useBookStore = create<BookStore>((set, get) => ({
     useEditorStore.getState().clearPendingDiff()
   },
 
-  // Chapter operations
-  updateCurrentContent: (html) => {
-    const { book, currentSection, currentIndex } = get()
-    if (!book) return
-    if (currentSection === 'copyright') {
-      set(state => ({ book: { ...book, copyright: html }, isDirty: true, analysisRevision: state.analysisRevision + 1 }))
-      scheduleAutoSave()
-      return
-    }
-    const items = getSectionArray(book, currentSection)
-    if (!items[currentIndex]) return
-    const updated = items.map((item, i) => i === currentIndex ? { ...item, content: html } : item)
-    set(state => ({ book: setSectionArray(book, currentSection, updated), isDirty: true, analysisRevision: state.analysisRevision + 1 }))
-    scheduleChapterHistory(items[currentIndex].id)
-    scheduleAutoSave()
-  },
-
-  updateChapterTitle: (section, index, title) => {
-    const { book } = get()
-    if (!book || section === 'copyright') return
-    const items = getSectionArray(book, section)
-    const updated = items.map((item, i) => i === index ? { ...item, title } : item)
-    set(state => ({ book: setSectionArray(book, section, updated), isDirty: true, analysisRevision: state.analysisRevision + 1 }))
-    scheduleChapterHistory(items[index]?.id)
-    scheduleAutoSave()
-  },
-
-  updateChapterSubtitle: (section, index, subtitle) => {
-    const { book } = get()
-    if (!book || section === 'copyright') return
-    const items = getSectionArray(book, section)
-    const updated = items.map((item, i) => i === index ? { ...item, subtitle } : item)
-    set(state => ({ book: setSectionArray(book, section, updated), isDirty: true, analysisRevision: state.analysisRevision + 1 }))
-    scheduleChapterHistory(items[index]?.id)
-    scheduleAutoSave()
-  },
-
-  addChapter: (section, item) => {
-    const { book } = get()
-    if (!book || section === 'copyright') return
-    const items = [...getSectionArray(book, section), { ...item, id: item.id || newChapterID() }]
-    const newBook = setSectionArray(book, section, items)
-    set(state => ({ book: newBook, currentSection: section, currentIndex: items.length - 1, isDirty: true, analysisRevision: state.analysisRevision + 1 }))
-    scheduleAutoSave()
-  },
-
-  deleteChapter: (section, index) => {
-    const { book, currentSection, currentIndex } = get()
-    if (!book || section === 'copyright') return
-    const items = getSectionArray(book, section)
-    if (items.length <= 1 && section === 'body') return
-    const updated = items.filter((_, i) => i !== index)
-    const newBook = setSectionArray(book, section, updated)
-    let newIndex = currentIndex
-    if (section === currentSection && index === currentIndex) {
-      newIndex = Math.max(0, index - 1)
-    } else if (section === currentSection && index < currentIndex) {
-      newIndex = currentIndex - 1
-    }
-    set(state => ({ book: newBook, currentIndex: Math.min(newIndex, updated.length - 1), isDirty: true, analysisRevision: state.analysisRevision + 1 }))
-    scheduleAutoSave()
-  },
-
-  moveChapter: (section, from, to) => {
-    const { book, currentSection, currentIndex } = get()
-    if (!book || section === 'copyright') return
-    const items = [...getSectionArray(book, section)]
-    const [moved] = items.splice(from, 1)
-    items.splice(to, 0, moved)
-    let newIndex = currentIndex
-    if (section === currentSection) {
-      if (currentIndex === from) newIndex = to
-      else if (from < currentIndex && to >= currentIndex) newIndex = currentIndex - 1
-      else if (from > currentIndex && to <= currentIndex) newIndex = currentIndex + 1
-    }
-    set(state => ({ book: setSectionArray(book, section, items), currentIndex: newIndex, isDirty: true, analysisRevision: state.analysisRevision + 1 }))
-    scheduleAutoSave()
-  },
-
-  updateMetadata: (metadata) => {
-    const { book } = get()
-    if (!book) return
-    set({ book: { ...book, metadata: { ...book.metadata, ...metadata } }, isDirty: true })
-    scheduleAutoSave()
-  },
-
-  updateCopyright: (html) => {
-    const { book } = get()
-    if (!book) return
-    set(state => ({ book: { ...book, copyright: html }, isDirty: true, analysisRevision: state.analysisRevision + 1 }))
-    scheduleAutoSave()
-  },
+  ...createChapterActions({
+    read: () => {
+      const { book, currentSection, currentIndex } = get()
+      return { book, currentSection, currentIndex }
+    },
+    apply: (patch) => set(state => ({
+      book: patch.book,
+      isDirty: true,
+      ...(patch.currentSection !== undefined && { currentSection: patch.currentSection }),
+      ...(patch.currentIndex !== undefined && { currentIndex: patch.currentIndex }),
+      ...(patch.prose && { analysisRevision: state.analysisRevision + 1 }),
+    })),
+    noteHistory: scheduleChapterHistory,
+    autosave: scheduleAutoSave,
+  }),
   ...createEditionActions(() => get().book, book => { set({ book, isDirty: true }); scheduleAutoSave() }),
-
-  updateReadAloudCast: (cast) => {
-    const { book } = get()
-    if (!book) return
-    set({ book: { ...book, read_aloud_cast: cast }, isDirty: true })
-    scheduleAutoSave()
-  },
 
   // Story Bible - delegate to storyBibleStore
   addCharacter: (char) => {

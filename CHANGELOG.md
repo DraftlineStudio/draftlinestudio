@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02711] - 2026-09-22
+
+### Changed
+- Chapter mutations moved into their own module.
+
 ## [0.21.02710] - 2026-09-22
 
 ### Fixed

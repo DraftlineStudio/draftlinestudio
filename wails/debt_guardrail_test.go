@@ -27,7 +27,7 @@ const debtLineThreshold = 800
 var debtRatchet = map[string]int{
 	"app.go":                               1500, // 1,468 at 02470; analysis orchestration extracted, CLI drivers still here
 	"import.go":                            780,  // 722 at 02468; EPUB+DOCX importers (backlog: internal/importer)
-	"frontend/src/store/bookStore.ts":      971,  // raised 02681: the cross-device claim asked about on open
+	"frontend/src/store/bookStore.ts":      870,  // 851 after chapter mutations moved to store/chapters.ts
 	"frontend/src/store/readAloudStore.ts": 930,  // added 02531: player redesign cast/progress/preview glue around the module-scope pipeline singletons; extract castSession.ts if this needs a raise
 	"frontend/src/components/characters/CharactersView.tsx": 840, // 811; five components in one file
 	"frontend/src/components/tools/AIStudio/index.tsx":      780, // 748
