@@ -27,7 +27,6 @@ import StorySearchToolWindow from './components/StorySearchToolWindow'
 import BookInfoDialog from './components/dialogs/BookInfoDialog'
 import NewChapterDialog from './components/dialogs/NewChapterDialog'
 import NewBookWizard from './components/dialogs/NewBookWizard'
-import NewUniverseWizard from './components/dialogs/NewUniverseWizard'
 import UnsavedChangesDialog from './components/dialogs/UnsavedChangesDialog'
 import BookLockDialog from './components/dialogs/BookLockDialog'
 import AppSettingsDialog from './components/dialogs/AppSettingsDialog'
@@ -51,7 +50,7 @@ export default function App() {
     viewMode: s.viewMode,
     setViewMode: s.setViewMode,
   })))
-  const { loadSettings, settings, showSettings, showWelcome, setShowWelcome, loadRecentProjects, recentProjects, showNewUniverse, setShowNewUniverse, toggleLeftPanel, showMetadata, showNewChapter, newChapterSection, showExportWizard, showChapterHistory, bottomToolOpen, openStorySearch, closeBottomTool } = useAppStore()
+  const { loadSettings, settings, showSettings, showWelcome, setShowWelcome, loadRecentProjects, recentProjects, toggleLeftPanel, showMetadata, showNewChapter, newChapterSection, showExportWizard, showChapterHistory, bottomToolOpen, openStorySearch, closeBottomTool } = useAppStore()
   const prevThemeRef = useRef<'light' | 'dark' | null>(null)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [targetTheme, setTargetTheme] = useState<'light' | 'dark'>('dark')
@@ -85,11 +84,6 @@ export default function App() {
   const handleNewBook = useCallback(() => {
     newBook()
   }, [newBook])
-
-  // Handle new universe from welcome screen
-  const handleNewUniverse = useCallback(() => {
-    setShowNewUniverse(true)
-  }, [setShowNewUniverse])
 
   // Handle open file from welcome screen
   const handleOpenFile = useCallback(async () => {
@@ -300,13 +294,11 @@ export default function App() {
         <TitleBar minimal />
         <WelcomeScreen
           onNewBook={handleNewBook}
-          onNewUniverse={handleNewUniverse}
           onOpenFile={handleOpenFile}
           onOpenRecent={handleOpenRecent}
         />
         {dialogs.showNewBookWizard && <NewBookWizard onCreated={() => setShowWelcome(false)} />}
         {dialogs.bookLockWarning && <BookLockDialog />}
-        {showNewUniverse && <NewUniverseWizard />}
         {showSettings && <AppSettingsDialog />}
         {openingOverlay}
         <BackendErrorNotice />
@@ -344,7 +336,6 @@ export default function App() {
         <NewChapterDialog section={newChapterSection} />
       )}
       {dialogs.showNewBookWizard && <NewBookWizard />}
-      {showNewUniverse && <NewUniverseWizard />}
       {dialogs.showUnsavedWarning && <UnsavedChangesDialog />}
       {dialogs.bookLockWarning && <BookLockDialog />}
       {showExportWizard && <ExportWizard />}

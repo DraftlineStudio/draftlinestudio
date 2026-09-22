@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02692] - 2026-09-21
+
+### Removed
+- The unfinished New Universe wizard, which no screen could actually open.
+
 ## [0.21.02691] - 2026-09-21
 
 ### Changed

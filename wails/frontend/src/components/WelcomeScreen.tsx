@@ -17,7 +17,6 @@ interface ContextMenuState {
 
 interface WelcomeScreenProps {
   onNewBook: () => void
-  onNewUniverse: () => void
   onOpenFile: () => void
   onOpenRecent: (path: string) => void
 }

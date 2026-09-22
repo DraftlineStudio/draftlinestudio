@@ -73,7 +73,6 @@ interface AppStore {
   loaded: boolean
   recentProjects: RecentProject[]
   showWelcome: boolean
-  showNewUniverse: boolean
 
   // App-level UI state (status bar, panels, self-contained dialogs).
   // Dialogs entangled with the save pipeline (unsaved-changes warning,
@@ -120,7 +119,6 @@ interface AppStore {
   removeRecentProject: (path: string) => Promise<void>
   clearRecentProjects: () => Promise<void>
   setShowWelcome: (show: boolean) => void
-  setShowNewUniverse: (show: boolean) => void
   // Set by the background update check when a newer release exists. Carries
   // the full check result so the settings dialog can offer the download at
   // once instead of asking for a second check.
@@ -188,7 +186,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
   loaded: false,
   recentProjects: [],
   showWelcome: true,
-  showNewUniverse: false,
 
   statusMessage: 'Ready',
   setStatusMessage: (msg) => set({ statusMessage: msg }),
@@ -321,5 +318,4 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   setShowWelcome: (show: boolean) => set({ showWelcome: show }),
 
-  setShowNewUniverse: (show: boolean) => set({ showNewUniverse: show }),
 }))
