@@ -3,7 +3,6 @@ import { useShallow } from 'zustand/react/shallow'
 import { useBookStore } from './store/bookStore'
 import { useAppStore } from './store/appStore'
 import { startUpdateNag } from './services/updateNag'
-import { initPlugins } from './services/plugins/loader'
 import { useReadAloudStore } from './store/readAloudStore'
 import { TakePendingOpenPath } from '../wailsjs/go/main/App'
 import { EventsOn } from '../wailsjs/runtime/runtime'
@@ -63,7 +62,9 @@ export default function App() {
     void loadSettings().then(() => {
       startUpdateNag()
       // Plugins activate after settings so enabled flags are authoritative.
-      void initPlugins()
+      // Imported here rather than at the top so the whole plugin host stays
+      // out of the startup bundle; nothing needs it before this point.
+      void import('./services/plugins/loader').then(m => m.initPlugins())
     })
     void loadRecentProjects()
   }, [])

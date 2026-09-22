@@ -15,7 +15,6 @@ import ReadAloudSection from './ReadAloudSection'
 import type { FeatureSettingKey } from '../../../features/registry'
 import { usePluginStore, isPluginEnabled } from '../../../store/pluginStore'
 import { PluginSettingsSection } from '../../plugins/PluginMounts'
-import { notifySettingsOpened } from '../../../services/plugins/loader'
 
 export default function AppSettingsDialog() {
   const { settings, saveSettings, closeSettings, browseForDirectory, loadSettings, settingsInitialSection } = useAppStore()
@@ -43,7 +42,7 @@ export default function AppSettingsDialog() {
   useEffect(() => {
     GetAppVersion().then(setAppVersion).catch(() => {})
     // Lets plugins with the onSettingsOpen activation event load lazily.
-    notifySettingsOpened()
+    void import('../../../services/plugins/loader').then(m => m.notifySettingsOpened())
   }, [])
 
   // Application state

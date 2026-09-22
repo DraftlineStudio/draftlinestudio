@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02721] - 2026-09-22
+
+### Changed
+- The plugin loader is imported one way so it can be split out of the startup bundle.
+
 ## [0.21.02720] - 2026-09-22
 
 ### Changed
