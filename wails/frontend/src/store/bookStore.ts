@@ -41,17 +41,14 @@ async function loadBookFromPath(path: string, force = false): Promise<void> {
 // it made because another device may have the original open.
 async function adoptBook(open: () => Promise<BookData>, path: string): Promise<void> {
   useBookStore.setState({ isOpening: true })
-  const t0 = performance.now()
   try {
     const book: BookData = await open()
-    const tLoaded = performance.now()
     if (!book?.version) return
     const section: Section = book.body.length > 0 ? 'body' : 'front_matter'
     beginBookSession()
     useBookStore.setState({ book, currentSection: section, currentIndex: 0, isDirty: false, analysisRevision: 0 })
     setStatus(`Opened: ${book.metadata.title}`)
     useEditorStore.getState().clearPendingDiff()
-    console.debug(`[open] parse+bridge ${(tLoaded - t0).toFixed(0)}ms, state set +${(performance.now() - tLoaded).toFixed(0)}ms — ${path}`)
     // Recents bookkeeping runs AFTER the book is on screen, off the
     // critical path. The word count comes from metadata (computed by Go on
     // open/save); counting in JS is only a fallback for books that predate

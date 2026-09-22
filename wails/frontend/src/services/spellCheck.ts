@@ -116,7 +116,6 @@ export async function loadDictionary(): Promise<void> {
       checkCache.clear()
       suggestionCache.clear()
       notifyChanged()
-      console.log('Spell check dictionary loaded')
     } catch (err) {
       console.warn('Failed to initialize spell checker:', err)
     }

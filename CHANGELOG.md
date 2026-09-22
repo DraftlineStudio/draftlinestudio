@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02690] - 2026-09-21
+
+### Changed
+- Removed leftover development logging, including a line that printed the full project path every time a book was opened.
+
 ## [0.21.02689] - 2026-09-21
 
 ### Changed

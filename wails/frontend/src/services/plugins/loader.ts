@@ -47,7 +47,6 @@ export async function activatePlugin(id: string): Promise<void> {
     const result = await activate(host)
     const deactivate = typeof result === 'function' ? result : mod.deactivate
     active.set(id, { info, deactivate: typeof deactivate === 'function' ? deactivate : undefined })
-    console.log(`[plugin ${id}] activated (v${info.version})`)
   } catch (e) {
     console.error(`Plugin ${id} failed to activate:`, e)
   }
