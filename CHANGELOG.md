@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02705] - 2026-09-22
+
+### Security
+- The update installer is named by Draftline from the release version rather than by whatever the release feed supplies.
+
 ## [0.21.02704] - 2026-09-22
 
 ### Fixed

@@ -143,6 +143,13 @@ func platformAssetSuffix(goos, goarch, linuxKind string) string {
 	return ""
 }
 
+// downloadFileName is what a verified package is saved as locally. It matches
+// the release asset naming, but every part of it comes from a value this build
+// validated rather than from the feed.
+func downloadFileName(version, goos, goarch, linuxKind string) string {
+	return "Draftline-" + version + platformAssetSuffix(goos, goarch, linuxKind)
+}
+
 // installKind is the Linux install kind for this process ("" elsewhere).
 func installKind() string {
 	if runtime.GOOS != "linux" {
@@ -336,7 +343,10 @@ func (a *App) DownloadUpdate() UpdateDownloadResult {
 	if err := os.MkdirAll(targetDir, 0o755); err != nil {
 		return UpdateDownloadResult{Error: "Could not create the download folder: " + err.Error()}
 	}
-	targetPath := filepath.Join(targetDir, asset.Name)
+	// Named from the version already validated by parseReleaseTag, never from
+	// the feed. A name arriving over the network has no business choosing a
+	// path or reaching the shell that launches what lands there.
+	targetPath := filepath.Join(targetDir, downloadFileName(version, runtime.GOOS, runtime.GOARCH, kind))
 
 	response, err := updateGet(ctx, client, asset.DownloadURL)
 	if err != nil {

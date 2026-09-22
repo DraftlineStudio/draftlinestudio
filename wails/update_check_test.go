@@ -225,3 +225,50 @@ func TestChooseReleaseStillReportsAVersionToASourceBuild(t *testing.T) {
 		t.Fatalf("a source build was not told about the newest release: %+v", got)
 	}
 }
+
+// The feed names the asset; it does not get to name the file, choose where it
+// lands, or contribute text to the shell command that launches it. A hostile
+// or simply broken feed entry must not be able to reach outside the update
+// cache or carry shell syntax into the launcher.
+func TestTheDownloadIsNamedFromTheVersionNotTheFeed(t *testing.T) {
+	for _, name := range []string{
+		"Draftline-0.21.02700-windows-amd64-setup.exe",
+		`..\..\..\Startup\evil-windows-amd64-setup.exe`,
+		"../../../../tmp/evil-windows-amd64-setup.exe",
+		`a" & calc.exe & "-windows-amd64-setup.exe`,
+		"C:/Windows/Temp/evil-windows-amd64-setup.exe",
+	} {
+		release := githubRelease{
+			TagName: "v0.21.02700",
+			Assets:  []githubReleaseAsset{{Name: name, DownloadURL: "https://example.test/pkg"}},
+		}
+		asset := pickReleaseAsset(&release, "windows", "amd64", "")
+		if asset == nil {
+			t.Fatalf("%q should still match the platform suffix", name)
+		}
+		version, _, ok := parseReleaseTag(release.TagName)
+		if !ok {
+			t.Fatal("the tag under test does not parse")
+		}
+		got := downloadFileName(version, "windows", "amd64", "")
+		if got != "Draftline-0.21.02700-windows-amd64-setup.exe" {
+			t.Errorf("feed asset %q produced the local name %q", name, got)
+		}
+		if strings.ContainsAny(got, `/\"&|<>`) {
+			t.Errorf("feed asset %q produced a name carrying path or shell syntax: %q", name, got)
+		}
+	}
+}
+
+// Every platform Draftline ships a package for names it the same way, so the
+// local name always carries the extension the launcher dispatches on.
+func TestTheDownloadNameKeepsItsPlatformExtension(t *testing.T) {
+	for _, tc := range []struct{ goos, goarch, kind, want string }{
+		{"windows", "amd64", "", "Draftline-0.21.02700-windows-amd64-setup.exe"},
+		{"darwin", "arm64", "", "Draftline-0.21.02700-macos-universal.dmg"},
+	} {
+		if got := downloadFileName("0.21.02700", tc.goos, tc.goarch, tc.kind); got != tc.want {
+			t.Errorf("%s/%s: got %q, want %q", tc.goos, tc.goarch, got, tc.want)
+		}
+	}
+}
