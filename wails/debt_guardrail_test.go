@@ -25,7 +25,7 @@ const debtLineThreshold = 800
 // line count. Values are the measured size at 0.16.02468 plus a small margin
 // so routine edits don't trip the gate; shrink them as the files shrink.
 var debtRatchet = map[string]int{
-	"app.go":                               1060, // 1,020 after settings, recents and the Codex driver moved out
+	"app.go":                               840,  // 812 after settings, recents and both CLI drivers moved out
 	"import.go":                            780,  // 722 at 02468; EPUB+DOCX importers (backlog: internal/importer)
 	"frontend/src/store/readAloudStore.ts": 930,  // added 02531: player redesign cast/progress/preview glue around the module-scope pipeline singletons; extract castSession.ts if this needs a raise
 	"frontend/src/components/characters/CharactersView.tsx": 840, // 811; five components in one file
