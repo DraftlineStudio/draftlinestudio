@@ -7,13 +7,14 @@ import { DEFAULT_STYLE_OPTIONS } from '../types/draftline'
 import type { ParagraphDiff, DiffChange } from '../utils/diff'
 import { countBookWords } from '../utils/textUtils'
 
-import { NewBook, PickBookPath, SaveBook, SaveBookAs, SaveBookSnapshots, OpenRecentProject, OpenBookAsCopy, IndexBook, MergeEntities, SplitEntity, ImportEPUB, ImportDOCX, ShowInfoDialog, CloseBookFile } from '../../wailsjs/go/main/App'
+import { NewBook, PickBookPath, SaveBook, SaveBookAs, SaveBookSnapshots, OpenRecentProject, OpenBookAsCopy, ImportEPUB, ImportDOCX, ShowInfoDialog, CloseBookFile } from '../../wailsjs/go/main/App'
 import { types } from '../../wailsjs/go/models'
 import { useAppStore } from './appStore'
 import { useEditorStore, type DiffTarget, type EditorInstance, type EditorSelection } from './editorStore'
 import { useStoryBibleStore } from './storyBibleStore'
 import { createEditionActions, type EditionActions } from './editions'
 import { createChapterActions, getSectionArray, newChapterID, type ChapterActions } from './chapters'
+import { createCharacterIndexActions, type CharacterIndexActions } from './characterIndex'
 import { deviceHoldingBook, type BookLockWarning } from './bookLock'
 import { resetChapterHistorySession, saveAIChapterHistory, saveManualChapterSnapshot, scheduleChapterHistory as queueChapterHistory, type ChapterHistoryDependencies } from './chapterHistory'
 
@@ -216,7 +217,7 @@ interface DialogState {
   bookLockWarning: BookLockWarning | null
 }
 
-interface BookStore extends EditionActions, ChapterActions {
+interface BookStore extends EditionActions, ChapterActions, CharacterIndexActions {
   // Core state
   book: BookData | null
   currentSection: Section
@@ -272,11 +273,7 @@ interface BookStore extends EditionActions, ChapterActions {
   updateStyleOptions: (options: Partial<WritingStyleOptions>) => void
   getStyleOptions: () => WritingStyleOptions
 
-  // Indexing and entity correction
-  indexBook: () => Promise<void>
-  mergeEntities: (entityIds: string[], canonical: string) => Promise<boolean>
-  splitEntity: (entityId: string, mentionIds: string[], newCanonical: string) => Promise<boolean>
-  clearAllCharacters: () => void
+  // Indexing and entity correction come from CharacterIndexActions.
 
   // UI actions
   closeUnsavedWarning: () => void
@@ -678,87 +675,17 @@ export const useBookStore = create<BookStore>((set, get) => ({
   // Indexing - runs the two-phase character pipeline (mention extraction +
   // entity resolution). The backend returns the full updated book, including
   // analysis.entity_resolution which relationship analysis depends on.
-  indexBook: async () => {
-    const { book } = get()
-    if (!book) return
-    set({ isIndexing: true })
-    setStatus('Indexing characters...')
-    try {
-      const result = await IndexBook(book as any)
-      if (result.success && result.book) {
-        set(state => ({
-          book: result.book as unknown as BookData,
-          isIndexing: false,
-          isDirty: true,
-          analysisRevision: state.analysisRevision + 1,
-        }))
-        setStatus(`Found ${result.characters_found} characters (${result.new_characters} new)`)
-        scheduleAutoSave()
-      } else {
-        set({ isIndexing: false })
-        setStatus(result.error || 'Indexing failed')
-      }
-    } catch (e) {
-      set({ isIndexing: false })
-      setStatus(`Indexing error: ${e}`)
-    }
-  },
-
-  // Purge every character (including fossils from older versions of the
-  // detector) plus all entity/relationship data, for a clean re-index.
-  clearAllCharacters: () => {
-    const { book } = get()
-    if (!book) return
-    set({
-      book: {
-        ...book,
-        story_bible: { ...book.story_bible, characters: [], plot_notes: book.story_bible?.plot_notes || '', timeline: book.story_bible?.timeline || '' },
-        analysis: { ...book.analysis, entity_resolution: undefined, relationships: undefined, evidence: undefined },
-      },
+  ...createCharacterIndexActions({
+    getBook: () => get().book,
+    commit: (book, options) => set(state => ({
+      book,
       isDirty: true,
-    })
-    setStatus('All characters cleared — re-index to detect them fresh')
-    scheduleAutoSave()
-  },
-
-  mergeEntities: async (entityIds, canonical) => {
-    const { book } = get()
-    if (!book) return false
-    try {
-      const result = await MergeEntities(book as any, entityIds, canonical)
-      if (result.success && result.book) {
-        set(state => ({ book: result.book as unknown as BookData, isDirty: true, analysisRevision: state.analysisRevision + 1 }))
-        setStatus('Characters merged')
-        scheduleAutoSave()
-        return true
-      }
-      setStatus(result.error || 'Merge failed')
-      return false
-    } catch (e) {
-      setStatus(`Merge error: ${e}`)
-      return false
-    }
-  },
-
-  splitEntity: async (entityId, mentionIds, newCanonical) => {
-    const { book } = get()
-    if (!book) return false
-    try {
-      const result = await SplitEntity(book as any, entityId, mentionIds, newCanonical)
-      if (result.success && result.book) {
-        set(state => ({ book: result.book as unknown as BookData, isDirty: true, analysisRevision: state.analysisRevision + 1 }))
-        setStatus('Character split')
-        scheduleAutoSave()
-        return true
-      }
-      setStatus(result.error || 'Split failed')
-      return false
-    } catch (e) {
-      setStatus(`Split error: ${e}`)
-      return false
-    }
-  },
-
+      ...(options?.prose && { analysisRevision: state.analysisRevision + 1 }),
+    })),
+    setIndexing: (isIndexing) => set({ isIndexing }),
+    setStatus,
+    autosave: scheduleAutoSave,
+  }),
   // UI actions
 
   closeUnsavedWarning: () => set(s => ({ dialogs: { ...s.dialogs, showUnsavedWarning: false, pendingAction: null } })),

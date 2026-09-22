@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02712] - 2026-09-22
+
+### Changed
+- Analysis decisions moved into their own module.
+
 ## [0.21.02711] - 2026-09-22
 
 ### Changed
