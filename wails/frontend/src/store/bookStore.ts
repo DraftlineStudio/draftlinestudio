@@ -15,6 +15,9 @@ import { useStoryBibleStore } from './storyBibleStore'
 import { createEditionActions, type EditionActions } from './editions'
 import { createChapterActions, getSectionArray, newChapterID, type ChapterActions } from './chapters'
 import { createCharacterIndexActions, type CharacterIndexActions } from './characterIndex'
+import { createSavePipeline, type SaveOutcome } from './bookSave'
+
+export type { SaveOutcome }
 import { deviceHoldingBook, type BookLockWarning } from './bookLock'
 import { resetChapterHistorySession, saveAIChapterHistory, saveManualChapterSnapshot, scheduleChapterHistory as queueChapterHistory, type ChapterHistoryDependencies } from './chapterHistory'
 
@@ -70,38 +73,22 @@ async function adoptBook(open: () => Promise<BookData>, path: string): Promise<v
   }
 }
 
-// Auto-save debounce timer
-let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
-const AUTO_SAVE_DELAY = 5000
-
-// Save serialization + staleness tracking (module-scoped, not reactive state).
-// saveRevision is bumped by scheduleAutoSave() — the funnel every dirty-marking
-// mutation already calls — so a save that completes after further edits knows
-// its snapshot is stale and must not clear isDirty.
-let saveRevision = 0
-// Identifies the currently open project. A save may finish after the user has
-// discarded that project and opened another one; its result must never mutate
-// the replacement project's path or dirty state.
-let bookSession = 0
-// saveChain serializes all saves (manual, autosave, close, save-and-proceed)
-// so two SaveBook calls can never interleave on the Go side.
-let saveChain: Promise<unknown> = Promise.resolve()
-
-export type SaveOutcome =
-  | { status: 'saved'; filePath: string; warning?: string }
-  | { status: 'stale'; filePath: string; warning?: string }
-  | { status: 'superseded' }
-  | { status: 'cancelled' }
-  | { status: 'error'; message: string }
-
-function beginBookSession() {
-  bookSession++
-  if (autoSaveTimer) {
-    clearTimeout(autoSaveTimer)
-    autoSaveTimer = null
-  }
-  resetChapterHistorySession()
-}
+// The save pipeline, with the store wired into it. Destructured so the call
+// sites below read the same as when these were plain functions.
+const savePipeline = createSavePipeline({
+  getBook: () => useBookStore.getState().book,
+  getIsDirty: () => useBookStore.getState().isDirty,
+  recordSaved: (filePath, clearDirty) => useBookStore.setState(s => ({
+    ...(clearDirty && { isDirty: false }),
+    book: s.book ? { ...s.book, file_path: filePath } : null,
+  })),
+  setAutoSaving: (isAutoSaving) => useBookStore.setState({ isAutoSaving }),
+  autoSaveEnabled: () => useAppStore.getState().settings.activity_autosave_enabled,
+  setStatus,
+  getStatusMessage: () => useAppStore.getState().statusMessage,
+  onSessionBegin: resetChapterHistorySession,
+})
+const { performSave, scheduleAutoSave, enqueueSaveTask, beginBookSession } = savePipeline
 
 function ensureFrontendChapterIDs(book: BookData): BookData {
   const assign = (items: ChapterItem[]) => items.map(item => ({ ...item, id: item.id || newChapterID() }))
@@ -113,88 +100,15 @@ function ensureFrontendChapterIDs(book: BookData): BookData {
   }
 }
 
-// Shared save primitive. Chains on saveChain, snapshots the book AFTER the
-// prior save completes (so a queued save always writes the newest state),
-// and clears isDirty only if no edit happened while the save was in flight.
-// Always writes result.file_path back into the book.
-function performSave(kind: 'save' | 'saveAs'): Promise<SaveOutcome> {
-  const run = saveChain.then(async (): Promise<SaveOutcome> => {
-    const book = useBookStore.getState().book
-    if (!book) return { status: 'error', message: 'no book open' }
-    const rev = saveRevision
-    const session = bookSession
-    try {
-      const result = kind === 'saveAs' ? await SaveBookAs(book as any) : await SaveBook(book as any)
-      if (bookSession !== session) return { status: 'superseded' }
-      if (result.success) {
-        // A save that wrote the book but could not carry everything across says
-        // so, in place of the usual "Saved" line. Losing that quietly is how an
-        // author finds out weeks later.
-        const warning = result.warnings?.[0]
-        if (saveRevision === rev) {
-          useBookStore.setState(s => ({ isDirty: false, book: s.book ? { ...s.book, file_path: result.file_path } : null }))
-          return { status: 'saved', filePath: result.file_path, warning }
-        } else {
-          // Edited while saving: keep isDirty so the re-armed autosave persists the newer state.
-          useBookStore.setState(s => ({ book: s.book ? { ...s.book, file_path: result.file_path } : null }))
-          return { status: 'stale', filePath: result.file_path, warning }
-        }
-      }
-      if (result.error === 'cancelled') return { status: 'cancelled' }
-      return { status: 'error', message: result.error || 'unknown error' }
-    } catch (e) {
-      return { status: 'error', message: String(e) }
-    }
-  })
-  saveChain = run.catch(() => {})
-  return run
-}
-
-function scheduleAutoSave() {
-  saveRevision++
-  if (autoSaveTimer) clearTimeout(autoSaveTimer)
-  if (!useAppStore.getState().settings.activity_autosave_enabled) {
-    autoSaveTimer = null
-    return
-  }
-  autoSaveTimer = setTimeout(async () => {
-    if (!useAppStore.getState().settings.activity_autosave_enabled) return
-    const state = useBookStore.getState()
-    if (state.book && state.isDirty && state.book.file_path) {
-      const session = bookSession
-      useBookStore.setState({ isAutoSaving: true })
-      const outcome = await performSave('save')
-      if (bookSession !== session) return
-      if (outcome.status === 'saved') {
-        useBookStore.setState({ isAutoSaving: false })
-        setStatus('Auto-saved')
-        setTimeout(() => {
-          if (useAppStore.getState().statusMessage === 'Auto-saved') {
-            setStatus('')
-          }
-        }, 2000)
-      } else {
-        useBookStore.setState({ isAutoSaving: false })
-      }
-    }
-  }, AUTO_SAVE_DELAY)
-}
-
-function enqueueSaveTask(task: () => Promise<void>): Promise<void> {
-  const run = saveChain.then(task)
-  saveChain = run.catch(() => {})
-  return run
-}
-
 function chapterHistoryDependencies(): ChapterHistoryDependencies {
   return {
     getBook: () => useBookStore.getState().book,
-    getSession: () => bookSession,
-    getRevision: () => saveRevision,
+    getSession: savePipeline.currentSession,
+    getRevision: savePipeline.currentRevision,
     enqueue: enqueueSaveTask,
     setStatus,
     onSaved: (filePath, revision) => useBookStore.setState(current => ({
-      isDirty: saveRevision === revision ? false : current.isDirty,
+      isDirty: savePipeline.currentRevision() === revision ? false : current.isDirty,
       book: current.book ? { ...current.book, file_path: filePath } : null,
     })),
   }
@@ -507,16 +421,14 @@ export const useBookStore = create<BookStore>((set, get) => ({
     const chapter = getSectionArray(book, currentSection)[currentIndex]
     if (!chapter?.id) return false
     if (book.file_path) {
-      const session = bookSession
+      const session = savePipeline.currentSession()
       const request = [{ chapter_id: chapter.id, section: currentSection, chapter_title: chapter.title, content: chapter.content, reason: 'Before history restore' }]
-      const run = saveChain.then(() => {
+      const result = await enqueueSaveTask(async () => {
         const latest = useBookStore.getState().book
-        if (bookSession !== session || !latest) return { success: false, file_path: '', error: 'project changed' }
+        if (savePipeline.currentSession() !== session || !latest) return { success: false, file_path: '', error: 'project changed' }
         return SaveBookSnapshots(latest as any, request as any)
       })
-      saveChain = run.catch(() => {})
-      const result = await run
-      if (bookSession !== session || !result.success) {
+      if (savePipeline.currentSession() !== session || !result.success) {
         setStatus(`Could not create restore checkpoint: ${result.error || 'unknown error'}`)
         return false
       }

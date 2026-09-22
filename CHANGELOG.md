@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02713] - 2026-09-22
+
+### Changed
+- The save pipeline moved into its own module so the book store stops owning four unrelated jobs.
+
 ## [0.21.02712] - 2026-09-22
 
 ### Changed
