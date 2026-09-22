@@ -1,7 +1,6 @@
 // CharactersView — the character codex: a swimlane chapter-presence grid
 // (one row per character, one column per chapter) with a detail pane on the
-// right. Replaces the old force-graph Cast workspace; scales to hundreds of
-// characters where the graph became an unreadable hairball.
+// right. Scales to hundreds of characters.
 // All detection is local pattern-matching — no AI, nothing leaves the machine.
 
 import { useMemo, useState, useEffect } from 'react'

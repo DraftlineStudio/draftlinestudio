@@ -71,11 +71,9 @@ export default function CoverCard({ edition, meta, onAsk, onSaveCopy }: Props) {
   // A drop anywhere on the card is the same act as the button.
   //
   // Claimed only when the drop landed on this card, so a project dropped
-  // elsewhere still reaches the handler that opens it. This used to lean on
-  // Wails' own drop-target filtering, which meant registering and removing
-  // the one global handler as this component came and went -- and while it
-  // was gone nothing intercepted a drop at all, so WebView2 downloaded the
-  // file instead. See services/fileDrop.
+  // elsewhere still reaches the handler that opens it. Subscribes through
+  // services/fileDrop rather than Wails, which holds the one global
+  // registration for the life of the app.
   useEffect(() => subscribeFileDrop((x, y, paths) => {
     if (!droppedOn(x, y, '.bi-cover-drop')) return false
     const path = firstArtworkPath(paths)

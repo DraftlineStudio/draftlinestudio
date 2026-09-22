@@ -1,10 +1,8 @@
 package main
 
-// Size guardrail: the 2026-08 technical-debt audit found app.go had silently
-// regrown by 800 lines because nothing flagged it. This test makes the doc's
-// "800-line review threshold" mechanical: any non-test source file crossing
-// the threshold fails the build unless it is on the ratchet allowlist below,
-// and an allowlisted file may shrink but never grow past its recorded size.
+// Size guardrail: any non-test source file crossing the 800-line review
+// threshold fails the build unless it is on the ratchet allowlist below, and
+// an allowlisted file may shrink but never grow past its recorded size.
 //
 // CSS is deliberately exempt: global.css is an intentional single-file
 // stylesheet (user workflow — see its header comment).

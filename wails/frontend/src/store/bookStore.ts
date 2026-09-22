@@ -120,7 +120,7 @@ function ensureFrontendChapterIDs(book: BookData): BookData {
 // Shared save primitive. Chains on saveChain, snapshots the book AFTER the
 // prior save completes (so a queued save always writes the newest state),
 // and clears isDirty only if no edit happened while the save was in flight.
-// Always writes result.file_path back into the book (autosave previously lost it).
+// Always writes result.file_path back into the book.
 function performSave(kind: 'save' | 'saveAs'): Promise<SaveOutcome> {
   const run = saveChain.then(async (): Promise<SaveOutcome> => {
     const book = useBookStore.getState().book

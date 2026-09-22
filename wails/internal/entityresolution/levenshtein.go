@@ -18,7 +18,6 @@ func LevenshteinDistance(s1, s2 string) int {
 	len1 := len(s1)
 	len2 := len(s2)
 
-	// Early exit if one is empty
 	if len1 == 0 {
 		return len2
 	}
@@ -26,17 +25,14 @@ func LevenshteinDistance(s1, s2 string) int {
 		return len1
 	}
 
-	// Create two rows for the dynamic programming table
-	// We only need the previous row and current row
+	// Only the previous and current rows are ever needed.
 	prev := make([]int, len2+1)
 	curr := make([]int, len2+1)
 
-	// Initialize first row
 	for j := 0; j <= len2; j++ {
 		prev[j] = j
 	}
 
-	// Fill in the table
 	for i := 1; i <= len1; i++ {
 		curr[0] = i
 

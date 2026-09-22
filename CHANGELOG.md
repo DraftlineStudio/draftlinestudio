@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02697] - 2026-09-21
+
+### Changed
+- Comments that narrated past fixes were trimmed to the rules that still apply, and one that described the opposite of real behaviour was corrected.
+
 ## [0.21.02696] - 2026-09-21
 
 ### Removed

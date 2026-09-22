@@ -110,9 +110,8 @@ export default function App() {
   //
   // Lowest priority, so a cover dropped on the cover card is claimed there
   // first and only what nothing else wanted arrives here. Registered for the
-  // life of the app: while nothing is subscribed, Wails removes its drop
-  // listeners and WebView2 treats a dropped file the way a browser does,
-  // which is what used to leave a copy in Downloads and open nothing.
+  // life of the app: with nothing subscribed, Wails removes its drop listeners
+  // and WebView2 downloads the file instead of opening it.
   useEffect(() => subscribeFileDrop((_x, _y, paths) => {
     const path = firstProjectPath(paths)
     if (!path) return false
@@ -121,10 +120,9 @@ export default function App() {
   }, 0), [handleOpenRecent])
 
   // Handle theme transition with smooth fade animation and sky overlay.
-  // Retriggering mid-flight (rapid theme toggling, or the auto-theme hook
-  // and the theme effect both firing) must RESTART the clocks: the previous
-  // implementation let a first transition's stale timers fire into a second
-  // transition's animation, snapping the sky away at seemingly random times.
+  // Retriggering mid-flight (rapid theme toggling, or the auto-theme hook and
+  // the theme effect both firing) must RESTART the clocks, or a first
+  // transition's timers fire into a second transition's animation.
   const themeTimersRef = useRef<number[]>([])
   const handleThemeTransition = useCallback((newTheme: 'light' | 'dark') => {
     themeTimersRef.current.forEach(clearTimeout)
@@ -141,10 +139,6 @@ export default function App() {
 
     themeTimersRef.current.push(
       // Reset transition state after UI colors finish (0.8s)
-      // The I-beam bug that used to be parked here is fixed in global.css:
-      // the editor names its mouse cursor as an image now, instead of
-      // letting Chromium resolve a light or dark bitmap that it then caches
-      // below the web layer. Nothing about the cursor needs doing here.
       window.setTimeout(() => {
         document.documentElement.classList.remove('theme-transitioning')
       }, 900),

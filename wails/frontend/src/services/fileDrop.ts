@@ -1,15 +1,10 @@
 // One owner for dropped files.
 //
 // Wails' OnFileDrop is a single global registration and OnFileDropOff tears
-// the listeners out entirely. That is the whole bug this module exists to fix:
-// the cover card registered a handler while it was mounted and removed it on
-// unmount, so with no Book Info dialog open there were no listeners at all —
-// and the runtime's preventDefault went with them. A .draftline dropped on the
-// window was then handled by WebView2 the way a browser handles a dropped
-// file: it downloaded a copy into Downloads and opened nothing.
-//
-// So the registration is made once, here, and never removed. Consumers
-// subscribe to this instead of to Wails.
+// the listeners out entirely, taking the runtime's preventDefault with them —
+// and WebView2 then downloads a dropped file instead of opening it. So the
+// registration is made once, here, and never removed. Consumers subscribe to
+// this instead of to Wails.
 //
 // It is registered with useDropTarget false, meaning every drop arrives rather
 // than only those over an element carrying --wails-drop-target. That filtering
