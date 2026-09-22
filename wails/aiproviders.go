@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"regexp"
 	"sort"
 	"strings"
@@ -76,6 +77,11 @@ func (a *App) SaveAIProvider(p types.AIProvider) (string, error) {
 	if p.Nickname == "" {
 		return "", fmt.Errorf("a name is required")
 	}
+	if p.Kind == "cloud" {
+		if err := requireSecureEndpoint(p.BaseURL); err != nil {
+			return "", err
+		}
+	}
 	s := a.getSettings()
 	if p.ID == "" {
 		p.ID = fmt.Sprintf("p%d", time.Now().UnixNano())
@@ -125,6 +131,9 @@ func (a *App) TestAIEndpoint(baseURL, apiKey string) types.AIRewriteResult {
 		return types.AIRewriteResult{Error: err.Error()}
 	}
 	if key := strings.TrimSpace(apiKey); key != "" {
+		if err := requireSecureEndpoint(baseURL); err != nil {
+			return types.AIRewriteResult{Error: err.Error()}
+		}
 		req.Header.Set("Authorization", "Bearer "+key)
 	}
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -137,6 +146,20 @@ func (a *App) TestAIEndpoint(baseURL, apiKey string) types.AIRewriteResult {
 		return types.AIRewriteResult{Error: fmt.Sprintf("Server returned %d", resp.StatusCode)}
 	}
 	return types.AIRewriteResult{Result: "Connected"}
+}
+
+// requireSecureEndpoint rejects an address that would carry an API key in the
+// clear. Local providers are never sent one (see providers.Custom), so they
+// stay free to be plain http on a loopback or a machine down the hall.
+func requireSecureEndpoint(baseURL string) error {
+	parsed, err := url.Parse(strings.TrimSpace(baseURL))
+	if err != nil || parsed.Host == "" {
+		return fmt.Errorf("that does not look like an endpoint address")
+	}
+	if !strings.EqualFold(parsed.Scheme, "https") {
+		return fmt.Errorf("an API key can only be sent over https")
+	}
+	return nil
 }
 
 func indexOfProvider(list []types.AIProvider, id string) int {

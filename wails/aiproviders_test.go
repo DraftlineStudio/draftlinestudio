@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	"draftline/internal/types"
@@ -113,5 +114,46 @@ func TestAStoredKeyIsOnlyFilledInForItsOwnEndpoint(t *testing.T) {
 			t.Errorf("%s: a key saved for %q %s be sent to %q", tc.name, saved,
 				map[bool]string{true: "should", false: "should not"}[tc.want], tc.baseURL)
 		}
+	}
+}
+
+// A cloud provider carries a key, so its address has to be one a key can
+// safely travel to. A local provider is never sent one, so plain http stays
+// available for Ollama on this machine or a box on the same network.
+func TestACloudProviderNeedsASecureAddress(t *testing.T) {
+	app := &App{}
+	app.setSettings(types.AppSettings{})
+
+	if _, err := app.SaveAIProvider(types.AIProvider{
+		Nickname: "Insecure", Kind: "cloud", BaseURL: "http://api.example.test/v1", Model: "m",
+	}); err == nil {
+		t.Error("a cloud provider on plain http was accepted")
+	}
+
+	for _, url := range []string{"http://localhost:11434/v1", "http://192.168.1.50:11434/v1"} {
+		if _, err := app.SaveAIProvider(types.AIProvider{
+			Nickname: "Local", Kind: "local", BaseURL: url, Model: "m",
+		}); err != nil {
+			t.Errorf("a local provider at %s was refused: %v", url, err)
+		}
+	}
+
+	if _, err := app.SaveAIProvider(types.AIProvider{
+		Nickname: "Secure", Kind: "cloud", BaseURL: "https://api.example.test/v1", Model: "m",
+	}); err != nil {
+		t.Errorf("a cloud provider on https was refused: %v", err)
+	}
+}
+
+// Testing an endpoint with a key in hand is the same promise as saving one.
+func TestTestingAnEndpointWillNotSendAKeyInTheClear(t *testing.T) {
+	app := &App{}
+	app.setSettings(types.AppSettings{})
+	res := app.TestAIEndpoint("http://api.example.test/v1", "secret")
+	if res.Error == "" {
+		t.Fatal("testing a plain http endpoint with a key was allowed")
+	}
+	if !strings.Contains(res.Error, "https") {
+		t.Errorf("the refusal should say why: %q", res.Error)
 	}
 }

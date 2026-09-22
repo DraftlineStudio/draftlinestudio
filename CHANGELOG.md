@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02703] - 2026-09-22
+
+### Changed
+- Cloud AI providers now require a secure address. Local providers are unchanged.
+
 ## [0.21.02702] - 2026-09-22
 
 ### Security
