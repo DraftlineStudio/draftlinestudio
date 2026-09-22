@@ -1,3 +1,4 @@
+import { useShallow } from 'zustand/react/shallow'
 import { useState } from 'react'
 import { useBookStore } from '../../store/bookStore'
 import { useAppStore } from '../../store/appStore'
@@ -23,7 +24,7 @@ function getSectionLabel(section: Section): string {
 }
 
 export default function NewChapterDialog({ section }: Props) {
-  const { addChapter } = useBookStore()
+  const { addChapter } = useBookStore(useShallow(s => ({ addChapter: s.addChapter })))
   const closeNewChapterDialog = useAppStore(s => s.closeNewChapterDialog)
   const types = getTypesForSection(section)
   const [type, setType] = useState(types[0] || 'Chapter')

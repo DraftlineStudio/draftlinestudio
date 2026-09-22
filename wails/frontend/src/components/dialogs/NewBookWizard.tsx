@@ -1,3 +1,4 @@
+import { useShallow } from 'zustand/react/shallow'
 import { useState } from 'react'
 import { useBookStore } from '../../store/bookStore'
 import { useAppStore } from '../../store/appStore'
@@ -22,8 +23,8 @@ interface NewBookWizardProps {
 }
 
 export default function NewBookWizard({ onCreated }: NewBookWizardProps) {
-  const { confirmNewBook, cancelNewBookWizard, loadImportedBook } = useBookStore()
-  const { settings } = useAppStore()
+  const { confirmNewBook, cancelNewBookWizard, loadImportedBook } = useBookStore(useShallow(s => ({ confirmNewBook: s.confirmNewBook, cancelNewBookWizard: s.cancelNewBookWizard, loadImportedBook: s.loadImportedBook })))
+  const { settings } = useAppStore(useShallow(s => ({ settings: s.settings })))
 
   const [step, setStep] = useState<WizardStep>('choose')
   const [title, setTitle] = useState('')

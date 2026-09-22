@@ -1,3 +1,4 @@
+import { useShallow } from 'zustand/react/shallow'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
@@ -67,7 +68,7 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
   const [subtitleValue, setSubtitleValue] = useState(chapterSubtitle || '')
   const titleInputRef = useRef<HTMLInputElement>(null)
   const subtitleInputRef = useRef<HTMLInputElement>(null)
-  const { settings, openSettings, saveSettings } = useAppStore()
+  const { settings, openSettings, saveSettings } = useAppStore(useShallow(s => ({ settings: s.settings, openSettings: s.openSettings, saveSettings: s.saveSettings })))
 
   useEffect(() => {
     const normalizedDictionary = normalizeCustomDictionary(settings.custom_dictionary)

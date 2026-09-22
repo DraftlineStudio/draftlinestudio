@@ -1,5 +1,6 @@
 // ToolsPanel - Main sidebar with section routing
 
+import { useShallow } from 'zustand/react/shallow'
 import { useState, useEffect, useRef } from 'react'
 import { useAppStore, type AppSettings } from '../store/appStore'
 
@@ -42,7 +43,7 @@ export default function ToolsPanel() {
   // every frame of the drag.
   const widthRef = useRef(panelWidth)
   const restoredRef = useRef(false)
-  const { settings, saveSettings, loaded } = useAppStore()
+  const { settings, saveSettings, loaded } = useAppStore(useShallow(s => ({ settings: s.settings, saveSettings: s.saveSettings, loaded: s.loaded })))
   const reviewCount = useReviewCount()
 
   // setSection persists open/closed + active pane so the sidebar survives

@@ -9,6 +9,7 @@
 //
 // The wizard owns the answers. ExportSteps draws them.
 
+import { useShallow } from 'zustand/react/shallow'
 import { useEffect, useMemo, useState } from 'react'
 import { useBookStore } from '../../store/bookStore'
 import { useAppStore } from '../../store/appStore'
@@ -36,8 +37,8 @@ type Screen = 'start' | FlowStep | 'exporting'
 interface Written { name: string; path: string }
 
 export default function ExportWizard() {
-  const { book, updateFormat, updateEdition, freezeFormat } = useBookStore()
-  const { closeExportWizard, setStatusMessage } = useAppStore()
+  const { book, updateFormat, updateEdition, freezeFormat } = useBookStore(useShallow(s => ({ book: s.book, updateFormat: s.updateFormat, updateEdition: s.updateEdition, freezeFormat: s.freezeFormat })))
+  const { closeExportWizard, setStatusMessage } = useAppStore(useShallow(s => ({ closeExportWizard: s.closeExportWizard, setStatusMessage: s.setStatusMessage })))
   const requestedFormatID = useAppStore(s => s.exportFormatID)
   const clearExportFormat = useAppStore(s => s.clearExportFormat)
 

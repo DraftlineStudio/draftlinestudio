@@ -1,5 +1,6 @@
 // AI Studio - AI-assisted editing modes and style mixer
 
+import { useShallow } from 'zustand/react/shallow'
 import { useState, useEffect, useRef } from 'react'
 import { useBookStore } from '../../../store/bookStore'
 import { useAppStore } from '../../../store/appStore'
@@ -13,8 +14,8 @@ import { resolveTaskProvider, setTaskProvider } from '../../../services/aiRoutin
 import { useEditorStore } from '../../../store/editorStore'
 import NoAIProviderSetup from './NoAIProviderSetup'
 export default function AiStudioTab() {
-  const { book, currentSection, currentIndex, setPendingDiff, getStyleOptions, updateStyleOptions, getEditorSelection } = useBookStore()
-  const { settings, saveSettings, openSettings, showSettings } = useAppStore()
+  const { book, currentSection, currentIndex, setPendingDiff, getStyleOptions, updateStyleOptions, getEditorSelection } = useBookStore(useShallow(s => ({ book: s.book, currentSection: s.currentSection, currentIndex: s.currentIndex, setPendingDiff: s.setPendingDiff, getStyleOptions: s.getStyleOptions, updateStyleOptions: s.updateStyleOptions, getEditorSelection: s.getEditorSelection })))
+  const { settings, saveSettings, openSettings, showSettings } = useAppStore(useShallow(s => ({ settings: s.settings, saveSettings: s.saveSettings, openSettings: s.openSettings, showSettings: s.showSettings })))
 
   const [aiMode, setAiMode] = useState<AIMode>('line_edit')
   const [aiState, setAiState] = useState<AIState>('idle')

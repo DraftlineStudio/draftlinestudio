@@ -1,7 +1,8 @@
+import { useShallow } from 'zustand/react/shallow'
 import { useBookStore } from '../../store/bookStore'
 
 export default function UnsavedChangesDialog() {
-  const { dialogs, closeUnsavedWarning, saveAndProceed, discardAndProceed } = useBookStore()
+  const { dialogs, closeUnsavedWarning, saveAndProceed, discardAndProceed } = useBookStore(useShallow(s => ({ dialogs: s.dialogs, closeUnsavedWarning: s.closeUnsavedWarning, saveAndProceed: s.saveAndProceed, discardAndProceed: s.discardAndProceed })))
   const action = dialogs.pendingAction === 'new' ? 'creating a new book' : 'opening another book'
 
   return (

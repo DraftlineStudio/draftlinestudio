@@ -1,9 +1,10 @@
+import { useShallow } from 'zustand/react/shallow'
 import { useBookStore } from '../../store/bookStore'
 
 // Opening a copy is the recommendation: it is the only choice that cannot lose
 // anybody's work.
 export default function BookLockDialog() {
-  const { dialogs, openBookAnyway, openBookAsCopy, cancelBookLockWarning } = useBookStore()
+  const { dialogs, openBookAnyway, openBookAsCopy, cancelBookLockWarning } = useBookStore(useShallow(s => ({ dialogs: s.dialogs, openBookAnyway: s.openBookAnyway, openBookAsCopy: s.openBookAsCopy, cancelBookLockWarning: s.cancelBookLockWarning })))
   const warning = dialogs.bookLockWarning
   if (!warning) return null
 

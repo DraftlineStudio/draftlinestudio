@@ -206,7 +206,7 @@ export default function EditorPanel() {
   })))
   const pendingDiff = useEditorStore(s => s.pendingDiff)
   const setFlushPendingEdit = useEditorStore(s => s.setFlushPendingEdit)
-  const { settings } = useAppStore()
+  const { settings } = useAppStore(useShallow(s => ({ settings: s.settings })))
 
   const content = getCurrentContent(book, currentSection, currentIndex)
   const { label, name, subtitle } = getChapterInfo(book, currentSection, currentIndex)

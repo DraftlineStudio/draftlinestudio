@@ -52,7 +52,7 @@ export default function App() {
     viewMode: s.viewMode,
     setViewMode: s.setViewMode,
   })))
-  const { loadSettings, settings, showSettings, showWelcome, setShowWelcome, loadRecentProjects, recentProjects, toggleLeftPanel, showMetadata, showNewChapter, newChapterSection, showExportWizard, showChapterHistory, bottomToolOpen, openStorySearch, closeBottomTool } = useAppStore()
+  const { loadSettings, settings, showSettings, showWelcome, setShowWelcome, loadRecentProjects, recentProjects, toggleLeftPanel, showMetadata, showNewChapter, newChapterSection, showExportWizard, showChapterHistory, bottomToolOpen, openStorySearch, closeBottomTool } = useAppStore(useShallow(s => ({ loadSettings: s.loadSettings, settings: s.settings, showSettings: s.showSettings, showWelcome: s.showWelcome, setShowWelcome: s.setShowWelcome, loadRecentProjects: s.loadRecentProjects, recentProjects: s.recentProjects, toggleLeftPanel: s.toggleLeftPanel, showMetadata: s.showMetadata, showNewChapter: s.showNewChapter, newChapterSection: s.newChapterSection, showExportWizard: s.showExportWizard, showChapterHistory: s.showChapterHistory, bottomToolOpen: s.bottomToolOpen, openStorySearch: s.openStorySearch, closeBottomTool: s.closeBottomTool })))
   const prevThemeRef = useRef<'light' | 'dark' | null>(null)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [targetTheme, setTargetTheme] = useState<'light' | 'dark'>('dark')

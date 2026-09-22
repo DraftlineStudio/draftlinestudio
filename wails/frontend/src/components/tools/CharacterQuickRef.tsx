@@ -4,6 +4,7 @@
 // an inline card (meta, presence, top ties, jump links) — nothing else moves.
 // Full management lives in the Characters codex.
 
+import { useShallow } from 'zustand/react/shallow'
 import { useMemo, useState } from 'react'
 import { useBookStore } from '../../store/bookStore'
 import { characterColor } from '../../utils/characterVisuals'
@@ -17,7 +18,13 @@ export default function CharacterQuickRef() {
     book, setViewMode, setCurrentChapter, indexBook, isIndexing,
     currentSection, currentIndex,
     highlightedCharacterId, setHighlightedCharacter,
-  } = useBookStore()
+  } = useBookStore(useShallow(s => ({
+    book: s.book, setViewMode: s.setViewMode, setCurrentChapter: s.setCurrentChapter,
+    indexBook: s.indexBook, isIndexing: s.isIndexing,
+    currentSection: s.currentSection, currentIndex: s.currentIndex,
+    highlightedCharacterId: s.highlightedCharacterId,
+    setHighlightedCharacter: s.setHighlightedCharacter,
+  })))
   const [query, setQuery] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
 

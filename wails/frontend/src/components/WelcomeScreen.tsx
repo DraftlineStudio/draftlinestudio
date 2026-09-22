@@ -1,3 +1,4 @@
+import { useShallow } from 'zustand/react/shallow'
 import { useCallback, useState, useEffect } from 'react'
 import { useAppStore } from '../store/appStore'
 import { types } from '../../wailsjs/go/models'
@@ -26,7 +27,7 @@ interface WelcomeScreenProps {
 // machinery in App) and the soft glow behind the "Continue Writing" hero.
 // Actions live in a compact left rail; recents exclude the hero book.
 export default function WelcomeScreen({ onNewBook, onOpenFile, onOpenRecent }: WelcomeScreenProps) {
-  const { openSettings, recentProjects, removeRecentProject, clearRecentProjects } = useAppStore()
+  const { openSettings, recentProjects, removeRecentProject, clearRecentProjects } = useAppStore(useShallow(s => ({ openSettings: s.openSettings, recentProjects: s.recentProjects, removeRecentProject: s.removeRecentProject, clearRecentProjects: s.clearRecentProjects })))
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [appVersion, setAppVersion] = useState<string>('')
 

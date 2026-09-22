@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02723] - 2026-09-22
+
+### Fixed
+- The interface stays responsive while a save runs or a status message changes.
+
 ## [0.21.02722] - 2026-09-22
 
 ### Changed

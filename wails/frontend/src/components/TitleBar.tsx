@@ -1,3 +1,4 @@
+import { useShallow } from 'zustand/react/shallow'
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useBookStore } from '../store/bookStore'
@@ -15,8 +16,8 @@ export default function TitleBar({ minimal = false }: TitleBarProps) {
   // New and Open are not here on purpose: they live on the start screen, which
   // a writer reaches by closing the book they have open — a route that saves
   // first. Starting something else on top of unsaved work is not reachable.
-  const { book, currentSection, saveBook, saveBookAs, closeProject } = useBookStore()
-  const { settings, saveSettings, openSettings, openMetadataDialog, openExportWizard, openChapterHistory, updateAvailable } = useAppStore()
+  const { book, currentSection, saveBook, saveBookAs, closeProject } = useBookStore(useShallow(s => ({ book: s.book, currentSection: s.currentSection, saveBook: s.saveBook, saveBookAs: s.saveBookAs, closeProject: s.closeProject })))
+  const { settings, saveSettings, openSettings, openMetadataDialog, openExportWizard, openChapterHistory, updateAvailable } = useAppStore(useShallow(s => ({ settings: s.settings, saveSettings: s.saveSettings, openSettings: s.openSettings, openMetadataDialog: s.openMetadataDialog, openExportWizard: s.openExportWizard, openChapterHistory: s.openChapterHistory, updateAvailable: s.updateAvailable })))
   const [dropOpen, setDropOpen] = useState(false)
   const [dropPos, setDropPos] = useState({ top: 0, left: 0 })
   const btnRef = useRef<HTMLButtonElement>(null)

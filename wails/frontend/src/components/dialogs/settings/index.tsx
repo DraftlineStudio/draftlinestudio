@@ -1,5 +1,6 @@
 // App Settings Dialog - Main container and state management
 
+import { useShallow } from 'zustand/react/shallow'
 import { useState, useEffect, useRef } from 'react'
 import { useAppStore } from '../../../store/appStore'
 import { CheckClaudeCode, SetupClaudeCode, OpenClaudeAuth, CheckCodexCLI, SetupCodexCLI, OpenCodexAuth, GetAppVersion, SetAPIKey, ClearAPIKey } from '../../../../wailsjs/go/main/App'
@@ -17,7 +18,7 @@ import { usePluginStore, isPluginEnabled } from '../../../store/pluginStore'
 import { PluginSettingsSection } from '../../plugins/PluginMounts'
 
 export default function AppSettingsDialog() {
-  const { settings, saveSettings, closeSettings, browseForDirectory, loadSettings, settingsInitialSection } = useAppStore()
+  const { settings, saveSettings, closeSettings, browseForDirectory, loadSettings, settingsInitialSection } = useAppStore(useShallow(s => ({ settings: s.settings, saveSettings: s.saveSettings, closeSettings: s.closeSettings, browseForDirectory: s.browseForDirectory, loadSettings: s.loadSettings, settingsInitialSection: s.settingsInitialSection })))
 
   // Callers can deep-link a section (e.g. the Read Aloud rail icon when the
   // voice model needs setup).

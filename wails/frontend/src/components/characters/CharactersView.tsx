@@ -3,6 +3,7 @@
 // right. Scales to hundreds of characters.
 // All detection is local pattern-matching — no AI, nothing leaves the machine.
 
+import { useShallow } from 'zustand/react/shallow'
 import { useMemo, useState, useEffect } from 'react'
 import { useBookStore } from '../../store/bookStore'
 import { useAppStore } from '../../store/appStore'
@@ -51,9 +52,15 @@ export default function CharactersView() {
     book, setViewMode, setCurrentChapter, indexBook, isIndexing, updateBook,
     addCharacter, updateCharacter, deleteCharacter, clearAllCharacters,
     mergeEntities, splitEntity,
-  } = useBookStore()
-  const { isAnalyzing, analyzeRelationships } = useRelationshipStore()
-  const { settings, saveSettings } = useAppStore()
+  } = useBookStore(useShallow(s => ({
+    book: s.book, setViewMode: s.setViewMode, setCurrentChapter: s.setCurrentChapter,
+    indexBook: s.indexBook, isIndexing: s.isIndexing, updateBook: s.updateBook,
+    addCharacter: s.addCharacter, updateCharacter: s.updateCharacter,
+    deleteCharacter: s.deleteCharacter, clearAllCharacters: s.clearAllCharacters,
+    mergeEntities: s.mergeEntities, splitEntity: s.splitEntity,
+  })))
+  const { isAnalyzing, analyzeRelationships } = useRelationshipStore(useShallow(s => ({ isAnalyzing: s.isAnalyzing, analyzeRelationships: s.analyzeRelationships })))
+  const { settings, saveSettings } = useAppStore(useShallow(s => ({ settings: s.settings, saveSettings: s.saveSettings })))
 
   const savedLane: ViewMode = settings.characters_lane_view === 'heat' || settings.characters_lane_view === 'weave'
     ? settings.characters_lane_view
