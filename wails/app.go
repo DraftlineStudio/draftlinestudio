@@ -18,7 +18,6 @@ import (
 	"draftline/internal/backup"
 	"draftline/internal/book"
 	"draftline/internal/export"
-	"draftline/internal/fsutil"
 	"draftline/internal/indexing"
 	"draftline/internal/logging"
 	"draftline/internal/platform"
@@ -42,7 +41,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.21.02716"
+const AppVersion = "0.21.02717"
 
 // App is the main application struct bound to the frontend.
 type App struct {
@@ -613,89 +612,6 @@ func (a *App) ExportPrintPDF(book types.BookData, options types.PrintPDFOptions)
 		return types.ExportResult{Success: false, Error: err.Error()}
 	}
 	return export.PrintPDF(path, source, options)
-}
-
-// ── Recent Projects ─────────────────────────────────────────────────────────
-
-func (a *App) recentProjectsPath() string {
-	path := filepath.Join(configDir(), "recent_projects.json")
-	// Best-effort: tighten a file written with looser permissions by an older
-	// version. Ignore errors.
-	_ = os.Chmod(path, 0600)
-	return path
-}
-
-// GetRecentProjects returns the list of recently opened projects.
-func (a *App) GetRecentProjects() []types.RecentProject {
-	data, err := os.ReadFile(a.recentProjectsPath())
-	if err != nil {
-		return []types.RecentProject{}
-	}
-	var projects []types.RecentProject
-	if err := json.Unmarshal(data, &projects); err != nil {
-		return []types.RecentProject{}
-	}
-	// Stamped here rather than stored, so it is always right for the path the
-	// record actually holds and a hand-edited recents file cannot disagree
-	// with itself.
-	for i := range projects {
-		projects[i].CoverKey = recentCoverKey(projects[i].Path)
-	}
-	return projects
-}
-
-// AddRecentProject adds or updates a project in the recent list.
-func (a *App) AddRecentProject(project types.RecentProject) error {
-	projects := a.GetRecentProjects()
-
-	// Remove existing entry with same path
-	filtered := make([]types.RecentProject, 0, len(projects))
-	for _, p := range projects {
-		if p.Path != project.Path {
-			filtered = append(filtered, p)
-		}
-	}
-
-	// Add new project at the front
-	project.LastOpened = time.Now().Format(time.RFC3339)
-	projects = append([]types.RecentProject{project}, filtered...)
-
-	// Keep only the most recent 20
-	if len(projects) > 20 {
-		projects = projects[:20]
-	}
-
-	data, err := json.MarshalIndent(projects, "", "  ")
-	if err != nil {
-		return err
-	}
-	return fsutil.WriteFileAtomic(a.recentProjectsPath(), data, 0600)
-}
-
-// RemoveRecentProject removes a project from the recent list by path.
-func (a *App) RemoveRecentProject(path string) error {
-	projects := a.GetRecentProjects()
-	filtered := make([]types.RecentProject, 0, len(projects))
-	for _, p := range projects {
-		if p.Path != path {
-			filtered = append(filtered, p)
-		}
-	}
-	data, err := json.MarshalIndent(filtered, "", "  ")
-	if err != nil {
-		return err
-	}
-	return fsutil.WriteFileAtomic(a.recentProjectsPath(), data, 0600)
-}
-
-// ClearRecentProjects removes all projects from the recent list.
-func (a *App) ClearRecentProjects() error {
-	return fsutil.WriteFileAtomic(a.recentProjectsPath(), []byte("[]"), 0600)
-}
-
-// OpenRecentProject opens a project from the recent list by path.
-func (a *App) OpenRecentProject(path string) (types.BookData, error) {
-	return a.openBook(path)
 }
 
 // RewriteText sends the HTML chapter content to the configured AI provider.

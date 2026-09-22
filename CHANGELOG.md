@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02717] - 2026-09-22
+
+### Changed
+- The recent projects list moved out of the application entry point.
+
 ## [0.21.02716] - 2026-09-22
 
 ### Changed
