@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02704] - 2026-09-22
+
+### Fixed
+- Changing AI settings during an AI request can no longer crash Draftline or send a request with the wrong key.
+
 ## [0.21.02703] - 2026-09-22
 
 ### Changed

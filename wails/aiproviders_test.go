@@ -2,6 +2,7 @@ package main
 
 import (
 	"strings"
+	"sync"
 	"testing"
 
 	"draftline/internal/types"
@@ -155,5 +156,116 @@ func TestTestingAnEndpointWillNotSendAKeyInTheClear(t *testing.T) {
 	}
 	if !strings.Contains(res.Error, "https") {
 		t.Errorf("the refusal should say why: %q", res.Error)
+	}
+}
+
+// Settings travel by value, which copies a slice header rather than a slice.
+// Editing providers while a request reads them is an ordinary thing to do —
+// the settings screen is open while a rewrite runs — and every mutator here
+// edits the list and the route map in place. Under -race this fails outright
+// if getSettings hands out memory anyone else still holds.
+func TestEditingProvidersWhileTheyAreReadIsSafe(t *testing.T) {
+	app := &App{}
+	app.setSettings(types.AppSettings{
+		AITaskRoutes:   map[string]string{"line_edit": "p1"},
+		PluginsEnabled: map[string]bool{"a.b": true},
+		AIProviders: []types.AIProvider{
+			{ID: "p1", Nickname: "One", Kind: "cloud", BaseURL: "https://one.test/v1", Model: "m"},
+			{ID: "p2", Nickname: "Two", Kind: "cloud", BaseURL: "https://two.test/v1", Model: "m"},
+		},
+	})
+
+	var wg sync.WaitGroup
+	stop := make(chan struct{})
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+			s := app.getSettings()
+			for _, p := range s.AIProviders {
+				_ = p.BaseURL
+			}
+			for task := range s.AITaskRoutes {
+				_ = s.AITaskRoutes[task]
+			}
+			for id := range s.PluginsEnabled {
+				_ = s.PluginsEnabled[id]
+			}
+		}
+	}()
+
+	for range 200 {
+		s := app.getSettings()
+		if len(s.AIProviders) > 0 {
+			s.AIProviders[0].Nickname = "edited"
+		}
+		s.AITaskRoutes["copy_edit"] = "p2"
+		s.PluginsEnabled["a.b"] = false
+		app.setSettings(s)
+	}
+	close(stop)
+	wg.Wait()
+}
+
+// The property the concurrency above depends on, asserted directly: a snapshot
+// belongs to whoever asked for it. Editing one must not reach stored state, and
+// editing what was stored must not reach a snapshot already handed out.
+func TestASettingsSnapshotSharesNothingWithTheStoredCopy(t *testing.T) {
+	app := &App{}
+	original := types.AppSettings{
+		CustomDictionary: []string{"tesseract"},
+		AITaskRoutes:     map[string]string{"line_edit": "p1"},
+		PluginsEnabled:   map[string]bool{"a.b": true},
+		PluginSettings:   map[string]map[string]any{"a.b": {"tone": "warm"}},
+		AIProviders:      []types.AIProvider{{ID: "p1", Nickname: "One", BaseURL: "https://one.test/v1"}},
+	}
+	app.setSettings(original)
+
+	// What the caller passed in must not remain reachable through the app.
+	original.AIProviders[0].Nickname = "mutated after handing it over"
+	original.AITaskRoutes["line_edit"] = "hijacked"
+	original.PluginsEnabled["a.b"] = false
+	original.PluginSettings["a.b"]["tone"] = "cold"
+	original.CustomDictionary[0] = "clobbered"
+
+	stored := app.getSettings()
+	if stored.AIProviders[0].Nickname != "One" {
+		t.Errorf("the stored provider followed the caller's slice: %q", stored.AIProviders[0].Nickname)
+	}
+	if stored.AITaskRoutes["line_edit"] != "p1" {
+		t.Errorf("the stored routes followed the caller's map: %q", stored.AITaskRoutes["line_edit"])
+	}
+	if !stored.PluginsEnabled["a.b"] {
+		t.Error("the stored plugin flags followed the caller's map")
+	}
+	if stored.PluginSettings["a.b"]["tone"] != "warm" {
+		t.Errorf("the stored plugin bag followed the caller's nested map: %v", stored.PluginSettings["a.b"]["tone"])
+	}
+	if stored.CustomDictionary[0] != "tesseract" {
+		t.Errorf("the stored dictionary followed the caller's slice: %q", stored.CustomDictionary[0])
+	}
+
+	// And a snapshot edited in place must not reach the next reader, which is
+	// exactly what SetProviderKey and DeleteAIProvider do to their copies.
+	stored.AIProviders[0].APIKey = "secret"
+	stored.AIProviders = append(stored.AIProviders[:0], stored.AIProviders[0:]...)
+	stored.AITaskRoutes["copy_edit"] = "p2"
+	stored.PluginSettings["a.b"]["tone"] = "cold"
+
+	next := app.getSettings()
+	if next.AIProviders[0].APIKey != "" {
+		t.Error("a key written into one snapshot showed up in the next one")
+	}
+	if _, ok := next.AITaskRoutes["copy_edit"]; ok {
+		t.Error("a route added to one snapshot showed up in the next one")
+	}
+	if next.PluginSettings["a.b"]["tone"] != "warm" {
+		t.Error("a plugin setting changed in one snapshot showed up in the next one")
 	}
 }

@@ -42,7 +42,7 @@ func (a *App) RestoreBackup(number int) types.SaveResult {
 }
 
 // AppVersion Format: MAJOR.MINOR.BUILD - Example: 0.8.02313 → 0.8.02314 (bug fix) → 0.9.02315 (new feature set)
-const AppVersion = "0.21.02703"
+const AppVersion = "0.21.02704"
 
 // App is the main application struct bound to the frontend.
 type App struct {
@@ -104,19 +104,20 @@ func (a *App) GetAppVersion() string {
 	return AppVersion
 }
 
-// getSettings returns a consistent snapshot of the current settings. Callers
-// that read several fields should snapshot once and read from the copy so a
-// concurrent SaveSettings can't tear the read across fields.
+// getSettings returns a snapshot of the current settings that the caller owns
+// outright. Cloned, not merely copied: a value copy of AppSettings shares its
+// slice and map fields, and callers do edit those in place.
 func (a *App) getSettings() types.AppSettings {
 	a.stateMu.RLock()
 	defer a.stateMu.RUnlock()
-	return a.settings
+	return a.settings.Clone()
 }
 
-// setSettings replaces the in-memory settings under the state lock.
+// setSettings replaces the in-memory settings under the state lock, taking its
+// own copy so the caller cannot keep editing what is now shared state.
 func (a *App) setSettings(s types.AppSettings) {
 	a.stateMu.Lock()
-	a.settings = s
+	a.settings = s.Clone()
 	a.stateMu.Unlock()
 }
 

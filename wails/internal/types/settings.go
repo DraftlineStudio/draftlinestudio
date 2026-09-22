@@ -1,5 +1,10 @@
 package types
 
+import (
+	"maps"
+	"slices"
+)
+
 // AppSettings contains user preferences and configuration.
 type AppSettings struct {
 	// Application
@@ -66,8 +71,8 @@ type AppSettings struct {
 	// HasAPIKey tells the frontend whether a key is stored, without exposing it.
 	HasAPIKey bool `json:"has_api_key"`
 	// AIDebugLogging opts in to writing prompts/manuscript text to local logs.
-	AIDebugLogging  bool   `json:"ai_debug_logging"`
-	AIModel         string `json:"ai_model"`
+	AIDebugLogging bool   `json:"ai_debug_logging"`
+	AIModel        string `json:"ai_model"`
 	// AILocalEndpoint and AILocalModel are legacy: the local endpoint is now
 	// one AIProviders entry. Kept so older settings files migrate.
 	AILocalEndpoint string `json:"ai_local_endpoint,omitempty"`
@@ -114,4 +119,26 @@ type AIProvider struct {
 	Model    string `json:"model"`
 	// APIKey is the fallback for machines with no keyring, mirroring AIAPIKey.
 	APIKey string `json:"api_key,omitempty"`
+}
+
+// Clone returns a copy of the settings sharing no slice or map with the
+// original.
+//
+// AppSettings travels by value, and a value copy duplicates only the headers
+// of its slice and map fields: two holders of a "copy" write into the same
+// memory. The backend hands settings to callers that read them without a lock
+// while other goroutines edit them, so both directions clone.
+func (s AppSettings) Clone() AppSettings {
+	s.CustomDictionary = slices.Clone(s.CustomDictionary)
+	s.AIProviders = slices.Clone(s.AIProviders)
+	s.AITaskRoutes = maps.Clone(s.AITaskRoutes)
+	s.PluginsEnabled = maps.Clone(s.PluginsEnabled)
+	if s.PluginSettings != nil {
+		bags := make(map[string]map[string]any, len(s.PluginSettings))
+		for id, bag := range s.PluginSettings {
+			bags[id] = maps.Clone(bag)
+		}
+		s.PluginSettings = bags
+	}
+	return s
 }
