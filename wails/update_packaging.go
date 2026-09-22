@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"draftline/internal/fsutil"
 	"draftline/internal/platform"
 )
 
@@ -82,22 +83,13 @@ func applyLinuxUpdate(kind, path string) bool {
 
 // replaceAppImage swaps the new AppImage into the running one's place. The
 // running image stays mounted from its old inode, so the rename is safe, and
-// the copy goes through a sibling temp file so the swap is atomic even when
-// the download cache is on another filesystem.
+// CopyFileAtomic stages beside the destination so the swap holds even when the
+// download cache is on another filesystem.
 func replaceAppImage(current, downloaded string) bool {
 	if current == "" {
 		return false
 	}
-	staged := current + ".update"
-	data, err := os.ReadFile(downloaded)
-	if err != nil {
-		return false
-	}
-	if err := os.WriteFile(staged, data, 0o755); err != nil {
-		return false
-	}
-	if err := os.Rename(staged, current); err != nil {
-		_ = os.Remove(staged)
+	if err := fsutil.CopyFileAtomic(downloaded, current, 0o755); err != nil {
 		return false
 	}
 	_ = os.Remove(downloaded)

@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02706] - 2026-09-22
+
+### Changed
+- A Linux package update is streamed into place instead of being held in memory twice.
+
 ## [0.21.02705] - 2026-09-22
 
 ### Security
