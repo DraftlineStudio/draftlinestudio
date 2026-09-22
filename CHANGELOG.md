@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02722] - 2026-09-22
+
+### Changed
+- Draftline starts faster, loading each large screen the first time you open it.
+
 ## [0.21.02721] - 2026-09-22
 
 ### Changed

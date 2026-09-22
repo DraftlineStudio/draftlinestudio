@@ -26,5 +26,21 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     sourcemap: false,
+    rollupOptions: {
+      output: {
+        // The editor stack is most of the bundle and it is eager: the store
+        // imports it, so it is needed before anything is on screen. Splitting
+        // it off does not defer it, but it keeps one enormous file from being
+        // rebuilt and re-parsed for every change to Draftline's own code.
+        manualChunks: (id: string) => {
+          if (!id.includes('node_modules')) return undefined
+          if (id.includes('@tiptap') || id.includes('prosemirror')) return 'editor'
+          if (id.includes('react-dom') || /node_modules[\\/]react[\\/]/.test(id)) return 'react'
+          if (id.includes('typo-js')) return 'spelling'
+          if (id.includes('@dnd-kit')) return 'dnd'
+          return undefined
+        },
+      },
+    },
   },
 })

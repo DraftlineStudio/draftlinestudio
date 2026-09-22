@@ -16,22 +16,25 @@ import EditorPanel from './components/EditorPanel'
 import ErrorBoundary from './components/ErrorBoundary'
 import BackendErrorNotice from './components/BackendErrorNotice'
 import { firstProjectPath, subscribeFileDrop } from './services/fileDrop'
-import CharactersView from './components/characters/CharactersView'
-import PlannerView from './components/planner/PlannerView'
 import PlannerPanel from './components/planner/PlannerPanel'
 import ToolsPanel from './components/ToolsPanel'
 import StatusBar from './components/StatusBar'
 import AnalysisCoordinator from './components/AnalysisCoordinator'
 import StorySearchToolWindow from './components/StorySearchToolWindow'
-import BookInfoDialog from './components/dialogs/BookInfoDialog'
 import NewChapterDialog from './components/dialogs/NewChapterDialog'
 import NewBookWizard from './components/dialogs/NewBookWizard'
 import UnsavedChangesDialog from './components/dialogs/UnsavedChangesDialog'
 import BookLockDialog from './components/dialogs/BookLockDialog'
-import AppSettingsDialog from './components/dialogs/AppSettingsDialog'
-import ExportWizard from './components/dialogs/ExportWizard'
 
+// Screens and dialogs that are not on screen at startup. Each one is a
+// parse-and-compile cost the writer would otherwise pay before the editor
+// appears, for something they may never open this session.
 const ChapterHistoryDialog = lazy(() => import('./components/dialogs/ChapterHistoryDialog'))
+const AppSettingsDialog = lazy(() => import('./components/dialogs/settings'))
+const ExportWizard = lazy(() => import('./components/dialogs/ExportWizard'))
+const BookInfoDialog = lazy(() => import('./components/dialogs/BookInfoDialog'))
+const CharactersView = lazy(() => import('./components/characters/CharactersView'))
+const PlannerView = lazy(() => import('./components/planner/PlannerView'))
 
 export default function App() {
   const { hasBook, bookTitle, bookFilePath, newBook, openBook, openRecentBook, saveBook, saveBookAs, dialogs, initBook, viewMode, setViewMode, isOpening } = useBookStore(useShallow(s => ({
@@ -294,7 +297,7 @@ export default function App() {
         />
         {dialogs.showNewBookWizard && <NewBookWizard onCreated={() => setShowWelcome(false)} />}
         {dialogs.bookLockWarning && <BookLockDialog />}
-        {showSettings && <AppSettingsDialog />}
+        {showSettings && <Suspense fallback={null}><AppSettingsDialog /></Suspense>}
         {openingOverlay}
         <BackendErrorNotice />
       </div>
@@ -310,10 +313,10 @@ export default function App() {
             nothing there, so it gives the codex the width instead. */}
         {viewMode !== 'cast' && <ChapterPanel />}
         {viewMode === 'cast' ? (
-          <CharactersView />
+          <Suspense fallback={null}><CharactersView /></Suspense>
         ) : viewMode === 'planner' ? (
           <ErrorBoundary name="Planner">
-            <PlannerView />
+            <Suspense fallback={null}><PlannerView /></Suspense>
           </ErrorBoundary>
         ) : (
           <ErrorBoundary name="Editor">
@@ -326,16 +329,16 @@ export default function App() {
       {bottomToolOpen && viewMode === 'editor' && <StorySearchToolWindow />}
       <StatusBar />
       <AnalysisCoordinator />
-      {showMetadata && <BookInfoDialog />}
+      {showMetadata && <Suspense fallback={null}><BookInfoDialog /></Suspense>}
       {showNewChapter && newChapterSection && (
         <NewChapterDialog section={newChapterSection} />
       )}
       {dialogs.showNewBookWizard && <NewBookWizard />}
       {dialogs.showUnsavedWarning && <UnsavedChangesDialog />}
       {dialogs.bookLockWarning && <BookLockDialog />}
-      {showExportWizard && <ExportWizard />}
+      {showExportWizard && <Suspense fallback={null}><ExportWizard /></Suspense>}
       {showChapterHistory && <Suspense fallback={null}><ChapterHistoryDialog /></Suspense>}
-      {showSettings && <AppSettingsDialog />}
+      {showSettings && <Suspense fallback={null}><AppSettingsDialog /></Suspense>}
       {openingOverlay}
       <BackendErrorNotice />
     </div>
