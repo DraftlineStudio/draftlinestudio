@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02695] - 2026-09-21
+
+### Changed
+- Two copies of the same text extraction helper collapsed into one, which now parses into an inert document.
+
 ## [0.21.02694] - 2026-09-21
 
 ### Removed

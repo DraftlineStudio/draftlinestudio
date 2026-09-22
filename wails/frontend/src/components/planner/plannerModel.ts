@@ -65,6 +65,8 @@ export function countWords(text: string): number {
   return (text.trim().match(/\S+/g) ?? []).length
 }
 
+// Not utils/textUtils.htmlToText: the planner model is exercised by tests that
+// run without a DOM, so this one must stay regex-only.
 function stripHtml(html: string): string {
   return html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
 }

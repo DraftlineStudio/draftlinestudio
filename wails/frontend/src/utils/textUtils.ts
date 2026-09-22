@@ -8,12 +8,13 @@
 import type { BookData } from '../types/draftline'
 
 /**
- * Extract plain text from HTML content
+ * Extract plain text from HTML content.
+ *
+ * Parsed into an inert document rather than assigned to a live element, so
+ * markup carrying a remote reference cannot make the parse fetch it.
  */
 export function htmlToText(html: string): string {
-  const div = document.createElement('div')
-  div.innerHTML = html
-  return div.textContent || div.innerText || ''
+  return new DOMParser().parseFromString(html, 'text/html').body.textContent || ''
 }
 
 /**

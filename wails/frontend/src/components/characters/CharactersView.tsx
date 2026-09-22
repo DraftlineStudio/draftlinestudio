@@ -15,12 +15,7 @@ import type { BookData, Character, CharacterRole, CharacterEvent, MentionRecord 
 import CharacterInterweave from './CharacterInterweave'
 
 import { allChapters, chapterName, cellAlpha, chapterLocation, takeCharacterFocus } from './shared'
-
-function stripHtml(html: string): string {
-  const div = document.createElement('div')
-  div.innerHTML = html
-  return div.textContent || ''
-}
+import { htmlToText } from '../../utils/textUtils'
 
 // Best-effort context around a mention: locate the mention text near its
 // recorded offset in the stripped chapter text and slice to word boundaries.
@@ -29,7 +24,7 @@ function stripHtml(html: string): string {
 function mentionExcerpt(book: BookData, m: MentionRecord): string {
   const html = allChapters(book)[m.chapter]?.content
   if (!html || !m.text) return m.text || ''
-  const text = stripHtml(html)
+  const text = htmlToText(html)
   let idx = text.indexOf(m.text, Math.max(0, (m.char_offset ?? 0) - 300))
   if (idx === -1) idx = text.indexOf(m.text)
   if (idx === -1) return m.text

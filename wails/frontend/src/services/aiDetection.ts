@@ -12,6 +12,8 @@
  * - Sentence variety: AI has less variation in sentence patterns
  * - Transition patterns: AI overuses certain transitional phrases
  */
+import { htmlToText } from '../utils/textUtils'
+
 
 export interface AIDetectionResult {
   score: number  // 0-100, where 0 = definitely human, 100 = likely AI
@@ -53,15 +55,6 @@ const AI_FICTION_PHRASES = [
   'a small smile', 'a faint smile', 'a slight smile',
   'nodded slowly', 'shook his head', 'shook her head',
 ]
-
-/**
- * Extract plain text from HTML
- */
-function htmlToText(html: string): string {
-  const div = document.createElement('div')
-  div.innerHTML = html
-  return div.textContent || div.innerText || ''
-}
 
 /**
  * Split text into sentences
