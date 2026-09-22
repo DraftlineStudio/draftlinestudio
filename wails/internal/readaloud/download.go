@@ -52,14 +52,7 @@ func InstallNative(ctx context.Context, dir string, onProgress func(Progress)) e
 	if err := installManifest(ctx, dir, manifest, onProgress); err != nil {
 		return err
 	}
-	if err := extractEspeakData(ctx, dir); err != nil {
-		return err
-	}
-	// Build 02521 replaced the quantized model because its vocoder can emit an
-	// audible high-frequency tone. Remove only that known obsolete artifact,
-	// and only after the clean FP32 bundle has installed successfully.
-	_ = os.Remove(filepath.Join(dir, "native", "model", "model.int8.onnx"))
-	return nil
+	return extractEspeakData(ctx, dir)
 }
 
 func extractEspeakData(ctx context.Context, dir string) error {

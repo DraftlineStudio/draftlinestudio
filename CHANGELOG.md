@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02696] - 2026-09-21
+
+### Removed
+- An install step that deleted a voice model file no installation has carried since 0.16.02521.
+
 ## [0.21.02695] - 2026-09-21
 
 ### Changed
