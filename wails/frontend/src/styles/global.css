@@ -15,8 +15,8 @@
    Cross-cutting classes to know about before pruning:
    - .settings-close-btn  — also used by ChapterHistoryDialog
    - .settings-hint       — also used by NewBookWizard
-   - .dialog-* / .btn* / .form-group — app-wide primitives (see the SHARED
-     DIALOG + FORM PRIMITIVES section)
+   - .dialog-btn / .dialog-actions / .dialog-body / .dialog-input /
+     .dialog-select — app-wide dialog primitives, used by most dialogs
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ===== DESIGN TOKENS — Dark ===== */
@@ -1631,15 +1631,6 @@ html, body, #root {
   gap: 6px;
 }
 
-.tool-card {
-  background: var(--bg-surface-alt);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: 11px 12px 12px 12px;
-  box-shadow: var(--shadow-card);
-  transition: border-color 0.15s;
-}
-.tool-card:hover { border-color: var(--border-strong); }
 .tool-card-btn {
   width: 100%;
   height: 25px;
@@ -1785,15 +1776,6 @@ html, body, #root {
   font-family: inherit;
   cursor: pointer;
 }
-.stat-value {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-.stat-label {
-  font-size: 12px;
-  color: var(--text-muted);
-}
 .chapter-stats-list {
   display: flex;
   flex-direction: column;
@@ -1907,18 +1889,6 @@ html, body, #root {
 .story-search-tab:hover { color: var(--text-primary); }
 .story-search-tab.active { box-shadow: inset 0 -2px 0 var(--accent); color: var(--text-primary); }
 .story-search-tab svg { color: currentColor; }
-.story-search-tab-badge {
-  min-width: 14px;
-  height: 14px;
-  padding: 0 4px;
-  border-radius: 7px;
-  background: var(--status-issue);
-  color: var(--status-badge-text);
-  font-size: 9px;
-  font-weight: 700;
-  line-height: 14px;
-  text-align: center;
-}
 .story-search-header-hint {
   margin-left: 10px;
   overflow: hidden;
@@ -3274,12 +3244,6 @@ html, body, #root {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.titlebar-author-gear {
-  opacity: 0.45;
-  flex-shrink: 0;
-  transition: opacity 0.15s;
-}
-.titlebar-author-btn:hover .titlebar-author-gear { opacity: 0.7; }
 
 /* ===== SETTINGS DIALOG ===== */
 .settings-dialog {
@@ -4101,11 +4065,6 @@ html, body, #root {
 }
 
 /* Read Aloud rail glyph (pinned to the bottom of the tools rail) */
-.glyph-bar-spacer { flex: 1; }
-.glyph-badge--setup {
-  background: var(--app-accent);
-  color: #fff;
-}
 
 /* Read Aloud settings */
 .read-aloud-progress {
@@ -4450,14 +4409,13 @@ html, body, #root {
   margin-top: 5px;
   line-height: 1.45;
 }
-.settings-prose-textarea, .settings-copyright-textarea {
+.settings-prose-textarea {
   resize: vertical;
   font-family: var(--font-editor);
   font-size: 13px;
   line-height: 1.6;
 }
 .settings-prose-textarea { min-height: 130px; }
-.settings-copyright-textarea { min-height: 90px; }
 
 /* Local AI info box */
 .settings-local-info {
@@ -4747,14 +4705,6 @@ html, body, #root {
 }
 
 /* Loading state */
-.ai-loading {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 16px 2px;
-  color: var(--text-secondary);
-  font-size: 12px;
-}
 .ai-loading-pane { display: flex; flex-direction: column; padding: 4px 0; }
 .ai-loading-header {
   display: flex;
@@ -5229,16 +5179,6 @@ html, body, #root {
   box-shadow: 0 1px 0 var(--border-strong);
   white-space: nowrap;
 }
-.sgw-badge {
-  font-size: 9px;
-  font-weight: 600;
-  padding: 2px 6px;
-  background: var(--app-accent-dim);
-  color: var(--app-accent-text);
-  border-radius: 3px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
 
 /* — main pane — */
 .sgw-main {
@@ -5457,190 +5397,21 @@ html, body, #root {
   color: var(--text-section);
 }
 
-/* ===== SHARED DIALOG + FORM PRIMITIVES =====
-   Despite sitting next to the universe-wizard rules below, .dialog-backdrop /
-   .dialog-header / .dialog-close / .dialog-footer / .btn* / .form-group are
-   app-wide primitives used by ~26 components. Do not co-locate or delete. */
-.dialog-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
-}
 
-/* ===== NEW UNIVERSE WIZARD (universe-specific rules only) ===== */
-.new-universe-wizard {
-  width: 460px;
-  padding: 0;
-}
 
-.dialog-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
-}
 
-.dialog-header h2 {
-  font-size: 14px;
-  font-weight: 600;
-  margin: 0;
-  color: var(--text-primary);
-}
 
-.dialog-close {
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  border-radius: 4px;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: background 0.1s, color 0.1s;
-}
 
-.dialog-close:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
 
-.new-universe-wizard .dialog-body {
-  padding: 20px;
-  margin: 0;
-}
 
-.storiverse-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  background: var(--app-accent-dim);
-  border-radius: 4px;
-  color: var(--app-accent-text);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 16px;
-}
 
-.wizard-description {
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--text-secondary);
-  margin: 0 0 20px;
-}
 
-.form-group {
-  margin-bottom: 16px;
-}
 
-.form-group label {
-  display: block;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-section);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 6px;
-}
 
-.form-group input,
-.form-group textarea {
-  width: 100%;
-  padding: 8px 12px;
-  background: var(--bg-input);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--text-primary);
-  font-size: 13px;
-  font-family: inherit;
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
 
-.form-group input:focus,
-.form-group textarea:focus {
-  border-color: var(--app-accent);
-  box-shadow: 0 0 0 3px var(--app-accent-dim);
-}
 
-.form-group textarea {
-  resize: vertical;
-  min-height: 80px;
-}
 
-.coming-soon-notice {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 12px;
-  background: var(--bg-surface-alt);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  line-height: 1.5;
-}
 
-.coming-soon-notice svg {
-  flex-shrink: 0;
-  color: var(--text-muted);
-  margin-top: 1px;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 14px 20px;
-  border-top: 1px solid var(--border);
-}
-
-.btn {
-  padding: 8px 16px;
-  border-radius: 4px;
-  font-size: 12.5px;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s;
-}
-
-.btn-secondary {
-  background: var(--bg-surface-alt);
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
-}
-
-.btn-secondary:hover {
-  border-color: var(--border-strong);
-  color: var(--text-primary);
-}
-
-.btn-primary {
-  background: var(--app-accent);
-  border: 1px solid var(--app-accent);
-  color: #fff;
-}
-
-.btn-primary:hover {
-  opacity: 0.88;
-}
-
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 
 /* Minimal titlebar for welcome screen */
 .titlebar-minimal {
@@ -8048,15 +7819,6 @@ html, body, #root {
   color: var(--text-secondary);
   margin-bottom: 8px;
 }
-.titlebar-author-pop-copyright {
-  color: var(--text-muted, #6A6E75);
-  font-size: 11px;
-  line-height: 1.45;
-  white-space: pre-wrap;
-  max-height: 96px;
-  overflow: hidden;
-  margin-bottom: 10px;
-}
 .titlebar-author-pop-edit {
   width: 100%;
   justify-content: center;
@@ -8103,7 +7865,6 @@ html, body, #root {
 .bi-rail-empty { padding: 4px 12px 12px; font-size: 11px; color: var(--text-muted); line-height: 1.55; }
 
 .bi-pane { overflow-y: auto; padding: 18px 22px 24px; min-width: 0; }
-.bi-section-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 9px; }
 .bi-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 18px; }
 .bi-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .bi-field-wide { grid-column: 1 / -1; }
@@ -8112,19 +7873,6 @@ html, body, #root {
 .bi-textarea { height: auto; min-height: 76px; padding: 8px 9px; line-height: 1.6; resize: vertical; }
 .dialog-input.invalid, .dialog-select.invalid { border-color: var(--status-error, #E06C75); }
 
-.bi-isbn-row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
-.bi-isbn-format { flex: 0 0 118px; }
-.bi-isbn-row .dialog-input { flex: 1; min-width: 0; }
-.bi-isbn-mark { flex: none; width: 14px; text-align: center; font-size: 12px; color: transparent; }
-.bi-isbn-mark.ok { color: #57A874; }
-.bi-isbn-mark.bad { color: #E5C07B; cursor: help; }
-.bi-isbn-remove, .bi-isbn-add {
-  flex-shrink: 0; height: 26px; padding: 0 9px;
-  border: 1px solid var(--border); border-radius: 4px;
-  background: var(--bg-input); color: var(--text-secondary); font: inherit; cursor: pointer;
-}
-.bi-isbn-remove:hover, .bi-isbn-add:hover { background: var(--bg-hover); color: var(--text-primary); }
-.bi-isbn-add { margin-top: 2px; }
 
 /* Picking a format to add: one button per word, shown on demand, inside the
    edition it belongs to, so nothing is created by a default the writer did
@@ -8139,11 +7887,6 @@ html, body, #root {
   font: inherit; font-size: 12px; cursor: pointer;
 }
 .bi-wrap-empty:hover { background: var(--bg-hover); color: var(--text-secondary); border-color: var(--app-accent); }
-.bi-wrap-held {
-  border: 1px solid var(--border); border-radius: 5px;
-  background: var(--bg-input); padding: 10px;
-  display: grid; grid-template-columns: 152px 1fr; gap: 12px; align-items: start;
-}
 
 /* A wrap is back, spine and front in one piece, so it is drawn wide. */
 .bi-wrap-preview { width: 100%; height: auto; border-radius: 3px; display: block; background: var(--bg-tertiary); }
@@ -8154,8 +7897,6 @@ html, body, #root {
   font-size: 13px; letter-spacing: 1px;
 }
 .bi-wrap-actions { display: flex; gap: 6px; margin-top: 6px; }
-.bi-ed-cover.sm { width: 132px; }
-.bi-ed-cover.sm .bi-cover-image { width: 100%; height: auto; border-radius: 3px; display: block; }
 
 .bi-footer {
   flex: none; display: flex; align-items: center; gap: 10px;
@@ -8512,11 +8253,6 @@ html, body, #root {
 
 /* The cover card. Drawn so the shape of the record is visible whether or not
    artwork has been attached. */
-.bi-ed-card {
-  display: flex; gap: 20px; align-items: flex-start; margin-bottom: 22px; padding: 16px;
-  background: var(--bg-surface-alt); border: 1px solid var(--border); border-radius: 6px;
-}
-.bi-ed-cover { display: flex; flex-direction: column; align-items: center; gap: 8px; flex: none; }
 .bi-ed-cover-plate {
   width: 112px; height: 168px; padding: 12px 10px; border-radius: 2px;
   display: flex; flex-direction: column; justify-content: space-between;
@@ -8527,19 +8263,6 @@ html, body, #root {
 .bi-ed-cover-kicker { font-size: 8px; letter-spacing: 1.4px; text-transform: uppercase; opacity: 0.7; }
 .bi-ed-cover-title { font-size: 17px; line-height: 1.15; font-weight: 700; overflow: hidden; }
 .bi-ed-cover-author { font-size: 9px; letter-spacing: 0.6px; opacity: 0.85; }
-.bi-ed-cover-caption { font-size: 10.5px; color: var(--text-muted); }
-.bi-ed-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
-.bi-ed-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 6px 20px; }
-.bi-ed-fact {
-  display: flex; justify-content: space-between; gap: 12px; font-size: 12px;
-  padding-bottom: 6px; border-bottom: 1px solid var(--border-subtle);
-}
-.bi-ed-fact > span:first-child { color: var(--text-secondary); }
-.bi-ed-fact > span:last-child {
-  color: var(--text-primary); text-align: right;
-  font-family: 'IBM Plex Mono', 'Fira Code', monospace; font-size: 11.5px;
-}
-.bi-ed-note { margin: 0; font-size: 11px; color: var(--text-muted); line-height: 1.6; max-width: 66ch; }
 
 /* ═════════════════════════════════════════════════════════════════════════════
    BOOK & EDITIONS · COVER ART
@@ -9265,11 +8988,6 @@ html, body, #root {
 .bi-badge.accent { background: var(--app-accent-subtle); color: var(--app-accent-text); }
 .bi-badge.neutral { background: var(--bg-surface-alt); color: var(--text-muted); }
 
-.bi-link {
-  border: none; background: transparent; padding: 0; cursor: pointer;
-  font-family: inherit; font-size: 11px; color: var(--app-accent-text);
-}
-.bi-link:hover { color: var(--text-primary); }
 .bi-danger-link {
   margin-left: auto; border: none; background: transparent; padding: 0; cursor: pointer;
   font-family: inherit; font-size: 11.5px; color: var(--status-error);
@@ -9385,7 +9103,6 @@ html, body, #root {
 .bi-fact span { color: var(--text-secondary); }
 .bi-fact em { font-style: normal; font-size: 11.5px; font-family: 'IBM Plex Mono', monospace; }
 
-.bi-wrap-row { display: flex; gap: 16px; align-items: stretch; flex-wrap: wrap; margin-top: 4px; }
 .bi-wrap-empty {
   width: 196px; height: 104px; flex: none; border-radius: 4px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
@@ -9394,7 +9111,6 @@ html, body, #root {
 }
 .bi-wrap-empty:hover { border-color: var(--app-accent); color: var(--text-primary); }
 .bi-wrap-empty small { font-size: 10px; font-family: 'IBM Plex Mono', monospace; }
-.bi-wrap-held { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; min-width: 0; }
 /* The preview is a copy already scaled to fit, so it is shown at its own
    shape. Cropping a wrap — back, spine and front in one piece — into a fixed
    postcard told the author nothing about their artwork and letterboxed white
@@ -9410,12 +9126,7 @@ html, body, #root {
   border: 1px solid var(--border); background: var(--bg-panel);
   color: var(--text-muted); font-size: 13px; letter-spacing: 0.08em;
 }
-.bi-wrap-facts { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.bi-wrap-facts em { font-style: normal; font-size: 12px; font-family: 'IBM Plex Mono', monospace; }
-.bi-wrap-facts small { font-size: 11px; color: var(--text-muted); }
 .bi-wrap-actions { display: flex; gap: 6px; margin-top: 4px; }
-.bi-wrap-aside { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 8px; justify-content: center; }
-.bi-wrap-aside small { font-size: 11.5px; line-height: 1.5; color: var(--text-secondary); }
 .bi-keep { display: flex; align-items: center; gap: 9px; cursor: pointer; font-size: 12px; user-select: none; }
 .bi-keep.off { opacity: 0.5; cursor: default; }
 .bi-keep input { width: 15px; height: 15px; accent-color: var(--app-accent); }
@@ -9423,7 +9134,6 @@ html, body, #root {
 /* ── A format: typeset settings ─────────────────────────────────────────── */
 
 .bi-typeset { gap: 18px; }
-.bi-held { color: var(--status-warning); }
 .bi-choice-block { display: flex; flex-direction: column; gap: 8px; }
 .bi-choice-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .bi-choice-head strong { font-size: 12.5px; font-weight: 600; }

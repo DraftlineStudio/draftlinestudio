@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02693] - 2026-09-21
+
+### Removed
+- Stylesheet rules left behind by screens that no longer exist.
+
 ## [0.21.02692] - 2026-09-21
 
 ### Removed
