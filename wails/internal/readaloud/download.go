@@ -108,7 +108,7 @@ func extractEspeakData(ctx context.Context, dir string) error {
 			if err := os.MkdirAll(target, 0755); err != nil {
 				return err
 			}
-		case tar.TypeReg, tar.TypeRegA:
+		case tar.TypeReg:
 			files++
 			total += header.Size
 			if files > 4096 || total > 64*1024*1024 {

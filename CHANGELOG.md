@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02700] - 2026-09-22
+
+### Changed
+- A deprecated archive type constant was replaced with its current equivalent.
+
 ## [0.21.02699] - 2026-09-21
 
 ### Changed
