@@ -10,7 +10,7 @@ All notable changes to Draftline are listed here, newest first.
 ## [0.21.02725] - 2026-09-23
 
 ### Fixed
-- Running the test suite no longer overwrites your own settings. A test run could switch off autosave and your sidebar panels and leave test endpoints in the AI provider list.
+- Running the test suite on a development checkout overwrote that machine's own Draftline settings, switching off autosave, emptying the sidebar and leaving test endpoints in the AI provider list. The suite now writes to a throwaway directory, so running go test against the source can no longer overwrite a real setup by mistake. An installed Draftline contains no tests, so no released build and no end user was ever affected by this.
 
 ## [0.21.02724] - 2026-09-22
 
