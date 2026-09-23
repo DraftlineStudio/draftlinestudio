@@ -1,3 +1,4 @@
+import { FIND_IN_MANUSCRIPT_EVENT } from '../../services/findInManuscript'
 import type { Editor } from '@tiptap/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
@@ -118,8 +119,8 @@ export default function ChapterFindReplaceBar({ editor }: Props) {
       refreshStatus()
       window.requestAnimationFrame(() => window.requestAnimationFrame(scrollToCurrent))
     }
-    window.addEventListener('draftline:find-story-evidence', handleStoryEvidence)
-    return () => window.removeEventListener('draftline:find-story-evidence', handleStoryEvidence)
+    window.addEventListener(FIND_IN_MANUSCRIPT_EVENT, handleStoryEvidence)
+    return () => window.removeEventListener(FIND_IN_MANUSCRIPT_EVENT, handleStoryEvidence)
   }, [editor, refreshStatus, scrollToCurrent])
 
   useEffect(() => {

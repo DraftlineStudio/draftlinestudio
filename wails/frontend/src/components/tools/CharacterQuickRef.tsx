@@ -4,9 +4,11 @@
 // an inline card (meta, presence, top ties, jump links) — nothing else moves.
 // Full management lives in the Characters codex.
 
+import { goToManuscript } from '../../services/findInManuscript'
 import { useShallow } from 'zustand/react/shallow'
 import { useMemo, useState } from 'react'
 import { useBookStore } from '../../store/bookStore'
+import { useStoryBibleStore } from '../../store/storyBibleStore'
 import { characterColor } from '../../utils/characterVisuals'
 import { hexToRgba } from '../../utils/accentColor'
 import { isConfirmedCharacter } from '../../utils/characterStatus'
@@ -17,11 +19,16 @@ export default function CharacterQuickRef() {
   const {
     book, setViewMode, setCurrentChapter, indexBook, isIndexing,
     currentSection, currentIndex,
-    highlightedCharacterId, setHighlightedCharacter,
   } = useBookStore(useShallow(s => ({
     book: s.book, setViewMode: s.setViewMode, setCurrentChapter: s.setCurrentChapter,
     indexBook: s.indexBook, isIndexing: s.isIndexing,
     currentSection: s.currentSection, currentIndex: s.currentIndex,
+  })))
+  // highlightedCharacterId lives in storyBibleStore. bookStore exposes it as a
+  // bridge getter, but a getter does not make bookStore notify when the other
+  // store changes, so selecting it through bookStore never re-renders. Same
+  // reason DiffPanel subscribes to editorStore for pendingDiff.
+  const { highlightedCharacterId, setHighlightedCharacter } = useStoryBibleStore(useShallow(s => ({
     highlightedCharacterId: s.highlightedCharacterId,
     setHighlightedCharacter: s.setHighlightedCharacter,
   })))
@@ -61,10 +68,12 @@ export default function CharacterQuickRef() {
     setViewMode('cast')
   }
 
+  // Lands on the mention, not at the top of the chapter holding it: the same
+  // path Ask Draftline uses to show a source passage.
   const jumpToFirstMention = (c: Character) => {
     if (c.first_chapter === undefined) return
     const loc = chapterLocation(book, c.first_chapter)
-    setCurrentChapter(loc.section, loc.index)
+    goToManuscript({ section: loc.section, index: loc.index, find: c.name }, { setViewMode, setCurrentChapter })
   }
 
   const stripCells = (c: Character, color: string) =>

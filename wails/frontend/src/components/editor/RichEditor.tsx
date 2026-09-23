@@ -26,6 +26,7 @@ import ContextMenu, { ContextMenuItem } from '../ContextMenu'
 import { checkWord, getDictionaryRoot, getImmediateSuggestions, getSuggestions, isLoaded as isSpellCheckLoaded, normalizeCustomDictionary, setCustomWords, setIgnoredWords, setSpellCheckEnabled } from '../../services/spellCheck'
 import { analyzeGrammar, setGrammarCheckEnabled, type GrammarIssue } from '../../services/grammarCheck'
 import { useBookStore } from '../../store/bookStore'
+import { useStoryBibleStore } from '../../store/storyBibleStore'
 import { useEditorStore } from '../../store/editorStore'
 import { useAppStore } from '../../store/appStore'
 import { isConfirmedCharacter } from '../../utils/characterStatus'
@@ -143,8 +144,11 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
     }
   }, [content, editor])
 
-  // Force decoration recalculation when highlighted character or its aliases change
-  const highlightedCharacterId = useBookStore(s => s.highlightedCharacterId)
+  // Force decoration recalculation when highlighted character or its aliases change.
+  // Read from storyBibleStore, which owns it: bookStore exposes it as a bridge
+  // getter, and a getter does not make bookStore notify when the other store
+  // changes, so selecting it through bookStore misses the update.
+  const highlightedCharacterId = useStoryBibleStore(s => s.highlightedCharacterId)
   const characters = useBookStore(s => s.book?.story_bible?.characters)
 
   const confirmedCharacterNames = useMemo(() => (characters ?? [])

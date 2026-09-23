@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02727] - 2026-09-23
+
+### Fixed
+- Highlight in the character sidebar works again, and Jump to first mention now lands on the mention instead of the top of the chapter.
+
 ## [0.21.02726] - 2026-09-23
 
 ### Changed

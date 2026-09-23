@@ -1,3 +1,4 @@
+import { goToManuscript } from '../services/findInManuscript'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAppStore } from '../store/appStore'
@@ -83,11 +84,7 @@ export default function StorySearchToolWindow() {
   }
 
   function navigateSource(section: Section, sectionIndex: number, evidenceQuery: string) {
-    setViewMode('editor')
-    setCurrentChapter(section, sectionIndex)
-    window.setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('draftline:find-story-evidence', { detail: { query: evidenceQuery } }))
-    }, 0)
+    goToManuscript({ section, index: sectionIndex, find: evidenceQuery }, { setViewMode, setCurrentChapter })
   }
 
   const expanded = panelHeight >= TALL_HEIGHT - 4
