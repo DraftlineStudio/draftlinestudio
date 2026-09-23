@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -267,5 +269,22 @@ func TestASettingsSnapshotSharesNothingWithTheStoredCopy(t *testing.T) {
 	}
 	if next.PluginSettings["a.b"]["tone"] != "warm" {
 		t.Error("a plugin setting changed in one snapshot showed up in the next one")
+	}
+}
+
+// The settings path a test writes to must be the throwaway one, never the
+// writer's own. This pins the redirection in main_test.go: without it, running
+// the suite rewrites the real settings.json and a writer loses their setup.
+func TestTheSuiteNeverWritesTheRealSettingsFile(t *testing.T) {
+	real, err := os.UserConfigDir()
+	if err != nil {
+		t.Skip("no user config directory on this machine")
+	}
+	path := (&App{}).settingsPath()
+	if strings.HasPrefix(path, filepath.Join(real, "draftline")) {
+		t.Fatalf("tests are writing to the real settings file: %s", path)
+	}
+	if !strings.Contains(path, "draftline-test-config-") {
+		t.Fatalf("settings path is not the throwaway one: %s", path)
 	}
 }

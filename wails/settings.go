@@ -26,12 +26,18 @@ import (
 
 // ── Settings ─────────────────────────────────────────────────────────────────
 
+// configRoot resolves the per-user configuration directory. It is a variable
+// rather than a direct call so tests can point it somewhere harmless: the
+// functions below write the writer's real settings file, and a test that
+// reaches the real one destroys their setup. See TestMain.
+var configRoot = os.UserConfigDir
+
 // configDir is the per-user directory holding settings and the recents list.
 // It is 0700 because settings.json carries a plaintext API key on machines
 // with no keyring; an existing looser directory from an older build is
 // tightened best-effort.
 func configDir() string {
-	base, err := os.UserConfigDir()
+	base, err := configRoot()
 	if err != nil {
 		if base, err = os.UserHomeDir(); err != nil {
 			return ""

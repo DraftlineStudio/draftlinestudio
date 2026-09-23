@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02725] - 2026-09-23
+
+### Fixed
+- Running the test suite no longer overwrites your own settings. A test run could switch off autosave and your sidebar panels and leave test endpoints in the AI provider list.
+
 ## [0.21.02724] - 2026-09-22
 
 ### Changed
