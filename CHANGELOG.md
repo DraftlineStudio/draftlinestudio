@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02726] - 2026-09-23
+
+### Changed
+- Updating from an earlier version keeps every setting it finds, which is now checked on each build.
+
 ## [0.21.02725] - 2026-09-23
 
 ### Fixed
