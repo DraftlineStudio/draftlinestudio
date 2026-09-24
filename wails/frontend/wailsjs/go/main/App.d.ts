@@ -20,6 +20,8 @@ export function AttachWrap(arg1:string,arg2:string,arg3:string):Promise<types.Wr
 
 export function AttachWrapDialog(arg1:string,arg2:string):Promise<types.WrapResult>;
 
+export function BookTakeoverStatus(arg1:string):Promise<types.BookTakeoverStatus>;
+
 export function BrowseForDirectory():Promise<string>;
 
 export function BuildContinuityReport(arg1:types.BookData):Promise<types.ContinuityReport>;
@@ -43,6 +45,8 @@ export function ClearAPIKey():Promise<void>;
 export function ClearRecentProjects():Promise<void>;
 
 export function CloseBookFile():Promise<void>;
+
+export function DeclineBookTakeover():Promise<types.BookTakeoverResult>;
 
 export function DeleteAIProvider(arg1:string):Promise<void>;
 
@@ -79,6 +83,8 @@ export function GetCharacterTimeline(arg1:types.BookData,arg2:string):Promise<ty
 export function GetCurrentFile():Promise<string>;
 
 export function GetRecentProjects():Promise<Array<types.RecentProject>>;
+
+export function GrantBookTakeover():Promise<types.BookTakeoverResult>;
 
 export function HasAPIKey():Promise<boolean>;
 
@@ -138,6 +144,8 @@ export function RemoveReadAloudModel():Promise<void>;
 
 export function RemoveRecentProject(arg1:string):Promise<void>;
 
+export function RequestBookTakeover(arg1:string):Promise<types.BookTakeoverStatus>;
+
 export function RestoreBackup(arg1:number):Promise<types.SaveResult>;
 
 export function RevealInFileManager(arg1:string):Promise<types.RevealResult>;
@@ -183,3 +191,5 @@ export function TakePendingOpenPath():Promise<string>;
 export function TestAIEndpoint(arg1:string,arg2:string):Promise<types.AIRewriteResult>;
 
 export function VerifyReadAloudModel():Promise<readaloud.VerifyResult>;
+
+export function WithdrawBookTakeover(arg1:string):Promise<void>;

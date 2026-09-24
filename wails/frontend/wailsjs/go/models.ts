@@ -2134,6 +2134,62 @@ export namespace types {
 	        this.message = source["message"];
 	    }
 	}
+	export class BookTakeoverResult {
+	    granted: boolean;
+	    declined: boolean;
+	    withdrawn: boolean;
+	    fingerprinted: boolean;
+	    device?: string;
+	    error?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new BookTakeoverResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.granted = source["granted"];
+	        this.declined = source["declined"];
+	        this.withdrawn = source["withdrawn"];
+	        this.fingerprinted = source["fingerprinted"];
+	        this.device = source["device"];
+	        this.error = source["error"];
+	    }
+	}
+	export class BookTakeoverStatus {
+	    asked: boolean;
+	    held_elsewhere: boolean;
+	    answered: boolean;
+	    granted: boolean;
+	    declined: boolean;
+	    arrived: boolean;
+	    unverifiable: boolean;
+	    local_bytes: number;
+	    expected_bytes: number;
+	    responder?: string;
+	    note?: string;
+	    message: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new BookTakeoverStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.asked = source["asked"];
+	        this.held_elsewhere = source["held_elsewhere"];
+	        this.answered = source["answered"];
+	        this.granted = source["granted"];
+	        this.declined = source["declined"];
+	        this.arrived = source["arrived"];
+	        this.unverifiable = source["unverifiable"];
+	        this.local_bytes = source["local_bytes"];
+	        this.expected_bytes = source["expected_bytes"];
+	        this.responder = source["responder"];
+	        this.note = source["note"];
+	        this.message = source["message"];
+	    }
+	}
 	export class PrintPDFOptions {
 	    includeCopyright: boolean;
 	    includeFrontMatter: boolean;

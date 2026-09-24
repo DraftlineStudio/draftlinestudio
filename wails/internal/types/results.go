@@ -112,3 +112,57 @@ type BookLockInfo struct {
 	// Message is the sentence to show the author.
 	Message string `json:"message"`
 }
+
+// BookTakeoverRequest is another device asking for the open book, as it
+// reaches the frontend that has to put the question to whoever is here.
+type BookTakeoverRequest struct {
+	Device      string `json:"device"`
+	Platform    string `json:"platform"`
+	App         string `json:"app"`
+	RequestedAt string `json:"requested_at"`
+	// Message is the sentence to show whoever is at this machine.
+	Message string `json:"message"`
+}
+
+// BookTakeoverStatus is what the asking device polls while it waits.
+//
+// Arrived is the only field that promises anything. Everything else is a hint
+// in the same way BookLockInfo is: it comes out of a sidecar that travels by
+// whatever syncs the folder.
+type BookTakeoverStatus struct {
+	// Asked means a request of ours is still beside the book.
+	Asked bool `json:"asked"`
+	// HeldElsewhere means the claim is still there, answered or not.
+	HeldElsewhere bool `json:"held_elsewhere"`
+	Answered      bool `json:"answered"`
+	Granted       bool `json:"granted"`
+	Declined      bool `json:"declined"`
+	// Arrived means the book beside us hashes to what the other device wrote,
+	// which is the only proof that the copy is current rather than whatever
+	// the sync client has not replaced yet.
+	Arrived bool `json:"arrived"`
+	// Unverifiable means the handover carried no fingerprint, so there is
+	// nothing to check this copy against.
+	Unverifiable  bool   `json:"unverifiable"`
+	LocalBytes    int64  `json:"local_bytes"`
+	ExpectedBytes int64  `json:"expected_bytes"`
+	Responder     string `json:"responder,omitempty"`
+	// Note is why a handover carried no fingerprint, when that happened.
+	Note string `json:"note,omitempty"`
+	// Message is the sentence to show the author.
+	Message string `json:"message"`
+}
+
+// BookTakeoverResult is what came of answering a request for the open book.
+type BookTakeoverResult struct {
+	Granted  bool `json:"granted"`
+	Declined bool `json:"declined"`
+	// Withdrawn means nobody is waiting any more, so the book stays here. The
+	// frontend must not close it.
+	Withdrawn bool `json:"withdrawn"`
+	// Fingerprinted is false when the book could not be read to prove what was
+	// handed over. The handover still happened.
+	Fingerprinted bool   `json:"fingerprinted"`
+	Device        string `json:"device,omitempty"`
+	Error         string `json:"error,omitempty"`
+}

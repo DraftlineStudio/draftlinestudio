@@ -34,6 +34,10 @@ export function AttachWrapDialog(arg1, arg2) {
   return window['go']['main']['App']['AttachWrapDialog'](arg1, arg2);
 }
 
+export function BookTakeoverStatus(arg1) {
+  return window['go']['main']['App']['BookTakeoverStatus'](arg1);
+}
+
 export function BrowseForDirectory() {
   return window['go']['main']['App']['BrowseForDirectory']();
 }
@@ -80,6 +84,10 @@ export function ClearRecentProjects() {
 
 export function CloseBookFile() {
   return window['go']['main']['App']['CloseBookFile']();
+}
+
+export function DeclineBookTakeover() {
+  return window['go']['main']['App']['DeclineBookTakeover']();
 }
 
 export function DeleteAIProvider(arg1) {
@@ -152,6 +160,10 @@ export function GetCurrentFile() {
 
 export function GetRecentProjects() {
   return window['go']['main']['App']['GetRecentProjects']();
+}
+
+export function GrantBookTakeover() {
+  return window['go']['main']['App']['GrantBookTakeover']();
 }
 
 export function HasAPIKey() {
@@ -270,6 +282,10 @@ export function RemoveRecentProject(arg1) {
   return window['go']['main']['App']['RemoveRecentProject'](arg1);
 }
 
+export function RequestBookTakeover(arg1) {
+  return window['go']['main']['App']['RequestBookTakeover'](arg1);
+}
+
 export function RestoreBackup(arg1) {
   return window['go']['main']['App']['RestoreBackup'](arg1);
 }
@@ -360,4 +376,8 @@ export function TestAIEndpoint(arg1, arg2) {
 
 export function VerifyReadAloudModel() {
   return window['go']['main']['App']['VerifyReadAloudModel']();
+}
+
+export function WithdrawBookTakeover(arg1) {
+  return window['go']['main']['App']['WithdrawBookTakeover'](arg1);
 }

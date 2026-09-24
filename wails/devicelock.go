@@ -25,6 +25,9 @@ type deviceClaim struct {
 	mu   sync.Mutex
 	lock *booklock.Lock
 	stop chan struct{}
+	// announced is the session of the last takeover request put on screen, so
+	// a request is raised once rather than every time the watch looks.
+	announced string
 }
 
 // sessionID identifies this run of the application. A claim carrying it is
@@ -139,16 +142,31 @@ func (a *App) claimDeviceLock(path, bookID string) {
 	a.device.mu.Lock()
 	a.device.lock = lock
 	a.device.stop = stop
+	// A request raised against the session that held this book before is not a
+	// request against this one.
+	a.device.announced = ""
 	a.device.mu.Unlock()
 
 	go func() {
-		ticker := time.NewTicker(booklock.HeartbeatEvery)
-		defer ticker.Stop()
+		beat := time.NewTicker(booklock.HeartbeatEvery)
+		defer beat.Stop()
+		// The heartbeat is minutes because nothing waits on it. The takeover
+		// watch is seconds because a writer at the other machine is.
+		watch := time.NewTicker(takeoverWatchEvery)
+		defer watch.Stop()
 		for {
 			select {
 			case <-stop:
 				return
-			case <-ticker.C:
+			case <-watch.C:
+				a.device.mu.Lock()
+				held := a.device.lock
+				a.device.mu.Unlock()
+				if held == nil {
+					return
+				}
+				a.watchForTakeover(path)
+			case <-beat.C:
 				a.device.mu.Lock()
 				held := a.device.lock
 				a.device.mu.Unlock()
