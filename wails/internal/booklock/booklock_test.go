@@ -1,7 +1,6 @@
 package booklock
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -63,37 +62,6 @@ func TestSidecarNameIsSyncable(t *testing.T) {
 	}
 }
 
-// A device still running the previous build holds the dot-prefixed claim.
-func TestLegacyClaimIsStillHonoured(t *testing.T) {
-	dir := t.TempDir()
-	archive := filepath.Join(dir, "novel.draftline")
-	other := Identity{Device: "OTHER-DESKTOP", Session: "s-other", App: "Draftline"}
-	mine := Identity{Device: "MY-LAPTOP", Session: "s-mine", App: "Draftline"}
-
-	if _, _, err := Claim(archive, "book-1", other); err != nil {
-		t.Fatalf("seeding a claim failed: %v", err)
-	}
-	// Move it to the old name, as an older build would have written it.
-	if err := os.Rename(SidecarFor(archive), legacySidecarFor(archive)); err != nil {
-		t.Fatalf("rename: %v", err)
-	}
-
-	holder := Inspect(archive, mine)
-	if holder == nil || holder.Mine || holder.Stale {
-		t.Fatalf("legacy claim was not seen: %+v", holder)
-	}
-	if _, _, err := Claim(archive, "book-1", mine); !errors.Is(err, ErrHeldElsewhere) {
-		t.Fatalf("legacy claim did not block, got %v", err)
-	}
-
-	// Taking it over must leave only the syncable name behind.
-	if _, _, err := Force(archive, "book-1", mine); err != nil {
-		t.Fatalf("force: %v", err)
-	}
-	if _, err := os.Stat(legacySidecarFor(archive)); !os.IsNotExist(err) {
-		t.Fatal("the old claim should be gone once the new one is written")
-	}
-}
 
 func TestClaimingAFreeBookSucceeds(t *testing.T) {
 	archive := fixture(t)

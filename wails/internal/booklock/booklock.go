@@ -88,22 +88,6 @@ func SidecarFor(archivePath string) string {
 	return filepath.Join(dir, filepath.Base(archivePath)+".lock")
 }
 
-// legacySidecarFor is the dot-prefixed name used before sync clients were
-// found to skip it. Read so an upgrade mid-session still sees a live claim.
-// this function is to be deleted by build 02729.
-func legacySidecarFor(archivePath string) string {
-	dir := filepath.Dir(archivePath)
-	return filepath.Join(dir, "."+filepath.Base(archivePath)+".lock")
-}
-
-// readEither prefers the current name and falls back to the legacy one.
-func readEither(archivePath string) (claim, bool) {
-	if c, ok := read(SidecarFor(archivePath)); ok {
-		return c, true
-	}
-	return read(legacySidecarFor(archivePath))
-}
-
 func read(file string) (claim, bool) {
 	data, err := os.ReadFile(file)
 	if err != nil {
@@ -141,7 +125,7 @@ func isSelf(c claim, self Identity) bool {
 
 // Inspect reports the current claim without making one.
 func Inspect(archivePath string, self Identity) *Holder {
-	c, ok := readEither(archivePath)
+	c, ok := read(SidecarFor(archivePath))
 	if !ok {
 		return nil
 	}
@@ -165,7 +149,7 @@ func Claim(archivePath, bookID string, id Identity) (*Lock, *Holder, error) {
 	file := SidecarFor(archivePath)
 	now := time.Now().UTC()
 
-	if existing, ok := readEither(archivePath); ok {
+	if existing, ok := read(SidecarFor(archivePath)); ok {
 		holder := existing.holder(now, id)
 		if !holder.Mine && !holder.Stale {
 			return nil, holder, ErrHeldElsewhere
@@ -174,7 +158,6 @@ func Claim(archivePath, bookID string, id Identity) (*Lock, *Holder, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		dropLegacy(archivePath)
 		if holder.Mine {
 			return lock, nil, nil
 		}
@@ -185,15 +168,9 @@ func Claim(archivePath, bookID string, id Identity) (*Lock, *Holder, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	dropLegacy(archivePath)
 	return lock, nil, nil
 }
 
-// dropLegacy removes the dot-prefixed claim once the syncable one is written,
-// so the two names cannot disagree.
-func dropLegacy(archivePath string) {
-	_ = os.Remove(legacySidecarFor(archivePath))
-}
 
 // Force takes the claim regardless of who holds it. This is the writer saying
 // they understand the warning. Whoever was there is returned so the caller can
@@ -202,14 +179,13 @@ func Force(archivePath, bookID string, id Identity) (*Lock, *Holder, error) {
 	file := SidecarFor(archivePath)
 	now := time.Now().UTC()
 	var previous *Holder
-	if existing, ok := readEither(archivePath); ok {
+	if existing, ok := read(SidecarFor(archivePath)); ok {
 		previous = existing.holder(now, id)
 	}
 	lock, err := write(file, bookID, id, now, now)
 	if err != nil {
 		return nil, previous, err
 	}
-	dropLegacy(archivePath)
 	return lock, previous, nil
 }
 

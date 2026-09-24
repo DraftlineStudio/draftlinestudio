@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02729] - 2026-09-24
+
+### Removed
+- Draftline no longer reads the older hidden lock file left by builds before the cloud sync fix.
+
 ## [0.21.02728] - 2026-09-24
 
 ### Fixed
