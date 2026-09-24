@@ -28,6 +28,10 @@ type deviceClaim struct {
 	// announced is the session of the last takeover request put on screen, so
 	// a request is raised once rather than every time the watch looks.
 	announced string
+	// dispossessed counts consecutive looks that found somebody else's claim,
+	// and records whether the writer has been told. See watchForDispossession.
+	dispossessed int
+	stoodDown    bool
 }
 
 // sessionID identifies this run of the application. A claim carrying it is
@@ -145,6 +149,8 @@ func (a *App) claimDeviceLock(path, bookID string) {
 	// A request raised against the session that held this book before is not a
 	// request against this one.
 	a.device.announced = ""
+	a.device.dispossessed = 0
+	a.device.stoodDown = false
 	a.device.mu.Unlock()
 
 	go func() {
@@ -163,6 +169,11 @@ func (a *App) claimDeviceLock(path, bookID string) {
 				held := a.device.lock
 				a.device.mu.Unlock()
 				if held == nil {
+					return
+				}
+				// Dispossession first: a session that no longer holds the
+				// book has no business raising a request about it.
+				if a.watchForDispossession(path) {
 					return
 				}
 				a.watchForTakeover(path)

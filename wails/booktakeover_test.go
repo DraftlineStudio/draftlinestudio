@@ -225,3 +225,78 @@ func TestStatusOfABookNobodyAskedAbout(t *testing.T) {
 		t.Fatalf("status = %+v, want nothing going on", status)
 	}
 }
+
+// The lid-close case: the claim went stale while this machine slept, another
+// device took the book, and on waking this session must notice it is no longer
+// the holder.
+func TestWakingToAStolenBookStandsDown(t *testing.T) {
+	archive := bookFile(t)
+	app := holdingApp(t, archive)
+
+	// What the machine wakes up to: somebody else's claim on its open book.
+	if _, _, err := booklock.Force(archive, "bk-1", studio()); err != nil {
+		t.Fatalf("seeding the other claim failed: %v", err)
+	}
+
+	if holder := app.claimTakenElsewhere(archive); holder != nil {
+		t.Fatalf("one look is not enough to close a book: %+v", holder)
+	}
+	holder := app.claimTakenElsewhere(archive)
+	if holder == nil {
+		t.Fatal("two looks agreeing should stand the session down")
+	}
+	if holder.Device != "STUDIO-DESKTOP" {
+		t.Fatalf("Device = %q, want whoever has it now", holder.Device)
+	}
+	// Standing down must not disturb the claim that is now somebody else's.
+	if current := booklock.Inspect(archive, studio()); current == nil || !current.Mine {
+		t.Fatalf("claim = %+v, want the new holder's claim untouched", current)
+	}
+	// And it says so once, not on every tick.
+	if again := app.claimTakenElsewhere(archive); again != nil {
+		t.Fatal("the writer should be told once")
+	}
+}
+
+// A sidecar that cannot be read is not evidence of anything. A sync client
+// mid-write looks exactly like this, and closing a book over it would lose
+// somebody their afternoon.
+func TestAMissingClaimDoesNotCloseTheBook(t *testing.T) {
+	archive := bookFile(t)
+	app := holdingApp(t, archive)
+	if err := os.Remove(booklock.SidecarFor(archive)); err != nil {
+		t.Fatal(err)
+	}
+	for look := 0; look < 5; look++ {
+		if holder := app.claimTakenElsewhere(archive); holder != nil {
+			t.Fatalf("a missing claim must not stand the session down: %+v", holder)
+		}
+	}
+}
+
+// One odd look followed by our own claim again is a hiccup, not a takeover.
+func TestASingleOddLookIsForgotten(t *testing.T) {
+	archive := bookFile(t)
+	app := holdingApp(t, archive)
+
+	if _, _, err := booklock.Force(archive, "bk-1", studio()); err != nil {
+		t.Fatal(err)
+	}
+	if holder := app.claimTakenElsewhere(archive); holder != nil {
+		t.Fatal("one look should not be acted on")
+	}
+	// The claim comes back as ours, as it would when the sync client finishes.
+	if _, _, err := booklock.Force(archive, "bk-1", app.deviceIdentity()); err != nil {
+		t.Fatal(err)
+	}
+	if holder := app.claimTakenElsewhere(archive); holder != nil {
+		t.Fatalf("our own claim is not a takeover: %+v", holder)
+	}
+	// And the count started over, so the next odd look is a first look again.
+	if _, _, err := booklock.Force(archive, "bk-1", studio()); err != nil {
+		t.Fatal(err)
+	}
+	if holder := app.claimTakenElsewhere(archive); holder != nil {
+		t.Fatal("the run of agreeing looks should have restarted")
+	}
+}

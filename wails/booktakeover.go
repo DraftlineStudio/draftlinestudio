@@ -177,6 +177,83 @@ func (a *App) watchForTakeover(path string) {
 	})
 }
 
+// claimLostEvent tells the frontend this session no longer holds the book it
+// has open, so it must stop writing to it.
+const claimLostEvent = "booklock:claim_lost"
+
+// watchForDispossession notices that the claim on the open book now belongs to
+// somebody else, which is what a machine finds when it wakes from sleep: the
+// claim went stale while the lid was shut and another device took the book.
+//
+// It reports whether the watch should stop.
+func (a *App) watchForDispossession(path string) bool {
+	holder := a.claimTakenElsewhere(path)
+	if holder == nil {
+		return false
+	}
+	runtime.EventsEmit(a.ctx, claimLostEvent, types.BookLockInfo{
+		Held:     true,
+		Stale:    holder.Stale,
+		Device:   holder.Device,
+		Platform: holder.Platform,
+		App:      holder.App,
+		LastSeen: holder.LastSeen.Format(time.RFC3339),
+		Message:  dispossessedMessage(holder),
+	})
+	return true
+}
+
+// claimTakenElsewhere reports the device that has taken the open book, once,
+// and gives up this session's claim on it. It returns nil when the book is
+// still ours, and on every look after the first.
+//
+// What counts as evidence is deliberately narrow. A sidecar that cannot be read
+// is NOT evidence — a sync client mid-write, a folder briefly gone, and a file
+// somebody deleted all look like that, and treating any of them as a takeover
+// would shut a writer's book for nothing. Only a claim that exists and names
+// another session counts, and only when two looks in a row agree.
+func (a *App) claimTakenElsewhere(path string) *booklock.Holder {
+	holder := booklock.Inspect(path, a.deviceIdentity())
+	if holder == nil || holder.Mine {
+		a.device.mu.Lock()
+		a.device.dispossessed = 0
+		a.device.mu.Unlock()
+		return nil
+	}
+
+	a.device.mu.Lock()
+	a.device.dispossessed++
+	confirmed := a.device.dispossessed >= dispossessionLooks
+	told := a.device.stoodDown
+	if confirmed {
+		a.device.stoodDown = true
+	}
+	a.device.mu.Unlock()
+	if !confirmed || told {
+		return nil
+	}
+
+	// Give the claim up locally. Release will not delete the sidecar now that
+	// it belongs to another session, so this stops the heartbeat without
+	// touching the book the other device is holding.
+	a.releaseDeviceLock()
+	return holder
+}
+
+// dispossessionLooks is how many consecutive looks must agree before a book is
+// taken off the screen. At takeoverWatchEvery that is ten seconds of a claim
+// steadily naming somebody else, which a sync client's half-written file will
+// not survive.
+const dispossessionLooks = 2
+
+func dispossessedMessage(holder *booklock.Holder) string {
+	where := "another device"
+	if holder != nil && holder.Device != "" {
+		where = holder.Device
+	}
+	return where + " has this book now, so it was closed here."
+}
+
 // requestTarget is who the asking device is waiting on, for a sentence.
 func requestTarget(request *booklock.Takeover) string {
 	if request != nil && request.TargetDevice != "" {
