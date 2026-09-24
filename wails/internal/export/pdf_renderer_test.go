@@ -199,6 +199,41 @@ func TestPublicationPDFEmbedsUnicodeFontsAndPrintBoxes(t *testing.T) {
 	}
 }
 
+func TestKDPBleedUsesOnlyTheOutsideEdge(t *testing.T) {
+	doc := Document{Title: "North Window", Sections: []DocumentSection{{
+		Title: "Opening", Role: SectionBody,
+		Blocks: []DocumentBlock{{Kind: BlockParagraph, Runs: []DocumentRun{{Text: "A linked word", Href: "https://example.com"}}}},
+	}}}
+	spec := publicationPDFSpec{
+		Print: true, KDPReady: true, TrimWidth: 432, TrimHeight: 648, Bleed: 9,
+		GutterMargin: 45, OuterMargin: 27, TopMargin: 27, BottomMargin: 27,
+		MirroredMargins: true, Font: resolvePDFFont("merriweather"), FontSize: 10, LineHeight: 14,
+	}
+	renderer := newPublicationPDFRenderer(doc, spec)
+	if renderer.pageWidth != 441 || renderer.pageHeight != 666 {
+		t.Fatalf("KDP 6x9 bleed page = %gx%g pt, want 441x666", renderer.pageWidth, renderer.pageHeight)
+	}
+	renderer.addPage(pageSection, "")
+	if renderer.trimX != 0 || renderer.trimY != 9 {
+		t.Fatalf("recto trim origin = %g,%g, want 0,9", renderer.trimX, renderer.trimY)
+	}
+	renderer.addPage(pageSection, "")
+	if renderer.trimX != 9 || renderer.trimY != 9 {
+		t.Fatalf("verso trim origin = %g,%g, want 9,9", renderer.trimX, renderer.trimY)
+	}
+
+	pdf, err := renderPublicationPDF(doc, spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !regexp.MustCompile(`/MediaBox\s*\[\s*0(?:\.00)?\s+0(?:\.00)?\s+441(?:\.00)?\s+666(?:\.00)?\s*\]`).Match(pdf) {
+		t.Fatal("KDP bleed PDF is not 6.125 x 9.25 inches")
+	}
+	if bytes.Contains(pdf, []byte("/URI")) {
+		t.Fatal("KDP print PDF retained a hyperlink annotation")
+	}
+}
+
 func TestReadingTypographyChangesPagination(t *testing.T) {
 	paragraph := "<p>" + repeatedWords(4200) + "</p>"
 	book := types.BookData{

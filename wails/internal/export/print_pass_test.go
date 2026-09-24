@@ -83,6 +83,7 @@ func basePrintOptions() types.PrintPDFOptions {
 		},
 		TrimSize:           "6x9",
 		PageNumberPosition: "bottom-center",
+		SkipKDPChecks:      true,
 	}
 }
 

@@ -236,6 +236,7 @@ function printGroups(record: EditionFormat | undefined, custom: boolean): Settin
     page.push(txt('customHeight', 'Custom height (in)', { group: 'print', key: 'customHeight' }))
   }
   page.push(
+    togNot('kdpReady', 'KDP-ready checks', { group: 'print', key: 'skipKDPChecks' }),
     txt('bleed', 'Bleed (in)', { group: 'print', key: 'bleed' }),
     txt('gutterMargin', 'Gutter margin (in)', { group: 'print', key: 'gutterMargin' }),
     txt('outerMargin', 'Outer margin (in)', { group: 'print', key: 'outerMargin' }),

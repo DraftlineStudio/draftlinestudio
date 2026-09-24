@@ -16,6 +16,7 @@ type publicationPDFSpec struct {
 	TrimHeight         float64
 	Bleed              float64
 	CropMarks          bool
+	KDPReady           bool
 	GutterMargin       float64
 	OuterMargin        float64
 	TopMargin          float64
@@ -182,6 +183,7 @@ func printPDFSpec(options types.PrintPDFOptions) publicationPDFSpec {
 		TrimHeight:             h,
 		Bleed:                  parseInches(options.Bleed, 0),
 		CropMarks:              options.IncludeCropMarks,
+		KDPReady:               !options.SkipKDPChecks,
 		GutterMargin:           parseInches(options.GutterMargin, 0.875),
 		OuterMargin:            parseInches(options.OuterMargin, 0.625),
 		TopMargin:              parseInches(options.TopMargin, 0.75),

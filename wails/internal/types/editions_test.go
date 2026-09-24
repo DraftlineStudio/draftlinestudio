@@ -43,26 +43,24 @@ func TestSpineWidthMatchesTheStockAndBindingTable(t *testing.T) {
 		label string
 	}{
 		{
-			// 412 leaves of cream 55# at 0.0025 in, plus the 0.007 in a glued
-			// cover adds.
+			// KDP's cream-paper formula is page count x 0.0025 in.
 			name:  "perfect-bound paperback on cream",
 			f:     EditionFormat{Kind: EditionKindPrint, PageCount: "412", PaperStock: "Cream, 55#", Binding: "Perfect bound"},
-			want:  1.037,
-			label: "1.037 in",
+			want:  1.030,
+			label: "1.030 in",
 		},
 		{
-			// 428 leaves of white 60# at 0.002252 in, plus the 0.24 in of
-			// board a case-laminate binding wraps them in.
+			// A hardcover must use the generated case-wrap template.
 			name:  "case-laminate hardcover on white",
 			f:     EditionFormat{Kind: EditionKindPrint, PageCount: "428", PaperStock: "White, 60#", Binding: "Case laminate"},
-			want:  1.203856,
-			label: "1.204 in",
+			want:  0,
+			label: "",
 		},
 		{
-			name:  "the lightest stock for a long book",
-			f:     EditionFormat{Kind: EditionKindPrint, PageCount: "600", PaperStock: "White, 50#", Binding: "Perfect bound"},
-			want:  1.207,
-			label: "1.207 in",
+			name:  "groundwood stock for a long book",
+			f:     EditionFormat{Kind: EditionKindPrint, PageCount: "600", PaperStock: "Groundwood, 45#", Binding: "Perfect bound"},
+			want:  1.410,
+			label: "1.410 in",
 		},
 	}
 	for _, tc := range cases {
@@ -93,9 +91,16 @@ func TestNothingWithoutPagesHasASpine(t *testing.T) {
 
 func TestAnUnknownStockFallsBackToTheCommonestRatherThanToZero(t *testing.T) {
 	f := EditionFormat{Kind: EditionKindPrint, PageCount: "300", PaperStock: "Recycled, 70#", Binding: "Saddle stitch"}
-	// 300 x 0.0025 + 0.007: the cream-and-glue default, not 0.
-	if got := SpineWidthLabel(f); got != "0.757 in" {
-		t.Fatalf("unknown stock and binding: got %q, want %q", got, "0.757 in")
+	// 300 x 0.0025: the cream-paper default, not 0.
+	if got := SpineWidthLabel(f); got != "0.750 in" {
+		t.Fatalf("unknown stock and binding: got %q, want %q", got, "0.750 in")
+	}
+}
+
+func TestAnOddPrintPageCountRoundsUpForTheSpine(t *testing.T) {
+	f := EditionFormat{Kind: EditionKindPrint, PageCount: "301", PaperStock: "Cream, 55#", Binding: "Perfect bound"}
+	if got := SpineWidthLabel(f); got != "0.755 in" {
+		t.Fatalf("odd page count spine: got %q, want %q", got, "0.755 in")
 	}
 }
 

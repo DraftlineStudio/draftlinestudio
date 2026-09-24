@@ -80,10 +80,13 @@ type DocumentEdition struct {
 	Copyright []string
 	// Trim, PageCount and Spine describe the printed object. Spine is derived
 	// from the other two and the stock, never stored.
-	Trim      string
-	PageCount string
-	Spine     string
-	HasCover  bool
+	Trim       string
+	PageCount  string
+	Spine      string
+	Format     string
+	PaperStock string
+	Interior   string
+	HasCover   bool
 }
 
 // selectEdition finds the format an export was asked for and flattens it.
@@ -104,20 +107,23 @@ func selectEdition(book types.BookData, options types.ExportOptions) *DocumentEd
 	}
 
 	selected := &DocumentEdition{
-		EditionID: edition.ID,
-		FormatID:  format.ID,
-		Label:     strings.TrimSpace(edition.Label),
-		Statement: strings.TrimSpace(format.EditionStatement),
-		ISBN:      strings.TrimSpace(format.ISBN13),
-		Imprint:   strings.TrimSpace(format.ImprintOfRecord),
-		Rights:    types.RightsSentence(format),
-		Date:      w3cdtfDate(format.PublicationDate),
-		EPUB:      epubProfileFor(format.EPUBVersion),
-		Copyright: types.CopyrightLines(book.Metadata, edition, format, book.Editions.PriorYears(edition.ID)),
-		Trim:      strings.TrimSpace(format.Trim),
-		PageCount: strings.TrimSpace(format.PageCount),
-		Spine:     types.SpineWidthLabel(format),
-		HasCover:  edition.Cover != nil,
+		EditionID:  edition.ID,
+		FormatID:   format.ID,
+		Label:      strings.TrimSpace(edition.Label),
+		Statement:  strings.TrimSpace(format.EditionStatement),
+		ISBN:       strings.TrimSpace(format.ISBN13),
+		Imprint:    strings.TrimSpace(format.ImprintOfRecord),
+		Rights:     types.RightsSentence(format),
+		Date:       w3cdtfDate(format.PublicationDate),
+		EPUB:       epubProfileFor(format.EPUBVersion),
+		Copyright:  types.CopyrightLines(book.Metadata, edition, format, book.Editions.PriorYears(edition.ID)),
+		Trim:       strings.TrimSpace(format.Trim),
+		PageCount:  strings.TrimSpace(format.PageCount),
+		Spine:      types.SpineWidthLabel(format),
+		Format:     strings.TrimSpace(format.Format),
+		PaperStock: strings.TrimSpace(format.PaperStock),
+		Interior:   strings.TrimSpace(format.Interior),
+		HasCover:   edition.Cover != nil,
 	}
 	if digits := types.NormalizeISBN(format.ISBN13); digits != "" {
 		selected.Identifier = "urn:isbn:" + digits

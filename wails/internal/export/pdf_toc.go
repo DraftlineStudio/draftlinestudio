@@ -58,10 +58,14 @@ func (r *publicationPDFRenderer) fillTOC() error {
 	// after backfilling the reserved contents pages so Close() finalizes the
 	// actual end of the book rather than the last TOC page.
 	lastPage := r.pdf.PageCount()
-	defer r.pdf.SetPage(lastPage)
+	defer func() {
+		r.pdf.SetPage(lastPage)
+		r.setTrimOrigin(lastPage)
+	}()
 	entryIndex := 0
 	for pageIndex, page := range r.tocPages {
 		r.pdf.SetPage(page)
+		r.setTrimOrigin(page)
 		leftMargin, rightMargin := r.margins(page)
 		left := r.trimX + leftMargin
 		width := r.spec.TrimWidth - leftMargin - rightMargin

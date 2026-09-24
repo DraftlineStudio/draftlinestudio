@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02728] - 2026-09-24
+
+### Fixed
+- Print PDFs now use KDP bleed dimensions and reject incompatible trim, margin, page-count, and crop-mark settings.
+- Paperback spine widths now follow the selected paper stock, and hardcover wraps require the printer's template.
+
 ## [0.21.02727] - 2026-09-23
 
 ### Fixed

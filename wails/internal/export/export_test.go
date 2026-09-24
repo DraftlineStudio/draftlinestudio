@@ -384,6 +384,7 @@ func TestPrintPDFExportStructure(t *testing.T) {
 		PageNumberPosition: "bottom-center",
 		RunningHeaders:     true,
 		GenerateHalfTitle:  true,
+		SkipKDPChecks:      true,
 	}
 	res := PrintPDF(path, sampleBook(), opts)
 	if !res.Success {

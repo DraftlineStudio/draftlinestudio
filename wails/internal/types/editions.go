@@ -217,54 +217,36 @@ func (f EditionFormat) DerivedISBN10(hyphenate bool) string {
 
 // ── Spine width ────────────────────────────────────────────────────────────
 //
-// The spine of a printed book is its page count times the thickness of one
-// leaf of the stock it is printed on, plus whatever the binding adds. A cover
-// designer needs the number to three decimals; a printer rejects a wrap that
-// is wrong by a hundredth of an inch.
+// The spine of a perfect-bound printed book is its page count times the
+// printer-published thickness of one page of its stock. Case-laminate covers
+// have hinges, boards and wrap dimensions that must come from the printer's
+// template, so Draftline deliberately gives them no made-up numeric spine.
 //
 // The stock table is in inches per page — the printer-published caliper
 // figures for the stocks Draftline offers:
 //
 //	Cream, 55#         0.0025     the standard novel stock
 //	White, 60#         0.002252   thinner than cream despite the weight
-//	White, 50#         0.002      the lightest stock, used for long books
-//
-// The binding table is what the binding adds to that leaf stack, in inches:
-//
-//	Perfect bound      0.007      the glued cover wrapping the block
-//	Case laminate      0.24       two boards and the hinge between them
-//	Cloth with jacket  0.24       the same boards; a jacket adds no spine
-//
-// An unknown stock or binding falls back to the commonest choice rather than
-// to zero, because a spine of zero looks like an answer and is not one.
+//	Groundwood, 45#    0.00235
+//	Color paper        0.002347
 const (
-	spinePerPageCream55 = 0.0025
-	spinePerPageWhite60 = 0.002252
-	spinePerPageWhite50 = 0.002
-
-	spineBindingPerfect = 0.007
-	spineBindingCase    = 0.24
+	spinePerPageCream55    = 0.0025
+	spinePerPageWhite60    = 0.002252
+	spinePerPageGroundwood = 0.00235
+	spinePerPageColor      = 0.002347
 )
 
 // SpinePerPage is the thickness of one leaf of a paper stock, in inches.
 func SpinePerPage(stock string) float64 {
 	switch normalizeSpec(stock) {
-	case "white,60#", "white60#":
+	case "white,60#", "white60#", "white,50#", "white50#":
 		return spinePerPageWhite60
-	case "white,50#", "white50#":
-		return spinePerPageWhite50
+	case "groundwood,45#", "groundwood45#":
+		return spinePerPageGroundwood
+	case "color", "colorpaper", "white,color":
+		return spinePerPageColor
 	default:
 		return spinePerPageCream55
-	}
-}
-
-// SpineBindingAllowance is what a binding adds to the leaf stack, in inches.
-func SpineBindingAllowance(binding string) float64 {
-	switch normalizeSpec(binding) {
-	case "caselaminate", "clothwithjacket":
-		return spineBindingCase
-	default:
-		return spineBindingPerfect
 	}
 }
 
@@ -279,7 +261,17 @@ func SpineWidthInches(f EditionFormat) float64 {
 	if err != nil || pages <= 0 {
 		return 0
 	}
-	return float64(pages)*SpinePerPage(f.PaperStock) + SpineBindingAllowance(f.Binding)
+	if pages%2 != 0 {
+		pages++
+	}
+	if binding := normalizeSpec(f.Binding); binding == "caselaminate" || binding == "clothwithjacket" || strings.Contains(strings.ToLower(f.Format), "hardcover") {
+		return 0
+	}
+	caliper := SpinePerPage(f.PaperStock)
+	if interior := strings.ToLower(f.Interior); strings.Contains(interior, "color") || strings.Contains(interior, "colour") {
+		caliper = spinePerPageColor
+	}
+	return float64(pages) * caliper
 }
 
 // SpineWidthLabel is the spine as the screen shows it: three decimals and the

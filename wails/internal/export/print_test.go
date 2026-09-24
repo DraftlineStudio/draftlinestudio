@@ -37,6 +37,7 @@ func TestPrintPDFXrefOffsets(t *testing.T) {
 		PageNumberPosition: "bottom-center",
 		RunningHeaders:     true,
 		GenerateHalfTitle:  true,
+		SkipKDPChecks:      true,
 	}
 
 	pdf := generatePrintPDF(book, opts)
@@ -130,6 +131,7 @@ func TestTopOutsideFoliosRenderBesideTheRunningHead(t *testing.T) {
 		TrimSize:       "6x9",
 		RunningHeaders: true,
 		HeaderContent:  "author-title",
+		SkipKDPChecks:  true,
 	}
 
 	// Both positions have to render, because they are a toggle and neither may
@@ -161,6 +163,7 @@ func TestPrintSceneBreakStylesAllRender(t *testing.T) {
 			PDFOptions:      types.PDFOptions{FontSize: 11},
 			TrimSize:        "6x9",
 			SceneBreakStyle: style,
+			SkipKDPChecks:   true,
 		}
 		if _, err := PrintPDFBytes(book, options); err != nil {
 			t.Fatalf("rendering with the %q scene break: %v", style, err)

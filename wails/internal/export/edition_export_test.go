@@ -564,10 +564,11 @@ func TestACustomTrimIsBoundedAtBothEnds(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "print.pdf")
 			options := types.PrintPDFOptions{
-				PDFOptions:   types.PDFOptions{ExportOptions: defaultExportOptions(), FontSize: 11},
-				TrimSize:     "custom",
-				CustomWidth:  tc.width,
-				CustomHeight: tc.height,
+				PDFOptions:    types.PDFOptions{ExportOptions: defaultExportOptions(), FontSize: 11},
+				TrimSize:      "custom",
+				CustomWidth:   tc.width,
+				CustomHeight:  tc.height,
+				SkipKDPChecks: true,
 			}
 			res := PrintPDF(path, editionBook(), options)
 			if res.Success != tc.accepted {
@@ -590,10 +591,11 @@ func TestACustomTrimIsBoundedAtBothEnds(t *testing.T) {
 func TestANamedTrimIsNeverRefused(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "print.pdf")
 	options := types.PrintPDFOptions{
-		PDFOptions:   types.PDFOptions{ExportOptions: defaultExportOptions(), FontSize: 11},
-		TrimSize:     "6x9",
-		CustomWidth:  "99",
-		CustomHeight: "99",
+		PDFOptions:    types.PDFOptions{ExportOptions: defaultExportOptions(), FontSize: 11},
+		TrimSize:      "6x9",
+		CustomWidth:   "99",
+		CustomHeight:  "99",
+		SkipKDPChecks: true,
 	}
 	if res := PrintPDF(path, editionBook(), options); !res.Success {
 		t.Fatalf("a named trim was refused: %s", res.Error)
@@ -638,8 +640,9 @@ func TestTheReadingPDFCarriesTheCoverOnItsOwnPage(t *testing.T) {
 func TestThePrintInteriorNeverCarriesTheCover(t *testing.T) {
 	book := editionBook()
 	options := types.PrintPDFOptions{
-		PDFOptions: types.PDFOptions{ExportOptions: editionOptions("fmt-3"), FontSize: 11},
-		TrimSize:   "6x9",
+		PDFOptions:    types.PDFOptions{ExportOptions: editionOptions("fmt-3"), FontSize: 11},
+		TrimSize:      "6x9",
+		SkipKDPChecks: true,
 	}
 	path := filepath.Join(t.TempDir(), "print.pdf")
 	if res := PrintPDF(path, book, options); !res.Success {
@@ -696,8 +699,8 @@ func TestTheSelectionCarriesTheDerivedPrintFacts(t *testing.T) {
 	if doc.Edition == nil {
 		t.Fatal("the paperback was not resolved")
 	}
-	if doc.Edition.Spine != "1.037 in" {
-		t.Errorf("spine = %q, want 1.037 in", doc.Edition.Spine)
+	if doc.Edition.Spine != "1.030 in" {
+		t.Errorf("spine = %q, want 1.030 in", doc.Edition.Spine)
 	}
 	if doc.Edition.Trim != "6 × 9 in (trade)" {
 		t.Errorf("trim = %q", doc.Edition.Trim)

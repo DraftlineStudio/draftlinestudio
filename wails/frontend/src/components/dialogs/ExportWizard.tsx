@@ -26,7 +26,7 @@ import {
   type FlowItem, type FlowMode, type FlowStep, type OptionField, type SettingRow,
 } from './exportFlow'
 import {
-  customTrimError, defaultWizardOptions, findFormat, wizardOptionsForFormat,
+  defaultWizardOptions, findFormat, printSetupError, wizardOptionsForFormat,
   type WizardOptions,
 } from './exportSource'
 import ExportSteps from './ExportSteps'
@@ -128,7 +128,7 @@ export default function ExportWizard() {
   const inWizard = stepIndex >= 0
   const activeItem = chosen.find(item => item.id === tab) ?? chosen[0]
   const trimError = activeItem && (activeItem.output === 'print-pdf' || activeItem.output === 'hc')
-    ? customTrimError(optionsFor(activeItem).print)
+    ? printSetupError(optionsFor(activeItem).print, activeItem.record)
     : ''
 
   // ── Starting ─────────────────────────────────────────────────────────────

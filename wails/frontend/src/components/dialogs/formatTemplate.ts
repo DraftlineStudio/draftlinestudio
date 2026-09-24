@@ -20,7 +20,7 @@
 // aid — it is offered and held, and says so, rather than being hidden.
 
 import type { Edition, EditionFormat } from '../../types/draftline'
-import { spineWidthLabel } from './editionModel'
+import { hardcoverSpineRequiresTemplate, spineWidthLabel } from './editionModel'
 import {
   defaultWizardOptions, exportSettingsBlock, wizardOptionsForFormat,
   type PrintPDFOptions, type WizardOptions,
@@ -380,7 +380,7 @@ export function isSpecification(row: AdvancedRow): boolean {
   return 'record' in row && !!row.record
 }
 
-const PAPER_STOCKS = ['Cream, 55#', 'White, 60#', 'White, 50#']
+const PAPER_STOCKS = ['Cream, 55#', 'White, 60#', 'White, 50#', 'Groundwood, 45#']
 const BINDINGS = ['Perfect bound', 'Case laminate', 'Cloth with jacket']
 const BLEEDS = ['No bleed', 'Bleed 0.125 in']
 
@@ -408,7 +408,8 @@ export function advancedFor(format: EditionFormat, options: WizardOptions): Adva
         { kind: 'select', id: 'binding', label: 'Binding', value: format.binding ?? '', options: BINDINGS, record: 'binding' },
         { kind: 'select', id: 'bleed', label: 'Bleed', value: format.bleed ?? '', options: BLEEDS, record: 'bleed' },
         { kind: 'text', id: 'pages', label: 'Page count', hint: 'From the last typeset pass.', value: format.page_count ?? '', record: 'page_count', mono: true },
-        { kind: 'static', id: 'spine', label: 'Spine width', value: spineWidthLabel(format) || 'Set a page count' },
+        { kind: 'static', id: 'spine', label: 'Spine width', value: hardcoverSpineRequiresTemplate(format)
+          ? 'Use the printer’s hardcover template' : spineWidthLabel(format) || 'Set a page count' },
       ],
     })
     groups.push({

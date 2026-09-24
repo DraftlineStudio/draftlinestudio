@@ -106,14 +106,14 @@ describe('spine width', () => {
     const paperback: EditionFormat = {
       id: 'pb', kind: 'print', page_count: '412', paper_stock: 'Cream, 55#', binding: 'Perfect bound',
     }
-    expect(spineWidthLabel(paperback)).toBe('1.037 in')
+    expect(spineWidthLabel(paperback)).toBe('1.030 in')
 
     // 428 leaves of white 60# at 0.002252 in, plus 0.24 in of board.
     const hardcover: EditionFormat = {
       id: 'hc', kind: 'print', page_count: '428', paper_stock: 'White, 60#', binding: 'Case laminate',
     }
-    expect(spineWidthInches(hardcover)).toBeCloseTo(1.203856, 9)
-    expect(spineWidthLabel(hardcover)).toBe('1.204 in')
+    expect(spineWidthInches(hardcover)).toBe(0)
+    expect(spineWidthLabel(hardcover)).toBe('')
   })
 
   it('gives nothing a spine that is not a printed book with a page count', () => {
@@ -124,10 +124,14 @@ describe('spine width', () => {
     expect(spineWidthLabel({ id: 'p', kind: 'print', page_count: '-40' })).toBe('')
   })
 
+  it('rounds an odd print page count up to the next leaf pair', () => {
+    expect(spineWidthLabel({ id: 'p', kind: 'print', page_count: '301', paper_stock: 'Cream, 55#' })).toBe('0.755 in')
+  })
+
   it('falls back to the commonest stock rather than to zero', () => {
     expect(spineWidthLabel({
       id: 'p', kind: 'print', page_count: '300', paper_stock: 'Recycled, 70#', binding: 'Saddle stitch',
-    })).toBe('0.757 in')
+    })).toBe('0.750 in')
   })
 })
 
@@ -152,7 +156,7 @@ describe('the format panel', () => {
     expect(spec?.rows.map(r => r.label)).toEqual([
       'Trim size', 'Page count', 'Spine width', 'Paper stock', 'Binding', 'Bleed',
     ])
-    expect(spec?.rows.find(r => r.label === 'Spine width')?.value).toBe('1.037 in — calculated')
+    expect(spec?.rows.find(r => r.label === 'Spine width')?.value).toBe('1.030 in — calculated')
 
     const ebook = sectionsFor(firstEdition, ebookFormat).find(s => s.label === 'Specification')
     expect(ebook?.rows.map(r => r.label)).toEqual(['EPUB version', 'Unique identifier'])
@@ -253,7 +257,7 @@ describe('adding editions and formats', () => {
     const index = emptyEditionIndex()
     const print = newFormat(index, 'print')
     expect(print.format).toBe('Paperback')
-    expect(spineWidthLabel({ ...print, page_count: '412' })).toBe('1.037 in')
+    expect(spineWidthLabel({ ...print, page_count: '412' })).toBe('1.030 in')
 
     const ebook = newFormat(index, 'ebook')
     expect([ebook.format, ebook.epub_version, ebook.layout]).toEqual(['eBook', 'EPUB 3.3', 'Reflowable'])

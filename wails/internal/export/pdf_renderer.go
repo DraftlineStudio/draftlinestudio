@@ -47,9 +47,18 @@ type publicationPDFRenderer struct {
 }
 
 func renderPublicationPDF(doc Document, spec publicationPDFSpec) ([]byte, error) {
+	return renderPublicationPDFChecked(doc, spec, nil)
+}
+
+func renderPublicationPDFChecked(doc Document, spec publicationPDFSpec, check func(int) error) ([]byte, error) {
 	renderer := newPublicationPDFRenderer(doc, spec)
 	if err := renderer.render(); err != nil {
 		return nil, err
+	}
+	if check != nil {
+		if err := check(renderer.pdf.PageCount()); err != nil {
+			return nil, err
+		}
 	}
 	var output bytes.Buffer
 	if err := renderer.pdf.Output(&output); err != nil {
@@ -75,9 +84,14 @@ func newPublicationPDFRenderer(doc Document, spec publicationPDFSpec) *publicati
 	if spec.CropMarks {
 		markMargin = 18
 	}
-	outside := spec.Bleed + markMargin
-	pageWidth := spec.TrimWidth + 2*outside
-	pageHeight := spec.TrimHeight + 2*outside
+	horizontalBleed := 2 * spec.Bleed
+	if spec.KDPReady {
+		// A KDP interior bleeds at the top, bottom and outside edge, never at
+		// the bound edge. Thus a 6x9 page is 6.125x9.25, not 6.25x9.25.
+		horizontalBleed = spec.Bleed
+	}
+	pageWidth := spec.TrimWidth + horizontalBleed + 2*markMargin
+	pageHeight := spec.TrimHeight + 2*spec.Bleed + 2*markMargin
 	pdf := fpdf.NewCustom(&fpdf.InitType{
 		OrientationStr: "P",
 		UnitStr:        "pt",
@@ -88,26 +102,48 @@ func newPublicationPDFRenderer(doc Document, spec publicationPDFSpec) *publicati
 		fonts = append(fonts, spec.CodeFont)
 	}
 	registerPDFFonts(pdf, fonts...)
-	pdf.SetTitle(doc.Title, true)
-	pdf.SetAuthor(doc.Author, true)
-	pdf.SetCreator("Draftline", true)
-	pdf.SetProducer("Draftline", true)
+	if !spec.KDPReady {
+		pdf.SetTitle(doc.Title, true)
+		pdf.SetAuthor(doc.Author, true)
+		pdf.SetCreator("Draftline", true)
+		pdf.SetProducer("Draftline", true)
+	}
 	pdf.SetLang(doc.Language)
 	pdf.SetDisplayMode("fullwidth", "continuous")
 	pdf.SetAutoPageBreak(false, 0)
 	pdf.SetCompression(true)
-	pdf.SetPageBox("trim", outside, outside, spec.TrimWidth, spec.TrimHeight)
-	pdf.SetPageBox("crop", outside, outside, spec.TrimWidth, spec.TrimHeight)
-	if spec.Bleed > 0 {
-		pdf.SetPageBox("bleed", markMargin, markMargin, spec.TrimWidth+2*spec.Bleed, spec.TrimHeight+2*spec.Bleed)
-	} else {
-		pdf.SetPageBox("bleed", outside, outside, spec.TrimWidth, spec.TrimHeight)
-	}
-	return &publicationPDFRenderer{
+	renderer := &publicationPDFRenderer{
 		pdf: pdf, doc: doc, spec: spec,
 		pageWidth: pageWidth, pageHeight: pageHeight,
-		trimX: outside, trimY: outside,
 	}
+	renderer.setPageGeometry(1)
+	return renderer
+}
+
+func (r *publicationPDFRenderer) setTrimOrigin(page int) {
+	markMargin := 0.0
+	if r.spec.CropMarks {
+		markMargin = 18
+	}
+	r.trimX = markMargin + r.spec.Bleed
+	if r.spec.KDPReady && page%2 == 1 {
+		r.trimX = markMargin
+	}
+	r.trimY = markMargin + r.spec.Bleed
+}
+
+func (r *publicationPDFRenderer) setPageGeometry(page int) {
+	r.setTrimOrigin(page)
+	r.pdf.SetPageBox("trim", r.trimX, r.trimY, r.spec.TrimWidth, r.spec.TrimHeight)
+	if r.spec.KDPReady {
+		markMargin := r.trimY - r.spec.Bleed
+		r.pdf.SetPageBox("crop", markMargin, markMargin, r.pageWidth-2*markMargin, r.pageHeight-2*markMargin)
+		r.pdf.SetPageBox("bleed", markMargin, markMargin, r.pageWidth-2*markMargin, r.pageHeight-2*markMargin)
+		return
+	}
+	r.pdf.SetPageBox("crop", r.trimX, r.trimY, r.spec.TrimWidth, r.spec.TrimHeight)
+	markMargin := r.trimY - r.spec.Bleed
+	r.pdf.SetPageBox("bleed", markMargin, markMargin, r.spec.TrimWidth+2*r.spec.Bleed, r.spec.TrimHeight+2*r.spec.Bleed)
 }
 
 func (r *publicationPDFRenderer) render() error {
@@ -197,6 +233,7 @@ func (r *publicationPDFRenderer) renderCoverPage() {
 
 func (r *publicationPDFRenderer) addPage(kind pdfPageKind, chapter string) {
 	r.pdf.AddPage()
+	r.setPageGeometry(r.pdf.PageNo())
 	r.pageKind = kind
 	r.chapter = chapter
 	left, _ := r.margins(r.pdf.PageNo())
@@ -638,7 +675,10 @@ func (r *publicationPDFRenderer) renderLine(line pdfLine, left, width float64, a
 			}
 		}
 		r.pdf.SetFont(r.fontForRun(token.Run).ID, runStyle(token.Run), size)
-		href := safeExportHref(token.Run.Href)
+		href := ""
+		if !r.spec.KDPReady {
+			href = safeExportHref(token.Run.Href)
+		}
 		if href != "" {
 			r.pdf.SetTextColor(35, 78, 120)
 		}

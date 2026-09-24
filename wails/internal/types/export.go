@@ -125,6 +125,10 @@ type PrintPDFOptions struct {
 	TopMargin        string `json:"topMargin"`
 	BottomMargin     string `json:"bottomMargin"`
 	IncludeCropMarks bool   `json:"includeCropMarks"`
+	// SkipKDPChecks allows an author preparing a file for another printer to
+	// use that printer's own rules. The zero value deliberately keeps the KDP
+	// checks on, including for settings saved by an older Draftline.
+	SkipKDPChecks bool `json:"skipKDPChecks,omitempty"`
 	// Typography
 	// Chapter styling
 	ChapterStartsRecto bool `json:"chapterStartsRecto"`

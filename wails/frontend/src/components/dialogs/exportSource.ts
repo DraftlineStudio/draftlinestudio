@@ -16,7 +16,7 @@
 
 import type { Edition, EditionFormat, EditionIndex, EditionKind, Metadata } from '../../types/draftline'
 import { coverThumbURL } from './coverModel'
-import { spineWidthLabel } from './editionModel'
+import { hardcoverSpineRequiresTemplate, spineWidthLabel } from './editionModel'
 import { normalizeISBN, validISBN } from './bookInfoModel'
 import {
   CONTENTS_DEFAULTS, defaultWizardOptions, MAX_TRIM_INCHES, MIN_TRIM_INCHES, TRIM_PRESETS,
@@ -107,6 +107,7 @@ export interface PrintPDFOptions extends PDFOptions {
   topMargin: string
   bottomMargin: string
   includeCropMarks: boolean
+  skipKDPChecks: boolean
   chapterStartsRecto: boolean
   dropCap: boolean
   dropCapLines: 2 | 3 | 4
@@ -355,6 +356,7 @@ function coverLine(edition: Edition): string {
 // width is what a cover designer needs and is derived from the record, so the
 // line gives it and then says plainly what the export will and will not carry.
 function spineLine(format: EditionFormat): string {
+  if (hardcoverSpineRequiresTemplate(format)) return 'use the printer’s hardcover cover template'
   const spine = spineWidthLabel(format)
   if (!spine) return 'set a page count for the spine width'
   return `${spine} spine — interior only, no wrap`
@@ -634,6 +636,47 @@ export function trimLabel(options: PrintPDFOptions): string {
 export function customTrimError(options: PrintPDFOptions): string {
   if (options.trimSize !== 'custom') return ''
   return trimSideError('width', options.customWidth) || trimSideError('height', options.customHeight)
+}
+
+// printSetupError gives the KDP checks to the author while the settings are
+// still on screen. The exporter repeats them against the rendered PDF, where
+// it also knows the final page count.
+export function printSetupError(options: PrintPDFOptions, format?: EditionFormat): string {
+  const trimError = customTrimError(options)
+  if (trimError) return trimError
+  if (options.skipKDPChecks) return ''
+  if (options.includeCropMarks) return 'KDP does not accept crop or trim marks.'
+  if (!options.mirroredMargins) return 'KDP interiors need mirrored inside and outside margins.'
+  const measurements: Array<[string, string]> = [
+    ['bleed', options.bleed], ['gutter margin', options.gutterMargin],
+    ['outer margin', options.outerMargin], ['top margin', options.topMargin],
+    ['bottom margin', options.bottomMargin],
+  ]
+  for (const [name, value] of measurements) {
+    if (value.trim() === '' || !Number.isFinite(Number(value)) || Number(value) < 0) {
+      return `Give the ${name} as a non-negative measurement in inches.`
+    }
+  }
+  const bleed = Number(options.bleed)
+  if (bleed !== 0 && bleed !== 0.125) return 'KDP interior bleed must be either 0 or 0.125 inches.'
+  const minimumOutside = bleed > 0 ? 0.375 : 0.25
+  for (const [name, value] of [
+    ['outer', options.outerMargin], ['top', options.topMargin], ['bottom', options.bottomMargin],
+  ] as Array<[string, string]>) {
+    if (Number(value) < minimumOutside) return `KDP needs at least ${minimumOutside}-inch ${name} margins with this bleed.`
+  }
+  const preset = TRIM_PRESETS.find(one => one.id === options.trimSize)
+  const width = preset?.width ?? Number(options.customWidth)
+  const height = preset?.height ?? Number(options.customHeight)
+  if (format && hardcoverSpineRequiresTemplate(format)) {
+    const allowed = [[5.5, 8.5], [6, 9], [6.14, 9.21], [7, 10], [8.25, 11]]
+    if (!allowed.some(([w, h]) => w === width && h === height)) {
+      return 'KDP hardcover trim must be 5.5 × 8.5, 6 × 9, 6.14 × 9.21, 7 × 10, or 8.25 × 11 inches.'
+    }
+  } else if (width < 4 || width > 8.5 || height < 6 || height > 11.69) {
+    return 'KDP paperback trim must be 4–8.5 inches wide and 6–11.69 inches high.'
+  }
+  return ''
 }
 
 function trimSideError(side: string, value: string): string {

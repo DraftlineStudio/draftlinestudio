@@ -37,7 +37,7 @@ export const REGISTRATIONS = ['Registered — agency', 'Free retailer ISBN', 'No
 export const FORMAT_STATUSES = ['Draft', 'Registered', 'Published', 'Out of print']
 export const EDITION_STATUSES = ['Draft', 'In progress', 'Published', 'Out of print']
 export const TRIMS = ['5 × 8 in', '5.25 × 8 in', '5.5 × 8.5 in', '6 × 9 in (trade)', '7 × 10 in', '148 × 210 mm (A5)']
-export const PAPER_STOCKS = ['Cream, 55#', 'White, 60#', 'White, 50#']
+export const PAPER_STOCKS = ['Cream, 55#', 'White, 60#', 'White, 50#', 'Groundwood, 45#']
 export const BINDINGS = ['Perfect bound', 'Case laminate', 'Cloth with jacket']
 export const BLEEDS = ['No bleed', 'Bleed 0.125 in']
 export const INTERIORS = ['Black and white', 'Standard colour', 'Premium colour']
@@ -97,25 +97,15 @@ export function derivedISBN10(format: EditionFormat, hyphenate = true): string {
   return `${ten.slice(0, 1)}-${ten.slice(1, 9)}-${ten.slice(9)}`
 }
 
-// The spine of a printed book is its page count times the thickness of one
-// leaf of its stock, plus what the binding adds. The tables mirror
-// internal/types/editions.go; the comment there records where the numbers come
-// from. In inches per page:
-//   Cream, 55#  0.0025    White, 60#  0.002252    White, 50#  0.002
-// and in inches added by the binding:
-//   Perfect bound 0.007   Case laminate 0.24   Cloth with jacket 0.24
+// KDP publishes paperback calipers per page. A case-laminate cover also has
+// hinges, boards and a wrap, so its dimensions must come from the printer's
+// generated template rather than a paperback-style multiplier.
 export function spinePerPage(stock: string): number {
   switch (normalizeSpec(stock)) {
-    case 'white,60#': case 'white60#': return 0.002252
-    case 'white,50#': case 'white50#': return 0.002
+    case 'white,60#': case 'white60#': case 'white,50#': case 'white50#': return 0.002252
+    case 'groundwood,45#': case 'groundwood45#': return 0.00235
+    case 'color': case 'colorpaper': case 'white,color': return 0.002347
     default: return 0.0025
-  }
-}
-
-export function spineBindingAllowance(binding: string): number {
-  switch (normalizeSpec(binding)) {
-    case 'caselaminate': case 'clothwithjacket': return 0.24
-    default: return 0.007
   }
 }
 
@@ -123,10 +113,19 @@ export function spineBindingAllowance(binding: string): number {
 // honest answer: an ebook has no spine.
 export function spineWidthInches(format: EditionFormat): number {
   if (format.kind !== 'print') return 0
-  const pages = Number.parseInt((format.page_count ?? '').trim(), 10)
+  let pages = Number.parseInt((format.page_count ?? '').trim(), 10)
   if (!Number.isFinite(pages) || pages <= 0) return 0
   if (!/^\d+$/.test((format.page_count ?? '').trim())) return 0
-  return pages * spinePerPage(format.paper_stock ?? '') + spineBindingAllowance(format.binding ?? '')
+  if (pages % 2 !== 0) pages++
+  if (hardcoverSpineRequiresTemplate(format)) return 0
+  const interior = (format.interior ?? '').toLowerCase()
+  const caliper = interior.includes('color') || interior.includes('colour') ? 0.002347 : spinePerPage(format.paper_stock ?? '')
+  return pages * caliper
+}
+
+export function hardcoverSpineRequiresTemplate(format: EditionFormat): boolean {
+  const binding = normalizeSpec(format.binding ?? '')
+  return binding === 'caselaminate' || binding === 'clothwithjacket' || (format.format ?? '').toLowerCase().includes('hardcover')
 }
 
 export function spineWidthLabel(format: EditionFormat): string {
@@ -341,8 +340,12 @@ export function sectionsFor(edition: Edition, format: EditionFormat): EditionSec
         { label: 'Page count', kind: 'text', field: 'page_count', value: text(format.page_count), mono: true, hint: 'From the last typeset pass.' },
         {
           label: 'Spine width', kind: 'static', mono: true,
-          value: spineWidthLabel(format) ? `${spineWidthLabel(format)} — calculated` : 'Set a page count',
-          hint: 'Page count × paper caliper, plus what the binding adds.',
+          value: hardcoverSpineRequiresTemplate(format)
+            ? 'Use the printer’s hardcover template'
+            : spineWidthLabel(format) ? `${spineWidthLabel(format)} — calculated` : 'Set a page count',
+          hint: hardcoverSpineRequiresTemplate(format)
+            ? 'Case wrap, hinge and board dimensions vary by printer.'
+            : 'Page count × the printer’s paper caliper.',
         },
         { label: 'Paper stock', kind: 'select', field: 'paper_stock', value: text(format.paper_stock), options: PAPER_STOCKS },
         { label: 'Binding', kind: 'select', field: 'binding', value: text(format.binding), options: BINDINGS },

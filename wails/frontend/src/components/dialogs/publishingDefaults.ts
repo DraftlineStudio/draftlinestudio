@@ -95,6 +95,7 @@ export const PRINT_FURNITURE = {
   generateTOC: true,
   mirroredMargins: true,
   includeCropMarks: false,
+  skipKDPChecks: false,
   bleed: '0',
   titlePageFont: 'classic' as PrintPDFOptions['titlePageFont'],
   titlePageStyle: 'classic' as PrintPDFOptions['titlePageStyle'],

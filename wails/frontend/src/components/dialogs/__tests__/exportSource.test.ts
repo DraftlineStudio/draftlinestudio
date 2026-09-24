@@ -9,7 +9,7 @@ import type { Edition, EditionFormat, EditionIndex } from '../../../types/draftl
 import {
   bleedFromRecord, bleedLabel, customTrimError, defaultWizardOptions, editionCards,
   exportSourceSummary, findFormat, fixedLayoutNote, inchesText, isbnRegistrationError,
-  outputFormatFor, patchChangesFormat, prefillChanges, printPrefill, readingCopyFor,
+  outputFormatFor, patchChangesFormat, prefillChanges, printPrefill, printSetupError, readingCopyFor,
   registrableKind, registrationPatch, SOURCE_FOOTNOTE,
   trimFromRecord, trimRecordWords, wizardOptionsForFormat, writeBackPatch,
   type PrintPDFOptions,
@@ -106,7 +106,7 @@ describe('the sidebar summary', () => {
 
   it('gives the spine width but does not claim to make a cover wrap', () => {
     const summary = exportSourceSummary(index(), 'fmt-paper', 'The Quiet Ledger')!
-    expect(summary.prefill[2].v).toBe('1.037 in spine — interior only, no wrap')
+    expect(summary.prefill[2].v).toBe('1.030 in spine — interior only, no wrap')
   })
 
   it('names five different things an ebook fills in, identifier included', () => {
@@ -304,6 +304,29 @@ describe('the custom trim, bounded at both ends', () => {
 
   it('writes a custom trim back in inches', () => {
     expect(trimRecordWords(withTrim('7', '10'))).toBe('7 × 10 in')
+  })
+})
+
+describe('KDP print checks', () => {
+  it('accepts the standard print setup', () => {
+    expect(printSetupError(defaultWizardOptions().print)).toBe('')
+  })
+
+  it('catches crop marks, nonstandard bleed and a paperback trim outside KDP', () => {
+    const base = defaultWizardOptions().print
+    expect(printSetupError({ ...base, includeCropMarks: true })).toContain('crop')
+    expect(printSetupError({ ...base, bleed: '0.2' })).toContain('0.125')
+    expect(printSetupError({ ...base, trimSize: 'custom', customWidth: '3', customHeight: '9' })).toContain('4–8.5')
+  })
+
+  it('requires a supported case-laminate trim', () => {
+    const hardcover = { id: 'hard', kind: 'print', format: 'Hardcover', binding: 'Case laminate' }
+    expect(printSetupError({ ...defaultWizardOptions().print, trimSize: '5x8' }, hardcover)).toContain('hardcover trim')
+  })
+
+  it('can be turned off for another printer', () => {
+    const options = { ...defaultWizardOptions().print, includeCropMarks: true, bleed: '0.2', skipKDPChecks: true }
+    expect(printSetupError(options)).toBe('')
   })
 })
 

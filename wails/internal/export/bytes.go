@@ -73,7 +73,13 @@ func PrintPDFBytes(book types.BookData, options types.PrintPDFOptions) ([]byte, 
 	if err != nil {
 		return nil, err
 	}
-	data, err := renderPublicationPDF(doc, printPDFSpec(options))
+	spec := printPDFSpec(options)
+	if err := validateKDPPreflight(doc, options, spec); err != nil {
+		return nil, err
+	}
+	data, err := renderPublicationPDFChecked(doc, spec, func(pages int) error {
+		return validateKDPPageCount(doc, options, pages)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to render print PDF: %w", err)
 	}
