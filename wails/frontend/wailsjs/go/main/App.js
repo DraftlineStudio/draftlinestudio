@@ -246,6 +246,10 @@ export function OpenRecentProject(arg1) {
   return window['go']['main']['App']['OpenRecentProject'](arg1);
 }
 
+export function PendingBookTakeover() {
+  return window['go']['main']['App']['PendingBookTakeover']();
+}
+
 export function PickBookPath() {
   return window['go']['main']['App']['PickBookPath']();
 }

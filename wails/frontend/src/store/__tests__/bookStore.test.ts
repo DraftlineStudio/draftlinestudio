@@ -39,6 +39,12 @@ const mocks = vi.hoisted(() => ({
   ImportDOCX: vi.fn(),
   ShowInfoDialog: vi.fn(),
   CloseBookFile: vi.fn().mockResolvedValue(undefined),
+  RequestBookTakeover: vi.fn(),
+  BookTakeoverStatus: vi.fn(),
+  WithdrawBookTakeover: vi.fn(),
+  GrantBookTakeover: vi.fn(),
+  DeclineBookTakeover: vi.fn(),
+  PendingBookTakeover: vi.fn(),
   AnalyzeBook: vi.fn(),
   // appStore.ts imports (bookStore imports appStore)
   LoadSettings: vi.fn(),

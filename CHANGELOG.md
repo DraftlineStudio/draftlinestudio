@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02730] - 2026-09-24
+
+### Added
+- A book open on another computer can be asked for instead of forced open. That computer saves it, lets go, and Draftline waits until the copy here is proven to match before opening it.
+- Whoever is at the other computer gets five seconds to keep the book, and is told if they do.
+
 ## [0.21.02729] - 2026-09-24
 
 ### Removed

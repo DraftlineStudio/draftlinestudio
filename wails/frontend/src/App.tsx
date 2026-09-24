@@ -4,8 +4,9 @@ import { useBookStore } from './store/bookStore'
 import { useAppStore } from './store/appStore'
 import { startUpdateNag } from './services/updateNag'
 import { useReadAloudStore } from './store/readAloudStore'
-import { TakePendingOpenPath } from '../wailsjs/go/main/App'
+import { TakePendingOpenPath, PendingBookTakeover } from '../wailsjs/go/main/App'
 import { EventsOn } from '../wailsjs/runtime/runtime'
+import type { types } from '../wailsjs/go/models'
 import { applyAccent, clearAccent } from './utils/accentColor'
 import { useAutoTheme } from './hooks/useAutoTheme'
 import ThemeTransitionOverlay from './components/ThemeTransitionOverlay'
@@ -25,6 +26,7 @@ import NewChapterDialog from './components/dialogs/NewChapterDialog'
 import NewBookWizard from './components/dialogs/NewBookWizard'
 import UnsavedChangesDialog from './components/dialogs/UnsavedChangesDialog'
 import BookLockDialog from './components/dialogs/BookLockDialog'
+import TakeoverRequestDialog from './components/dialogs/TakeoverRequestDialog'
 
 // Screens and dialogs that are not on screen at startup. Each one is a
 // parse-and-compile cost the writer would otherwise pay before the editor
@@ -37,9 +39,12 @@ const CharactersView = lazy(() => import('./components/characters/CharactersView
 const PlannerView = lazy(() => import('./components/planner/PlannerView'))
 
 export default function App() {
-  const { hasBook, bookTitle, bookFilePath, newBook, openBook, openRecentBook, saveBook, saveBookAs, dialogs, initBook, viewMode, setViewMode, isOpening } = useBookStore(useShallow(s => ({
+  const { hasBook, bookTitle, bookFilePath, newBook, openBook, openRecentBook, saveBook, saveBookAs, dialogs, initBook, viewMode, setViewMode, isOpening, openingLabel, isWaitingForDevice, stopWaitingForDevice } = useBookStore(useShallow(s => ({
     hasBook: s.book !== null,
     isOpening: s.isOpening,
+    openingLabel: s.openingLabel,
+    isWaitingForDevice: s.isWaitingForDevice,
+    stopWaitingForDevice: s.stopWaitingForDevice,
     bookTitle: s.book?.metadata.title,
     bookFilePath: s.book?.file_path,
     newBook: s.newBook,
@@ -82,6 +87,17 @@ export default function App() {
     }
     void TakePendingOpenPath().then(open)
     return EventsOn('file:open', (path: string) => open(path))
+  }, [])
+
+  // The writer's other device asking for the book open here. The watch raises a
+  // request once, so a reload can miss one; asking on mount covers that, and
+  // costs a single call.
+  useEffect(() => {
+    const raise = (request: types.BookTakeoverRequest) => {
+      if (request?.device) useBookStore.setState(s => ({ dialogs: { ...s.dialogs, takeoverRequest: request } }))
+    }
+    void PendingBookTakeover().then(raise).catch(() => {})
+    return EventsOn('booklock:takeover_requested', raise)
   }, [])
 
   // Handle new book from welcome screen
@@ -278,7 +294,13 @@ export default function App() {
   const openingOverlay = overlayPhase !== 'hidden' && (
     <div className={`opening-overlay${overlayPhase === 'closing' ? ' closing' : ''}`}>
       <div className="opening-spinner" />
-      <div className="opening-label">Opening book…</div>
+      <div className="opening-label">{openingLabel || 'Opening book…'}</div>
+      {/* A wait on another machine's sync client has no known end, so unlike a
+          file being parsed it has to be escapable. Leaving also takes the
+          handover request back, so nothing is granted to nobody. */}
+      {isWaitingForDevice && (
+        <button className="opening-cancel" onClick={stopWaitingForDevice}>Stop waiting</button>
+      )}
     </div>
   )
 
@@ -297,6 +319,7 @@ export default function App() {
         />
         {dialogs.showNewBookWizard && <NewBookWizard onCreated={() => setShowWelcome(false)} />}
         {dialogs.bookLockWarning && <BookLockDialog />}
+        {dialogs.takeoverRequest && <TakeoverRequestDialog />}
         {showSettings && <Suspense fallback={null}><AppSettingsDialog /></Suspense>}
         {openingOverlay}
         <BackendErrorNotice />
@@ -336,6 +359,7 @@ export default function App() {
       {dialogs.showNewBookWizard && <NewBookWizard />}
       {dialogs.showUnsavedWarning && <UnsavedChangesDialog />}
       {dialogs.bookLockWarning && <BookLockDialog />}
+        {dialogs.takeoverRequest && <TakeoverRequestDialog />}
       {showExportWizard && <Suspense fallback={null}><ExportWizard /></Suspense>}
       {showChapterHistory && <Suspense fallback={null}><ChapterHistoryDialog /></Suspense>}
       {showSettings && <Suspense fallback={null}><AppSettingsDialog /></Suspense>}

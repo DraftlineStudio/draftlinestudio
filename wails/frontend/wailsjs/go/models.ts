@@ -2134,6 +2134,26 @@ export namespace types {
 	        this.message = source["message"];
 	    }
 	}
+	export class BookTakeoverRequest {
+	    device: string;
+	    platform: string;
+	    app: string;
+	    requested_at: string;
+	    message: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new BookTakeoverRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.device = source["device"];
+	        this.platform = source["platform"];
+	        this.app = source["app"];
+	        this.requested_at = source["requested_at"];
+	        this.message = source["message"];
+	    }
+	}
 	export class BookTakeoverResult {
 	    granted: boolean;
 	    declined: boolean;
@@ -2214,6 +2234,7 @@ export namespace types {
 	    topMargin: string;
 	    bottomMargin: string;
 	    includeCropMarks: boolean;
+	    skipKDPChecks?: boolean;
 	    chapterStartsRecto: boolean;
 	    dropCap: boolean;
 	    dropCapLines: number;
@@ -2262,6 +2283,7 @@ export namespace types {
 	        this.topMargin = source["topMargin"];
 	        this.bottomMargin = source["bottomMargin"];
 	        this.includeCropMarks = source["includeCropMarks"];
+	        this.skipKDPChecks = source["skipKDPChecks"];
 	        this.chapterStartsRecto = source["chapterStartsRecto"];
 	        this.dropCap = source["dropCap"];
 	        this.dropCapLines = source["dropCapLines"];

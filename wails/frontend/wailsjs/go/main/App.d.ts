@@ -126,6 +126,8 @@ export function OpenNewWindow():Promise<types.RevealResult>;
 
 export function OpenRecentProject(arg1:string):Promise<types.BookData>;
 
+export function PendingBookTakeover():Promise<types.BookTakeoverRequest>;
+
 export function PickBookPath():Promise<string>;
 
 export function PluginInvoke(arg1:string,arg2:string,arg3:string):Promise<string>;

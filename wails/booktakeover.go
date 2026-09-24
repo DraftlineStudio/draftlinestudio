@@ -99,6 +99,29 @@ func (a *App) BookTakeoverStatus(path string) types.BookTakeoverStatus {
 	return status
 }
 
+// PendingBookTakeover is the request waiting on the open book, if any.
+//
+// The watch announces a request once, by event. This is how the frontend asks
+// the same question itself: after a reload, or on startup, when a request may
+// have been answered by nobody because there was no window to put it in.
+func (a *App) PendingBookTakeover() types.BookTakeoverRequest {
+	path := a.getCurrentFile()
+	if path == "" {
+		return types.BookTakeoverRequest{}
+	}
+	request := booklock.PendingTakeover(path, a.deviceIdentity())
+	if request == nil {
+		return types.BookTakeoverRequest{}
+	}
+	return types.BookTakeoverRequest{
+		Device:      request.Device,
+		Platform:    request.Platform,
+		App:         request.App,
+		RequestedAt: request.RequestedAt.Format(time.RFC3339),
+		Message:     requestMessage(request),
+	}
+}
+
 // GrantBookTakeover hands the open book to the device that asked for it.
 //
 // Call it AFTER the save has returned: the fingerprint it records is read off

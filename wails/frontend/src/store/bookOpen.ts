@@ -6,9 +6,12 @@
 // DOCX. They differ only in which backend call produces the book; everything
 // after that is the same, which is why it is written once here.
 
-import { ImportEPUB, ImportDOCX, OpenRecentProject } from '../../wailsjs/go/main/App'
+import { ImportEPUB, ImportDOCX, OpenRecentProject, BookTakeoverStatus } from '../../wailsjs/go/main/App'
 import type { BookData, Section } from '../types/draftline'
-import { deviceHoldingBook, type BookLockWarning } from './bookLock'
+import {
+  askForBook, deviceHoldingBook, stopAskingForBook, waitForHandover,
+  type BookLockWarning, type HandoverOutcome,
+} from './bookLock'
 
 export interface BookAdoption {
   /** Open the archive at path, unless another device holds a live claim. */
@@ -16,11 +19,19 @@ export interface BookAdoption {
   /** Put the book a given call produces on screen. */
   adoptBook: (open: () => Promise<BookData>, path: string) => Promise<void>
   importExternalBook: (path: string) => Promise<void>
+  /** Ask the device holding a book to hand it over, then wait for the copy. */
+  requestBookFromDevice: (path: string) => Promise<void>
+  /** Stop waiting, and take the request back so nobody grants to nobody. */
+  cancelBookRequest: () => void
 }
 
 export interface AdoptionHost {
   setLockWarning: (warning: BookLockWarning | null) => void
   setOpening: (opening: boolean) => void
+  /** The line under the opening overlay's spinner. */
+  setOpeningLabel: (label: string) => void
+  /** Offers a way out of a wait that is only as fast as the folder syncs. */
+  setWaitingForDevice: (waiting: boolean) => void
   /** Show the book, reset the selection, and start it clean. */
   placeBook: (book: BookData, section: Section) => void
   beginSession: () => void
@@ -32,6 +43,10 @@ export interface AdoptionHost {
 }
 
 export function createBookAdoption(host: AdoptionHost): BookAdoption {
+  // Set while a handover is being waited on, so Cancel on the overlay reaches
+  // the poll inside waitForHandover.
+  let cancelledRequest = false
+
   const adoptBook = async (open: () => Promise<BookData>, path: string): Promise<void> => {
     host.setOpening(true)
     try {
@@ -52,6 +67,76 @@ export function createBookAdoption(host: AdoptionHost): BookAdoption {
     }
   }
 
+  // watchHandover holds the opening overlay over the welcome screen while the
+  // other machine answers and its copy of the book crosses the sync folder.
+  //
+  // The overlay is the input shield the book load already uses, so nothing can
+  // be clicked underneath it; the difference is that this wait is only as fast
+  // as somebody else's Dropbox, so it offers a way out.
+  const watchHandover = async (path: string, firstMessage: string): Promise<void> => {
+    cancelledRequest = false
+    host.setOpeningLabel(firstMessage || 'Waiting for the other device…')
+    host.setWaitingForDevice(true)
+    host.setOpening(true)
+    let outcome: HandoverOutcome
+    try {
+      outcome = await waitForHandover(path, {
+        onProgress: host.setOpeningLabel,
+        isCancelled: () => cancelledRequest,
+      })
+    } finally {
+      host.setWaitingForDevice(false)
+      host.setOpening(false)
+      host.setOpeningLabel('')
+    }
+
+    switch (outcome.status) {
+      case 'ready':
+        // The bytes are proven, so the request has done its job and the
+        // receipt beside the book is no longer needed.
+        stopAskingForBook(path)
+        await adoptBook(() => OpenRecentProject(path), path)
+        return
+      case 'declined':
+        stopAskingForBook(path)
+        host.setStatus(outcome.message)
+        return
+      case 'cancelled':
+        // Taking the request back matters: left behind, it would be granted
+        // later by a machine with nobody waiting, and that machine would save,
+        // release and close a book somebody may be sitting in front of.
+        stopAskingForBook(path)
+        host.setStatus('Stopped waiting for the other device.')
+        return
+      case 'unverifiable':
+        // The other device handed the book over but could not prove what it
+        // handed over, which a sync client holding the file open is enough to
+        // cause. Opening would be opening on hope, so it does not.
+        host.setStatus(`${outcome.message} Try again in a moment.`)
+        return
+      default:
+        host.setStatus(outcome.message)
+    }
+  }
+
+  // resumeHandover reports whether this open was taken over by a handover that
+  // was already granted.
+  const resumeHandover = async (path: string): Promise<boolean> => {
+    let status
+    try {
+      status = await BookTakeoverStatus(path)
+    } catch {
+      return false
+    }
+    if (!status?.granted) return false
+    if (status.arrived) {
+      stopAskingForBook(path)
+      return false
+    }
+    await watchHandover(path, status.message)
+    return true
+  }
+
   return {
     adoptBook,
 
@@ -62,6 +147,11 @@ export function createBookAdoption(host: AdoptionHost): BookAdoption {
     loadBookFromPath: async (path, force = false) => {
       host.setLockWarning(null)
       if (!force) {
+        // A handover already granted but not yet finished arriving picks up
+        // where it left off. The grant is kept beside the book precisely so
+        // that walking away and coming back resumes the same wait, with the
+        // same proof, rather than opening whatever copy happens to be there.
+        if (await resumeHandover(path)) return
         const holder = await deviceHoldingBook(path)
         if (holder) {
           host.setLockWarning({ path, info: holder })
@@ -69,6 +159,20 @@ export function createBookAdoption(host: AdoptionHost): BookAdoption {
         }
       }
       await adoptBook(() => OpenRecentProject(path), path)
+    },
+
+    requestBookFromDevice: async (path) => {
+      host.setLockWarning(null)
+      const asked = await askForBook(path)
+      if (!asked || (!asked.asked && asked.message)) {
+        host.setStatus(asked?.message || 'Could not ask the other device for this book.')
+        return
+      }
+      await watchHandover(path, asked.message)
+    },
+
+    cancelBookRequest: () => {
+      cancelledRequest = true
     },
 
     importExternalBook: async (path) => {

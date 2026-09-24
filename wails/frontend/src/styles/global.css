@@ -9434,3 +9434,34 @@ html, body, #root {
   text-decoration: underline;
 }
 .settings-link-btn:hover { opacity: 0.8; }
+
+/* ==========================================================================
+   HANDING A BOOK BETWEEN DEVICES  (opening-cancel, takeover-count)
+   components/dialogs/TakeoverRequestDialog.tsx, App.tsx
+
+   Two additions to screens that already existed. The opening overlay gains a
+   way out, because waiting on another machine's sync client has no knowable
+   end the way parsing a file does. The countdown gets the tabular figures it
+   needs so the number does not jog the sentence as it counts down.
+   ========================================================================== */
+
+.opening-cancel {
+  margin-top: 18px;
+  padding: 5px 14px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.opening-cancel:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.takeover-count {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--accent);
+}

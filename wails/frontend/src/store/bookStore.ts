@@ -7,7 +7,7 @@ import { DEFAULT_STYLE_OPTIONS } from '../types/draftline'
 import type { ParagraphDiff, DiffChange } from '../utils/diff'
 import { countBookWords } from '../utils/textUtils'
 
-import { NewBook, PickBookPath, SaveBook, SaveBookAs, SaveBookSnapshots, OpenBookAsCopy, ShowInfoDialog, CloseBookFile } from '../../wailsjs/go/main/App'
+import { NewBook, PickBookPath, SaveBook, SaveBookAs, SaveBookSnapshots, OpenBookAsCopy, ShowInfoDialog, CloseBookFile, GrantBookTakeover, DeclineBookTakeover } from '../../wailsjs/go/main/App'
 import { types } from '../../wailsjs/go/models'
 import { useAppStore } from './appStore'
 import { useEditorStore, type DiffTarget, type EditorInstance, type EditorSelection } from './editorStore'
@@ -44,9 +44,11 @@ const savePipeline = createSavePipeline({
 const { performSave, scheduleAutoSave, enqueueSaveTask, beginBookSession } = savePipeline
 
 // Getting a book on screen, with the store wired into it.
-const { loadBookFromPath, adoptBook, importExternalBook } = createBookAdoption({
+const { loadBookFromPath, adoptBook, importExternalBook, requestBookFromDevice, cancelBookRequest } = createBookAdoption({
   setLockWarning: (bookLockWarning) => useBookStore.setState(s => ({ dialogs: { ...s.dialogs, bookLockWarning } })),
   setOpening: (isOpening) => useBookStore.setState({ isOpening }),
+  setOpeningLabel: (openingLabel) => useBookStore.setState({ openingLabel }),
+  setWaitingForDevice: (isWaitingForDevice) => useBookStore.setState({ isWaitingForDevice }),
   placeBook: (book, currentSection) => useBookStore.setState({
     book, currentSection, currentIndex: 0, isDirty: false, analysisRevision: 0,
   }),
@@ -105,6 +107,9 @@ interface DialogState {
   // Set when a book about to be opened carries a claim from another device.
   // Nothing is blocked; the author is told and chooses. See internal/booklock.
   bookLockWarning: BookLockWarning | null
+  // Set when another device is asking for the book open here, so whoever is at
+  // this machine gets a few seconds to keep it.
+  takeoverRequest: types.BookTakeoverRequest | null
 }
 
 interface BookStore extends EditionActions, ChapterActions, CharacterIndexActions {
@@ -117,6 +122,13 @@ interface BookStore extends EditionActions, ChapterActions, CharacterIndexAction
   // True while a book archive is being opened and parsed; drives the
   // full-screen opening overlay and guards against concurrent opens.
   isOpening: boolean
+  // The line under the opening overlay's spinner. Empty means the ordinary
+  // "Opening book…"; a handover puts what it is waiting for here instead.
+  openingLabel: string
+  // True while the overlay is waiting on another device rather than on a file
+  // being parsed. That wait is only as fast as the author's sync client, so it
+  // is the one the overlay offers a way out of.
+  isWaitingForDevice: boolean
   isIndexing: boolean
   analysisRevision: number
 
@@ -173,6 +185,14 @@ interface BookStore extends EditionActions, ChapterActions, CharacterIndexAction
   openBookAnyway: () => Promise<void>
   openBookAsCopy: () => Promise<void>
   cancelBookLockWarning: () => void
+  /** Ask the device holding the book to save, let go, and hand it over. */
+  askDeviceForBook: () => Promise<void>
+  /** Stop waiting on the other device and take the request back. */
+  stopWaitingForDevice: () => void
+  /** This machine hands its book to whoever asked: save, release, close. */
+  grantBookToDevice: () => Promise<void>
+  /** This machine keeps its book. */
+  refuseToHandBookOver: () => Promise<void>
   saveAndProceed: () => Promise<void>
   discardAndProceed: () => Promise<void>
   initBook: () => Promise<void>
@@ -249,11 +269,13 @@ export const useBookStore = create<BookStore>((set, get) => ({
   isDirty: false,
   isAutoSaving: false,
   isOpening: false,
+  openingLabel: '',
+  isWaitingForDevice: false,
   isIndexing: false,
   analysisRevision: 0,
 
   // UI state
-  dialogs: { showUnsavedWarning: false, pendingAction: null, showNewBookWizard: false, bookLockWarning: null },
+  dialogs: { showUnsavedWarning: false, pendingAction: null, showNewBookWizard: false, bookLockWarning: null, takeoverRequest: null },
 
   viewMode: 'editor',
   setViewMode: (mode) => set({ viewMode: mode }),
@@ -580,6 +602,67 @@ export const useBookStore = create<BookStore>((set, get) => ({
   },
 
   cancelBookLockWarning: () => set(s => ({ dialogs: { ...s.dialogs, bookLockWarning: null } })),
+
+  askDeviceForBook: async () => {
+    const warning = get().dialogs.bookLockWarning
+    if (!warning) return
+    set(s => ({ dialogs: { ...s.dialogs, bookLockWarning: null } }))
+    await requestBookFromDevice(warning.path)
+  },
+
+  stopWaitingForDevice: () => cancelBookRequest(),
+
+  // The handover, from the side that has the book. The save has to happen here
+  // and finish first: the manuscript lives in this store, not in Go, and the
+  // fingerprint the other device checks is taken off the saved file.
+  grantBookToDevice: async () => {
+    set(s => ({ dialogs: { ...s.dialogs, takeoverRequest: null } }))
+    useEditorStore.getState().drainPendingEdit()
+    if (get().isDirty) {
+      const outcome = await performSave('save')
+      if (outcome.status !== 'saved') {
+        // Anything but a clean save means the words on screen are not the words
+        // on disk, and the other device would open the version before them. A
+        // 'stale' outcome specifically means somebody typed while it saved, so
+        // there is a writer at this machine and the answer is no.
+        await get().refuseToHandBookOver()
+        setStatus('Kept this book: it is being written in here.')
+        return
+      }
+    }
+    // Nothing may reach the file after the fingerprint is taken. Starting a new
+    // session supersedes any queued save and disarms the autosave timer, so a
+    // keystroke landing now cannot rewrite the book the other device is about
+    // to check against a hash.
+    beginBookSession()
+    set({ isDirty: false })
+    try {
+      const result = await GrantBookTakeover()
+      if (result.withdrawn) {
+        setStatus('The other device stopped asking, so this book stayed open.')
+        return
+      }
+      if (result.error) {
+        setStatus(`Could not hand the book over: ${result.error}`)
+        return
+      }
+      await get().closeProject()
+      setStatus(`Handed this book to ${result.device || 'the other device'}.`)
+    } catch (e) {
+      setStatus(`Could not hand the book over: ${e}`)
+    }
+  },
+
+  refuseToHandBookOver: async () => {
+    set(s => ({ dialogs: { ...s.dialogs, takeoverRequest: null } }))
+    try {
+      const result = await DeclineBookTakeover()
+      if (result.declined) setStatus(`Kept this book; ${result.device || 'the other device'} was told.`)
+    } catch {
+      // A refusal that cannot be written is a request that goes unanswered,
+      // which the other device already handles.
+    }
+  },
 
   initBook: async () => {
     try {
