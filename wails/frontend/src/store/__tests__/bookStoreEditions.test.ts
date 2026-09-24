@@ -34,6 +34,7 @@ const mocks = vi.hoisted(() => ({
   GrantBookTakeover: vi.fn(),
   DeclineBookTakeover: vi.fn(),
   PendingBookTakeover: vi.fn(),
+  SaveBookAside: vi.fn(),
   AnalyzeBook: vi.fn(),
   LoadSettings: vi.fn(),
   SaveSettings: vi.fn(),

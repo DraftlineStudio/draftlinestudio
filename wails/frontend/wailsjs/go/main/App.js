@@ -318,6 +318,10 @@ export function SaveBookAs(arg1) {
   return window['go']['main']['App']['SaveBookAs'](arg1);
 }
 
+export function SaveBookAside(arg1) {
+  return window['go']['main']['App']['SaveBookAside'](arg1);
+}
+
 export function SaveBookSnapshots(arg1, arg2) {
   return window['go']['main']['App']['SaveBookSnapshots'](arg1, arg2);
 }

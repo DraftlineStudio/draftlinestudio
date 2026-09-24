@@ -100,6 +100,12 @@ export default function App() {
     return EventsOn('booklock:takeover_requested', raise)
   }, [])
 
+  // The claim on the open book now belongs to another device: this session woke
+  // up dispossessed and must stop writing to that file at once.
+  useEffect(() => EventsOn('booklock:claim_lost', (info: types.BookLockInfo) => {
+    void useBookStore.getState().standDownFromBook(info)
+  }), [])
+
   // Handle new book from welcome screen
   const handleNewBook = useCallback(() => {
     newBook()

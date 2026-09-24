@@ -7,7 +7,7 @@ import { DEFAULT_STYLE_OPTIONS } from '../types/draftline'
 import type { ParagraphDiff, DiffChange } from '../utils/diff'
 import { countBookWords } from '../utils/textUtils'
 
-import { NewBook, PickBookPath, SaveBook, SaveBookAs, SaveBookSnapshots, OpenBookAsCopy, ShowInfoDialog, CloseBookFile, GrantBookTakeover, DeclineBookTakeover } from '../../wailsjs/go/main/App'
+import { NewBook, PickBookPath, SaveBook, SaveBookAs, SaveBookSnapshots, OpenBookAsCopy, ShowInfoDialog, CloseBookFile, GrantBookTakeover, DeclineBookTakeover, SaveBookAside } from '../../wailsjs/go/main/App'
 import { types } from '../../wailsjs/go/models'
 import { useAppStore } from './appStore'
 import { useEditorStore, type DiffTarget, type EditorInstance, type EditorSelection } from './editorStore'
@@ -191,6 +191,8 @@ interface BookStore extends EditionActions, ChapterActions, CharacterIndexAction
   stopWaitingForDevice: () => void
   /** This machine hands its book to whoever asked: save, release, close. */
   grantBookToDevice: () => Promise<void>
+  /** Stand down: another device took the book this session has open. */
+  standDownFromBook: (info: types.BookLockInfo) => Promise<void>
   /** This machine keeps its book. */
   refuseToHandBookOver: () => Promise<void>
   saveAndProceed: () => Promise<void>
@@ -650,6 +652,44 @@ export const useBookStore = create<BookStore>((set, get) => ({
       setStatus(`Handed this book to ${result.device || 'the other device'}.`)
     } catch (e) {
       setStatus(`Could not hand the book over: ${e}`)
+    }
+  },
+
+  // Another device has taken the book this session still has open, which is
+  // what a machine finds when it wakes from sleep: the claim went stale while
+  // the lid was shut.
+  //
+  // Nothing here may touch the original file. The other machine has been
+  // writing to it, and the danger is not the paragraph on screen — it is the
+  // autosave timer that survived the sleep and fires on waking, saving a book
+  // from before the nap over a whole session's work. So the pipeline is stood
+  // down FIRST, and anything unsaved goes to a file of its own.
+  standDownFromBook: async (info) => {
+    useEditorStore.getState().drainPendingEdit()
+    beginBookSession()
+    const { book, isDirty } = get()
+    let rescued = ''
+    if (book && isDirty) {
+      try {
+        const result = await SaveBookAside(book as any)
+        if (result.success) rescued = result.file_path || ''
+      } catch {
+        // Reported below: the writer is told their unsaved words could not be
+        // put anywhere, rather than being told nothing.
+      }
+    }
+    set({ book: null, currentSection: 'body', currentIndex: 0, isDirty: false, analysisRevision: 0 })
+    useEditorStore.getState().clearPendingDiff()
+    void Promise.resolve(CloseBookFile()).catch(() => {})
+    useAppStore.getState().setShowWelcome(true)
+
+    const closed = info.message || 'Another device has this book now, so it was closed here.'
+    if (rescued) {
+      setStatus(`${closed} Unsaved changes were kept as ${rescued.split(/[\\/]/).pop()}.`)
+    } else if (isDirty) {
+      setStatus(`${closed} Unsaved changes here could not be saved anywhere.`)
+    } else {
+      setStatus(closed)
     }
   },
 

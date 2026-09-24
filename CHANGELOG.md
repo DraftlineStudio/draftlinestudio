@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02731] - 2026-09-24
+
+### Added
+- A computer that wakes from sleep to find another one has taken the book now closes it instead of saving over that work, and keeps anything unsaved in a separate file beside the book.
+
 ## [0.21.02730] - 2026-09-24
 
 ### Added

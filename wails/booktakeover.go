@@ -10,9 +10,14 @@ package main
 // frontend, then grant here.
 
 import (
+	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
+	"draftline/internal/book"
 	"draftline/internal/booklock"
 	"draftline/internal/types"
 
@@ -203,6 +208,58 @@ func (a *App) watchForTakeover(path string) {
 // claimLostEvent tells the frontend this session no longer holds the book it
 // has open, so it must stop writing to it.
 const claimLostEvent = "booklock:claim_lost"
+
+// SaveBookAside writes the open book to a NEW file beside the original and
+// leaves the original alone.
+//
+// This is for the one case where a session has words on screen that are not on
+// disk and has just lost the right to write to the book: the machine slept, the
+// claim went stale, and another device took it. Saving to the original would
+// overwrite whatever has been written on the other machine since. Discarding
+// would throw away the writer's last paragraph.
+//
+// It claims nothing and does not become the open project. It is a rescue file,
+// and like every duplicate it gets a new identifier, or it would share a claim
+// with the book it was rescued from.
+func (a *App) SaveBookAside(b types.BookData) types.SaveResult {
+	source := a.getCurrentFile()
+	if source == "" {
+		return types.SaveResult{Success: false, Error: "no book is open"}
+	}
+	path, err := uniqueAsidePath(source, a.deviceIdentity().Device)
+	if err != nil {
+		return types.SaveResult{Success: false, Error: err.Error()}
+	}
+	b.Metadata.BookID = types.NewBookID()
+	// The pending assets are handed over but NOT settled: a cover attached and
+	// not yet saved belongs in the rescue file, and the open project is about to
+	// be closed anyway.
+	assets, _ := a.pendingAssets()
+	return book.WriteArchive(source, path, b, AppVersion, nil, assets)
+}
+
+// uniqueAsidePath names a rescue file after the machine that could not save it,
+// so a writer finding two of them knows which is which.
+func uniqueAsidePath(source, device string) (string, error) {
+	if strings.TrimSpace(device) == "" {
+		device = "this computer"
+	}
+	dir := filepath.Dir(source)
+	ext := filepath.Ext(source)
+	stem := strings.TrimSuffix(filepath.Base(source), ext)
+
+	for n := 1; n < 1000; n++ {
+		suffix := fmt.Sprintf(" (unsaved on %s)", device)
+		if n > 1 {
+			suffix = fmt.Sprintf(" (unsaved on %s %d)", device, n)
+		}
+		candidate := filepath.Join(dir, stem+suffix+ext)
+		if _, err := os.Stat(candidate); os.IsNotExist(err) {
+			return candidate, nil
+		}
+	}
+	return "", errors.New("there are already too many rescued copies beside this book")
+}
 
 // watchForDispossession notices that the claim on the open book now belongs to
 // somebody else, which is what a machine finds when it wakes from sleep: the

@@ -162,6 +162,8 @@ export function SaveBook(arg1:types.BookData):Promise<types.SaveResult>;
 
 export function SaveBookAs(arg1:types.BookData):Promise<types.SaveResult>;
 
+export function SaveBookAside(arg1:types.BookData):Promise<types.SaveResult>;
+
 export function SaveBookSnapshots(arg1:types.BookData,arg2:Array<types.ChapterSnapshotRequest>):Promise<types.SaveResult>;
 
 export function SaveSettings(arg1:types.AppSettings):Promise<void>;

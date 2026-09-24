@@ -44,6 +44,7 @@ const mocks = vi.hoisted(() => ({
   GrantBookTakeover: vi.fn(),
   DeclineBookTakeover: vi.fn(),
   PendingBookTakeover: vi.fn(),
+  SaveBookAside: vi.fn(),
   LoadSettings: vi.fn(),
   SaveSettings: vi.fn(),
   BrowseForDirectory: vi.fn(),
@@ -232,5 +233,52 @@ describe('coming back to a handover already granted', () => {
     await vi.advanceTimersByTimeAsync(2000)
     await opening
     expect(mocks.OpenRecentProject).toHaveBeenCalledWith(PATH)
+  })
+})
+
+describe('waking to a book another device has taken', () => {
+  const taken = { held: true, stale: false, device: 'STUDIO-DESKTOP', platform: 'windows', app: 'Draftline', last_seen: '', message: 'STUDIO-DESKTOP has this book now, so it was closed here.' }
+
+  it('never writes to the original, and keeps unsaved words in a file of their own', async () => {
+    mocks.SaveBookAside.mockResolvedValue({ success: true, file_path: 'C:/books/weather-house (unsaved on LAPTOP).draftline' })
+    bookStoreMod.useBookStore.setState({ book: makeBook(), isDirty: true })
+
+    await bookStoreMod.useBookStore.getState().standDownFromBook(taken as never)
+    await flush()
+
+    // The original belongs to the other machine now.
+    expect(mocks.SaveBook).not.toHaveBeenCalled()
+    expect(mocks.SaveBookAside).toHaveBeenCalledTimes(1)
+    expect(store().book).toBeNull()
+    expect(mocks.CloseBookFile).toHaveBeenCalled()
+
+    // And the autosave that survived the sleep must not fire into the file.
+    await vi.advanceTimersByTimeAsync(60_000)
+    await flush()
+    expect(mocks.SaveBook).not.toHaveBeenCalled()
+  })
+
+  it('closes a clean book without leaving a rescue file behind', async () => {
+    bookStoreMod.useBookStore.setState({ book: makeBook(), isDirty: false })
+
+    await bookStoreMod.useBookStore.getState().standDownFromBook(taken as never)
+    await flush()
+
+    expect(mocks.SaveBookAside).not.toHaveBeenCalled()
+    expect(mocks.SaveBook).not.toHaveBeenCalled()
+    expect(store().book).toBeNull()
+  })
+
+  it('still closes the book when the rescue file cannot be written', async () => {
+    mocks.SaveBookAside.mockRejectedValue(new Error('the folder is gone'))
+    bookStoreMod.useBookStore.setState({ book: makeBook(), isDirty: true })
+
+    await bookStoreMod.useBookStore.getState().standDownFromBook(taken as never)
+    await flush()
+
+    // Staying open would be worse: the next autosave would overwrite the other
+    // machine's work.
+    expect(store().book).toBeNull()
+    expect(mocks.SaveBook).not.toHaveBeenCalled()
   })
 })
