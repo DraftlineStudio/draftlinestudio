@@ -182,22 +182,10 @@ func (a *App) DeclineBookTakeover() types.BookTakeoverResult {
 // the book. It runs inside the claim's goroutine so it stops when the claim
 // does.
 func (a *App) watchForTakeover(path string) {
-	request, ignored := booklock.PendingTakeoverReason(path, a.deviceIdentity())
+	request := a.takeoverToAnnounce(path)
 	if request == nil {
-		a.noteIgnoredTakeover(ignored)
 		return
 	}
-
-	a.device.mu.Lock()
-	seen := a.device.announced == request.Session
-	if !seen {
-		a.device.announced = request.Session
-	}
-	a.device.mu.Unlock()
-	if seen {
-		return
-	}
-
 	runtime.EventsEmit(a.ctx, takeoverRequestedEvent, types.BookTakeoverRequest{
 		Device:      request.Device,
 		Platform:    request.Platform,
@@ -205,6 +193,38 @@ func (a *App) watchForTakeover(path string) {
 		RequestedAt: request.RequestedAt.Format(time.RFC3339),
 		Message:     requestMessage(request),
 	})
+}
+
+// takeoverToAnnounce returns a request the writer has not been shown yet, and
+// remembers that it is being shown.
+//
+// What makes one request different from another is WHEN it was made, not who
+// made it. Keying this on the asking device's session meant a writer who was
+// refused and asked again was never announced a second time: the refusal is
+// answered and forgotten, but the session asking is the same application still
+// running on the same machine, so the second request looked like the first one
+// over again and was swallowed.
+func (a *App) takeoverToAnnounce(path string) *booklock.Takeover {
+	request, ignored := booklock.PendingTakeoverReason(path, a.deviceIdentity())
+	if request == nil {
+		a.noteIgnoredTakeover(ignored)
+		return nil
+	}
+
+	key := request.Session + "|" + request.RequestedAt.UTC().Format(time.RFC3339Nano)
+	a.device.mu.Lock()
+	seen := a.device.announced == key
+	if !seen {
+		a.device.announced = key
+		// A reason that stopped applying should be able to be logged again if
+		// it comes back.
+		a.device.lastIgnored = ""
+	}
+	a.device.mu.Unlock()
+	if seen {
+		return nil
+	}
+	return request
 }
 
 // claimLostEvent tells the frontend this session no longer holds the book it

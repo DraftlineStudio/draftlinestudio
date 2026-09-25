@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02733] - 2026-09-25
+
+### Fixed
+- Asking a second time for a book that was refused now reaches the other computer instead of being silently swallowed.
+
 ## [0.21.02732] - 2026-09-25
 
 ### Fixed

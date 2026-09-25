@@ -25,8 +25,10 @@ type deviceClaim struct {
 	mu   sync.Mutex
 	lock *booklock.Lock
 	stop chan struct{}
-	// announced is the session of the last takeover request put on screen, so
-	// a request is raised once rather than every time the watch looks.
+	// announced identifies the last takeover request put on screen — the asking
+	// session AND when it asked — so a request is raised once rather than every
+	// time the watch looks, and a second request from the same application is
+	// still a second request.
 	announced string
 	// dispossessed counts consecutive looks that found somebody else's claim,
 	// and records whether the writer has been told. See watchForDispossession.

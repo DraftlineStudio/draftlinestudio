@@ -300,3 +300,50 @@ func TestASingleOddLookIsForgotten(t *testing.T) {
 		t.Fatal("the run of agreeing looks should have restarted")
 	}
 }
+
+// Ask, be refused, ask again. The second request has to reach the other machine:
+// a refusal is an answer to one question, not a standing one.
+func TestAskingAgainAfterARefusalIsAnnouncedAgain(t *testing.T) {
+	archive := bookFile(t)
+	app := holdingApp(t, archive)
+	asker := asking()
+
+	askFor(t, archive, asker)
+	if first := app.takeoverToAnnounce(archive); first == nil {
+		t.Fatal("the first request was not announced")
+	}
+	if again := app.takeoverToAnnounce(archive); again != nil {
+		t.Fatal("the same request should be announced once, not every five seconds")
+	}
+	if result := app.DeclineBookTakeover(); !result.Declined {
+		t.Fatalf("result = %+v, want a refusal", result)
+	}
+
+	// The asking machine gives up on the refusal and asks again. Same machine,
+	// same running application, same session: only the time has moved.
+	booklock.WithdrawTakeover(archive)
+	askFor(t, archive, asker)
+
+	second := app.takeoverToAnnounce(archive)
+	if second == nil {
+		t.Fatal("a second request from the same application must be announced too")
+	}
+	if second.Device != asker.Device {
+		t.Fatalf("Device = %q, want the machine that asked again", second.Device)
+	}
+}
+
+// Two asks in a row without a refusal in between are still two asks.
+func TestAskingTwiceRunningIsAnnouncedTwice(t *testing.T) {
+	archive := bookFile(t)
+	app := holdingApp(t, archive)
+
+	askFor(t, archive, asking())
+	if app.takeoverToAnnounce(archive) == nil {
+		t.Fatal("the first request was not announced")
+	}
+	askFor(t, archive, asking())
+	if app.takeoverToAnnounce(archive) == nil {
+		t.Fatal("asking again must reach the writer")
+	}
+}
