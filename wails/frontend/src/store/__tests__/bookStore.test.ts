@@ -518,6 +518,21 @@ describe('a book that may be open on another device', () => {
     expect(mocks.OpenRecentProject).not.toHaveBeenCalled()
   })
 
+  it('offers no way to open a claimed book in place', async () => {
+    // Until two writers can share a book, forcing past a live claim is the one
+    // answer that can silently replace a writing session: it opens whichever
+    // copy is on this machine, which during a sync is the one from before the
+    // other machine's last save.
+    mocks.InspectBookLock.mockResolvedValue(claimed)
+    await store().openRecentBook('C:/books/novel.draftline')
+    expect(store().dialogs.bookLockWarning).not.toBe(null)
+
+    await store().openRecentBook('C:/books/novel.draftline')
+
+    expect(mocks.OpenRecentProject).not.toHaveBeenCalled()
+    expect('openBookAnyway' in store()).toBe(false)
+  })
+
   it('opens normally when the claim has gone stale', async () => {
     // A stale claim means the other machine stopped without releasing it.
     // Asking about that every time would train the author to click through.
@@ -528,19 +543,6 @@ describe('a book that may be open on another device', () => {
 
     expect(store().dialogs.bookLockWarning).toBe(null)
     expect(mocks.OpenRecentProject).toHaveBeenCalledWith('C:/books/novel.draftline')
-  })
-
-  it('opens the book itself when the author says open anyway', async () => {
-    mocks.InspectBookLock.mockResolvedValue(claimed)
-    await store().openRecentBook('C:/books/novel.draftline')
-    mocks.OpenRecentProject.mockResolvedValue(makeBook({ file_path: 'C:/books/novel.draftline' }))
-
-    await store().openBookAnyway()
-
-    expect(store().dialogs.bookLockWarning).toBe(null)
-    // Asking twice would warn about the claim the author just overrode.
-    expect(mocks.OpenRecentProject).toHaveBeenCalledWith('C:/books/novel.draftline')
-    expect(mocks.OpenBookAsCopy).not.toHaveBeenCalled()
   })
 
   it('makes a copy when the author asks for one', async () => {

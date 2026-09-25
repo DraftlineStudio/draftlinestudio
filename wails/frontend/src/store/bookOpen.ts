@@ -24,7 +24,7 @@ export interface HandoverReport {
 
 export interface BookAdoption {
   /** Open the archive at path, unless another device holds a live claim. */
-  loadBookFromPath: (path: string, force?: boolean) => Promise<void>
+  loadBookFromPath: (path: string) => Promise<void>
   /** Put the book a given call produces on screen. */
   adoptBook: (open: () => Promise<BookData>, path: string) => Promise<void>
   importExternalBook: (path: string) => Promise<void>
@@ -174,19 +174,22 @@ export function createBookAdoption(host: AdoptionHost): BookAdoption {
     // entry guard in each open action prevents a second open racing the first
     // — large archives take a moment and the UI stays live while Go parses
     // them.
-    loadBookFromPath: async (path, force = false) => {
+    // There is no way past these checks. It used to take a force flag, for the
+    // dialog's Open Anyway; that opened whichever copy of the book happened to
+    // be on this machine, which during a sync is the one from before the other
+    // machine's last save. Every remaining route either proves the copy is
+    // current or makes a separate book.
+    loadBookFromPath: async (path) => {
       host.setLockWarning(null)
-      if (!force) {
-        // A handover already granted but not yet finished arriving picks up
-        // where it left off. The grant is kept beside the book precisely so
-        // that walking away and coming back resumes the same wait, with the
-        // same proof, rather than opening whatever copy happens to be there.
-        if (await resumeHandover(path)) return
-        const holder = await deviceHoldingBook(path)
-        if (holder) {
-          host.setLockWarning({ path, info: holder })
-          return
-        }
+      // A handover already granted but not yet finished arriving picks up where
+      // it left off. The grant is kept beside the book precisely so that walking
+      // away and coming back resumes the same wait, with the same proof, rather
+      // than opening whatever copy happens to be there.
+      if (await resumeHandover(path)) return
+      const holder = await deviceHoldingBook(path)
+      if (holder) {
+        host.setLockWarning({ path, info: holder })
+        return
       }
       await adoptBook(() => OpenRecentProject(path), path)
     },

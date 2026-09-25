@@ -183,10 +183,11 @@ interface BookStore extends EditionActions, ChapterActions, CharacterIndexAction
 
   // UI actions
   closeUnsavedWarning: () => void
-  // Answers to "this book may be open on another device". Opening anyway is
-  // allowed on purpose: the warning is a guess, and the author knows things
-  // the sidecar does not — that the laptop is shut, that it was them.
-  openBookAnyway: () => Promise<void>
+  // Answers to "this book may be open on another device". Forcing past a live
+  // claim is deliberately not one of them: until two people can be in a book at
+  // once, the safe answers are to ask for it or to take a copy, and an answer
+  // that can silently replace a writing session is not worth offering beside
+  // two that cannot.
   openBookAsCopy: () => Promise<void>
   cancelBookLockWarning: () => void
   /** Ask the device holding the book to save, let go, and hand it over. */
@@ -595,13 +596,6 @@ export const useBookStore = create<BookStore>((set, get) => ({
   // UI actions
 
   closeUnsavedWarning: () => set(s => ({ dialogs: { ...s.dialogs, showUnsavedWarning: false, pendingAction: null } })),
-
-  openBookAnyway: async () => {
-    const warning = get().dialogs.bookLockWarning
-    if (!warning) return
-    set(s => ({ dialogs: { ...s.dialogs, bookLockWarning: null } }))
-    await loadBookFromPath(warning.path, true)
-  },
 
   openBookAsCopy: async () => {
     const warning = get().dialogs.bookLockWarning

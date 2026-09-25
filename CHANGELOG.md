@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02734] - 2026-09-25
+
+### Changed
+- A book held by another computer can no longer be opened in place. Ask that computer for it, or open a copy, and compare the two afterwards in AI Studio.
+
 ## [0.21.02733] - 2026-09-25
 
 ### Fixed
