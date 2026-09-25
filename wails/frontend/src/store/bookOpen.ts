@@ -13,6 +13,15 @@ import {
   type BookLockWarning, type HandoverOutcome,
 } from './bookLock'
 
+/** How a handover ended, when it ended in anything but an open book. */
+export interface HandoverReport {
+  path: string
+  title: string
+  message: string
+  /** Opening a copy is the way out of every one of these. */
+  offerCopy: boolean
+}
+
 export interface BookAdoption {
   /** Open the archive at path, unless another device holds a live claim. */
   loadBookFromPath: (path: string, force?: boolean) => Promise<void>
@@ -30,6 +39,8 @@ export interface AdoptionHost {
   setOpening: (opening: boolean) => void
   /** The line under the opening overlay's spinner. */
   setOpeningLabel: (label: string) => void
+  /** Says how a handover ended, when it ended in anything but the book. */
+  reportHandover: (report: HandoverReport | null) => void
   /** Offers a way out of a wait that is only as fast as the folder syncs. */
   setWaitingForDevice: (waiting: boolean) => void
   /** Show the book, reset the selection, and start it clean. */
@@ -99,7 +110,16 @@ export function createBookAdoption(host: AdoptionHost): BookAdoption {
         return
       case 'declined':
         stopAskingForBook(path)
-        host.setStatus(outcome.message)
+        // The status bar is not on screen here — a failed open leaves the
+        // writer on the launch screen, which has no status bar — so a refusal
+        // reported that way is a refusal nobody ever sees. It has to be said
+        // where they are standing, next to the thing to do about it.
+        host.reportHandover({
+          path,
+          title: 'The other computer kept the book',
+          message: outcome.message,
+          offerCopy: true,
+        })
         return
       case 'cancelled':
         // Taking the request back matters: left behind, it would be granted
@@ -112,10 +132,20 @@ export function createBookAdoption(host: AdoptionHost): BookAdoption {
         // The other device handed the book over but could not prove what it
         // handed over, which a sync client holding the file open is enough to
         // cause. Opening would be opening on hope, so it does not.
-        host.setStatus(`${outcome.message} Try again in a moment.`)
+        host.reportHandover({
+          path,
+          title: 'This copy could not be checked',
+          message: `${outcome.message} Asking again in a moment usually settles it.`,
+          offerCopy: true,
+        })
         return
       default:
-        host.setStatus(outcome.message)
+        host.reportHandover({
+          path,
+          title: 'The handover did not finish',
+          message: outcome.message,
+          offerCopy: true,
+        })
     }
   }
 
@@ -163,6 +193,7 @@ export function createBookAdoption(host: AdoptionHost): BookAdoption {
 
     requestBookFromDevice: async (path) => {
       host.setLockWarning(null)
+      host.reportHandover(null)
       const asked = await askForBook(path)
       if (!asked || (!asked.asked && asked.message)) {
         host.setStatus(asked?.message || 'Could not ask the other device for this book.')

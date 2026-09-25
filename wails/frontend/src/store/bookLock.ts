@@ -35,12 +35,17 @@ export interface HandoverWatch {
 }
 
 const POLL_EVERY = 1000
-// PATIENCE is how long the wait counts down before it admits the other machine
-// has not answered. It does NOT stop waiting: the request has crossed a sync
-// folder and the answer has to cross back, which can take longer than anybody
-// will sit and watch. It keeps polling until the writer cancels, so an answer
-// that arrives late is still acted on.
-const PATIENCE = 20_000
+// PATIENCE is how long the wait runs before it admits the other machine has not
+// answered. It does NOT stop waiting: the request has crossed a sync folder and
+// the answer has to cross back, which can take longer than anybody will sit and
+// watch. It keeps polling until the writer cancels, so an answer that arrives
+// late is still acted on.
+//
+// It has to clear a whole round trip or it calls a working handover a failure:
+// the request syncs across, the countdown over there runs its fifteen seconds,
+// and the answer syncs back. Saying "no answer" at twenty seconds would be
+// saying it while somebody is still reading the question.
+const PATIENCE = 45_000
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 

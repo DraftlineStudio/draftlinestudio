@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02732] - 2026-09-25
+
+### Fixed
+- Buttons in a dialog no longer break their labels across two lines when the dialog is crowded.
+- A computer asked for a book now has fifteen seconds to keep it rather than five, which was not long enough to read the question.
+- Being refused a book now says so on screen instead of returning quietly to the launch screen, and offers to open a copy.
+- A handover request is no longer ignored by a computer that restarted after the request was made, which made it look unreliable during development.
+
 ## [0.21.02731] - 2026-09-24
 
 ### Added

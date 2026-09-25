@@ -12,6 +12,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -181,8 +182,9 @@ func (a *App) DeclineBookTakeover() types.BookTakeoverResult {
 // the book. It runs inside the claim's goroutine so it stops when the claim
 // does.
 func (a *App) watchForTakeover(path string) {
-	request := booklock.PendingTakeover(path, a.deviceIdentity())
+	request, ignored := booklock.PendingTakeoverReason(path, a.deviceIdentity())
 	if request == nil {
+		a.noteIgnoredTakeover(ignored)
 		return
 	}
 
@@ -332,6 +334,26 @@ func dispossessedMessage(holder *booklock.Holder) string {
 		where = holder.Device
 	}
 	return where + " has this book now, so it was closed here."
+}
+
+// noteIgnoredTakeover says once, in the log, why a request beside the book is
+// not being put to the writer.
+//
+// Without it the four ways a request can be passed over are indistinguishable
+// from the feature being broken: the file is in the folder, the writer can see
+// it is there, and the application does nothing and says nothing. Once per
+// reason, not once every five seconds.
+func (a *App) noteIgnoredTakeover(reason string) {
+	if reason == "" {
+		return
+	}
+	a.device.mu.Lock()
+	repeat := a.device.lastIgnored == reason
+	a.device.lastIgnored = reason
+	a.device.mu.Unlock()
+	if !repeat {
+		log.Printf("a handover request is beside this book but was passed over: %s", reason)
+	}
 }
 
 // requestTarget is who the asking device is waiting on, for a sentence.

@@ -2,10 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useBookStore } from '../../store/bookStore'
 
-// How long whoever is at this machine has to keep the book. It is short on
-// purpose: the usual case is that nobody is here at all, the machine was left
-// running, and the writer is at the other one waiting to work.
-const SECONDS = 5
+// How long whoever is at this machine has to keep the book.
+//
+// Five was too short to finish reading the dialog it appears in, which makes the
+// choice theoretical: a countdown nobody can read is an announcement. Fifteen is
+// long enough to read two sentences and decide, and still short enough that the
+// usual case — nobody here at all, the machine left running, the writer waiting
+// at the other one — resolves itself quickly.
+const SECONDS = 15
 
 // The question this machine is asked when the writer's other device wants the
 // book. Saying nothing hands it over, which is the right default for a desktop

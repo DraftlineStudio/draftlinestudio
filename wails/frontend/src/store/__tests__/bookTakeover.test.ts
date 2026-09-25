@@ -151,7 +151,7 @@ describe('asking another device for a book', () => {
     expect(store().isWaitingForDevice).toBe(false)
   })
 
-  it('reports a refusal instead of waiting on it forever', async () => {
+  it('puts a refusal on screen, where the status bar is not', async () => {
     mocks.RequestBookTakeover.mockResolvedValue(waiting())
     mocks.BookTakeoverStatus.mockResolvedValue({
       ...waiting(), answered: true, declined: true,
@@ -163,6 +163,28 @@ describe('asking another device for a book', () => {
 
     expect(mocks.OpenRecentProject).not.toHaveBeenCalled()
     expect(store().isWaitingForDevice).toBe(false)
+    // The launch screen has no status bar, so a refusal reported there is a
+    // refusal nobody sees: the overlay just vanishes.
+    const report = store().dialogs.handoverReport
+    expect(report?.message).toContain('kept the book')
+    expect(report?.offerCopy).toBe(true)
+  })
+
+  it('opens a copy from the refusal, which is the way out of it', async () => {
+    mocks.RequestBookTakeover.mockResolvedValue(waiting())
+    mocks.BookTakeoverStatus.mockResolvedValue({
+      ...waiting(), answered: true, declined: true,
+      message: 'Somebody is working on STUDIO-DESKTOP, so it kept the book.',
+    })
+    mocks.OpenBookAsCopy.mockResolvedValue(makeBook())
+
+    bookStoreMod.useBookStore.setState(s => ({ dialogs: { ...s.dialogs, bookLockWarning: { path: PATH, info: { held: true, stale: false, device: 'STUDIO-DESKTOP', platform: '', app: '', last_seen: '', message: '' } } } }))
+    await store().askDeviceForBook()
+    await store().openCopyAfterHandover()
+    await flush()
+
+    expect(mocks.OpenBookAsCopy).toHaveBeenCalledWith(PATH)
+    expect(store().dialogs.handoverReport).toBeNull()
   })
 })
 

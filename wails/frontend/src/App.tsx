@@ -26,6 +26,7 @@ import NewChapterDialog from './components/dialogs/NewChapterDialog'
 import NewBookWizard from './components/dialogs/NewBookWizard'
 import UnsavedChangesDialog from './components/dialogs/UnsavedChangesDialog'
 import BookLockDialog from './components/dialogs/BookLockDialog'
+import HandoverResultDialog from './components/dialogs/HandoverResultDialog'
 import TakeoverRequestDialog from './components/dialogs/TakeoverRequestDialog'
 
 // Screens and dialogs that are not on screen at startup. Each one is a
@@ -326,6 +327,7 @@ export default function App() {
         {dialogs.showNewBookWizard && <NewBookWizard onCreated={() => setShowWelcome(false)} />}
         {dialogs.bookLockWarning && <BookLockDialog />}
         {dialogs.takeoverRequest && <TakeoverRequestDialog />}
+        {dialogs.handoverReport && <HandoverResultDialog />}
         {showSettings && <Suspense fallback={null}><AppSettingsDialog /></Suspense>}
         {openingOverlay}
         <BackendErrorNotice />
@@ -366,6 +368,7 @@ export default function App() {
       {dialogs.showUnsavedWarning && <UnsavedChangesDialog />}
       {dialogs.bookLockWarning && <BookLockDialog />}
         {dialogs.takeoverRequest && <TakeoverRequestDialog />}
+        {dialogs.handoverReport && <HandoverResultDialog />}
       {showExportWizard && <Suspense fallback={null}><ExportWizard /></Suspense>}
       {showChapterHistory && <Suspense fallback={null}><ChapterHistoryDialog /></Suspense>}
       {showSettings && <Suspense fallback={null}><AppSettingsDialog /></Suspense>}

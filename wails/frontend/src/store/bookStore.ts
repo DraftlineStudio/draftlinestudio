@@ -16,7 +16,7 @@ import { createEditionActions, type EditionActions } from './editions'
 import { createChapterActions, getSectionArray, newChapterID, type ChapterActions } from './chapters'
 import { createCharacterIndexActions, type CharacterIndexActions } from './characterIndex'
 import { createSavePipeline, type SaveOutcome } from './bookSave'
-import { createBookAdoption } from './bookOpen'
+import { createBookAdoption, type HandoverReport } from './bookOpen'
 
 export type { SaveOutcome }
 import type { BookLockWarning } from './bookLock'
@@ -49,6 +49,7 @@ const { loadBookFromPath, adoptBook, importExternalBook, requestBookFromDevice, 
   setOpening: (isOpening) => useBookStore.setState({ isOpening }),
   setOpeningLabel: (openingLabel) => useBookStore.setState({ openingLabel }),
   setWaitingForDevice: (isWaitingForDevice) => useBookStore.setState({ isWaitingForDevice }),
+  reportHandover: (handoverReport) => useBookStore.setState(s => ({ dialogs: { ...s.dialogs, handoverReport } })),
   placeBook: (book, currentSection) => useBookStore.setState({
     book, currentSection, currentIndex: 0, isDirty: false, analysisRevision: 0,
   }),
@@ -110,6 +111,9 @@ interface DialogState {
   // Set when another device is asking for the book open here, so whoever is at
   // this machine gets a few seconds to keep it.
   takeoverRequest: types.BookTakeoverRequest | null
+  // Set when asking another computer for a book ended in anything but the
+  // book: a refusal, or a copy that could not be checked.
+  handoverReport: HandoverReport | null
 }
 
 interface BookStore extends EditionActions, ChapterActions, CharacterIndexActions {
@@ -189,6 +193,9 @@ interface BookStore extends EditionActions, ChapterActions, CharacterIndexAction
   askDeviceForBook: () => Promise<void>
   /** Stop waiting on the other device and take the request back. */
   stopWaitingForDevice: () => void
+  /** Take the copy offered after a refusal, or a copy that failed its check. */
+  openCopyAfterHandover: () => Promise<void>
+  dismissHandoverReport: () => void
   /** This machine hands its book to whoever asked: save, release, close. */
   grantBookToDevice: () => Promise<void>
   /** Stand down: another device took the book this session has open. */
@@ -277,7 +284,7 @@ export const useBookStore = create<BookStore>((set, get) => ({
   analysisRevision: 0,
 
   // UI state
-  dialogs: { showUnsavedWarning: false, pendingAction: null, showNewBookWizard: false, bookLockWarning: null, takeoverRequest: null },
+  dialogs: { showUnsavedWarning: false, pendingAction: null, showNewBookWizard: false, bookLockWarning: null, takeoverRequest: null, handoverReport: null },
 
   viewMode: 'editor',
   setViewMode: (mode) => set({ viewMode: mode }),
@@ -613,6 +620,15 @@ export const useBookStore = create<BookStore>((set, get) => ({
   },
 
   stopWaitingForDevice: () => cancelBookRequest(),
+
+  openCopyAfterHandover: async () => {
+    const report = get().dialogs.handoverReport
+    if (!report) return
+    set(s => ({ dialogs: { ...s.dialogs, handoverReport: null } }))
+    await adoptBook(() => OpenBookAsCopy(report.path), report.path)
+  },
+
+  dismissHandoverReport: () => set(s => ({ dialogs: { ...s.dialogs, handoverReport: null } })),
 
   // The handover, from the side that has the book. The save has to happen here
   // and finish first: the manuscript lives in this store, not in Go, and the

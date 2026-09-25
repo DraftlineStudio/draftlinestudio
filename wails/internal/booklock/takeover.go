@@ -101,16 +101,26 @@ func (t *Takeover) Fingerprinted() bool {
 	return t != nil && t.ArchiveSize > 0 && t.ArchiveSHA256 != ""
 }
 
-// Asks reports whether a request is aimed at the given session.
+// Asks reports whether a request is aimed at this holder.
+//
+// The session is the precise answer and is tried first. It cannot be the only
+// answer: a request names the session that held the book at the moment it was
+// written, and that session ends every time the application restarts — which
+// during development is every few minutes, and in ordinary use is any crash,
+// update or quit-and-reopen while a request is in flight. The new session
+// reclaims the same book on the same machine and would ignore the request for
+// good, because it is addressed to a process that no longer exists.
+//
+// So a request for this DEVICE is a request for the book this device has open.
+// What stops an abandoned request being acted on much later is not the session:
+// it is TakeoverExpires, and the asking side withdrawing.
 func (t *Takeover) Asks(self Identity) bool {
 	if t == nil {
 		return false
 	}
-	if t.TargetSession != "" {
-		return t.TargetSession == self.Session
+	if t.TargetSession != "" && t.TargetSession == self.Session {
+		return true
 	}
-	// A request written without knowing the holder names no session. Fall back
-	// to the device, which is the comparison isSelf makes.
 	return t.TargetDevice == "" || strings.EqualFold(t.TargetDevice, self.Device)
 }
 
@@ -163,19 +173,38 @@ func ReadTakeover(archivePath string) (*Takeover, bool) {
 // is a writer who gave up, and granting to nobody would save, release and close
 // a book on a machine with nobody sitting at it.
 func PendingTakeover(archivePath string, self Identity) *Takeover {
+	request, _ := PendingTakeoverReason(archivePath, self)
+	return request
+}
+
+// PendingTakeoverReason is PendingTakeover, and says why a request sitting
+// beside the book was passed over.
+//
+// Every reason here is invisible from the outside: the file is in the folder,
+// the writer can see it, and nothing happens. That is indistinguishable from a
+// bug, so the reason gets logged rather than inferred.
+//
+// The returned reason is empty when there is nothing there to explain.
+func PendingTakeoverReason(archivePath string, self Identity) (*Takeover, string) {
 	t, ok := ReadTakeover(archivePath)
-	if !ok || t.Status != TakeoverAsked {
-		return nil
+	if !ok {
+		return nil, ""
 	}
-	if t.Mine(self) || !t.Asks(self) {
-		return nil
+	if t.Status != TakeoverAsked {
+		return nil, fmt.Sprintf("it was already answered (%s) and is a receipt now", t.Status)
+	}
+	if t.Mine(self) {
+		return nil, "it is this session's own request"
+	}
+	if !t.Asks(self) {
+		return nil, fmt.Sprintf("it asks %q, and this is %q", t.TargetDevice, self.Device)
 	}
 	// A clock behind ours makes a request look older than it is; one ahead
 	// makes it look like the future. Only the first is worth refusing.
-	if time.Since(t.RequestedAt) > TakeoverExpires {
-		return nil
+	if age := time.Since(t.RequestedAt); age > TakeoverExpires {
+		return nil, fmt.Sprintf("it was made %s ago, which is past the %s limit (check the clocks on both machines)", age.Round(time.Second), TakeoverExpires)
 	}
-	return t
+	return t, ""
 }
 
 // GrantTakeover hands a book over, recording the archive as this session is

@@ -19,21 +19,22 @@ export default function BookLockDialog() {
           {warning.info.message || `This book may be open on ${where}.`}
         </p>
         <p className="dialog-body">
-          Asking for it is the clean way: {where} saves the book, lets go of it, and
-          tells Draftline here what it saved, so this machine can be sure it has that
-          version and not an older copy the sync client has yet to replace.
+          Asking for it is the clean way: that computer saves the book, lets go of
+          it, and says what it saved, so this one can be sure it has that version
+          and not an older copy the sync client has yet to replace.
         </p>
         <p className="dialog-body">
           If it does not answer, open a copy. Whichever device saves last wins
           otherwise, and the other one&rsquo;s work is replaced.
         </p>
+        {/* The device name is in the sentence above, not in a button: a
+            hostname can be any length, and a button is not the place to find
+            that out. */}
         <div className="dialog-actions">
           <button className="dialog-btn" onClick={cancelBookLockWarning}>Cancel</button>
           <button className="dialog-btn" onClick={openBookAnyway}>Open Anyway</button>
           <button className="dialog-btn" onClick={openBookAsCopy}>Open a Copy</button>
-          <button className="dialog-btn primary" onClick={askDeviceForBook}>
-            Ask {where} for it
-          </button>
+          <button className="dialog-btn primary" onClick={askDeviceForBook}>Ask For It</button>
         </div>
       </div>
     </div>

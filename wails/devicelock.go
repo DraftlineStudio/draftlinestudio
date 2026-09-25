@@ -32,6 +32,9 @@ type deviceClaim struct {
 	// and records whether the writer has been told. See watchForDispossession.
 	dispossessed int
 	stoodDown    bool
+	// lastIgnored is the last reason a takeover request was passed over, so the
+	// log says it once rather than every five seconds.
+	lastIgnored string
 }
 
 // sessionID identifies this run of the application. A claim carrying it is

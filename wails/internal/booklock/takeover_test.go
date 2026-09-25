@@ -294,24 +294,26 @@ func TestNobodyAnswersTheirOwnRequest(t *testing.T) {
 	}
 }
 
-// The request names the session it is asking. A session that has since reopened
-// the book, or a third machine that took the claim, was not the one asked — and
-// this is what keeps a request left over from an earlier session from handing a
-// book over out of nowhere.
-func TestOnlyTheSessionThatWasAskedAnswers(t *testing.T) {
+// A request is addressed to the machine, not to the process. The session that
+// was asked ends on every restart — constantly under a dev server, and on any
+// crash, update or quit while a request is in flight — and the session that
+// reopens the same book on the same machine is who the writer meant.
+//
+// A different machine is still not the addressee.
+func TestTheMachineThatWasAskedAnswersAcrossARestart(t *testing.T) {
 	archive := fixture(t)
 	holder := hold(t, archive, desktop("s-desktop-first"))
 	if _, err := RequestTakeover(archive, laptop("s-laptop"), holder); err != nil {
 		t.Fatalf("RequestTakeover: %v", err)
 	}
-	if pending := PendingTakeover(archive, desktop("s-desktop-reopened")); pending != nil {
-		t.Fatalf("pending = %+v, want the new session to ignore it", pending)
+	if PendingTakeover(archive, desktop("s-desktop-first")) == nil {
+		t.Fatal("the session that was asked should see it")
+	}
+	if PendingTakeover(archive, desktop("s-desktop-restarted")) == nil {
+		t.Fatal("the same machine after a restart should still see it")
 	}
 	if pending := PendingTakeover(archive, phone("s-phone")); pending != nil {
 		t.Fatalf("pending = %+v, want a bystander to ignore it", pending)
-	}
-	if PendingTakeover(archive, desktop("s-desktop-first")) == nil {
-		t.Fatal("the session that was asked should still see it")
 	}
 }
 
@@ -352,5 +354,77 @@ func TestAnsweringNothingIsAnError(t *testing.T) {
 	}
 	if _, err := DeclineTakeover(archive, desktop("s-desktop")); err == nil {
 		t.Fatal("declining with no request should fail")
+	}
+}
+
+// Every way a request can be passed over is silent from the outside: the file
+// is in the folder and nothing happens. Each one has to be able to say why, or
+// a working feature and a broken one look identical.
+func TestPassingOverARequestSaysWhy(t *testing.T) {
+	cases := []struct {
+		name  string
+		setup func(t *testing.T, archive string)
+		self  Identity
+		want  string
+	}{
+		{
+			name:  "already answered",
+			setup: func(t *testing.T, archive string) { mustDecline(t, archive) },
+			self:  desktop("s-desktop"),
+			want:  "already answered",
+		},
+		{
+			name:  "our own request",
+			setup: func(t *testing.T, archive string) {},
+			self:  laptop("s-laptop"),
+			want:  "own request",
+		},
+		{
+			name:  "asked somebody else",
+			setup: func(t *testing.T, archive string) {},
+			self:  phone("s-phone"),
+			want:  "and this is",
+		},
+		{
+			name:  "expired",
+			setup: func(t *testing.T, archive string) { backdate(t, archive, TakeoverExpires+time.Minute) },
+			self:  desktop("s-desktop"),
+			want:  "check the clocks",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			archive := fixture(t)
+			holder := hold(t, archive, desktop("s-desktop"))
+			if _, err := RequestTakeover(archive, laptop("s-laptop"), holder); err != nil {
+				t.Fatalf("RequestTakeover: %v", err)
+			}
+			tc.setup(t, archive)
+
+			request, why := PendingTakeoverReason(archive, tc.self)
+			if request != nil {
+				t.Fatalf("request = %+v, want it passed over", request)
+			}
+			if !strings.Contains(why, tc.want) {
+				t.Fatalf("reason = %q, want it to mention %q", why, tc.want)
+			}
+		})
+	}
+}
+
+// Nothing beside the book is not a thing to explain; it is the normal state.
+func TestNoRequestIsNotAReason(t *testing.T) {
+	archive := fixture(t)
+	hold(t, archive, desktop("s-desktop"))
+	if request, why := PendingTakeoverReason(archive, desktop("s-desktop")); request != nil || why != "" {
+		t.Fatalf("request = %+v, reason = %q, want silence", request, why)
+	}
+}
+
+func mustDecline(t *testing.T, archive string) {
+	t.Helper()
+	if _, err := DeclineTakeover(archive, desktop("s-desktop")); err != nil {
+		t.Fatal(err)
 	}
 }

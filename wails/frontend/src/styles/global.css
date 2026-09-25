@@ -2923,6 +2923,7 @@ html, body, #root {
 .dialog-select option { background: var(--bg-panel); }
 .dialog-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 20px;
@@ -2930,6 +2931,10 @@ html, body, #root {
 .dialog-btn {
   height: 30px;
   padding: 0 16px;
+  /* A label is one phrase. Without this a dialog with four buttons squeezes
+     them until the words break mid-phrase and spill out of the fixed height;
+     the row wraps whole buttons instead. */
+  white-space: nowrap;
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--bg-surface-alt);
