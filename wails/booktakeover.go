@@ -70,7 +70,8 @@ func (a *App) BookTakeoverStatus(path string) types.BookTakeoverStatus {
 	self := a.deviceIdentity()
 	status := types.BookTakeoverStatus{}
 
-	if holder := booklock.Inspect(path, self); holder != nil && !holder.Mine && !holder.Stale {
+	holder := booklock.Inspect(path, self)
+	if holder != nil && !holder.Mine && !holder.Stale {
 		status.HeldElsewhere = true
 	}
 
@@ -92,7 +93,16 @@ func (a *App) BookTakeoverStatus(path string) types.BookTakeoverStatus {
 		status.Answered = true
 		status.Granted = true
 	default:
-		status.Message = "Waiting for " + requestTarget(request) + " to answer…"
+		// Unanswered. Whether this machine may take the book on a timer is not
+		// a matter of waiting long enough: it turns on whether the copy here is
+		// the one the holder last wrote. The holder stamps that into its claim
+		// as soon as it sees the request, without needing anybody to answer.
+		confirm := booklock.ConfirmedCurrent(path, holder)
+		status.CanTakeOver = confirm.Arrived
+		status.Unverifiable = confirm.Unverifiable
+		status.LocalBytes = confirm.LocalBytes
+		status.ExpectedBytes = confirm.ExpectedBytes
+		status.Message = waitingMessage(request, confirm)
 		return status
 	}
 
@@ -214,6 +224,8 @@ func (a *App) takeoverToAnnounce(path string) *booklock.Takeover {
 	key := request.Session + "|" + request.RequestedAt.UTC().Format(time.RFC3339Nano)
 	a.device.mu.Lock()
 	seen := a.device.announced == key
+	held := a.device.lock
+	stamped := a.device.stamped == key
 	if !seen {
 		a.device.announced = key
 		// A reason that stopped applying should be able to be logged again if
@@ -221,6 +233,26 @@ func (a *App) takeoverToAnnounce(path string) *booklock.Takeover {
 		a.device.lastIgnored = ""
 	}
 	a.device.mu.Unlock()
+
+	// Say what this machine has, before anybody is asked anything. If nobody is
+	// sitting here the question goes unanswered and the asking machine takes the
+	// book on a timer — and this stamp is the only thing it can check its own
+	// copy against when it does.
+	//
+	// Retried on every look until it takes. The one thing that stops it is a
+	// sync client holding the book open while it uploads, which is a moment
+	// long, not a state — and a stamp that was tried once and lost that race
+	// would leave the asking machine waiting for something that is never coming.
+	if !stamped {
+		if err := held.StampClaim(path); err != nil {
+			log.Printf("could not record what this machine has of the book (will retry): %v", err)
+		} else {
+			a.device.mu.Lock()
+			a.device.stamped = key
+			a.device.mu.Unlock()
+		}
+	}
+
 	if seen {
 		return nil
 	}
@@ -382,6 +414,25 @@ func requestTarget(request *booklock.Takeover) string {
 		return request.TargetDevice
 	}
 	return "the other device"
+}
+
+// waitingMessage is what the asking machine shows while nothing has answered.
+// It says which of the two things it is waiting on, because they end
+// differently: an answer can come at any moment, whereas a copy still crossing
+// the folder is the thing that has to finish before a takeover is allowed.
+func waitingMessage(request *booklock.Takeover, confirm booklock.ArrivalState) string {
+	where := requestTarget(request)
+	switch {
+	case confirm.Arrived:
+		return "Waiting for " + where + " to answer…"
+	case confirm.Unverifiable:
+		return "Waiting for " + where + " to say what it has of this book…"
+	case confirm.ExpectedBytes > 0 && confirm.LocalBytes < confirm.ExpectedBytes:
+		return fmt.Sprintf("Waiting for this machine to finish syncing the book from %s… %s of %s.",
+			where, megabytes(confirm.LocalBytes), megabytes(confirm.ExpectedBytes))
+	default:
+		return "Waiting for this machine to finish syncing the book from " + where + "…"
+	}
 }
 
 func requestMessage(request *booklock.Takeover) string {

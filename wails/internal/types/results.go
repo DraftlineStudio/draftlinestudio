@@ -141,6 +141,9 @@ type BookTakeoverStatus struct {
 	// which is the only proof that the copy is current rather than whatever
 	// the sync client has not replaced yet.
 	Arrived bool `json:"arrived"`
+	// CanTakeOver means nothing has answered AND the copy here is provably the
+	// one the holder last wrote, so taking the book cannot lose their work.
+	CanTakeOver bool `json:"can_take_over"`
 	// Unverifiable means the handover carried no fingerprint, so there is
 	// nothing to check this copy against.
 	Unverifiable  bool   `json:"unverifiable"`

@@ -22,6 +22,10 @@ export async function deviceHoldingBook(path: string): Promise<types.BookLockInf
 /** Why a wait for another device ended. */
 export type HandoverOutcome =
   | { status: 'ready' }
+  /** Nothing answered, so the book is this machine's to take. */
+  | { status: 'unanswered' }
+  /** The claim went away while we waited: the book is nobody's now. */
+  | { status: 'released' }
   | { status: 'unverifiable'; message: string }
   | { status: 'declined'; message: string }
   | { status: 'cancelled' }
@@ -35,17 +39,17 @@ export interface HandoverWatch {
 }
 
 const POLL_EVERY = 1000
-// PATIENCE is how long the wait runs before it admits the other machine has not
-// answered. It does NOT stop waiting: the request has crossed a sync folder and
-// the answer has to cross back, which can take longer than anybody will sit and
-// watch. It keeps polling until the writer cancels, so an answer that arrives
-// late is still acted on.
+// GIVE_UP is how long the other machine gets before this one takes the book.
 //
-// It has to clear a whole round trip or it calls a working handover a failure:
-// the request syncs across, the countdown over there runs its fifteen seconds,
-// and the answer syncs back. Saying "no answer" at twenty seconds would be
-// saying it while somebody is still reading the question.
-const PATIENCE = 45_000
+// Thirty seconds is a whole round trip with room to spare: the request syncs
+// across, the fifteen-second countdown runs there, and the answer syncs back. A
+// machine that is running answers inside that. One that does not answer is
+// almost always switched off or asleep — which is also why taking the book from
+// it is safe, since a machine that is not running is not writing either.
+//
+// The writer is told this number before the wait starts, because a wait that
+// ends by doing something has to say what it is going to do.
+const GIVE_UP = 30_000
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
@@ -71,6 +75,10 @@ export function stopAskingForBook(path: string): void {
 // copy opens perfectly and is yesterday's book.
 export async function waitForHandover(path: string, watch: HandoverWatch): Promise<HandoverOutcome> {
   const started = Date.now()
+  // Consecutive looks that found no claim at all. Two, because a sidecar that
+  // is briefly unreadable — a sync client mid-write — looks exactly like one
+  // that is gone, and one flicker should not take a book off somebody.
+  let released = 0
   for (;;) {
     if (watch.isCancelled()) return { status: 'cancelled' }
 
@@ -92,16 +100,49 @@ export async function waitForHandover(path: string, watch: HandoverWatch): Promi
       return { status: 'error', message: 'the handover request is no longer there' }
     }
 
+    // The claim went away while we were waiting. Nobody holds the book, so
+    // there is nothing left to wait for and nothing to take it from.
+    //
+    // This is the closed-a-moment-ago case: Draftline was shut over there, its
+    // claim was deleted, and the deletion is only now arriving. Nothing is
+    // running to answer the request or to stamp what it has, so without this
+    // the wait would sit there until the writer gave up — even though the book
+    // has been free the whole time.
+    if (!status.answered && !status.held_elsewhere) {
+      if (++released >= 2) return { status: 'released' }
+    } else {
+      released = 0
+    }
+
     const waited = Date.now() - started
-    watch.onProgress(waited < PATIENCE ? status.message : stillWaiting(status))
+    // Silence runs out; an answer does not. A refusal is an answer and ends the
+    // wait on its own, and a grant means the book is coming, however long its
+    // sync client takes over a hundred megabytes. Only nothing at all expires.
+    //
+    // And running out of silence is not enough on its own. A machine that never
+    // answers is a machine that is RUNNING with nobody in front of it — an
+    // unattended one stops heartbeating and its claim goes stale, which raises
+    // no question in the first place. So it was recently writing, and the copy
+    // here has to be shown to be the one it last wrote before taking the book
+    // can be safe. can_take_over is that check, made against the fingerprint the
+    // holder stamps into its claim the moment it sees the request.
+    if (!status.answered && waited >= GIVE_UP && status.can_take_over) {
+      return { status: 'unanswered' }
+    }
+
+    watch.onProgress(status.answered ? status.message : countdown(status, waited))
     await sleep(POLL_EVERY)
   }
 }
 
-// stillWaiting is what the overlay says once the countdown has run out. It has
-// to read as "this is slow", not as "this has failed": the answer may well be
-// on its way through the sync folder.
-function stillWaiting(status: types.BookTakeoverStatus): string {
-  if (status.granted) return status.message
-  return `${status.message} It has not answered yet.`
+// countdown says how long the other machine has left. A wait that ends by doing
+// something has to say what it is going to do, and when.
+//
+// Once the clock has run out the sentence stops promising a takeover and starts
+// describing what is still outstanding, which by then is the sync: the message
+// from the backend already names it.
+function countdown(status: types.BookTakeoverStatus, waited: number): string {
+  if (waited >= GIVE_UP) return status.message
+  const left = Math.max(1, Math.ceil((GIVE_UP - waited) / 1000))
+  return `${status.message} Taking it in ${left} second${left === 1 ? '' : 's'} if there is no answer.`
 }

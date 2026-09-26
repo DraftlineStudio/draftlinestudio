@@ -54,6 +54,13 @@ type claim struct {
 	Session  string    `json:"session"`
 	OpenedAt time.Time `json:"opened_at"`
 	LastSeen time.Time `json:"last_seen"`
+
+	// The book on the holder's disk, stamped when somebody asks for it. It is
+	// what lets a machine that is never answered check, before taking the book,
+	// that the copy beside it is the one the holder last wrote.
+	ArchiveSize   int64     `json:"archive_size,omitempty"`
+	ArchiveSHA256 string    `json:"archive_sha256,omitempty"`
+	StampedAt     time.Time `json:"stamped_at,omitempty"`
 }
 
 // Holder describes a claim on a book, for showing to a writer.
@@ -66,6 +73,11 @@ type Holder struct {
 	LastSeen time.Time
 	Stale    bool
 	Mine     bool
+
+	// ArchiveSize and ArchiveSHA256 describe the book as the holder last wrote
+	// it, and are empty until somebody asks for it. See StampClaim.
+	ArchiveSize   int64
+	ArchiveSHA256 string
 }
 
 // Lock is a held claim.
@@ -110,6 +122,9 @@ func (c claim) holder(now time.Time, self Identity) *Holder {
 		LastSeen: c.LastSeen,
 		Stale:    now.Sub(c.LastSeen) > StaleAfter,
 		Mine:     isSelf(c, self),
+
+		ArchiveSize:   c.ArchiveSize,
+		ArchiveSHA256: c.ArchiveSHA256,
 	}
 }
 

@@ -274,6 +274,67 @@ func writeTakeover(archivePath string, t *Takeover) error {
 	return nil
 }
 
+// StampClaim records the book on this machine's disk into the claim it holds,
+// so a device that asks for the book can check its own copy against it without
+// anybody answering.
+//
+// It is called when a request appears, not on every save. A machine that is
+// never answered is not an unattended one — an unattended machine stops
+// heartbeating and its claim goes stale, and a stale claim raises no question
+// at all. It is a machine that is running, was recently writing, and has nobody
+// sitting at it, which is exactly the case where the asking side must not
+// assume the copy beside it is current.
+//
+// The stamp lives on the Lock so the next heartbeat carries it rather than
+// overwriting it.
+func (l *Lock) StampClaim(archivePath string) error {
+	if l == nil {
+		return nil
+	}
+	size, sum, err := fingerprint(archivePath)
+	if err != nil {
+		return fmt.Errorf("booklock: stamp claim: %w", err)
+	}
+	now := time.Now().UTC()
+	l.state.ArchiveSize = size
+	l.state.ArchiveSHA256 = sum
+	l.state.StampedAt = now
+	l.state.LastSeen = now
+
+	data, err := json.MarshalIndent(l.state, "", "  ")
+	if err != nil {
+		return fmt.Errorf("booklock: encode claim: %w", err)
+	}
+	if err := fsutil.WriteFileAtomic(l.file, data, 0o644); err != nil {
+		return fmt.Errorf("booklock: write claim: %w", err)
+	}
+	hide(l.file)
+	return nil
+}
+
+// Stamped reports whether a holder has said what its copy of the book is.
+func (h *Holder) Stamped() bool {
+	return h != nil && h.ArchiveSize > 0 && h.ArchiveSHA256 != ""
+}
+
+// ConfirmedCurrent compares the book on this machine against what the holder
+// last stamped into its claim.
+//
+// This is what "after confirming it has synced the most up-to-date copy" means:
+// the holder said what it had, and these are the same bytes. Unverifiable means
+// the holder never said — it is not running, or could not read its own file —
+// and there is nothing here to confirm against.
+func ConfirmedCurrent(archivePath string, holder *Holder) ArrivalState {
+	if holder == nil || !holder.Stamped() {
+		state := ArrivalState{Unverifiable: true}
+		if info, err := os.Stat(archivePath); err == nil {
+			state.LocalBytes = info.Size()
+		}
+		return state
+	}
+	return compareAgainst(archivePath, holder.ArchiveSize, holder.ArchiveSHA256)
+}
+
 // ArrivalState is how far a granted book has got through the sync folder.
 type ArrivalState struct {
 	// Arrived is true only when the bytes on this machine hash to what the
@@ -292,23 +353,33 @@ type ArrivalState struct {
 // every second to watch it not match yet would peg a disk for nothing, and a
 // size that differs has already proved the file is still on its way.
 func Arrival(archivePath string, t *Takeover) ArrivalState {
-	state := ArrivalState{}
-	if info, err := os.Stat(archivePath); err == nil {
-		state.LocalBytes = info.Size()
-	}
 	if t == nil || !t.Fingerprinted() {
-		state.Unverifiable = true
+		state := ArrivalState{Unverifiable: true}
+		if info, err := os.Stat(archivePath); err == nil {
+			state.LocalBytes = info.Size()
+		}
 		return state
 	}
-	state.ExpectedBytes = t.ArchiveSize
-	if state.LocalBytes != t.ArchiveSize {
-		return state
-	}
-	_, sum, err := fingerprint(archivePath)
+	return compareAgainst(archivePath, t.ArchiveSize, t.ArchiveSHA256)
+}
+
+// compareAgainst is the check both the grant and the claim stamp come down to:
+// are the bytes on this machine the bytes the other one wrote.
+func compareAgainst(archivePath string, size int64, sum string) ArrivalState {
+	state := ArrivalState{ExpectedBytes: size}
+	info, err := os.Stat(archivePath)
 	if err != nil {
 		return state
 	}
-	state.Arrived = sum == t.ArchiveSHA256
+	state.LocalBytes = info.Size()
+	if state.LocalBytes != size {
+		return state
+	}
+	_, local, err := fingerprint(archivePath)
+	if err != nil {
+		return state
+	}
+	state.Arrived = local == sum
 	return state
 }
 

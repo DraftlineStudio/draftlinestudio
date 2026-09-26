@@ -108,6 +108,29 @@ export function createBookAdoption(host: AdoptionHost): BookAdoption {
         stopAskingForBook(path)
         await adoptBook(() => OpenRecentProject(path), path)
         return
+      case 'released':
+        // Nobody holds it any more, so this is an ordinary open of a free book
+        // — the same thing that happens when no claim was ever there.
+        stopAskingForBook(path)
+        host.setStatus('The other computer had already let this book go.')
+        await adoptBook(() => OpenRecentProject(path), path)
+        return
+      case 'unanswered':
+        // Nothing answered, so the book is this machine's to take. Opening it
+        // claims it, and the other machine — if it is running at all — sees a
+        // claim that is not its own within seconds, puts anything unsaved in a
+        // file of its own, and closes the book.
+        //
+        // There is no fingerprint to check here, because a fingerprint is
+        // something the other machine writes when it hands over and nothing
+        // handed over. What makes that acceptable rather than reckless is what
+        // silence means: a machine that will not answer in thirty seconds is
+        // switched off or asleep, and a machine that is not running has not
+        // written to the book either.
+        stopAskingForBook(path)
+        host.setStatus('The other computer did not answer, so this one took the book.')
+        await adoptBook(() => OpenRecentProject(path), path)
+        return
       case 'declined':
         stopAskingForBook(path)
         // The status bar is not on screen here — a failed open leaves the

@@ -428,3 +428,79 @@ func mustDecline(t *testing.T, archive string) {
 		t.Fatal(err)
 	}
 }
+
+// The holder says what it has the moment somebody asks, so a machine that is
+// never answered can still check its own copy before taking the book.
+func TestAStampedClaimLetsTheAskerConfirmItsCopy(t *testing.T) {
+	archive := fixture(t)
+	lock, _, err := Claim(archive, "bk-1", desktop("s-desktop"))
+	if err != nil {
+		t.Fatalf("Claim: %v", err)
+	}
+	if holder := Inspect(archive, laptop("s-laptop")); holder.Stamped() {
+		t.Fatal("a claim says nothing about the book until it is asked for")
+	}
+	if err := lock.StampClaim(archive); err != nil {
+		t.Fatalf("StampClaim: %v", err)
+	}
+
+	holder := Inspect(archive, laptop("s-laptop"))
+	if !holder.Stamped() {
+		t.Fatalf("holder = %+v, want it to say what it has", holder)
+	}
+	if state := ConfirmedCurrent(archive, holder); !state.Arrived {
+		t.Fatalf("state = %+v, want the copy confirmed", state)
+	}
+}
+
+// The stamp has to survive the heartbeat. The heartbeat rewrites the whole
+// claim from memory, so a stamp written only to disk would be erased two
+// minutes later and the asking machine would wait forever.
+func TestAStampSurvivesTheHeartbeat(t *testing.T) {
+	archive := fixture(t)
+	lock, _, err := Claim(archive, "bk-1", desktop("s-desktop"))
+	if err != nil {
+		t.Fatalf("Claim: %v", err)
+	}
+	if err := lock.StampClaim(archive); err != nil {
+		t.Fatalf("StampClaim: %v", err)
+	}
+	if err := lock.Heartbeat(); err != nil {
+		t.Fatalf("Heartbeat: %v", err)
+	}
+	if holder := Inspect(archive, laptop("s-laptop")); !holder.Stamped() {
+		t.Fatalf("holder = %+v, want the stamp kept", holder)
+	}
+}
+
+// A copy the sync client has not finished replacing must not confirm, and a
+// holder that never said anything gives nothing to confirm against.
+func TestAnUnsyncedOrUnstampedCopyIsNotConfirmed(t *testing.T) {
+	archive := fixture(t)
+	lock, _, err := Claim(archive, "bk-1", desktop("s-desktop"))
+	if err != nil {
+		t.Fatalf("Claim: %v", err)
+	}
+	if err := lock.StampClaim(archive); err != nil {
+		t.Fatalf("StampClaim: %v", err)
+	}
+
+	// Same length, different words: what a half-finished sync leaves behind.
+	current, err := os.ReadFile(archive)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(archive, []byte(strings.Repeat("x", len(current))), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	holder := Inspect(archive, laptop("s-laptop"))
+	if state := ConfirmedCurrent(archive, holder); state.Arrived {
+		t.Fatal("a copy the holder did not write must not confirm")
+	}
+
+	// And with no stamp at all there is nothing to check against, which is not
+	// the same as failing the check.
+	if state := ConfirmedCurrent(archive, &Holder{Device: "STUDIO-DESKTOP"}); !state.Unverifiable {
+		t.Fatalf("state = %+v, want unverifiable", state)
+	}
+}

@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02735] - 2026-09-25
+
+### Changed
+- A book held by a computer that does not answer within thirty seconds is taken over automatically, but only once this machine has confirmed it holds the same copy that computer last saved. Until then it keeps waiting and says what it is waiting for.
+- The wait counts down on screen, and the dialog explains all of this before you ask for anything.
+- A book that has been handed over is waited for however long its copy takes to arrive, however large the book.
+- Asking for a book that the other computer has just closed now opens it as soon as the lock clears, instead of waiting for an answer that is never coming.
+
 ## [0.21.02734] - 2026-09-25
 
 ### Changed

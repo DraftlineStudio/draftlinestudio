@@ -2183,6 +2183,7 @@ export namespace types {
 	    granted: boolean;
 	    declined: boolean;
 	    arrived: boolean;
+	    can_take_over: boolean;
 	    unverifiable: boolean;
 	    local_bytes: number;
 	    expected_bytes: number;
@@ -2202,6 +2203,7 @@ export namespace types {
 	        this.granted = source["granted"];
 	        this.declined = source["declined"];
 	        this.arrived = source["arrived"];
+	        this.can_take_over = source["can_take_over"];
 	        this.unverifiable = source["unverifiable"];
 	        this.local_bytes = source["local_bytes"];
 	        this.expected_bytes = source["expected_bytes"];

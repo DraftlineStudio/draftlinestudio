@@ -20,19 +20,20 @@ export default function BookLockDialog() {
   return (
     <div className="dialog-overlay">
       <div className="dialog">
-        <div className="dialog-title">This book may be open elsewhere</div>
+        <div className="dialog-title">This book may already be open elsewhere</div>
         <p className="dialog-body">
-          {warning.info.message || `This book may be open on ${where}.`}
+          This book may already be open on another workstation or by another
+          person. We can&rsquo;t open it here at the same time because that could
+          cause conflicting saves or overwrite someone else&rsquo;s work.
         </p>
         <p className="dialog-body">
-          Asking for it is the clean way: that computer saves the book, lets go of
-          it, and says what it saved, so this one can be sure it has that version
-          and not an older copy the sync client has yet to replace.
+          You can open a separate copy on this machine and manually merge your
+          changes later, or you can request to take over the project from {where}.
         </p>
         <p className="dialog-body">
-          If it does not answer, open a copy. A copy is a book of its own and
-          cannot overwrite anybody, and Compare with Current in AI Studio will
-          show you what the two versions differ on when you reconcile them.
+          If no one responds within 30 seconds, this machine will take over
+          automatically after confirming it has synced the most up-to-date copy
+          of the project file.
         </p>
         {/* The device name is in the sentence above, not in a button: a
             hostname can be any length, and a button is not the place to find

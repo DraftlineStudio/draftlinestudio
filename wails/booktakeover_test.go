@@ -347,3 +347,42 @@ func TestAskingTwiceRunningIsAnnouncedTwice(t *testing.T) {
 		t.Fatal("asking again must reach the writer")
 	}
 }
+
+// A stamp that lost a race with a sync client holding the book open has to be
+// tried again. Once only would leave the asking machine waiting on a
+// confirmation that is never coming.
+func TestStampingIsRetriedUntilItTakes(t *testing.T) {
+	archive := bookFile(t)
+	app := holdingApp(t, archive)
+	askFor(t, archive, asking())
+
+	// The book is unreadable on the first look, as it is while something else
+	// holds it open.
+	kept, err := os.ReadFile(archive)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(archive); err != nil {
+		t.Fatal(err)
+	}
+	if app.takeoverToAnnounce(archive) == nil {
+		t.Fatal("the request should still be raised with the writer")
+	}
+	if holder := booklock.Inspect(archive, asking()); holder.Stamped() {
+		t.Fatal("there was nothing readable to stamp")
+	}
+
+	// It comes back, and the next look takes the stamp.
+	if err := os.WriteFile(archive, kept, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	app.takeoverToAnnounce(archive)
+
+	holder := booklock.Inspect(archive, asking())
+	if !holder.Stamped() {
+		t.Fatalf("holder = %+v, want the stamp on the second look", holder)
+	}
+	if state := booklock.ConfirmedCurrent(archive, holder); !state.Arrived {
+		t.Fatalf("state = %+v, want the asking machine able to confirm its copy", state)
+	}
+}

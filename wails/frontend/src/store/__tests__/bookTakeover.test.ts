@@ -70,8 +70,10 @@ function makeBook(): BookData {
   }
 }
 
-// waiting is an unanswered request; granted is one answered with proof.
-const waiting = () => ({ asked: true, held_elsewhere: true, answered: false, granted: false, declined: false, arrived: false, unverifiable: false, local_bytes: 0, expected_bytes: 0, message: 'Waiting for STUDIO-DESKTOP to answer…' })
+// waiting is an unanswered request whose copy here is NOT yet confirmed to be
+// the one the holder last wrote; confirmed is the same request once it is.
+const waiting = () => ({ asked: true, held_elsewhere: true, answered: false, granted: false, declined: false, arrived: false, unverifiable: false, can_take_over: false, local_bytes: 0, expected_bytes: 0, message: 'Waiting for STUDIO-DESKTOP to answer…' })
+const confirmed = () => ({ ...waiting(), can_take_over: true })
 const granted = (over: Record<string, unknown> = {}) => ({ ...waiting(), answered: true, granted: true, held_elsewhere: false, message: 'Waiting for the copy from STUDIO-DESKTOP to sync… 1 MB of 3 MB arrived.', local_bytes: 1, expected_bytes: 3, ...over })
 
 let bookStoreMod: typeof import('../bookStore')
@@ -149,6 +151,70 @@ describe('asking another device for a book', () => {
     expect(mocks.WithdrawBookTakeover).toHaveBeenCalledWith(PATH)
     expect(mocks.OpenRecentProject).not.toHaveBeenCalled()
     expect(store().isWaitingForDevice).toBe(false)
+  })
+
+  it('takes the book when nothing answers and the copy here is confirmed', async () => {
+    mocks.RequestBookTakeover.mockResolvedValue(confirmed())
+    mocks.BookTakeoverStatus.mockResolvedValue(confirmed())
+    mocks.OpenRecentProject.mockResolvedValue(makeBook())
+
+    bookStoreMod.useBookStore.setState(s => ({ dialogs: { ...s.dialogs, bookLockWarning: { path: PATH, info: { held: true, stale: false, device: 'STUDIO-DESKTOP', platform: '', app: '', last_seen: '', message: '' } } } }))
+    const asking = store().askDeviceForBook()
+
+    await flush()
+    // It says what it is about to do, and when.
+    expect(store().openingLabel).toMatch(/Taking it in \d+ seconds?/)
+    expect(mocks.OpenRecentProject).not.toHaveBeenCalled()
+
+    await vi.advanceTimersByTimeAsync(31_000)
+    await asking
+
+    // Opening claims the book, which is what the other machine stands down on.
+    expect(mocks.OpenRecentProject).toHaveBeenCalledWith(PATH)
+    expect(mocks.WithdrawBookTakeover).toHaveBeenCalledWith(PATH)
+    expect(store().book).not.toBeNull()
+  })
+
+  it('will not take a book it cannot confirm, however long it waits', async () => {
+    // A machine that never answers is a machine that is RUNNING with nobody in
+    // front of it: an unattended one stops heartbeating and goes stale, which
+    // raises no question at all. So it was recently writing, and the copy here
+    // may be the one from before its last save. The clock running out is not
+    // permission on its own.
+    mocks.RequestBookTakeover.mockResolvedValue(waiting())
+    mocks.BookTakeoverStatus.mockResolvedValue(waiting())
+
+    bookStoreMod.useBookStore.setState(s => ({ dialogs: { ...s.dialogs, bookLockWarning: { path: PATH, info: { held: true, stale: false, device: 'STUDIO-DESKTOP', platform: '', app: '', last_seen: '', message: '' } } } }))
+    void store().askDeviceForBook()
+    await flush()
+
+    await vi.advanceTimersByTimeAsync(120_000)
+    await flush()
+
+    expect(mocks.OpenRecentProject).not.toHaveBeenCalled()
+    expect(store().book).toBeNull()
+    expect(store().isWaitingForDevice).toBe(true)
+    store().stopWaitingForDevice()
+    await vi.advanceTimersByTimeAsync(2000)
+  })
+
+  it('waits as long as the copy needs once it has been granted', async () => {
+    // A grant is an answer, so the thirty seconds does not apply to it: a big
+    // book crossing a slow connection takes as long as it takes.
+    mocks.RequestBookTakeover.mockResolvedValue(waiting())
+    mocks.BookTakeoverStatus.mockResolvedValue(granted())
+
+    bookStoreMod.useBookStore.setState(s => ({ dialogs: { ...s.dialogs, bookLockWarning: { path: PATH, info: { held: true, stale: false, device: 'STUDIO-DESKTOP', platform: '', app: '', last_seen: '', message: '' } } } }))
+    void store().askDeviceForBook()
+    await flush()
+
+    await vi.advanceTimersByTimeAsync(90_000)
+    await flush()
+
+    expect(mocks.OpenRecentProject).not.toHaveBeenCalled()
+    expect(store().isWaitingForDevice).toBe(true)
+    store().stopWaitingForDevice()
+    await vi.advanceTimersByTimeAsync(2000)
   })
 
   it('puts a refusal on screen, where the status bar is not', async () => {
@@ -302,5 +368,48 @@ describe('waking to a book another device has taken', () => {
     // machine's work.
     expect(store().book).toBeNull()
     expect(mocks.SaveBook).not.toHaveBeenCalled()
+  })
+})
+
+describe('the other computer closed the book a moment ago', () => {
+  // Draftline was shut over there, so its claim is deleted and the deletion is
+  // still crossing. Nothing is running to answer, and nothing is running to say
+  // what it has — so waiting for either would be waiting for good.
+  const letGo = () => ({ ...waiting(), held_elsewhere: false })
+
+  it('opens the book once the claim is gone, without waiting out the clock', async () => {
+    mocks.RequestBookTakeover.mockResolvedValue(waiting())
+    mocks.BookTakeoverStatus.mockResolvedValue(letGo())
+    mocks.OpenRecentProject.mockResolvedValue(makeBook())
+
+    bookStoreMod.useBookStore.setState(s => ({ dialogs: { ...s.dialogs, bookLockWarning: { path: PATH, info: { held: true, stale: false, device: 'STUDIO-DESKTOP', platform: '', app: '', last_seen: '', message: '' } } } }))
+    const asking = store().askDeviceForBook()
+
+    // Well inside the thirty seconds, and with nothing ever stamped.
+    await vi.advanceTimersByTimeAsync(4000)
+    await asking
+
+    expect(mocks.OpenRecentProject).toHaveBeenCalledWith(PATH)
+    expect(store().book).not.toBeNull()
+    expect(mocks.WithdrawBookTakeover).toHaveBeenCalledWith(PATH)
+  })
+
+  it('does not take a book off anybody over one unreadable look', async () => {
+    // A sidecar caught mid-write reads as missing. One flicker is not a release.
+    mocks.RequestBookTakeover.mockResolvedValue(waiting())
+    mocks.BookTakeoverStatus
+      .mockResolvedValueOnce(letGo())
+      .mockResolvedValue(waiting())
+
+    bookStoreMod.useBookStore.setState(s => ({ dialogs: { ...s.dialogs, bookLockWarning: { path: PATH, info: { held: true, stale: false, device: 'STUDIO-DESKTOP', platform: '', app: '', last_seen: '', message: '' } } } }))
+    void store().askDeviceForBook()
+
+    await vi.advanceTimersByTimeAsync(10_000)
+    await flush()
+
+    expect(mocks.OpenRecentProject).not.toHaveBeenCalled()
+    expect(store().isWaitingForDevice).toBe(true)
+    store().stopWaitingForDevice()
+    await vi.advanceTimersByTimeAsync(2000)
   })
 })

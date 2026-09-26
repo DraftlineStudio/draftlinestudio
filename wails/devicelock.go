@@ -37,6 +37,10 @@ type deviceClaim struct {
 	// lastIgnored is the last reason a takeover request was passed over, so the
 	// log says it once rather than every five seconds.
 	lastIgnored string
+	// stamped identifies the request this session has already recorded its copy
+	// of the book for, so the stamp is retried until it takes and then left
+	// alone.
+	stamped string
 }
 
 // sessionID identifies this run of the application. A claim carrying it is
@@ -154,6 +158,7 @@ func (a *App) claimDeviceLock(path, bookID string) {
 	// A request raised against the session that held this book before is not a
 	// request against this one.
 	a.device.announced = ""
+	a.device.stamped = ""
 	a.device.dispossessed = 0
 	a.device.stoodDown = false
 	a.device.mu.Unlock()
