@@ -49,13 +49,9 @@ export interface AppSettings {
   ai_model: string
   ai_providers: types.AIProvider[]
   prose_guide: string
-  // Book defaults
+  // Editor display
   book_font: string
   editor_font_size: 'small' | 'normal' | 'large'  // Editor display size: 12/14/16
-  book_font_size: number                           // Export font size in points
-  book_line_spacing: string
-  book_drop_caps: boolean
-  book_trim_size: string
   // Sidebar
   sidebar_panel_width: number
   sidebar_active_section: string // glyph section id, or '' when closed
@@ -170,10 +166,6 @@ const DEFAULT_SETTINGS: AppSettings = {
   prose_guide: '',
   book_font: 'Merriweather',
   editor_font_size: 'normal',
-  book_font_size: 14,
-  book_line_spacing: '1.5',
-  book_drop_caps: false,
-  book_trim_size: '6x9',
   sidebar_panel_width: 280,
   sidebar_active_section: 'dashboard',
   update_check_enabled: true,

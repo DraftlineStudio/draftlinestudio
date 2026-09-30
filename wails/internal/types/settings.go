@@ -78,13 +78,10 @@ type AppSettings struct {
 	AILocalEndpoint string `json:"ai_local_endpoint,omitempty"`
 	AILocalModel    string `json:"ai_local_model,omitempty"`
 	ProseGuide      string `json:"prose_guide"`
-	// Book defaults
+	// Editor display. Typesetting for an export is chosen in the export flow,
+	// not here.
 	BookFont          string `json:"book_font"`
-	EditorFontSize    string `json:"editor_font_size"`  // "small"|"normal"|"large" (12/14/16px)
-	BookFontSize      int    `json:"book_font_size"`    // Export font size in points
-	BookLineSpacing   string `json:"book_line_spacing"` // "1.0"|"1.25"|"1.5"|"2.0"
-	BookDropCaps      bool   `json:"book_drop_caps"`
-	BookTrimSize      string `json:"book_trim_size"` // "6x9"|"5.5x8.5"|"5x8"|"7x10"|"A5"
+	EditorFontSize    string `json:"editor_font_size"` // "small"|"normal"|"large" (12/14/16px)
 	SidebarPanelWidth int    `json:"sidebar_panel_width"`
 	// SidebarActiveSection remembers which tools-sidebar pane is open
 	// ("dashboard", "characters", "ai", …); "" means the sidebar is closed.

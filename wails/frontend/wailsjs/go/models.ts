@@ -1036,10 +1036,6 @@ export namespace types {
 	    prose_guide: string;
 	    book_font: string;
 	    editor_font_size: string;
-	    book_font_size: number;
-	    book_line_spacing: string;
-	    book_drop_caps: boolean;
-	    book_trim_size: string;
 	    sidebar_panel_width: number;
 	    sidebar_active_section: string;
 	    update_check_enabled: boolean;
@@ -1091,10 +1087,6 @@ export namespace types {
 	        this.prose_guide = source["prose_guide"];
 	        this.book_font = source["book_font"];
 	        this.editor_font_size = source["editor_font_size"];
-	        this.book_font_size = source["book_font_size"];
-	        this.book_line_spacing = source["book_line_spacing"];
-	        this.book_drop_caps = source["book_drop_caps"];
-	        this.book_trim_size = source["book_trim_size"];
 	        this.sidebar_panel_width = source["sidebar_panel_width"];
 	        this.sidebar_active_section = source["sidebar_active_section"];
 	        this.update_check_enabled = source["update_check_enabled"];

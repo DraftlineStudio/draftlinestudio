@@ -1,4 +1,4 @@
-// Application Settings Section - Updates, Theme, Saving & Recovery, Analysis
+// Application Settings Section - Updates, Theme, Editor Display, Saving & Recovery, Analysis
 
 import { useEffect, useState } from 'react'
 import { CheckForUpdates, DownloadUpdate } from '../../../../wailsjs/go/main/App'
@@ -7,6 +7,7 @@ import type { main } from '../../../../wailsjs/go/models'
 import { useAppStore } from '../../../store/appStore'
 import { checkNow } from '../../../services/updateNag'
 import type { ApplicationSectionProps } from './types'
+import { BOOK_FONTS } from './constants'
 
 export default function ApplicationSection({
   saveDir, setSaveDir,
@@ -16,6 +17,8 @@ export default function ApplicationSection({
   autoThemeDusk, setAutoThemeDusk,
   activityAutoSaveEnabled, setActivityAutoSaveEnabled,
   analysisCPUProfile, setAnalysisCPUProfile,
+  bookFont, setBookFont,
+  editorFontSize, setEditorFontSize,
   onBrowse,
 }: ApplicationSectionProps) {
   const updateCheckEnabled = useAppStore(s => s.settings.update_check_enabled)
@@ -221,6 +224,29 @@ export default function ApplicationSection({
           )}
         </div>
       )}
+
+      <div className="settings-section-label">Editor Display</div>
+      <div className="dialog-field">
+        <label className="dialog-label">Font</label>
+        <select className="dialog-select" value={bookFont} onChange={e => setBookFont(e.target.value)}>
+          {BOOK_FONTS.map(f => <option key={f} value={f}>{f}</option>)}
+        </select>
+      </div>
+      <div className="dialog-field">
+        <label className="dialog-label">Text Size</label>
+        <div className="settings-theme-row">
+          <button className={`settings-theme-btn${editorFontSize === 'small' ? ' active' : ''}`} onClick={() => setEditorFontSize('small')}>
+            Small (12pt)
+          </button>
+          <button className={`settings-theme-btn${editorFontSize === 'normal' ? ' active' : ''}`} onClick={() => setEditorFontSize('normal')}>
+            Normal (14pt)
+          </button>
+          <button className={`settings-theme-btn${editorFontSize === 'large' ? ' active' : ''}`} onClick={() => setEditorFontSize('large')}>
+            Large (16pt)
+          </button>
+        </div>
+        <div className="settings-hint">Controls how text appears in the editor. Does not affect exported files.</div>
+      </div>
 
       <div className="settings-section-label">Saving &amp; Recovery</div>
       <div className="dialog-field">

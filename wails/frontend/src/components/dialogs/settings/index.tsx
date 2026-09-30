@@ -10,7 +10,6 @@ import type { SettingsSection, AIMode, AIProvider, ThemeMode, EditorFontSize, An
 import ApplicationSection from './ApplicationSection'
 import AuthorSection from './AuthorSection'
 import AIStudioSection from './AIStudioSection'
-import BookSection from './BookSection'
 import PluginsSection from './PluginsSection'
 import ReadAloudSection from './ReadAloudSection'
 import type { FeatureSettingKey } from '../../../features/registry'
@@ -22,7 +21,7 @@ export default function AppSettingsDialog() {
 
   // Callers can deep-link a section (e.g. the Read Aloud rail icon when the
   // voice model needs setup).
-  const validSections: SettingsSection[] = ['author', 'application', 'plugins', 'ai', 'readaloud', 'book']
+  const validSections: SettingsSection[] = ['author', 'application', 'plugins', 'ai', 'readaloud']
   const [section, setSection] = useState<SettingsSection>(
     validSections.includes(settingsInitialSection as SettingsSection)
       ? settingsInitialSection as SettingsSection
@@ -98,13 +97,9 @@ export default function AppSettingsDialog() {
   // this ref routes the events to whichever wizard is currently running.
   const activeSetup = useRef<'cc' | 'cx'>('cc')
 
-  // Book state
-  const [bookFont, setBookFont]               = useState(settings.book_font)
-  const [editorFontSize, setEditorFontSize]   = useState<EditorFontSize>(settings.editor_font_size)
-  const [bookFontSize, setBookFontSize]       = useState(settings.book_font_size)
-  const [bookLineSpacing, setBookLineSpacing] = useState(settings.book_line_spacing)
-  const [bookDropCaps, setBookDropCaps]       = useState(settings.book_drop_caps)
-  const [bookTrimSize, setBookTrimSize]       = useState(settings.book_trim_size)
+  // Editor display
+  const [bookFont, setBookFont]             = useState(settings.book_font)
+  const [editorFontSize, setEditorFontSize] = useState<EditorFontSize>(settings.editor_font_size)
 
   // Check CLI status when AI section opened
   useEffect(() => {
@@ -275,10 +270,6 @@ export default function AppSettingsDialog() {
       prose_guide: proseGuide,
       book_font: bookFont,
       editor_font_size: editorFontSize,
-      book_font_size: bookFontSize,
-      book_line_spacing: bookLineSpacing,
-      book_drop_caps: bookDropCaps,
-      book_trim_size: bookTrimSize,
     })
     await loadSettings() // refresh has_api_key from the backend
     closeSettings()
@@ -354,12 +345,6 @@ export default function AppSettingsDialog() {
                 Read Aloud
               </button>
             )}
-            <button className={`settings-nav-item${section === 'book' ? ' active' : ''}`} onClick={() => setSection('book')}>
-              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4">
-                <rect x="2" y="1" width="10" height="12" rx="1"/><line x1="4.5" y1="4.5" x2="9.5" y2="4.5"/><line x1="4.5" y1="7" x2="9.5" y2="7"/><line x1="4.5" y1="9.5" x2="7.5" y2="9.5"/>
-              </svg>
-              Book Defaults
-            </button>
             {pluginNavItems.map(item => (
               <button
                 key={item.pluginId + ' ' + item.sectionId}
@@ -392,6 +377,8 @@ export default function AppSettingsDialog() {
                 autoThemeDusk={autoThemeDusk} setAutoThemeDusk={setAutoThemeDusk}
                 activityAutoSaveEnabled={activityAutoSaveEnabled} setActivityAutoSaveEnabled={setActivityAutoSaveEnabled}
                 analysisCPUProfile={analysisCPUProfile} setAnalysisCPUProfile={setAnalysisCPUProfile}
+                bookFont={bookFont} setBookFont={setBookFont}
+                editorFontSize={editorFontSize} setEditorFontSize={setEditorFontSize}
                 onBrowse={handleBrowse}
               />
             )}
@@ -433,16 +420,6 @@ export default function AppSettingsDialog() {
               <PluginSettingsSection pluginId={pluginSection.pluginId} sectionId={pluginSection.sectionId} />
             )}
 
-            {section === 'book' && (
-              <BookSection
-                bookFont={bookFont} setBookFont={setBookFont}
-                editorFontSize={editorFontSize} setEditorFontSize={setEditorFontSize}
-                bookFontSize={bookFontSize} setBookFontSize={setBookFontSize}
-                bookLineSpacing={bookLineSpacing} setBookLineSpacing={setBookLineSpacing}
-                bookDropCaps={bookDropCaps} setBookDropCaps={setBookDropCaps}
-                bookTrimSize={bookTrimSize} setBookTrimSize={setBookTrimSize}
-              />
-            )}
           </div>
         </div>
 

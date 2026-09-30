@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02736] - 2026-09-30
+
+### Changed
+- The editor font and text size now live in Application settings, alongside the theme.
+
+### Removed
+- The Book Defaults settings screen. Font size, line spacing, trim size and drop caps are chosen when you export.
+
 ## [0.21.02735] - 2026-09-25
 
 ### Changed

@@ -3,7 +3,7 @@
 import type { types } from '../../../../wailsjs/go/models'
 import type { AIProviderMode, AITaskRoutes } from '../../../services/aiRouting'
 
-export type SettingsSection = 'author' | 'application' | 'plugins' | 'ai' | 'readaloud' | 'book' | 'plugin'
+export type SettingsSection = 'author' | 'application' | 'plugins' | 'ai' | 'readaloud' | 'plugin'
 
 export type AIMode = AIProviderMode
 export type AIProvider = 'claude' | 'openai' | ''
@@ -36,6 +36,10 @@ export interface ApplicationSectionProps {
   setActivityAutoSaveEnabled: (v: boolean) => void
   analysisCPUProfile: AnalysisCPUProfile
   setAnalysisCPUProfile: (v: AnalysisCPUProfile) => void
+  bookFont: string
+  setBookFont: (v: string) => void
+  editorFontSize: EditorFontSize
+  setEditorFontSize: (v: EditorFontSize) => void
   onBrowse: () => void
 }
 
@@ -85,19 +89,4 @@ export interface ReadAloudSectionProps {
   setSpeed: (v: number) => void
   threads: 'single' | 'auto'
   setThreads: (v: 'single' | 'auto') => void
-}
-
-export interface BookSectionProps {
-  bookFont: string
-  setBookFont: (v: string) => void
-  editorFontSize: EditorFontSize
-  setEditorFontSize: (v: EditorFontSize) => void
-  bookFontSize: number
-  setBookFontSize: (v: number) => void
-  bookLineSpacing: string
-  setBookLineSpacing: (v: string) => void
-  bookDropCaps: boolean
-  setBookDropCaps: (v: boolean) => void
-  bookTrimSize: string
-  setBookTrimSize: (v: string) => void
 }
