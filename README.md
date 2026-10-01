@@ -2,7 +2,7 @@
 
 Draftline is a desktop writing environment for novelists. It combines a focused rich-text editor with offline spelling and grammar checks, character and relationship indexing, story-planning tools, and optional AI-assisted editing.
 
-Draftline runs on Windows, macOS, and Linux, with packages built and tested for each. It is in active development ahead of its 1.0 release.
+Draftline runs on Windows, macOS, and Linux, with packages built and tested for each.
 
 [Official website](https://draftline.ink) · [Changelog](CHANGELOG.md) · [Documentation](docs/README.md)
 

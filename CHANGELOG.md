@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02743] - 2026-10-01
+
+### Changed
+- Draftline is 1.0.
+
 ## [0.21.02742] - 2026-09-30
 
 ### Added
