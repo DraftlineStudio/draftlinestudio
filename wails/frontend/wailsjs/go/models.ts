@@ -1516,6 +1516,38 @@ export namespace types {
 		    return a;
 		}
 	}
+	export class DeadPlannerCard {
+	    card: PlannerCard;
+	    deleted: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DeadPlannerCard(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.card = this.convertValues(source["card"], PlannerCard);
+	        this.deleted = source["deleted"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class PlannerNote {
 	    id: string;
 	    title: string;
@@ -1639,6 +1671,7 @@ export namespace types {
 	    beat_template?: string;
 	    hidden_lanes?: string[];
 	    compact?: boolean;
+	    dead_cards?: DeadPlannerCard[];
 	
 	    static createFrom(source: any = {}) {
 	        return new PlannerData(source);
@@ -1654,6 +1687,7 @@ export namespace types {
 	        this.beat_template = source["beat_template"];
 	        this.hidden_lanes = source["hidden_lanes"];
 	        this.compact = source["compact"];
+	        this.dead_cards = this.convertValues(source["dead_cards"], DeadPlannerCard);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -2856,6 +2890,7 @@ export namespace types {
 	        this.path = source["path"];
 	    }
 	}
+	
 	
 	
 	

@@ -12,7 +12,7 @@ import type {
 import { useBookStore } from './bookStore'
 import { useAppStore } from './appStore'
 import {
-  bookChapters, codexPeople, deadIdeaBlock, ensurePlanner, LANE_PALETTE, MAIN_LANE_ID, newId, nowStamp,
+  bookChapters, codexPeople, deadCardChapterExists, ensurePlanner, LANE_PALETTE, LATER_COLUMN_ID, MAIN_LANE_ID, newId, nowStamp,
   onlyNewOutlineProposals, parseOutline, rebindWho, whoNames, type ParsedOutline, type Proposal, type ProposalCharacter,
 } from '../components/planner/plannerModel'
 
@@ -64,6 +64,8 @@ interface PlannerStore {
   openDeleteAll: () => void
   closeDeleteAll: () => void
   deleteAllCards: (recordDead: boolean) => void
+  // Puts a deleted card back on the line and chapter it came off.
+  reinstateCard: (id: string) => void
   linkCard: (id: string, link: PlannerLink | null) => void
   addSubplot: (name: string) => void
   addCharacterLane: (characterId: string) => void
@@ -175,25 +177,47 @@ export const usePlannerStore = create<PlannerStore>((set, get) => ({
   },
 
   // One mutation for any number of cards, so emptying the Planner is a
-  // single book update and a single Dead ideas append rather than one each.
+  // single book update rather than one per card.
+  //
+  // A recorded card is kept whole. The old behaviour wrote a paragraph
+  // about it into the Dead ideas note, which read well and could not be
+  // undone -- nothing can be reinstated from prose.
   removeCards: (ids, recordDead) => {
-    const book = useBookStore.getState().book
     const doomed = new Set(ids)
     get().mutate(p => {
       const going = p.cards.filter(c => doomed.has(c.id))
       if (!going.length) return p
-      const block = recordDead
-        ? going.map(c => deadIdeaBlock(c, 'Deleted', bookChapters(book), p.lanes, codexPeople(book))).join('')
-        : ''
+      const stamp = nowStamp()
       return {
         ...p,
         cards: p.cards.filter(c => !doomed.has(c.id)),
-        notes: block
-          ? p.notes.map(n => (n.system === 'dead' ? { ...n, body: n.body + block, updated: nowStamp() } : n))
-          : p.notes,
+        dead_cards: recordDead
+          ? [...going.map(card => ({ card, deleted: stamp })), ...(p.dead_cards ?? [])]
+          : (p.dead_cards ?? []),
       }
     })
     set(s => (s.selected && doomed.has(s.selected) ? { selected: null } : {}))
+  },
+
+  // Back to the line and chapter it came off, not to Later as a new card.
+  // A chapter deleted from the manuscript in the meantime leaves nowhere to
+  // pin it, so the card returns unpinned and loses its scene link rather
+  // than pointing at a chapter that is gone.
+  reinstateCard: (id) => {
+    const chapters = bookChapters(useBookStore.getState().book)
+    let landed = ''
+    get().mutate(p => {
+      const dead = p.dead_cards ?? []
+      const entry = dead.find(d => d.card.id === id)
+      if (!entry || p.cards.some(c => c.id === id)) return p
+      const card: PlannerCard = deadCardChapterExists(entry.card, chapters)
+        ? { ...entry.card, updated: nowStamp() }
+        : { ...entry.card, chapter_id: LATER_COLUMN_ID, link: undefined, status: 'planned', updated: nowStamp() }
+      const chapter = chapters.find(c => c.id === card.chapter_id)
+      landed = chapter ? `Chapter ${chapter.num}` : 'Later'
+      return { ...p, cards: [...p.cards, card], dead_cards: dead.filter(d => d.card.id !== id) }
+    })
+    if (landed) useAppStore.getState().setStatusMessage(`Card reinstated in ${landed}`)
   },
 
   askDeleteCard: (id) => set({ cardDeleteId: id }),

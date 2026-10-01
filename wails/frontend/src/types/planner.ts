@@ -57,6 +57,14 @@ export interface PlannerNote {
   system?: 'dead' | string
 }
 
+// A card taken off the timeline, kept whole so Reinstate can put it back
+// where it was rather than as a fresh card in Later. `deleted` is when it
+// was taken off.
+export interface DeadPlannerCard {
+  card: PlannerCard
+  deleted: string
+}
+
 export type BeatTemplateId = 'none' | 'three-act' | 'save-the-cat'
 
 export interface PlannerData {
@@ -68,4 +76,6 @@ export interface PlannerData {
   beat_template?: BeatTemplateId | string
   hidden_lanes?: string[]
   compact?: boolean
+  // Deleted cards awaiting reinstatement or nothing at all, newest first.
+  dead_cards?: DeadPlannerCard[]
 }

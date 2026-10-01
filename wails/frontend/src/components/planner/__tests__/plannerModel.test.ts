@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  bookChapters, codexPeople, columnConnectors, deadIdeaBlock, displayCards, emptyPlanner, ensurePlanner,
+  bookChapters, codexPeople, columnConnectors, deadCardChapterExists, deadCardOrigin, displayCards, emptyPlanner, ensurePlanner,
   laneRows, layoutMetrics, MAIN_LANE_ID, onlyNewOutlineProposals, parseOutline, rebindWho, statusOf,
   whoIncludes, whoNames, whoText, type CodexPerson, type PlannerChapter,
 } from '../plannerModel'
@@ -237,10 +237,22 @@ describe('cards on screen', () => {
     ].join('\n'))
   })
 
-  it('writes a deleted card into Dead Ideas with where it came from', () => {
-    const block = deadIdeaBlock(planner.cards[0], 'Deleted', chapters, lanes, codex)
-    expect(block).toContain('## Beacon fails')
-    expect(block).toContain('Deleted from Chapter 1 · The Beacon · Main plot · Rhea Marsh')
+  it('says where a deleted card came off, for the Dead ideas list', () => {
+    expect(deadCardOrigin(planner.cards[0], chapters, lanes)).toBe('Ch 1 · Main plot')
+  })
+
+  it('calls an unpinned card Later rather than a missing chapter', () => {
+    const unpinned = { ...planner.cards[0], chapter_id: '' }
+    expect(deadCardOrigin(unpinned, chapters, lanes)).toBe('Later · Main plot')
+    expect(deadCardChapterExists(unpinned, chapters)).toBe(true)
+  })
+
+  // Reinstate has to land this one in Later instead, so the list has to be
+  // able to tell.
+  it('reports a chapter the manuscript no longer has', () => {
+    const orphan = { ...planner.cards[0], chapter_id: 'ch-gone' }
+    expect(deadCardChapterExists(orphan, chapters)).toBe(false)
+    expect(deadCardOrigin(orphan, chapters, lanes)).toContain('chapter since removed')
   })
 })
 

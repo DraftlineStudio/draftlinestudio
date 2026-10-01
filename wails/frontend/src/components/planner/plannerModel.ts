@@ -322,12 +322,22 @@ export function beatMarks(template: string | undefined, gridWidth: number): { na
 
 // A deleted or dismissed card is written into the Dead Ideas note as an
 // outline entry, so Propose Cards can bring it back.
-export function deadIdeaBlock(card: PlannerCard, why: 'Deleted' | 'Dismissed', chapters: PlannerChapter[], lanes: PlannerLane[], codex: CodexPerson[]): string {
+// Where a card sat when it came off the timeline, for the Dead ideas list.
+// A chapter the manuscript no longer has reads as gone, because that is what
+// Reinstate has to do something about: the card returns to Later instead.
+export function deadCardOrigin(card: PlannerCard, chapters: PlannerChapter[], lanes: PlannerLane[]): string {
   const lane = lanes.find(l => l.id === card.lines[0])?.name ?? 'Main plot'
   const ch = chapters.find(c => c.id === card.chapter_id)
-  const where = ch ? `Chapter ${ch.num}${ch.title ? ` · ${ch.title}` : ''}` : 'Later'
-  const who = card.who.map(id => codex.find(c => c.id === id)?.name ?? id).join(', ')
-  return `\n## ${card.title}\n${card.synopsis || ''}${card.changes ? `\nWhat changes: ${card.changes}` : ''}\n— ${why} from ${where} · ${lane}${who ? ` · ${who}` : ''}\n`
+  const where = card.chapter_id === LATER_COLUMN_ID
+    ? 'Later'
+    : ch ? `Ch ${ch.num}` : 'chapter since removed'
+  return `${where} · ${lane}`
+}
+
+// Whether the chapter a card came off is still in the manuscript. A card
+// with no chapter was in Later, which is always there.
+export function deadCardChapterExists(card: PlannerCard, chapters: PlannerChapter[]): boolean {
+  return card.chapter_id === LATER_COLUMN_ID || chapters.some(c => c.id === card.chapter_id)
 }
 
 // ── Import Outline ─────────────────────────────────────────────────────────

@@ -30,6 +30,7 @@ export default function PlannerSidebar() {
   let body: React.ReactNode
   if (view === 'scratch') {
     const notes = [...planner.notes].sort((a, b) => (a.system ? 1 : 0) - (b.system ? 1 : 0))
+    const deadCount = (planner.dead_cards ?? []).length
     body = (
       <div className="pl-sidebar">
         <div className="pl-side-head">
@@ -45,7 +46,9 @@ export default function PlannerSidebar() {
                 {n.excluded && <span className="pl-note-off" title="Not available to Propose Cards">off</span>}
               </div>
               <div className="pl-note-snippet">{snippet}</div>
-              <div className="pl-note-meta">{countWords(n.body)} words · {relativeStamp(n.updated)}</div>
+              <div className="pl-note-meta">{n.system === 'dead'
+                ? `${deadCount} ${deadCount === 1 ? 'card' : 'cards'} to put back`
+                : `${countWords(n.body)} words`} · {relativeStamp(n.updated)}</div>
             </div>
           )
         })}

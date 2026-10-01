@@ -8,7 +8,8 @@ import { useBookStore } from '../../store/bookStore'
 import { usePlannerStore } from '../../store/plannerStore'
 import type { PlannerLane } from '../../types/draftline'
 import {
-  BEAT_NAMES, beatMarks, bookChapters, chapterLabel, codexPeople, columnConnectors, countWords, displayCards,
+  BEAT_NAMES, beatMarks, bookChapters, chapterLabel, codexPeople, columnConnectors, countWords,
+  deadCardChapterExists, deadCardOrigin, displayCards,
   ensurePlanner, laneChips, laneRows, LATER_COLUMN_ID, layoutMetrics, MAIN_LANE_ID, relativeStamp, STATUS_COLORS, whoText,
   type CodexPerson, type DisplayCard, type PlannerChapter,
 } from './plannerModel'
@@ -258,6 +259,44 @@ function BoardView() {
   )
 }
 
+function DeadCardList() {
+  const reinstateCard = usePlannerStore(s => s.reinstateCard)
+  const book = useBookStore(s => s.book)
+  const planner = ensurePlanner(book)
+  const chapters = bookChapters(book)
+  const dead = planner.dead_cards ?? []
+  const lanes = planner.lanes
+  if (dead.length === 0) {
+    return (
+      <div className="pl-dead-empty">
+        Nothing deleted yet. Cards you delete land here, and can be put back on the line and chapter they came off.
+      </div>
+    )
+  }
+  return (
+    <div className="pl-dead-list">
+      {dead.map(entry => {
+        const pinnable = deadCardChapterExists(entry.card, chapters)
+        return (
+          <div key={entry.card.id} className="pl-dead-row">
+            <span className="pl-dead-bar" style={{ background: lanes.find(l => l.id === entry.card.lines[0])?.color }} />
+            <div className="pl-dead-main">
+              <div className="pl-dead-title">{entry.card.title || 'Untitled card'}</div>
+              {entry.card.synopsis && <div className="pl-dead-syn">{entry.card.synopsis}</div>}
+              <div className="pl-dead-meta">
+                {deadCardOrigin(entry.card, chapters, lanes)}
+                {entry.deleted ? ` · ${relativeStamp(entry.deleted)}` : ''}
+                {pinnable ? '' : ' · comes back to Later'}
+              </div>
+            </div>
+            <button className="dialog-btn sm pl-dead-restore" onClick={() => reinstateCard(entry.card.id)}>Reinstate</button>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function ScratchView() {
   const { noteId, noteMono, updateNote, newNote } = usePlannerStore(useShallow(s => ({ noteId: s.noteId, noteMono: s.noteMono, updateNote: s.updateNote, newNote: s.newNote })))
   const book = useBookStore(s => s.book)
@@ -273,8 +312,10 @@ function ScratchView() {
       </div>
     )
   }
+  const isDead = note.system === 'dead'
   return (
-    <div className="pl-scratch">
+    <div className={`pl-scratch${isDead ? ' with-dead' : ''}`}>
+      {isDead && <DeadCardList />}
       <textarea
         className={`pl-scratch-text${noteMono ? ' mono' : ''}`}
         value={note.body}
@@ -387,7 +428,9 @@ export default function PlannerView() {
             className="pl-note-title-input" value={note.title} placeholder="Untitled note" readOnly={!!note.system}
             onChange={e => { if (!note.system) updateNote(note.id, { title: e.target.value }) }}
           />
-          <span className="pl-tool-status">{countWords(note.body)} words</span>
+          <span className="pl-tool-status">{note.system === 'dead'
+            ? `${(planner.dead_cards ?? []).length} ${(planner.dead_cards ?? []).length === 1 ? 'card' : 'cards'}`
+            : `${countWords(note.body)} words`}</span>
           <span className="pl-tool-sep" />
           <button className={`toolbar-btn${noteMono ? ' active' : ''}`} onClick={toggleNoteMono} title="Monospace">Mono</button>
           {!note.system && <button className="toolbar-btn" onClick={() => askDeleteNote(note.id)} title="Delete note">Delete</button>}

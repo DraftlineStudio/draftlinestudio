@@ -26,10 +26,9 @@ glyph hides the tools panel.
   percentages across the chapter axis when a template is chosen.
 - **Board** — the same cards as index cards, grouped by chapter or by story
   line. Drag onto a column to move; drop onto a card to order before it.
-- **Scratchpad** — free-text notes. The *Dead ideas* note holds cards deleted
-  from the timeline or board, written as outline entries so *Propose Cards* can
-  bring them back. Each delete chooses whether to record them there. A note can
-  be excluded from Propose Cards.
+- **Scratchpad** — free-text notes. *Dead ideas* is the one that is not only a
+  note: deleted cards are listed above its text, each with *Reinstate*. A note
+  can be excluded from Propose Cards.
 - **Synopsis** — one paragraph per chapter, made of that chapter's card
   synopses in timeline order. Paragraphs are editable; *Rebuild from Cards*
   discards edits. Chapters without cards stay blank rather than being
@@ -65,7 +64,26 @@ import would otherwise write hundreds of entries into the note.
 all N cards* empties the Planner, and requires the phrase `DELETE <N>` typed
 exactly — the count is in the phrase so the confirmation cannot be muscle
 memory from a smaller delete. Story lines, notes and the manuscript are
-untouched either way. Neither delete can be undone.
+untouched either way.
+
+### Reinstating cards
+
+A recorded card is kept whole in `dead_cards` on planner.json, newest first,
+with the time it came off. *Reinstate* in the Dead ideas pane puts it back on
+the story line and chapter it came off, not into Later as a new card, and
+takes it out of the list. One card at a time, so an import can be unpicked
+selectively.
+
+If the chapter has left the manuscript since, there is nowhere to pin the card:
+it returns on its own story line, unpinned in Later, and loses its scene link
+rather than pointing at a chapter that is gone. The row says so before you
+press the button.
+
+Earlier builds wrote a paragraph about each deleted card into the Dead ideas
+note instead. That text is still in the note and still feeds *Propose Cards*,
+but nothing can be reinstated from it — prose does not carry the card's lines,
+people, or position. Only cards deleted from this build forward are in the
+list.
 
 Scene numbers follow the manuscript's scene breaks: a paragraph that is only
 `***`, `* * *`, `⁂`, `###`, `# # #`, `---`, `- - -`, `~ ~ ~` or `. . .`, or a

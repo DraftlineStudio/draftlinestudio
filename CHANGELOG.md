@@ -2,6 +2,15 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02739] - 2026-09-30
+
+### Added
+- Deleted cards are now listed in Dead ideas with a Reinstate button, and come back on the story line and chapter they came off rather than as a new card in Later.
+- A card whose chapter has left the manuscript since says so, and comes back unpinned in Later.
+
+### Changed
+- Deleting a card keeps the card itself instead of writing a paragraph about it into the Dead ideas note. Entries written by earlier builds stay in the note as text, but only cards deleted from this build can be reinstated.
+
 ## [0.21.02738] - 2026-09-30
 
 ### Fixed

@@ -217,6 +217,13 @@ type PlannerNote struct {
 	System   string `json:"system,omitempty"`
 }
 
+// DeadPlannerCard is a card taken off the timeline, kept whole so the
+// Planner can put it back where it was. Deleted is when it came off.
+type DeadPlannerCard struct {
+	Card    PlannerCard `json:"card"`
+	Deleted string      `json:"deleted"`
+}
+
 // PlannerData is the Planner's state for one book, stored as the optional
 // archive member planner.json. Synopsis holds per-chapter edits keyed by
 // chapter ID; chapters without an entry are generated from their cards.
@@ -229,6 +236,8 @@ type PlannerData struct {
 	BeatTemplate string            `json:"beat_template,omitempty"`
 	HiddenLanes  []string          `json:"hidden_lanes,omitempty"`
 	Compact      bool              `json:"compact,omitempty"`
+	// DeadCards are deleted cards kept for reinstatement, newest first.
+	DeadCards    []DeadPlannerCard `json:"dead_cards,omitempty"`
 }
 
 // BookData is the main container for all book content.
