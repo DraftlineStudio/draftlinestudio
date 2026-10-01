@@ -1,5 +1,6 @@
 // Planner dialogs: New Story Line, Import Outline (paste, then review the
-// proposed cards before accepting), and note deletion.
+// proposed cards before accepting), and the deletion asks for notes, one card,
+// and every card at once.
 
 import { useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
@@ -202,11 +203,82 @@ function DeleteNoteDialog() {
   )
 }
 
+// The two card-delete dialogs are mounted only while open, so the Dead ideas
+// checkbox and the typed confirmation start fresh on each ask.
+function DeleteCardDialog({ id }: { id: string }) {
+  const book = useBookStore(s => s.book)
+  const { cancelDeleteCard, deleteCard } = usePlannerStore(useShallow(s => ({ cancelDeleteCard: s.cancelDeleteCard, deleteCard: s.deleteCard })))
+  const [recordDead, setRecordDead] = useState(true)
+  const card = ensurePlanner(book).cards.find(c => c.id === id)
+  if (!card) return null
+  return (
+    <div className="dialog-overlay" onClick={cancelDeleteCard}>
+      <div className="dialog" onClick={e => e.stopPropagation()} onKeyDown={e => { if (e.key === 'Escape') cancelDeleteCard() }}>
+        <div className="dialog-title">Delete Card</div>
+        <div className="dialog-subtitle">Delete “{card.title || 'Untitled card'}”? The card leaves the timeline; the manuscript is not touched.</div>
+        <label className="pl-dialog-check">
+          <input type="checkbox" checked={recordDead} onChange={e => setRecordDead(e.target.checked)} />
+          Record it in Dead ideas
+        </label>
+        <div className="pl-dialog-hint">{recordDead ? 'Its title, synopsis and position are kept in the Dead ideas note.' : 'The card is discarded without a record.'}</div>
+        <div className="pl-dialog-actions">
+          <button className="dialog-btn" autoFocus onClick={cancelDeleteCard}>Cancel</button>
+          <button className="dialog-btn primary" onClick={() => deleteCard(card.id, recordDead)}>Delete Card</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DeleteAllCardsDialog() {
+  const book = useBookStore(s => s.book)
+  const { closeDeleteAll, deleteAllCards } = usePlannerStore(useShallow(s => ({ closeDeleteAll: s.closeDeleteAll, deleteAllCards: s.deleteAllCards })))
+  const [recordDead, setRecordDead] = useState(false)
+  const [typed, setTyped] = useState('')
+  const count = ensurePlanner(book).cards.length
+  const phrase = `DELETE ${count}`
+  // The count is part of the phrase, so the confirmation cannot be muscle
+  // memory from a smaller delete. Spacing is forgiven; wording and count are
+  // not.
+  const armed = typed.trim().replace(/\s+/g, ' ') === phrase
+  const confirm = () => { if (armed) deleteAllCards(recordDead) }
+  return (
+    <div className="dialog-overlay" onClick={closeDeleteAll}>
+      <div className="dialog" onClick={e => e.stopPropagation()} onKeyDown={e => { if (e.key === 'Escape') closeDeleteAll() }}>
+        <div className="dialog-title">Delete All Cards</div>
+        <div className="dialog-subtitle">
+          All {count} {count === 1 ? 'card' : 'cards'} in the Planner will be deleted. Story lines, notes and the manuscript are left alone. This cannot be undone.
+        </div>
+        <label className="pl-dialog-check">
+          <input type="checkbox" checked={recordDead} onChange={e => setRecordDead(e.target.checked)} />
+          Record them in Dead ideas
+        </label>
+        <div className="pl-dialog-hint">{recordDead ? `Adds ${count} ${count === 1 ? 'entry' : 'entries'} to the Dead ideas note.` : 'The cards are discarded without a record.'}</div>
+        <div className="dialog-field pl-confirm-field">
+          <label className="dialog-label">Type <span className="pl-confirm-phrase">{phrase}</span> to confirm</label>
+          <input
+            className="dialog-input pl-confirm-input" autoFocus value={typed} spellCheck={false} placeholder={phrase}
+            onChange={e => setTyped(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') confirm() }}
+          />
+        </div>
+        <div className="pl-dialog-actions">
+          <button className="dialog-btn" onClick={closeDeleteAll}>Cancel</button>
+          <button className="dialog-btn primary" disabled={!armed} onClick={confirm}>Delete {count} {count === 1 ? 'Card' : 'Cards'}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function PlannerDialogs() {
+  const { cardDeleteId, deleteAllOpen } = usePlannerStore(useShallow(s => ({ cardDeleteId: s.cardDeleteId, deleteAllOpen: s.deleteAllOpen })))
   return (
     <>
       <NewLineDialog />
       <DeleteNoteDialog />
+      {cardDeleteId && <DeleteCardDialog id={cardDeleteId} />}
+      {deleteAllOpen && <DeleteAllCardsDialog />}
       <ImportOutlineDialog />
     </>
   )

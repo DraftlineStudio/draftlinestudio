@@ -152,9 +152,9 @@ function Overview() {
 }
 
 function Inspector({ id }: { id: string }) {
-  const { linkOpen, setLinkOpen, updateCard, linkCard, deleteCard } = usePlannerStore(useShallow(s => ({
+  const { linkOpen, setLinkOpen, updateCard, linkCard, askDeleteCard } = usePlannerStore(useShallow(s => ({
     linkOpen: s.linkOpen, setLinkOpen: s.setLinkOpen, updateCard: s.updateCard, linkCard: s.linkCard,
-    deleteCard: s.deleteCard,
+    askDeleteCard: s.askDeleteCard,
   })))
   const book = useBookStore(s => s.book)
   const planner = ensurePlanner(book)
@@ -262,7 +262,7 @@ function Inspector({ id }: { id: string }) {
         )}
       </div>
       <div className="pl-insp-foot">
-        <button className="pl-delete-btn" onClick={() => deleteCard(card.id)}>Delete Card</button>
+        <button className="pl-delete-btn" onClick={() => askDeleteCard(card.id)}>Delete Card</button>
       </div>
     </div>
   )

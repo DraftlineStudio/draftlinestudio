@@ -8,9 +8,10 @@ import { useBookStore } from '../../store/bookStore'
 import { bookChapters, codexPeople, countWords, displayCards, ensurePlanner, relativeStamp } from './plannerModel'
 
 export default function PlannerSidebar() {
-  const { view, noteId, setNoteId, newNote, toggleLaneHidden, addCharacterLane, openLineDialog } = usePlannerStore(useShallow(s => ({
+  const { view, noteId, setNoteId, newNote, toggleLaneHidden, addCharacterLane, openLineDialog, openDeleteAll } = usePlannerStore(useShallow(s => ({
     view: s.view, noteId: s.noteId, setNoteId: s.setNoteId, newNote: s.newNote,
     toggleLaneHidden: s.toggleLaneHidden, addCharacterLane: s.addCharacterLane, openLineDialog: s.openLineDialog,
+    openDeleteAll: s.openDeleteAll,
   })))
   // Counts come from one derivation, so the footer and the per-chapter and
   // per-line tallies read the same cards the canvas draws.
@@ -98,6 +99,13 @@ export default function PlannerSidebar() {
             )
           })}
         </div>
+        {cards.length > 0 && (
+          <div className="pl-side-divider">
+            <button className="pl-side-danger" onClick={openDeleteAll}>
+              Delete all {cards.length} {cards.length === 1 ? 'card' : 'cards'}…
+            </button>
+          </div>
+        )}
       </div>
     )
   }

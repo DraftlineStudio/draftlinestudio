@@ -2,6 +2,15 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02737] - 2026-09-30
+
+### Added
+- A Delete all cards button in the Planner sidebar, for an imported outline you decide against. It asks you to type the exact number of cards before it will do anything.
+- Both card deletes now choose whether the cards are recorded in Dead ideas, so emptying the Planner no longer fills that note with hundreds of entries.
+
+### Changed
+- Deleting a card asks first instead of deleting on the click.
+
 ## [0.21.02736] - 2026-09-30
 
 ### Changed

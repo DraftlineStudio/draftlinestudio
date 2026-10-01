@@ -8033,6 +8033,12 @@ html, body, #root {
 .pl-side-add:hover { background: var(--bg-hover); color: var(--text-primary); }
 .pl-side-divider { border-top: 1px solid var(--border); margin-top: 8px; padding: 8px 0 2px; }
 .pl-side-footer { border-top: 1px solid var(--border); padding: 6px 14px; flex-shrink: 0; background: var(--bg-surface-alt); font-size: 10.5px; color: var(--text-section); }
+.pl-side-danger {
+  display: block; width: calc(100% - 28px); margin: 0 14px; height: 26px; padding: 0 8px;
+  background: transparent; border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text-muted); font-size: 11.5px; font-family: inherit; text-align: left; cursor: pointer;
+}
+.pl-side-danger:hover { border-color: #E06C75; color: #E06C75; }
 
 .pl-note-row { padding: 7px 10px 7px 20px; cursor: pointer; border-left: 2px solid transparent; }
 .pl-note-row:hover { background: var(--bg-hover); }
@@ -8242,6 +8248,14 @@ html, body, #root {
 .pl-prop-drop:hover { background: var(--bg-hover); color: #E06C75; }
 .pl-import-foot { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 .pl-import-foot .pl-dialog-hint { flex: 1; }
+.pl-dialog-check { display: flex; align-items: center; gap: 8px; margin: 2px 0 6px; color: var(--text-chapter); font-size: 12px; cursor: pointer; }
+.pl-dialog-check input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--app-accent); margin: 0; }
+.pl-confirm-field { margin-top: 12px; }
+.pl-confirm-phrase {
+  font-family: 'IBM Plex Mono', 'Fira Code', monospace; font-weight: 600; color: #E06C75;
+  background: var(--bg-surface-alt); border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px;
+}
+.pl-confirm-input { font-family: 'IBM Plex Mono', 'Fira Code', monospace; letter-spacing: 0.3px; }
 
 /* ═════════════════════════════════════════════════════════════════════════════
    BOOK & EDITIONS · SHARED WITH THE v2 SCREEN

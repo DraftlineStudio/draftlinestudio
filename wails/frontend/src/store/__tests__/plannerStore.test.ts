@@ -159,3 +159,91 @@ describe('lane moves', () => {
     expect(cards()[0].lines).toEqual(['lane-new', 'lane-crossing'])
   })
 })
+
+// Cards are the one thing in the Planner that arrive in bulk, so losing them
+// has to be deliberate: an ask for a single card, and a typed count for all of
+// them. Whether a deletion is recorded in Dead ideas is the writer's choice
+// either way, so both paths are checked against that note.
+describe('deleting cards', () => {
+  // Through the store, so the note is there before the first delete creates it.
+  const deadBody = () => usePlannerStore.getState().planner().notes.find(note => note.system === 'dead')!.body
+
+  beforeEach(() => {
+    mocks.setStatusMessage.mockClear()
+    usePlannerStore.getState().reset()
+    useBookStore.setState({
+      book: bookWith([], [
+        { ...card([]), id: 'card-1', title: 'The lamp fails' },
+        { ...card([]), id: 'card-2', title: 'The harbour closes' },
+        { ...card([]), id: 'card-3', title: 'The boat returns empty' },
+      ]),
+      analysisRevision: 1,
+    })
+  })
+
+  it('asks before deleting one card, and deletes nothing if the ask is cancelled', () => {
+    usePlannerStore.getState().askDeleteCard('card-2')
+    expect(usePlannerStore.getState().cardDeleteId).toBe('card-2')
+    expect(cards()).toHaveLength(3)
+
+    usePlannerStore.getState().cancelDeleteCard()
+    expect(usePlannerStore.getState().cardDeleteId).toBeNull()
+    expect(cards()).toHaveLength(3)
+  })
+
+  it('records a confirmed single delete in Dead ideas and drops the selection', () => {
+    usePlannerStore.getState().select('card-2')
+    usePlannerStore.getState().askDeleteCard('card-2')
+    usePlannerStore.getState().deleteCard('card-2', true)
+
+    expect(cards().map(item => item.id)).toEqual(['card-1', 'card-3'])
+    expect(deadBody()).toContain('The harbour closes')
+    expect(usePlannerStore.getState().cardDeleteId).toBeNull()
+    expect(usePlannerStore.getState().selected).toBeNull()
+  })
+
+  it('leaves Dead ideas alone when the record is declined', () => {
+    const before = deadBody()
+    usePlannerStore.getState().deleteCard('card-2', false)
+
+    expect(cards()).toHaveLength(2)
+    expect(deadBody()).toBe(before)
+  })
+
+  it('empties the Planner and names every card in one Dead ideas append', () => {
+    usePlannerStore.getState().deleteAllCards(true)
+
+    expect(cards()).toEqual([])
+    expect(deadBody()).toContain('The lamp fails')
+    expect(deadBody()).toContain('The harbour closes')
+    expect(deadBody()).toContain('The boat returns empty')
+    expect(mocks.setStatusMessage).toHaveBeenCalledWith('3 cards deleted')
+  })
+
+  it('empties the Planner without a record when the toggle is off', () => {
+    const before = deadBody()
+    usePlannerStore.getState().deleteAllCards(false)
+
+    expect(cards()).toEqual([])
+    expect(deadBody()).toBe(before)
+  })
+
+  it('leaves story lines, notes and the manuscript standing', () => {
+    usePlannerStore.getState().deleteAllCards(false)
+
+    const book = useBookStore.getState().book!
+    expect(book.planner!.lanes.map(lane => lane.id)).toContain(MAIN_LANE_ID)
+    expect(book.planner!.notes.some(note => note.system === 'dead')).toBe(true)
+    expect(book.body).toHaveLength(1)
+  })
+
+  it('closes the bulk dialog and reports nothing when there are no cards', () => {
+    usePlannerStore.getState().deleteAllCards(true)
+    mocks.setStatusMessage.mockClear()
+
+    usePlannerStore.getState().openDeleteAll()
+    usePlannerStore.getState().deleteAllCards(true)
+    expect(usePlannerStore.getState().deleteAllOpen).toBe(false)
+    expect(mocks.setStatusMessage).not.toHaveBeenCalled()
+  })
+})

@@ -26,10 +26,10 @@ glyph hides the tools panel.
   percentages across the chapter axis when a template is chosen.
 - **Board** — the same cards as index cards, grouped by chapter or by story
   line. Drag onto a column to move; drop onto a card to order before it.
-- **Scratchpad** — free-text notes. The *Dead ideas* note is automatic: every
-  card deleted from the timeline or board is written there as an outline entry
-  so *Propose Cards* can bring it back. A note can be excluded from Propose
-  Cards.
+- **Scratchpad** — free-text notes. The *Dead ideas* note holds cards deleted
+  from the timeline or board, written as outline entries so *Propose Cards* can
+  bring them back. Each delete chooses whether to record them there. A note can
+  be excluded from Propose Cards.
 - **Synopsis** — one paragraph per chapter, made of that chapter's card
   synopses in timeline order. Paragraphs are editable; *Rebuild from Cards*
   discards edits. Chapters without cards stay blank rather than being
@@ -54,6 +54,18 @@ A card has two statuses and nothing else decides them:
 *What changes* and *stakes* are the promise the card makes. They are the
 writer's own note about the card, not something Draftline checks against the
 manuscript.
+
+### Deleting cards
+
+Both deletes ask first, and both offer a *Record in Dead ideas* checkbox: on
+by default for one card, off by default for all of them, because an abandoned
+import would otherwise write hundreds of entries into the note.
+
+*Delete Card* in the inspector asks about the one card. The sidebar's *Delete
+all N cards* empties the Planner, and requires the phrase `DELETE <N>` typed
+exactly — the count is in the phrase so the confirmation cannot be muscle
+memory from a smaller delete. Story lines, notes and the manuscript are
+untouched either way. Neither delete can be undone.
 
 Scene numbers follow the manuscript's scene breaks: a paragraph that is only
 `***`, `* * *`, `⁂`, `###`, `# # #`, `---`, `- - -`, `~ ~ ~` or `. . .`, or a

@@ -52,7 +52,18 @@ interface PlannerStore {
   addCard: (chapterId: string, laneId: string) => void
   updateCard: (id: string, patch: Partial<PlannerCard>) => void
   moveCard: (id: string, chapterId: string, laneId: string | null, beforeId: string | null) => void
-  deleteCard: (id: string) => void
+  // Deleting a card asks first, as deleting a note does. Confirmation
+  // chooses whether the card is recorded in the Dead ideas note.
+  deleteCard: (id: string, recordDead: boolean) => void
+  removeCards: (ids: string[], recordDead: boolean) => void
+  cardDeleteId: string | null
+  askDeleteCard: (id: string) => void
+  cancelDeleteCard: () => void
+  // Emptying the Planner in one go, for an import that turned out wrong.
+  deleteAllOpen: boolean
+  openDeleteAll: () => void
+  closeDeleteAll: () => void
+  deleteAllCards: (recordDead: boolean) => void
   linkCard: (id: string, link: PlannerLink | null) => void
   addSubplot: (name: string) => void
   addCharacterLane: (characterId: string) => void
@@ -96,6 +107,7 @@ const initialUI = {
   // views are worth having separately. The toolbar still switches it.
   view: 'timeline' as PlannerView, panelOpen: true, selected: null, drag: null, boardBy: 'line' as const,
   noteId: null, noteMono: false, linkOpen: false, lineDialog: null, noteDeleteId: null as string | null,
+  cardDeleteId: null as string | null, deleteAllOpen: false,
   importOpen: false, importText: '', importFromNoteId: null, proposals: null,
 }
 
@@ -162,19 +174,45 @@ export const usePlannerStore = create<PlannerStore>((set, get) => ({
     set({ drag: null })
   },
 
-  deleteCard: (id) => {
+  // One mutation for any number of cards, so emptying the Planner is a
+  // single book update and a single Dead ideas append rather than one each.
+  removeCards: (ids, recordDead) => {
     const book = useBookStore.getState().book
+    const doomed = new Set(ids)
     get().mutate(p => {
-      const card = p.cards.find(c => c.id === id)
-      if (!card) return p
-      const block = deadIdeaBlock(card, 'Deleted', bookChapters(book), p.lanes, codexPeople(book))
+      const going = p.cards.filter(c => doomed.has(c.id))
+      if (!going.length) return p
+      const block = recordDead
+        ? going.map(c => deadIdeaBlock(c, 'Deleted', bookChapters(book), p.lanes, codexPeople(book))).join('')
+        : ''
       return {
         ...p,
-        cards: p.cards.filter(c => c.id !== id),
-        notes: p.notes.map(n => (n.system === 'dead' ? { ...n, body: n.body + block, updated: nowStamp() } : n)),
+        cards: p.cards.filter(c => !doomed.has(c.id)),
+        notes: block
+          ? p.notes.map(n => (n.system === 'dead' ? { ...n, body: n.body + block, updated: nowStamp() } : n))
+          : p.notes,
       }
     })
-    set(s => (s.selected === id ? { selected: null } : {}))
+    set(s => (s.selected && doomed.has(s.selected) ? { selected: null } : {}))
+  },
+
+  askDeleteCard: (id) => set({ cardDeleteId: id }),
+  cancelDeleteCard: () => set({ cardDeleteId: null }),
+
+  deleteCard: (id, recordDead) => {
+    set({ cardDeleteId: null })
+    get().removeCards([id], recordDead)
+  },
+
+  openDeleteAll: () => set({ deleteAllOpen: true }),
+  closeDeleteAll: () => set({ deleteAllOpen: false }),
+
+  deleteAllCards: (recordDead) => {
+    set({ deleteAllOpen: false })
+    const cards = get().planner().cards
+    if (!cards.length) return
+    get().removeCards(cards.map(c => c.id), recordDead)
+    useAppStore.getState().setStatusMessage(`${cards.length} card${cards.length === 1 ? '' : 's'} deleted`)
   },
 
   linkCard: (id, link) => get().updateCard(id, { link: link ?? undefined, status: link ? 'drafted' : 'planned' }),
