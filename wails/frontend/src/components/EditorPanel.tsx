@@ -19,7 +19,7 @@ function getChapterInfo(book: ReturnType<typeof useBookStore.getState>['book'], 
   }
   if (section === 'body') {
     const item = book.body[index]
-    return { label: 'Body', name: item?.title || 'Untitled', subtitle: item?.subtitle || '' }
+    return { label: '', name: item?.title || 'Untitled', subtitle: item?.subtitle || '' }
   }
   if (section === 'back_matter') {
     const item = book.back_matter[index]

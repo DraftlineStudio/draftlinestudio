@@ -485,11 +485,11 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
                   />
                 ) : (
                   <span
-                    className="editor-page-chapter-subtitle editable"
+                    className={`editor-page-chapter-subtitle editable${chapterSubtitle ? '' : ' prompt'}`}
                     onClick={handleSubtitleClick}
                     title={chapterSubtitle ? "Click to edit subtitle" : "Click to add subtitle"}
                   >
-                    {chapterSubtitle || '+ Add subtitle'}
+                    {chapterSubtitle || 'Add a subtitle'}
                   </span>
                 )
               )}

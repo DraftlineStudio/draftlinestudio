@@ -2,6 +2,15 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02741] - 2026-09-30
+
+### Changed
+- Chapter headings are set in the editor's own serif and centred, like the opening of a chapter in a book, with a short rule under them instead of a full-width border.
+- The chapter name and its subtitle each sit on their own line.
+- Resting on a chapter name or subtitle now fills in the box it is about to become, so it is clear they can be renamed. Clicking moves the caret and nothing else.
+- The prompt to add a subtitle stays hidden until you move over the heading.
+- Body chapters no longer carry a Body label above the title. Front and back matter keep theirs.
+
 ## [0.21.02740] - 2026-09-30
 
 ### Changed
