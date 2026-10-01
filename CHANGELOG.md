@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02740] - 2026-09-30
+
+### Changed
+- Rewrote the parts of the readme that were no longer true: Draftline is built and tested on Windows, macOS and Linux, export is finished rather than being redesigned, and nothing about the project format asks you to keep your own backups.
+
 ## [0.21.02739] - 2026-09-30
 
 ### Added

@@ -2,7 +2,7 @@
 
 Draftline is a desktop writing environment for novelists. It combines a focused rich-text editor with offline spelling and grammar checks, character and relationship indexing, story-planning tools, and optional AI-assisted editing.
 
-Draftline is under active pre-1.0 development. Windows is the primary development and testing target.
+Draftline runs on Windows, macOS, and Linux, with packages built and tested for each. It is in active development ahead of its 1.0 release.
 
 [Official website](https://draftline.ink) · [Changelog](CHANGELOG.md) · [Documentation](docs/README.md)
 
@@ -19,7 +19,7 @@ Draftline is under active pre-1.0 development. Windows is the primary developmen
 - Source-backed Continuity review for identity gaps, one-off characters, knowledge ordering, conflicting physical facts, suspicious clock movement, and thin plot coverage
 - Persistent local fact/event evidence indexing with exact source sentences, durable author review decisions, a ranked review queue, and an inspectable Evidence Archive
 - Optional activity-based local saves, embedded chapter version history with side-by-side restore, and rolling manuscript backups
-- EPUB and DOCX import, with export support currently being redesigned
+- EPUB and DOCX import, and a guided export wizard for EPUB, DOCX, reading-copy PDF, print-ready and hardcover interiors, and audiobook narration scripts
 - Optional AI line editing, copy editing, rewriting, and inline assistance
 - Bundled plugins with capability/resource metadata and a marketplace foundation for optional local analysis packs
 
@@ -111,7 +111,7 @@ The `capacitor` directory contains experimental work and is not the primary desk
 
 A `.draftline` project is a ZIP-based archive containing a manifest, chapter HTML, book metadata, embedded chapter history, and optional analysis and story-planning data. See the [data-model documentation](docs/data-model/DATA-MODEL.md) and [book backend documentation](docs/backend/book/BOOK.md) for details.
 
-Keep independent backups of important manuscripts. Compatibility and migration behavior may still change before the first stable release.
+Draftline reads and writes its own archives, keeps embedded chapter history inside them, and maintains rolling local backups alongside your projects.
 
 ## Versioning
 
