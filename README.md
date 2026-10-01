@@ -4,6 +4,8 @@ Draftline is a desktop writing environment for novelists. It combines a focused 
 
 Draftline runs on Windows, macOS, and Linux, with packages built and tested for each.
 
+**1.0 is here.** Draftline is stable and ready for real work: the format is settled, and it has been used daily on book-length manuscripts throughout development. That is not a claim of being bug-free, and anything you hit is worth telling us about — Help → Report an Issue in the app opens a report with your version already filled in, or open one in the [issue tracker](https://github.com/DraftlineStudio/draftlinestudio/issues) directly.
+
 [Official website](https://draftline.ink) · [Changelog](CHANGELOG.md) · [Documentation](docs/README.md)
 
 ## Features

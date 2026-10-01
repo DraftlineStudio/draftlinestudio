@@ -1,7 +1,7 @@
 # Contributing to Draftline
 
-Thanks for your interest in Draftline. The project is in active pre-1.0
-development, so expect fast movement and occasional churn.
+Thanks for your interest in Draftline. 1.0 is released and the app is stable;
+development is still quick, so a feature area can change shape between builds.
 
 ## Getting set up
 
@@ -12,7 +12,7 @@ In short: Go 1.25+, Node 22+, and the Wails v2 CLI; then `wails dev` from
 ## Before you open a PR
 
 - `cd wails && go test ./...` — Go suite, including the file-size guardrail
-- `cd wails/frontend && npm test -- --run` — frontend (Vitest) suite
+- `cd wails/frontend && npm test` — frontend (Vitest) suite
 - `cd wails/frontend && npm run build` — TypeScript check + production build
 
 All three must pass. New behavior should come with tests beside the code it
@@ -38,5 +38,7 @@ exercises (`*.test.ts` next to the module, `*_test.go` in the package).
 
 ## Reporting bugs
 
-Open an issue with your OS, the app version (Settings footer), and steps to
-reproduce. For crashes, the terminal output from `wails dev` is gold.
+Help → Report an Issue in the app opens a new issue with your version already
+filled in. Otherwise open one by hand with your OS, the app version (Settings
+footer), and steps to reproduce. For crashes, the terminal output from
+`wails dev` is gold.

@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02744] - 2026-10-01
+
+### Changed
+- The readme says 1.0 is stable and ready for real work, and points at Report an Issue in the Help menu.
+
 ## [1.0.02743] - 2026-10-01
 
 ### Changed
