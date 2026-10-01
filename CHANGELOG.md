@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02742] - 2026-09-30
+
+### Added
+- Adding a chapter now suggests the next number in whatever numbering the book already uses, so Chapter 12 is followed by Chapter 13 without typing it. A book whose chapters are named rather than numbered is left alone, and the suggestion counts past the highest number so an Epilogue at the end does not reset it.
+
 ## [0.21.02741] - 2026-09-30
 
 ### Changed

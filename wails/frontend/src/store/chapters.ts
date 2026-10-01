@@ -71,6 +71,47 @@ export function setSectionArray(book: BookData, section: Section, items: Chapter
   }
 }
 
+
+// The title a new item starts with, continuing whatever numbering the
+// section already uses.
+//
+// "Chapter 12" gives "Chapter 13", and so does "Chapter 12 — The Quay",
+// because the previous chapter's name must not come along for the ride. A
+// section of named chapters ("Prologue", "The Lighthouse Weekend") gets no
+// invented number at all: the result is empty and the caller falls back to
+// the bare type, which is what it did before. The numbering also has to
+// belong to the type being added, so a Prologue added to a numbered book
+// does not come out as "Chapter 13".
+//
+// It counts from the highest number found rather than the last, so adding
+// after an Epilogue still continues the chapters and the suggestion is never
+// a title the book already uses.
+const NUMBERED_TITLE = /^(\D*?)(\d+)(?:\s*[—–:.|-]\s*\S.*)?$/
+
+export function nextChapterTitle(titles: string[], type: string): string {
+  const wanted = type.trim().toLocaleLowerCase()
+  let label = ''
+  let width = 1
+  let padded = false
+  let highest = 0
+  let found = false
+  for (const raw of titles) {
+    const match = NUMBERED_TITLE.exec(raw.trim())
+    if (!match) continue
+    const prefix = match[1].trim().toLocaleLowerCase()
+    if (prefix !== '' && prefix !== wanted) continue
+    const n = Number(match[2])
+    if (found && n <= highest) continue
+    found = true
+    highest = n
+    label = match[1]
+    width = match[2].length
+    padded = match[2].length > 1 && match[2].startsWith('0')
+  }
+  if (!found) return ''
+  const next = String(highest + 1)
+  return label + (padded ? next.padStart(width, '0') : next)
+}
 export function createChapterActions(host: ChapterHost): ChapterActions {
   const updateChapterContent = (section: Section, index: number, html: string) => {
     const { book } = host.read()

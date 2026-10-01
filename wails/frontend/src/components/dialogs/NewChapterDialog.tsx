@@ -1,9 +1,10 @@
 import { useShallow } from 'zustand/react/shallow'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useBookStore } from '../../store/bookStore'
 import { useAppStore } from '../../store/appStore'
 import type { Section } from '../../types/draftline'
 import { FRONT_MATTER_TYPES, BODY_TYPES, BACK_MATTER_TYPES } from '../../types/draftline'
+import { getSectionArray, nextChapterTitle } from '../../store/chapters'
 
 interface Props {
   section: Section
@@ -25,13 +26,23 @@ function getSectionLabel(section: Section): string {
 
 export default function NewChapterDialog({ section }: Props) {
   const { addChapter } = useBookStore(useShallow(s => ({ addChapter: s.addChapter })))
+  const book = useBookStore(s => s.book)
   const closeNewChapterDialog = useAppStore(s => s.closeNewChapterDialog)
   const types = getTypesForSection(section)
   const [type, setType] = useState(types[0] || 'Chapter')
   const [title, setTitle] = useState('')
+  // Typing takes the field over: the suggestion stops following the type
+  // picker once the writer has said what they want, including to empty.
+  const [typed, setTyped] = useState(false)
+
+  const existing = useMemo(
+    () => (book && section !== 'copyright' ? getSectionArray(book, section).map(item => item.title ?? '') : []),
+    [book, section],
+  )
+  const value = typed ? title : nextChapterTitle(existing, type)
 
   function handleAdd() {
-    const finalTitle = title.trim() || type
+    const finalTitle = value.trim() || type
     addChapter(section, { title: finalTitle, type, content: '<p></p>' })
     closeNewChapterDialog()
   }
@@ -63,8 +74,8 @@ export default function NewChapterDialog({ section }: Props) {
           <label className="dialog-label">Title <span style={{ color: 'var(--text-muted)' }}>(optional — defaults to type)</span></label>
           <input
             className="dialog-input"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            value={value}
+            onChange={(e) => { setTyped(true); setTitle(e.target.value) }}
             onKeyDown={handleKey}
             placeholder={type}
             autoFocus
