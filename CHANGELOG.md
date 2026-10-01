@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [0.21.02738] - 2026-09-30
+
+### Fixed
+- Dragging a card to the edge of the timeline or board now scrolls it, so a card can go from Later to an early chapter in one motion instead of being dropped and picked up at every screenful.
+- A card dropped outside the grid no longer stays in hand, where the next drop would move it by mistake.
+
 ## [0.21.02737] - 2026-09-30
 
 ### Added

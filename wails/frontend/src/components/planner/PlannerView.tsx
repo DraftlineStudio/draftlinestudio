@@ -14,6 +14,7 @@ import {
 } from './plannerModel'
 import { generatedSynopsis, synopsisEntries, synopsisText, synopsisTrace } from './plannerSynopsis'
 import PlannerDialogs from './PlannerDialogs'
+import { useDragAutoScroll } from './useDragAutoScroll'
 
 const LATER_ID = LATER_COLUMN_ID
 
@@ -91,9 +92,10 @@ function TimelineView() {
   const marks = beatMarks(planner.beat_template, gridW)
 
   const allowDrop = (e: React.DragEvent) => e.preventDefault()
+  const scroller = useDragAutoScroll(!!drag, m.laneW)
 
   return (
-    <div className="pl-timeline">
+    <div className="pl-timeline" ref={scroller} onDragEnd={() => setDrag(null)}>
       <div className="pl-grid">
         <div className="pl-lanes">
           <div className="pl-lanes-head" style={{ height: m.headerH }}><span className="pl-kicker">Story lines</span></div>
@@ -182,6 +184,7 @@ function BoardView() {
   const cards = displayCards(planner)
   const hidden = new Set(planner.hidden_lanes ?? [])
   const lanes = planner.lanes.filter(l => !hidden.has(l.id))
+  const scroller = useDragAutoScroll(!!drag)
   const chapterOrder = new Map(chapters.map((c, i) => [c.id, i]))
   const orderKey = (c: DisplayCard) => (c.chapter_id === LATER_ID ? 1e9 : (chapterOrder.get(c.chapter_id) ?? 1e8))
 
@@ -201,7 +204,7 @@ function BoardView() {
     }))
 
   return (
-    <div className="pl-board">
+    <div className="pl-board" ref={scroller} onDragEnd={() => setDrag(null)}>
       <div className="pl-board-row">
         {boardColumns.map(col => (
           <div key={col.key} className="pl-board-col" onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); col.onDrop() }}>
