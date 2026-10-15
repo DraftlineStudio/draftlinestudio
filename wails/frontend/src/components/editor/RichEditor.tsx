@@ -12,7 +12,7 @@ import CharacterCount from '@tiptap/extension-character-count'
 import { FontSize } from '../../extensions/FontSize'
 import { CharacterHighlight } from '../../extensions/CharacterHighlight'
 import { SpellCheck } from '../../extensions/SpellCheck'
-import { GrammarCheck } from '../../extensions/GrammarCheck'
+import { GrammarCheck, blockText } from '../../extensions/GrammarCheck'
 import { ChapterSearch } from '../../extensions/ChapterSearch'
 import { RangeSpotlight } from '../../extensions/RangeSpotlight'
 import { PluginDockBars } from '../plugins/PluginMounts'
@@ -212,7 +212,7 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
       const textNode = $pos.parent
 
       if (textNode.isTextblock) {
-        const text = textNode.textContent
+        const text = blockText(textNode)
         const nodeStart = $pos.start()
         const offsetInNode = from - nodeStart
 

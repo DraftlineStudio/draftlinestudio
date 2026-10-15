@@ -5,8 +5,10 @@ import Typo from 'typo-js'
 import { describe, expect, it, vi } from 'vitest'
 import {
   checkWord,
+  getCaseCorrection,
   getDictionaryRoot,
   getImmediateSuggestions,
+  getSuggestions,
   loadDictionary,
   normalizeCustomDictionary,
   normalizeIgnoredWords,
@@ -52,7 +54,7 @@ describe('spell-check word normalization', () => {
         ? 'SET UTF-8\n'
         : String(input).endsWith('.txt')
           ? '# supplement\nGlock\n'
-          : "2\ncouldn't\nwouldn't\n",
+          : "3\ncouldn't\nwouldn't\nTuesday\n",
     })) as unknown as typeof fetch
 
     try {
@@ -70,6 +72,24 @@ describe('spell-check word normalization', () => {
       globalThis.fetch = originalFetch
       setIgnoredWords([])
     }
+  })
+
+  it('keeps dictionary checks case-sensitive, whichever casing is seen first', async () => {
+    await loadDictionary()
+    // Checking the correct casing must not cache an answer for the wrong one,
+    // and the wrong one must not poison the correct one afterwards.
+    expect(checkWord('Tuesday')).toBe(true)
+    expect(checkWord('tuesday')).toBe(false)
+    expect(checkWord('Tuesday')).toBe(true)
+    expect(checkWord('tuesday')).toBe(false)
+  })
+
+  it('offers the accepted casing as the first suggestion for a miscapitalized word', async () => {
+    await loadDictionary()
+    expect(getCaseCorrection('tuesday')).toBe('Tuesday')
+    expect(getCaseCorrection('Tuesday')).toBe(null)
+    expect(getImmediateSuggestions('tuesday')[0]).toBe('Tuesday')
+    expect(await getSuggestions('tuesday')).toContain('Tuesday')
   })
 })
 
@@ -89,6 +109,13 @@ describe('bundled dictionary vocabulary', () => {
   it('still flags real misspellings', () => {
     for (const word of ['recieve', 'teh', 'definately', 'xyzzt']) {
       expect(dictionary.check(word), word).toBe(false)
+    }
+  })
+
+  it('is case-sensitive about proper nouns', () => {
+    for (const word of ['Tuesday', 'January', 'Paris']) {
+      expect(dictionary.check(word), word).toBe(true)
+      expect(dictionary.check(word.toLocaleLowerCase()), word.toLocaleLowerCase()).toBe(false)
     }
   })
 })

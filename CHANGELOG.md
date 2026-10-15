@@ -2,6 +2,16 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02745] - 2026-10-15
+
+### Added
+- The grammar check now flags a sentence that starts with a lowercase letter and offers the capitalized word.
+- The grammar check now flags a lowercase i used as the pronoun I, in contractions too.
+
+### Fixed
+- A word typed with the wrong capitalization, like tuesday, is underlined again and the correct capitalization is offered as the first suggestion.
+- A correctly capitalized word no longer gets marked as misspelled after its lowercase form was seen.
+
 ## [1.0.02744] - 2026-10-01
 
 ### Changed

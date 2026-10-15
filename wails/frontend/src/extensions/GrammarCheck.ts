@@ -57,13 +57,23 @@ export const GrammarCheck = Extension.create({
 function buildDecorations(doc: ProseMirrorNode): DecorationSet {
   const decorations: Decoration[] = []
   doc.descendants((node, pos) => {
-    if (!node.isText) return
-    for (const issue of analyzeGrammar(node.text || '')) {
-      decorations.push(Decoration.inline(pos + issue.from, pos + issue.to, {
+    if (!node.isTextblock) return
+    // Analyze whole blocks, not text nodes: a mark boundary mid-sentence would
+    // otherwise start a "paragraph" for the sentence-capitalization rule. A
+    // leaf node stands in as one space so offsets stay aligned.
+    for (const issue of analyzeGrammar(blockText(node))) {
+      decorations.push(Decoration.inline(pos + 1 + issue.from, pos + 1 + issue.to, {
         class: issue.kind === 'style' ? 'style-error' : 'grammar-error',
         title: issue.message,
       }))
     }
+    return false
   })
   return DecorationSet.create(doc, decorations)
+}
+
+/** The text analyzeGrammar offsets are valid against, shared with the editor's
+ * context menu so the underline and the menu agree on positions. */
+export function blockText(node: ProseMirrorNode): string {
+  return node.textBetween(0, node.content.size, undefined, ' ')
 }

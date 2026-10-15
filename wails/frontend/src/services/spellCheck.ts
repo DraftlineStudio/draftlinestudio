@@ -74,14 +74,35 @@ function notifyChanged(): void {
   changeListeners.forEach(listener => listener())
 }
 
+function restoreApostrophes(candidate: string, source: string): string {
+  const sourceApostrophe = source.match(/[’‘ʼ＇]/)?.[0]
+  return sourceApostrophe ? candidate.replace(/'/g, sourceApostrophe) : candidate
+}
+
 function matchCase(candidate: string, source: string): string {
   let matched = candidate
   if (source === source.toLocaleUpperCase()) matched = candidate.toLocaleUpperCase()
   else if (source[0] === source[0]?.toLocaleUpperCase()) {
     matched = candidate[0].toLocaleUpperCase() + candidate.slice(1)
   }
-  const sourceApostrophe = source.match(/[’‘ʼ＇]/)?.[0]
-  return sourceApostrophe ? matched.replace(/'/g, sourceApostrophe) : matched
+  return restoreApostrophes(matched, source)
+}
+
+/**
+ * The casing the dictionary does accept for a word it rejects as typed:
+ * tuesday → Tuesday. Dictionary checks are case-sensitive, and the suggestion
+ * index is all lower-case, so without this the one right answer for a
+ * miscapitalized word is the one suggestion that can never be made.
+ */
+export function getCaseCorrection(word: string): string | null {
+  if (!dictionary) return null
+  const cleaned = cleanWord(word)
+  if (cleaned.length < 2 || dictionary.check(cleaned)) return null
+  const capitalized = cleaned[0].toLocaleUpperCase() + cleaned.slice(1).toLocaleLowerCase()
+  for (const candidate of [capitalized, cleaned.toLocaleLowerCase()]) {
+    if (candidate !== cleaned && dictionary.check(candidate)) return candidate
+  }
+  return null
 }
 
 export async function loadDictionary(): Promise<void> {
@@ -175,12 +196,15 @@ export function checkWord(word: string): boolean {
   const rootKey = root.toLocaleLowerCase()
   if (customWords.has(key) || customWords.has(rootKey) || ignoredWords.has(key) || ignoredWords.has(rootKey)) return true
   if (bundledWords.has(key) || bundledWords.has(rootKey)) return true
-  const cached = checkCache.get(key)
+  // The dictionary check is case-sensitive (tuesday is wrong, Tuesday is
+  // right), so the cache must be too: a shared lower-case key lets whichever
+  // casing is checked first answer for both.
+  const cached = checkCache.get(cleaned)
   if (cached !== undefined) return cached
 
   const correct = dictionary.check(cleaned)
     || (root !== cleaned && dictionary.check(root))
-  checkCache.set(key, correct)
+  checkCache.set(cleaned, correct)
   return correct
 }
 
@@ -193,6 +217,9 @@ export function getImmediateSuggestions(word: string, limit = 5): string[] {
   const addIfCorrect = (candidate: string) => {
     if (candidate && candidate !== key && dictionary?.check(candidate)) ranked.add(candidate)
   }
+
+  const caseCorrection = getCaseCorrection(cleaned)
+  if (caseCorrection) ranked.add(caseCorrection)
 
   commonCorrections[key]?.forEach(addIfCorrect)
   if (key.startsWith('e') && key.length > 2) addIfCorrect(key.slice(1))
@@ -269,6 +296,10 @@ export async function getSuggestions(word: string, limit = 5): Promise<string[]>
   const immediate = getImmediateSuggestions(cleaned, limit)
   const broad = await broadSuggestions
   const ranked = new Map<string, string>()
+  // A case correction shares the lower-cased key with the word itself, so it
+  // must be seeded before the dedupe below, and first: it is the likeliest fix.
+  const caseCorrection = getCaseCorrection(cleaned)
+  if (caseCorrection) ranked.set(key, restoreApostrophes(caseCorrection, word))
   const add = (suggestion: string) => {
     const normalized = cleanWord(suggestion).toLocaleLowerCase()
     if (normalized && normalized !== key && !ranked.has(normalized)) {

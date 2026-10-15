@@ -55,6 +55,46 @@ function addMatches(
   }
 }
 
+// Words a period can follow mid-sentence, so the lower-case word after them
+// is not a sentence start. Single letters (initials, i.e., p.m.) are skipped
+// separately.
+const abbreviationBeforePeriod = new Set([
+  'mr', 'mrs', 'ms', 'dr', 'st', 'vs', 'etc', 'jr', 'sr', 'prof', 'capt',
+  'sgt', 'lt', 'col', 'gen', 'rev', 'hon', 'no', 'vol', 'ch', 'pp', 'approx',
+  'dept', 'inc', 'ltd', 'co', 'ave', 'blvd', 'rd', 'mt',
+])
+
+// A lower-case letter opening the text or following a sentence-ending mark
+// and whitespace. Dialogue tags ("Run!" she yelled) stay legal because the
+// closing quote sits between the mark and the tag.
+const sentenceStartPattern = /(^\s*|[.!?]\s+)(\p{Ll})/gu
+
+function addSentenceCapitalization(issues: GrammarIssue[], text: string): void {
+  sentenceStartPattern.lastIndex = 0
+  let match: RegExpExecArray | null
+  while ((match = sentenceStartPattern.exec(text)) !== null) {
+    if (match[1][0] === '.') {
+      if (text[match.index - 1] === '.') continue // ellipsis, a legal pause
+      const wordBefore = text.slice(0, match.index).match(/(\p{Script=Latin}+)$/u)?.[1]
+      if (wordBefore && (wordBefore.length === 1
+        || abbreviationBeforePeriod.has(wordBefore.toLocaleLowerCase()))) continue
+    }
+    const from = match.index + match[0].length - 1
+    const word = text.slice(from).match(/^[\p{Script=Latin}\p{N}'’‘ʼ＇]+/u)?.[0] ?? match[2]
+    // Leave camel-case brands (iPhone) and alphanumerics (mp3) alone, and
+    // leave the pronoun, bare or contracted (i, i'm), to the rule that names it.
+    if (/[\p{Lu}\p{N}]/u.test(word.slice(1)) || word === 'i' || /^i['’‘ʼ＇]/.test(word)) continue
+    issues.push({
+      rule: 'sentence-capitalization',
+      kind: 'grammar',
+      from,
+      to: from + word.length,
+      message: 'Sentences begin with a capital letter.',
+      replacements: [word[0].toLocaleUpperCase() + word.slice(1)],
+    })
+  }
+}
+
 /**
  * Fast, deterministic checks intended for continuous editor feedback. These
  * rules deliberately target high-confidence mistakes instead of trying to
@@ -64,6 +104,20 @@ export function analyzeGrammar(text: string): GrammarIssue[] {
   if (!enabled || !text) return []
 
   const issues: GrammarIssue[] = []
+
+  addSentenceCapitalization(issues, text)
+
+  addMatches(
+    issues,
+    text,
+    // A standalone lower-case i, bare or opening a contraction (i'm, i'll,
+    // i've, i'd). The period lookahead keeps i.e. and roman numerals in
+    // references like i.x untouched; the hyphen guards keep i-beam whole.
+    /(?<![\p{Script=Latin}\p{N}'’‘ʼ＇-])i(?=['’‘ʼ＇](?:m|ll|ve|d)\b|[\s,;:!?)\]}"”’…]|\.(?!\p{Script=Latin})|$)/gu,
+    'pronoun-i',
+    'The pronoun “I” is always capitalized.',
+    'I',
+  )
 
   const repeatedWord = /\b([A-Za-z]+(?:['\u2019][A-Za-z]+)?)\s+\1\b/gi
   let repeated: RegExpExecArray | null
