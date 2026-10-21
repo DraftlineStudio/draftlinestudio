@@ -1010,6 +1010,7 @@ export namespace types {
 	    custom_dictionary?: string[];
 	    spell_check_enabled: boolean;
 	    grammar_check_enabled: boolean;
+	    spell_language: string;
 	    cast_enabled: boolean;
 	    story_bible_enabled: boolean;
 	    analysis_enabled: boolean;
@@ -1061,6 +1062,7 @@ export namespace types {
 	        this.custom_dictionary = source["custom_dictionary"];
 	        this.spell_check_enabled = source["spell_check_enabled"];
 	        this.grammar_check_enabled = source["grammar_check_enabled"];
+	        this.spell_language = source["spell_language"];
 	        this.cast_enabled = source["cast_enabled"];
 	        this.story_bible_enabled = source["story_bible_enabled"];
 	        this.analysis_enabled = source["analysis_enabled"];

@@ -57,6 +57,7 @@ export default function AppSettingsDialog() {
   const [activityAutoSaveEnabled, setActivityAutoSaveEnabled] = useState(settings.activity_autosave_enabled)
   const [spellCheckEnabled, setSpellCheckEnabled] = useState(settings.spell_check_enabled)
   const [grammarCheckEnabled, setGrammarCheckEnabled] = useState(settings.grammar_check_enabled)
+  const [spellLanguage, setSpellLanguage] = useState(settings.spell_language)
   const [castEnabled, setCastEnabled] = useState(settings.cast_enabled)
   const [analysisEnabled, setAnalysisEnabled] = useState(settings.analysis_enabled)
   const [analysisCPUProfile, setAnalysisCPUProfile] = useState<AnalysisCPUProfile>(settings.analysis_cpu_profile)
@@ -253,6 +254,7 @@ export default function AppSettingsDialog() {
       activity_autosave_enabled: activityAutoSaveEnabled,
       spell_check_enabled: spellCheckEnabled,
       grammar_check_enabled: grammarCheckEnabled,
+      spell_language: spellLanguage,
       cast_enabled: castEnabled,
       analysis_enabled: analysisEnabled,
       analysis_cpu_profile: analysisCPUProfile,
@@ -376,6 +378,7 @@ export default function AppSettingsDialog() {
                 autoThemeDawn={autoThemeDawn} setAutoThemeDawn={setAutoThemeDawn}
                 autoThemeDusk={autoThemeDusk} setAutoThemeDusk={setAutoThemeDusk}
                 activityAutoSaveEnabled={activityAutoSaveEnabled} setActivityAutoSaveEnabled={setActivityAutoSaveEnabled}
+                spellLanguage={spellLanguage} setSpellLanguage={setSpellLanguage}
                 analysisCPUProfile={analysisCPUProfile} setAnalysisCPUProfile={setAnalysisCPUProfile}
                 bookFont={bookFont} setBookFont={setBookFont}
                 editorFontSize={editorFontSize} setEditorFontSize={setEditorFontSize}

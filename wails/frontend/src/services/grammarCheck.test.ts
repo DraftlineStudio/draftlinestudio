@@ -56,6 +56,19 @@ describe('sentence capitalization', () => {
   })
 })
 
+describe('article agreement', () => {
+  it('flags the wrong article before a vowel or consonant sound', () => {
+    expect(byRule('She kept a umbrella by the door.', 'article-agreement')).toHaveLength(1)
+    expect(byRule('He was an builder of small boats.', 'article-agreement')).toHaveLength(1)
+  })
+
+  it('treats a silent h as a vowel sound in both spelling conventions', () => {
+    expect(byRule('It was an honor to serve.', 'article-agreement')).toEqual([])
+    expect(byRule('It was an honour to serve.', 'article-agreement')).toEqual([])
+    expect(byRule('They waited an hour in an honest queue.', 'article-agreement')).toEqual([])
+  })
+})
+
 describe('pronoun capitalization', () => {
   it('flags a standalone lower-case i and offers I', () => {
     const issues = byRule('She said i could stay until morning.', 'pronoun-i')

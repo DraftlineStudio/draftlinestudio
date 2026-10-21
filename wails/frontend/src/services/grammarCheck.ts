@@ -175,7 +175,7 @@ export function analyzeGrammar(text: string): GrammarIssue[] {
     const noun = article[2].toLocaleLowerCase()
     const vowelSound = /^[aeiou]/.test(noun)
       && !/^(uni([^n]|$)|use|user|usual|euro|one|once)/.test(noun)
-    const silentH = /^(honest|honor|hour|heir)/.test(noun)
+    const silentH = /^(honest|honou?r|hour|heir)/.test(noun)
     const expected = vowelSound || silentH ? 'an' : 'a'
     if (current === expected) continue
     issues.push({

@@ -1,6 +1,8 @@
 import affData from '../../public/dictionaries/en_US.aff?raw'
 import dicData from '../../public/dictionaries/en_US.dic?raw'
-import supplementData from '../../public/dictionaries/en_US-supplement.txt?raw'
+import gbAffData from '../../public/dictionaries/en_GB.aff?raw'
+import gbDicData from '../../public/dictionaries/en_GB.dic?raw'
+import supplementData from '../../public/dictionaries/en-supplement.txt?raw'
 import Typo from 'typo-js'
 import { describe, expect, it, vi } from 'vitest'
 import {
@@ -116,6 +118,26 @@ describe('bundled dictionary vocabulary', () => {
     for (const word of ['Tuesday', 'January', 'Paris']) {
       expect(dictionary.check(word), word).toBe(true)
       expect(dictionary.check(word.toLocaleLowerCase()), word.toLocaleLowerCase()).toBe(false)
+    }
+  })
+})
+
+describe('bundled en_GB dictionary', () => {
+  const dictionary = new Typo('en_GB', gbAffData, gbDicData)
+
+  it('accepts British spellings, -ise and Oxford -ize both', () => {
+    for (const word of [
+      'colour', 'honour', 'travelling', 'fibre', 'centre', 'grey', 'whisky',
+      'realise', 'organise', 'apologise',
+      'realize', 'organize', 'apologize',
+    ]) {
+      expect(dictionary.check(word), word).toBe(true)
+    }
+  })
+
+  it('flags American spellings and real misspellings', () => {
+    for (const word of ['color', 'honor', 'center', 'traveling', 'fiber', 'recieve', 'definately']) {
+      expect(dictionary.check(word), word).toBe(false)
     }
   })
 })

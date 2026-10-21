@@ -9,7 +9,7 @@ import (
 // error-fixing instructions and none of the enrichment language from the
 // expand mode, and it must not fall through to the line_edit default.
 func TestCopyEditPrompt(t *testing.T) {
-	p := BuildSystemPrompt("copy_edit", "", nil)
+	p := BuildSystemPrompt("copy_edit", "", nil, "en_US")
 
 	for _, want := range []string{"copy editor", "objective mechanical errors", "NEVER rephrase", "capitalization", "one <p> element per original paragraph"} {
 		if !strings.Contains(p, want) {
@@ -26,14 +26,14 @@ func TestCopyEditPrompt(t *testing.T) {
 // Copy Edit is intentionally mechanical: including style examples costs
 // tokens and nudges models toward subjective rewriting.
 func TestCopyEditPromptExcludesProseGuide(t *testing.T) {
-	p := BuildSystemPrompt("copy_edit", "Sample voice paragraph.", nil)
+	p := BuildSystemPrompt("copy_edit", "Sample voice paragraph.", nil, "en_US")
 	if strings.Contains(p, "Sample voice paragraph.") {
 		t.Fatal("copy_edit prompt includes the prose guide")
 	}
 }
 
 func TestLineEditPromptIsSelective(t *testing.T) {
-	p := BuildSystemPrompt("line_edit", "Sample voice paragraph.", nil)
+	p := BuildSystemPrompt("line_edit", "Sample voice paragraph.", nil, "en_US")
 	for _, want := range []string{"restrained line editor", "smallest edit", "preserve it exactly", "never as a reason to rewrite", "constrain wording YOU INTRODUCE"} {
 		if !strings.Contains(p, want) {
 			t.Fatalf("line_edit prompt missing restraint %q", want)
@@ -46,9 +46,33 @@ func TestLineEditPromptIsSelective(t *testing.T) {
 	}
 }
 
+// A British manuscript carries the convention in every mode; an American one
+// says nothing, because American spelling is already every model's default.
+func TestBritishSpellingRule(t *testing.T) {
+	for _, mode := range []string{"copy_edit", "line_edit", "expand", "smooth"} {
+		p := BuildSystemPrompt(mode, "", nil, "en_GB")
+		if !strings.Contains(p, "British English") {
+			t.Fatalf("%s prompt for en_GB never names British English", mode)
+		}
+		if !strings.Contains(p, "colour") {
+			t.Fatalf("%s prompt for en_GB carries no example spellings", mode)
+		}
+	}
+	// copy_edit alone treats American spellings as errors to correct; the
+	// rewriting modes only constrain what they write.
+	if p := BuildSystemPrompt("copy_edit", "", nil, "en_GB"); !strings.Contains(p, "spelling error to correct") {
+		t.Fatal("copy_edit prompt for en_GB does not correct American spellings")
+	}
+	for _, lang := range []string{"en_US", ""} {
+		if p := BuildSystemPrompt("copy_edit", "", nil, lang); strings.Contains(p, "British") {
+			t.Fatalf("copy_edit prompt for %q mentions British English", lang)
+		}
+	}
+}
+
 // Unknown modes must still fall through to the line_edit default.
 func TestUnknownModeFallsBackToLineEdit(t *testing.T) {
-	p := BuildSystemPrompt("nonsense", "", nil)
+	p := BuildSystemPrompt("nonsense", "", nil, "")
 	if !strings.Contains(p, "restrained line editor") {
 		t.Fatal("unknown mode did not fall back to line_edit prompt")
 	}

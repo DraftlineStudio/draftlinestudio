@@ -11,10 +11,10 @@ import '@fontsource/merriweather/300-italic.css'
 import '@fontsource/merriweather/400-italic.css'
 import '@fontsource/merriweather/700-italic.css'
 import './styles/global.css'
-import { loadDictionary } from './services/spellCheck'
 
-// Load spell check dictionary in background
-void loadDictionary()
+// The spell-check dictionary is loaded by the store once settings are known,
+// so the first fetch is already the writer's chosen language (see
+// appStore.loadSettings).
 
 // Disable default browser context menu everywhere (prevents WebView inspector)
 // Custom context menus are handled by individual components

@@ -16,6 +16,7 @@ export default function ApplicationSection({
   autoThemeDawn, setAutoThemeDawn,
   autoThemeDusk, setAutoThemeDusk,
   activityAutoSaveEnabled, setActivityAutoSaveEnabled,
+  spellLanguage, setSpellLanguage,
   analysisCPUProfile, setAnalysisCPUProfile,
   bookFont, setBookFont,
   editorFontSize, setEditorFontSize,
@@ -246,6 +247,22 @@ export default function ApplicationSection({
           </button>
         </div>
         <div className="settings-hint">Controls how text appears in the editor. Does not affect exported files.</div>
+      </div>
+
+      <div className="settings-section-label">Spelling &amp; Grammar</div>
+      <div className="dialog-field">
+        <label className="dialog-label">English variant</label>
+        <select
+          className="dialog-select"
+          value={spellLanguage}
+          onChange={event => setSpellLanguage(event.target.value as typeof spellLanguage)}
+        >
+          <option value="en_US">American English</option>
+          <option value="en_GB">British English</option>
+        </select>
+        <div className="settings-hint">
+          Sets the dictionary used for spelling underlines and suggestions, and tells AI editing which convention your manuscript follows. British English accepts both -ise and -ize spellings.
+        </div>
       </div>
 
       <div className="settings-section-label">Saving &amp; Recovery</div>

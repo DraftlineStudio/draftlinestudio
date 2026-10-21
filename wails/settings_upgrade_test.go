@@ -33,7 +33,7 @@ func TestAnExistingSettingsFileSurvivesTheUpgrade(t *testing.T) {
 		DefaultSaveDir: `C:\Books`, DarkMode: true, ThemeMode: "auto",
 		AutoThemeUseManual: true, AutoThemeDawn: "05:45", AutoThemeDusk: "20:15",
 		ActivityAutoSaveEnabled: true, CustomDictionary: []string{"tesseract", "mother-in-law"},
-		SpellCheckEnabled: true, GrammarCheckEnabled: true, CastEnabled: true,
+		SpellCheckEnabled: true, GrammarCheckEnabled: true, SpellLanguage: "en_GB", CastEnabled: true,
 		StoryBibleEnabled: true, AnalysisEnabled: true,
 		ReadAloudEnabled: true, ReadAloudVoice: "af_heart", ReadAloudSpeed: 1.25,
 		ReadAloudDevice: "native", ReadAloudThreads: "auto", ReadAloudVolume: 0.8, ReadAloudGlow: true,

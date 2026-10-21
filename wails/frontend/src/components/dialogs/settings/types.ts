@@ -2,6 +2,7 @@
 
 import type { types } from '../../../../wailsjs/go/models'
 import type { AIProviderMode, AITaskRoutes } from '../../../services/aiRouting'
+import type { SpellLanguage } from '../../../services/spellCheck'
 
 export type SettingsSection = 'author' | 'application' | 'plugins' | 'ai' | 'readaloud' | 'plugin'
 
@@ -34,6 +35,8 @@ export interface ApplicationSectionProps {
   setAutoThemeDusk: (v: string) => void
   activityAutoSaveEnabled: boolean
   setActivityAutoSaveEnabled: (v: boolean) => void
+  spellLanguage: SpellLanguage
+  setSpellLanguage: (v: SpellLanguage) => void
   analysisCPUProfile: AnalysisCPUProfile
   setAnalysisCPUProfile: (v: AnalysisCPUProfile) => void
   bookFont: string

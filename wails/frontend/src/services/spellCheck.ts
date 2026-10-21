@@ -1,13 +1,16 @@
 import Typo from 'typo-js'
 
+export type SpellLanguage = 'en_US' | 'en_GB'
+
 let dictionary: Typo | null = null
 let loadingPromise: Promise<void> | null = null
+let language: SpellLanguage = 'en_US'
 let enabled = true
 const changeListeners = new Set<() => void>()
 const customWords = new Set<string>()
 const ignoredWords = new Set<string>()
-// Bundled supplement (public/dictionaries/en_US-supplement.txt): vocabulary
-// the SCOWL dictionary lacks. Lower-case keys, checked like custom words.
+// Bundled supplement (public/dictionaries/en-supplement.txt): vocabulary
+// the SCOWL dictionaries lack. Lower-case keys, checked like custom words.
 const bundledWords = new Set<string>()
 const checkCache = new Map<string, boolean>()
 const suggestionCache = new Map<string, Promise<string[]>>()
@@ -109,15 +112,18 @@ export async function loadDictionary(): Promise<void> {
   if (dictionary) return
   if (loadingPromise) return loadingPromise
 
+  // Capture the language this load serves: if the writer switches mid-flight,
+  // the stale load must not install its dictionary over the fresh one's.
+  const lang = language
   loadingPromise = (async () => {
     try {
       // Parse and index the worker dictionary in parallel with the main checker
       // so the first context menu never pays the cold-start cost.
       prewarmSpellSuggestions()
       const [affResponse, dicResponse, supplementResponse] = await Promise.all([
-        fetch('/dictionaries/en_US.aff'),
-        fetch('/dictionaries/en_US.dic'),
-        fetch('/dictionaries/en_US-supplement.txt').catch(() => null),
+        fetch(`/dictionaries/${lang}.aff`),
+        fetch(`/dictionaries/${lang}.dic`),
+        fetch('/dictionaries/en-supplement.txt').catch(() => null),
       ])
 
       if (!affResponse.ok || !dicResponse.ok) {
@@ -127,13 +133,14 @@ export async function loadDictionary(): Promise<void> {
 
       const affData = await affResponse.text()
       const dicData = await dicResponse.text()
+      if (lang !== language) return
       // The supplement is optional: a missing file only loses its extra words.
       if (supplementResponse?.ok) {
         bundledWords.clear()
         parseSupplement(await supplementResponse.text()).forEach(word => bundledWords.add(word))
       }
 
-      dictionary = new Typo('en_US', affData, dicData)
+      dictionary = new Typo(lang, affData, dicData)
       checkCache.clear()
       suggestionCache.clear()
       notifyChanged()
@@ -143,6 +150,22 @@ export async function loadDictionary(): Promise<void> {
   })()
 
   return loadingPromise
+}
+
+// setSpellLanguage switches the bundled dictionary and (re)loads it. It is
+// also the startup trigger: the store calls it once settings are known, so
+// the first load already fetches the right dictionary instead of defaulting
+// to en_US and reloading.
+export function setSpellLanguage(next: SpellLanguage): void {
+  if (language !== next) {
+    language = next
+    dictionary = null
+    loadingPromise = null
+    checkCache.clear()
+    suggestionCache.clear()
+    notifyChanged()
+  }
+  void loadDictionary()
 }
 
 export function isLoaded(): boolean {
@@ -269,7 +292,7 @@ function getSuggestionWorker(): Worker | null {
 }
 
 export function prewarmSpellSuggestions(): void {
-  getSuggestionWorker()?.postMessage({ type: 'init' })
+  getSuggestionWorker()?.postMessage({ type: 'init', language })
 }
 
 function requestWorkerSuggestions(word: string, limit: number): Promise<string[]> {
@@ -279,7 +302,7 @@ function requestWorkerSuggestions(word: string, limit: number): Promise<string[]
   return new Promise(resolve => {
     const id = nextSuggestionRequestId++
     pendingSuggestionRequests.set(id, resolve)
-    worker.postMessage({ type: 'suggest', id, word, limit })
+    worker.postMessage({ type: 'suggest', id, word, limit, language })
   })
 }
 

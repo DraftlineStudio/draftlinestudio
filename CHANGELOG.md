@@ -2,6 +2,15 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02746] - 2026-10-20
+
+### Added
+- A British English option for spelling, with a dictionary that accepts both -ise and -ize spellings and flags American ones.
+- AI copy edits and rewrites follow the chosen English variant instead of assuming American spelling.
+
+### Fixed
+- The grammar check no longer flags an before honour.
+
 ## [1.0.02745] - 2026-10-15
 
 ### Added

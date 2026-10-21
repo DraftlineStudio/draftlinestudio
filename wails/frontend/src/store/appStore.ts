@@ -4,6 +4,7 @@ import { types } from '../../wailsjs/go/models'
 import type { main } from '../../wailsjs/go/models'
 import type { Section } from '../types/draftline'
 import type { AITaskRoutes } from '../services/aiRouting'
+import { setSpellLanguage, type SpellLanguage } from '../services/spellCheck'
 
 type RecentProject = types.RecentProject
 
@@ -26,6 +27,7 @@ export interface AppSettings {
   custom_dictionary: string[]
   spell_check_enabled: boolean
   grammar_check_enabled: boolean
+  spell_language: SpellLanguage
   cast_enabled: boolean
   story_bible_enabled: boolean
   analysis_enabled: boolean
@@ -143,6 +145,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   custom_dictionary: [],
   spell_check_enabled: true,
   grammar_check_enabled: true,
+  spell_language: 'en_US',
   cast_enabled: true,
   story_bible_enabled: true,
   analysis_enabled: true,
@@ -227,6 +230,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
           ? raw.analysis_cpu_profile as AppSettings['analysis_cpu_profile']
           : 'adaptive',
         custom_dictionary: (raw as unknown as Partial<AppSettings>).custom_dictionary ?? [],
+        spell_language: raw.spell_language === 'en_GB' ? 'en_GB' : 'en_US',
         read_aloud_voice: raw.read_aloud_voice || 'af_heart',
         read_aloud_speed: Math.min(2.0, Math.max(0.8, Number(raw.read_aloud_speed) || 1.1)),
         read_aloud_device: 'native',
@@ -239,12 +243,18 @@ export const useAppStore = create<AppStore>((set, get) => ({
     } catch {
       set({ loaded: true })
     }
+    // Kick off the dictionary load now that the language is known — this is
+    // the startup load, not just a change handler, so it runs on the failure
+    // path too (with the en_US default).
+    setSpellLanguage(get().settings.spell_language)
   },
 
   saveSettings: (patch) => {
     // Merge into in-memory state synchronously so callers (and later saves)
     // always see the newest settings immediately.
     set({ settings: { ...get().settings, ...patch } })
+    // A language change takes effect immediately; a no-op costs nothing.
+    setSpellLanguage(get().settings.spell_language)
     // Chain the backend write. Snapshot the latest merged state INSIDE the
     // chained callback so a queued save always persists the newest values,
     // and writes are ordered — no lost update from interleaving.

@@ -25,11 +25,21 @@ STYLE RULE:
 // bannedWords contains words and phrases to avoid in AI output.
 const bannedWords = "BANNED words and phrases: tapestry, testament, navigate, delve, underscore, myriad, realm, crucial, pivotal, journey, beacon, vibrant, game-changer"
 
-// BuildSystemPrompt constructs the system prompt for AI rewriting based on mode and style options.
-func BuildSystemPrompt(mode, proseGuide string, styleOpts *types.WritingStyleOptions) string {
+// BuildSystemPrompt constructs the system prompt for AI rewriting based on
+// mode, style options, and the writer's spelling language ("en_US" | "en_GB").
+func BuildSystemPrompt(mode, proseGuide string, styleOpts *types.WritingStyleOptions, spellLanguage string) string {
 	styleBlock := ""
 	if proseGuide != "" {
 		styleBlock = "\n\nSTYLE GUIDE — match the rhythm, vocabulary, and voice of these examples:\n---\n" + proseGuide + "\n---"
+	}
+
+	// American English is every model's default; only a British manuscript
+	// needs the convention spelled out, so "en_US" adds nothing.
+	britishRule := ""
+	britishCopyEditRule := ""
+	if spellLanguage == "en_GB" {
+		britishRule = "\n- The manuscript is written in British English: use British spellings (colour, realise, travelled) in anything you write, and never change an existing British spelling to an American one"
+		britishCopyEditRule = "\n- The manuscript is written in British English: a British spelling (colour, realise, travelled) is correct, an American one (color, realize, traveled) is a spelling error to correct to its British form"
 	}
 
 	// Build style mixer instructions for expand/smooth modes
@@ -44,7 +54,7 @@ Rules:
 - Do not introduce new plot events or characters
 - Preserve paragraph breaks — return one <p> element per original paragraph
 - Scene breaks (<hr>), block quotes, code blocks, headings, and lists are structure: keep each one exactly where it is with its own wrapper tags, never turn one into a paragraph, and never drop one (may be longer)
-- ` + bannedWords + `
+- ` + bannedWords + britishRule + `
 
 ` + aiTellBans + styleBlock
 
@@ -65,7 +75,7 @@ CRITICAL: Return ONLY the rewritten HTML content using <p> tags, with structural
 		return `You are a meticulous copy editor. Correct the provided HTML text.
 
 Rules:
-- Fix ONLY objective mechanical errors: spelling, grammar, punctuation, syntax, doubled words, and wrong homophones
+- Fix ONLY objective mechanical errors: spelling, grammar, punctuation, syntax, doubled words, and wrong homophones` + britishCopyEditRule + `
 - Enforce internal consistency in capitalization, hyphenation, and number formatting when the intended convention is unambiguous
 - NEVER rephrase for style, rhythm, or word choice — the author's voice stays verbatim except where an error is corrected
 - Do not fact-check, reinterpret continuity, improve readability, or alter tone
@@ -87,7 +97,7 @@ Rules:
 - Minimal changes — improve flow without changing meaning or voice
 - Preserve paragraph breaks — return one <p> element per original paragraph
 - Scene breaks (<hr>), block quotes, code blocks, headings, and lists are structure: keep each one exactly where it is with its own wrapper tags, never turn one into a paragraph, and never drop one
-- ` + bannedWords + `
+- ` + bannedWords + britishRule + `
 
 ` + aiTellBans + styleBlock
 
@@ -113,7 +123,7 @@ Editing rules:
 - Scene breaks (<hr>), block quotes, code blocks, headings, and lists are structure: keep each one exactly where it is with its own wrapper tags, never turn one into a paragraph, and never drop one
 
 The restrictions below — including banned words and AI-tell rules — constrain wording YOU INTRODUCE. Never rewrite source text solely because it already contains one of them.
-- ` + bannedWords + `
+- ` + bannedWords + britishRule + `
 
 ` + aiTellBans
 		if proseGuide != "" {
@@ -130,7 +140,7 @@ Editing rules:
 - Scene breaks (<hr>), block quotes, code blocks, headings, and lists are structure: keep each one exactly where it is with its own wrapper tags, never turn one into a paragraph, and never drop one
 
 The restrictions below — including banned words and AI-tell rules — constrain wording YOU INTRODUCE. Never rewrite source text solely because it already contains one of them.
-- ` + bannedWords + `
+- ` + bannedWords + britishRule + `
 
 ` + aiTellBans
 		}

@@ -99,6 +99,7 @@ func (a *App) loadSettingsFromDisk() types.AppSettings {
 		CustomDictionary:        []string{},
 		SpellCheckEnabled:       true,
 		GrammarCheckEnabled:     true,
+		SpellLanguage:           "en_US",
 		CastEnabled:             true,
 		StoryBibleEnabled:       true,
 		AnalysisEnabled:         true,
@@ -131,6 +132,9 @@ func (a *App) loadSettingsFromDisk() types.AppSettings {
 	// which decodes over the default rather than leaving it alone.
 	if strings.TrimSpace(s.DefaultSaveDir) == "" {
 		s.DefaultSaveDir = defaults.DefaultSaveDir
+	}
+	if strings.TrimSpace(s.SpellLanguage) == "" {
+		s.SpellLanguage = defaults.SpellLanguage
 	}
 	return s
 }
