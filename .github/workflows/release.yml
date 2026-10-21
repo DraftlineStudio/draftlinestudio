@@ -266,11 +266,26 @@ jobs:
             codesign --force --deep --sign - Draftline.app
           fi
           codesign --verify --verbose=2 Draftline.app
+      - name: Reclaim disk space
+        # The hosted macOS runners leave only a few GB free, and hdiutil below
+        # needs scratch space for a staging volume plus the compressed image.
+        # By this point the Go caches, node_modules, and the build tree are
+        # dead weight; drop them and show what is left so the next space
+        # failure is obvious from the log.
+        run: |
+          set -euo pipefail
+          df -h /
+          go clean -cache -modcache
+          rm -rf wails/frontend/node_modules wails/frontend/dist wails/build/bin
+          df -h /
       - name: Create DMG
         run: |
           set -euo pipefail
           rm -rf dmg-root && mkdir dmg-root dist
-          cp -R Draftline.app dmg-root/
+          # Move, not copy: nothing after this step needs the loose bundle,
+          # and a second copy of a universal app is exactly the space hdiutil
+          # keeps running out of.
+          mv Draftline.app dmg-root/
           ln -s /Applications dmg-root/Applications
           dmg="dist/Draftline-${LABEL}-macos-universal.dmg"
           hdiutil create -volname "Draftline" -srcfolder dmg-root -ov -format UDZO "$dmg"
