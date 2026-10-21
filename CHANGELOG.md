@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02747] - 2026-10-21
+
+### Added
+- Canadian and Australian English options for spelling and AI edits, alongside American and British.
+
 ## [1.0.02746] - 2026-10-20
 
 ### Added

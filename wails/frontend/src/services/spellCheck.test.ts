@@ -2,6 +2,10 @@ import affData from '../../public/dictionaries/en_US.aff?raw'
 import dicData from '../../public/dictionaries/en_US.dic?raw'
 import gbAffData from '../../public/dictionaries/en_GB.aff?raw'
 import gbDicData from '../../public/dictionaries/en_GB.dic?raw'
+import caAffData from '../../public/dictionaries/en_CA.aff?raw'
+import caDicData from '../../public/dictionaries/en_CA.dic?raw'
+import auAffData from '../../public/dictionaries/en_AU.aff?raw'
+import auDicData from '../../public/dictionaries/en_AU.dic?raw'
 import supplementData from '../../public/dictionaries/en-supplement.txt?raw'
 import Typo from 'typo-js'
 import { describe, expect, it, vi } from 'vitest'
@@ -137,6 +141,38 @@ describe('bundled en_GB dictionary', () => {
 
   it('flags American spellings and real misspellings', () => {
     for (const word of ['color', 'honor', 'center', 'traveling', 'fiber', 'recieve', 'definately']) {
+      expect(dictionary.check(word), word).toBe(false)
+    }
+  })
+})
+
+describe('bundled en_CA dictionary', () => {
+  const dictionary = new Typo('en_CA', caAffData, caDicData)
+
+  it('accepts Canadian spellings: British-style forms with -ize endings', () => {
+    for (const word of ['colour', 'honour', 'centre', 'travelled', 'grey', 'whisky', 'realize', 'organize']) {
+      expect(dictionary.check(word), word).toBe(true)
+    }
+  })
+
+  it('flags -ise endings and real misspellings', () => {
+    for (const word of ['realise', 'organise', 'traveling', 'recieve', 'definately']) {
+      expect(dictionary.check(word), word).toBe(false)
+    }
+  })
+})
+
+describe('bundled en_AU dictionary', () => {
+  const dictionary = new Typo('en_AU', auAffData, auDicData)
+
+  it('accepts Australian spellings: British-style forms with -ise endings', () => {
+    for (const word of ['colour', 'honour', 'centre', 'travelled', 'grey', 'whisky', 'realise', 'organise']) {
+      expect(dictionary.check(word), word).toBe(true)
+    }
+  })
+
+  it('flags -ize endings and real misspellings', () => {
+    for (const word of ['realize', 'organize', 'center', 'traveling', 'recieve', 'definately']) {
       expect(dictionary.check(word), word).toBe(false)
     }
   })

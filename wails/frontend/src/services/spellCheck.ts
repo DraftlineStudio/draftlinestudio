@@ -1,6 +1,6 @@
 import Typo from 'typo-js'
 
-export type SpellLanguage = 'en_US' | 'en_GB'
+export type SpellLanguage = 'en_US' | 'en_GB' | 'en_CA' | 'en_AU'
 
 let dictionary: Typo | null = null
 let loadingPromise: Promise<void> | null = null

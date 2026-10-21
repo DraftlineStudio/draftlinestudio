@@ -33,13 +33,20 @@ func BuildSystemPrompt(mode, proseGuide string, styleOpts *types.WritingStyleOpt
 		styleBlock = "\n\nSTYLE GUIDE — match the rhythm, vocabulary, and voice of these examples:\n---\n" + proseGuide + "\n---"
 	}
 
-	// American English is every model's default; only a British manuscript
-	// needs the convention spelled out, so "en_US" adds nothing.
-	britishRule := ""
-	britishCopyEditRule := ""
-	if spellLanguage == "en_GB" {
-		britishRule = "\n- The manuscript is written in British English: use British spellings (colour, realise, travelled) in anything you write, and never change an existing British spelling to an American one"
-		britishCopyEditRule = "\n- The manuscript is written in British English: a British spelling (colour, realise, travelled) is correct, an American one (color, realize, traveled) is a spelling error to correct to its British form"
+	// American English is every model's default; only the other variants need
+	// the convention spelled out, so "en_US" adds nothing.
+	dialectRule := ""
+	dialectCopyEditRule := ""
+	switch spellLanguage {
+	case "en_GB":
+		dialectRule = "\n- The manuscript is written in British English: use British spellings (colour, realise, travelled) in anything you write, and never change an existing British spelling to an American one"
+		dialectCopyEditRule = "\n- The manuscript is written in British English: a British spelling (colour, realise, travelled) is correct, an American one (color, realize, traveled) is a spelling error to correct to its British form"
+	case "en_CA":
+		dialectRule = "\n- The manuscript is written in Canadian English: use Canadian spellings (colour, centre, realize, travelled) in anything you write, and never change an existing Canadian spelling to an American one"
+		dialectCopyEditRule = "\n- The manuscript is written in Canadian English: a Canadian spelling (colour, centre, realize, travelled) is correct, an American one (color, center, traveled) is a spelling error to correct to its Canadian form"
+	case "en_AU":
+		dialectRule = "\n- The manuscript is written in Australian English: use Australian spellings (colour, realise, travelled) in anything you write, and never change an existing Australian spelling to an American one"
+		dialectCopyEditRule = "\n- The manuscript is written in Australian English: an Australian spelling (colour, realise, travelled) is correct, an American one (color, realize, traveled) is a spelling error to correct to its Australian form"
 	}
 
 	// Build style mixer instructions for expand/smooth modes
@@ -54,7 +61,7 @@ Rules:
 - Do not introduce new plot events or characters
 - Preserve paragraph breaks — return one <p> element per original paragraph
 - Scene breaks (<hr>), block quotes, code blocks, headings, and lists are structure: keep each one exactly where it is with its own wrapper tags, never turn one into a paragraph, and never drop one (may be longer)
-- ` + bannedWords + britishRule + `
+- ` + bannedWords + dialectRule + `
 
 ` + aiTellBans + styleBlock
 
@@ -75,7 +82,7 @@ CRITICAL: Return ONLY the rewritten HTML content using <p> tags, with structural
 		return `You are a meticulous copy editor. Correct the provided HTML text.
 
 Rules:
-- Fix ONLY objective mechanical errors: spelling, grammar, punctuation, syntax, doubled words, and wrong homophones` + britishCopyEditRule + `
+- Fix ONLY objective mechanical errors: spelling, grammar, punctuation, syntax, doubled words, and wrong homophones` + dialectCopyEditRule + `
 - Enforce internal consistency in capitalization, hyphenation, and number formatting when the intended convention is unambiguous
 - NEVER rephrase for style, rhythm, or word choice — the author's voice stays verbatim except where an error is corrected
 - Do not fact-check, reinterpret continuity, improve readability, or alter tone
@@ -97,7 +104,7 @@ Rules:
 - Minimal changes — improve flow without changing meaning or voice
 - Preserve paragraph breaks — return one <p> element per original paragraph
 - Scene breaks (<hr>), block quotes, code blocks, headings, and lists are structure: keep each one exactly where it is with its own wrapper tags, never turn one into a paragraph, and never drop one
-- ` + bannedWords + britishRule + `
+- ` + bannedWords + dialectRule + `
 
 ` + aiTellBans + styleBlock
 
@@ -123,7 +130,7 @@ Editing rules:
 - Scene breaks (<hr>), block quotes, code blocks, headings, and lists are structure: keep each one exactly where it is with its own wrapper tags, never turn one into a paragraph, and never drop one
 
 The restrictions below — including banned words and AI-tell rules — constrain wording YOU INTRODUCE. Never rewrite source text solely because it already contains one of them.
-- ` + bannedWords + britishRule + `
+- ` + bannedWords + dialectRule + `
 
 ` + aiTellBans
 		if proseGuide != "" {
@@ -140,7 +147,7 @@ Editing rules:
 - Scene breaks (<hr>), block quotes, code blocks, headings, and lists are structure: keep each one exactly where it is with its own wrapper tags, never turn one into a paragraph, and never drop one
 
 The restrictions below — including banned words and AI-tell rules — constrain wording YOU INTRODUCE. Never rewrite source text solely because it already contains one of them.
-- ` + bannedWords + britishRule + `
+- ` + bannedWords + dialectRule + `
 
 ` + aiTellBans
 		}

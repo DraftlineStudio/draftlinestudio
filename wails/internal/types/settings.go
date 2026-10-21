@@ -27,8 +27,9 @@ type AppSettings struct {
 	CustomDictionary        []string `json:"custom_dictionary,omitempty"`
 	SpellCheckEnabled       bool     `json:"spell_check_enabled"`
 	GrammarCheckEnabled     bool     `json:"grammar_check_enabled"`
-	// SpellLanguage selects the bundled dictionary: "en_US" | "en_GB". It also
-	// tells the AI editing prompts which spelling convention the manuscript uses.
+	// SpellLanguage selects the bundled dictionary: "en_US" | "en_GB" |
+	// "en_CA" | "en_AU". It also tells the AI editing prompts which spelling
+	// convention the manuscript uses.
 	SpellLanguage string `json:"spell_language"`
 	CastEnabled             bool     `json:"cast_enabled"`
 	StoryBibleEnabled       bool     `json:"story_bible_enabled"`

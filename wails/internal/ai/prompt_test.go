@@ -46,26 +46,33 @@ func TestLineEditPromptIsSelective(t *testing.T) {
 	}
 }
 
-// A British manuscript carries the convention in every mode; an American one
-// says nothing, because American spelling is already every model's default.
-func TestBritishSpellingRule(t *testing.T) {
-	for _, mode := range []string{"copy_edit", "line_edit", "expand", "smooth"} {
-		p := BuildSystemPrompt(mode, "", nil, "en_GB")
-		if !strings.Contains(p, "British English") {
-			t.Fatalf("%s prompt for en_GB never names British English", mode)
-		}
-		if !strings.Contains(p, "colour") {
-			t.Fatalf("%s prompt for en_GB carries no example spellings", mode)
-		}
+// A non-American manuscript carries its convention in every mode; an American
+// one says nothing, because American spelling is already every model's default.
+func TestDialectSpellingRule(t *testing.T) {
+	dialects := map[string]string{
+		"en_GB": "British English",
+		"en_CA": "Canadian English",
+		"en_AU": "Australian English",
 	}
-	// copy_edit alone treats American spellings as errors to correct; the
-	// rewriting modes only constrain what they write.
-	if p := BuildSystemPrompt("copy_edit", "", nil, "en_GB"); !strings.Contains(p, "spelling error to correct") {
-		t.Fatal("copy_edit prompt for en_GB does not correct American spellings")
+	for lang, name := range dialects {
+		for _, mode := range []string{"copy_edit", "line_edit", "expand", "smooth"} {
+			p := BuildSystemPrompt(mode, "", nil, lang)
+			if !strings.Contains(p, name) {
+				t.Fatalf("%s prompt for %s never names %s", mode, lang, name)
+			}
+			if !strings.Contains(p, "colour") {
+				t.Fatalf("%s prompt for %s carries no example spellings", mode, lang)
+			}
+		}
+		// copy_edit alone treats American spellings as errors to correct; the
+		// rewriting modes only constrain what they write.
+		if p := BuildSystemPrompt("copy_edit", "", nil, lang); !strings.Contains(p, "spelling error to correct") {
+			t.Fatalf("copy_edit prompt for %s does not correct American spellings", lang)
+		}
 	}
 	for _, lang := range []string{"en_US", ""} {
-		if p := BuildSystemPrompt("copy_edit", "", nil, lang); strings.Contains(p, "British") {
-			t.Fatalf("copy_edit prompt for %q mentions British English", lang)
+		if p := BuildSystemPrompt("copy_edit", "", nil, lang); strings.Contains(p, "English:") {
+			t.Fatalf("copy_edit prompt for %q carries a dialect rule", lang)
 		}
 	}
 }

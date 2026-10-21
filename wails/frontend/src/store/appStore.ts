@@ -230,7 +230,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
           ? raw.analysis_cpu_profile as AppSettings['analysis_cpu_profile']
           : 'adaptive',
         custom_dictionary: (raw as unknown as Partial<AppSettings>).custom_dictionary ?? [],
-        spell_language: raw.spell_language === 'en_GB' ? 'en_GB' : 'en_US',
+        spell_language: (['en_GB', 'en_CA', 'en_AU'] as const).find(lang => lang === raw.spell_language) ?? 'en_US',
         read_aloud_voice: raw.read_aloud_voice || 'af_heart',
         read_aloud_speed: Math.min(2.0, Math.max(0.8, Number(raw.read_aloud_speed) || 1.1)),
         read_aloud_device: 'native',

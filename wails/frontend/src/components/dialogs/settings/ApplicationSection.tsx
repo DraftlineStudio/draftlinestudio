@@ -259,6 +259,8 @@ export default function ApplicationSection({
         >
           <option value="en_US">American English</option>
           <option value="en_GB">British English</option>
+          <option value="en_CA">Canadian English</option>
+          <option value="en_AU">Australian English</option>
         </select>
         <div className="settings-hint">
           Sets the dictionary used for spelling underlines and suggestions, and tells AI editing which convention your manuscript follows. British English accepts both -ise and -ize spellings.

@@ -1,8 +1,8 @@
 # Draftline spelling supplement — words the bundled SCOWL dictionaries
-# (size 70, en_US and en_GB) do not carry but contemporary fiction uses
-# constantly: brand names, gear, tactical and street vocabulary, tech, and
-# compound slang. The vocabulary is dialect-neutral, so one list serves
-# every dictionary.
+# (size 70: en_US, en_GB, en_CA, en_AU) do not carry but contemporary
+# fiction uses constantly: brand names, gear, tactical and street
+# vocabulary, tech, and compound slang. The vocabulary is dialect-neutral,
+# so one list serves every dictionary.
 #
 # One word per line; lines starting with # are comments. Matching is
 # case-insensitive. No affix rules apply here, so list every inflection you
