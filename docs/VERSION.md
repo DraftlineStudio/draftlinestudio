@@ -2,7 +2,13 @@
 
 The project version (`MAJOR.MINOR.BUILD`, e.g. `0.15.02374`) is not generated from a single source — it is hand-maintained in the locations below. **When bumping the version, update every one of them.** (See `CHANGELOG.md` for the versioning scheme: BUILD increments by 1 per change; one fix = one number.)
 
-Current version as of this writing: **1.0.02747**
+Current version as of this writing: **1.0.02748**
+
+(1.0.02748 is a tooling-only bump: the release workflow needed a disk-space
+fix after the 1.0.02747 macOS job failed, and that tag was already consumed
+by the failed release, so the build number moved on rather than reuse a
+release number. Nothing writer-visible changed, so there is no CHANGELOG
+entry for it.)
 
 ## Locations to update
 
