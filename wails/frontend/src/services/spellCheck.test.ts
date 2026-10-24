@@ -60,7 +60,7 @@ describe('spell-check word normalization', () => {
         ? 'SET UTF-8\n'
         : String(input).endsWith('.txt')
           ? '# supplement\nGlock\n'
-          : "3\ncouldn't\nwouldn't\nTuesday\n",
+          : "5\ncouldn't\nwouldn't\nTuesday\nrose\nroses\n",
     })) as unknown as typeof fetch
 
     try {
@@ -88,6 +88,31 @@ describe('spell-check word normalization', () => {
     expect(checkWord('tuesday')).toBe(false)
     expect(checkWord('Tuesday')).toBe(true)
     expect(checkWord('tuesday')).toBe(false)
+  })
+
+  it('flags a confirmed name wearing a bare s and offers the possessive first', async () => {
+    await loadDictionary()
+    setIgnoredWords(['Mara Ionescu'])
+    try {
+      expect(checkWord('Ionescu')).toBe(true)
+      expect(checkWord('Ionescu’s')).toBe(true)
+      expect(checkWord('Ionescus')).toBe(false)
+      expect(getImmediateSuggestions('Ionescus')[0]).toBe("Ionescu's")
+      expect(await getSuggestions('Ionescus')).toContain("Ionescu's")
+    } finally {
+      setIgnoredWords([])
+    }
+  })
+
+  it('keeps a real word that happens to shadow a name plus s', async () => {
+    await loadDictionary()
+    setIgnoredWords(['Rose'])
+    try {
+      expect(checkWord('roses')).toBe(true)
+      expect(checkWord('Roses')).toBe(true)
+    } finally {
+      setIgnoredWords([])
+    }
   })
 
   it('offers the accepted casing as the first suggestion for a miscapitalized word', async () => {

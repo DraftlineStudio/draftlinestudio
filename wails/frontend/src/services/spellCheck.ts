@@ -219,6 +219,19 @@ export function checkWord(word: string): boolean {
   const rootKey = root.toLocaleLowerCase()
   if (customWords.has(key) || customWords.has(rootKey) || ignoredWords.has(key) || ignoredWords.has(rootKey)) return true
   if (bundledWords.has(key) || bundledWords.has(rootKey)) return true
+  // A known name with a bare trailing s (Maras for Mara's) is near-always a
+  // possessive missing its apostrophe. The dictionary cannot say so — Maras
+  // is a legitimate surname — so the book's own names decide. A word the
+  // dictionary accepts in lower case (roses, for a character named Rose)
+  // stays a word; a name used as-is (a character actually named Maras) was
+  // accepted above.
+  if (key.endsWith('s') && key.length > 3) {
+    const stem = key.slice(0, -1)
+    if ((ignoredWords.has(stem) || customWords.has(stem)) && !dictionary.check(key)) {
+      checkCache.set(cleaned, false)
+      return false
+    }
+  }
   // The dictionary check is case-sensitive (tuesday is wrong, Tuesday is
   // right), so the cache must be too: a shared lower-case key lets whichever
   // casing is checked first answer for both.
@@ -239,6 +252,14 @@ export function getImmediateSuggestions(word: string, limit = 5): string[] {
   const ranked = new Set<string>()
   const addIfCorrect = (candidate: string) => {
     if (candidate && candidate !== key && dictionary?.check(candidate)) ranked.add(candidate)
+  }
+
+  // The possessive a known name lost its apostrophe to (Maras → Mara's)
+  // cannot pass addIfCorrect — the dictionary has no entry for it — so it is
+  // ranked directly, and first: it is the reason the word was flagged.
+  if (key.endsWith('s') && key.length > 3) {
+    const stem = key.slice(0, -1)
+    if (ignoredWords.has(stem) || customWords.has(stem)) ranked.add(`${stem}'s`)
   }
 
   const caseCorrection = getCaseCorrection(cleaned)

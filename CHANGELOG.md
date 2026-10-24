@@ -2,6 +2,17 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02749] - 2026-10-24
+
+### Added
+- The grammar check now flags contractions typed without their apostrophe, like im and dont.
+- The grammar check now flags its where it's was meant, and Were opening a sentence in place of We're.
+- The grammar check now flags a quote that ends in a period when a dialogue tag follows, and offers the comma.
+- The grammar check now flags a stray capital after a comma, like a mid-sentence Just.
+- The grammar check now flags a period trailing an exclamation or question mark.
+- The style check now suggests the ellipsis character when three periods are typed.
+- A confirmed character name with a bare trailing s is now flagged as a possessive missing its apostrophe, with the fix offered first.
+
 ## [1.0.02747] - 2026-10-21
 
 ### Added

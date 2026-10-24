@@ -69,6 +69,121 @@ describe('article agreement', () => {
   })
 })
 
+describe('missing apostrophes', () => {
+  it('flags apostrophe-less contractions, the dictionary words im and ive included', () => {
+    expect(flaggedSpans('If you fall im going too.', 'missing-apostrophe')).toEqual(['im'])
+    expect(flaggedSpans('Honestly ive had worse mornings.', 'missing-apostrophe')).toEqual(['ive'])
+    expect(flaggedSpans('He dont care and youre next.', 'missing-apostrophe')).toEqual(['dont', 'youre'])
+  })
+
+  it('preserves the typed capitalization in the fix', () => {
+    expect(byRule('Dont wait up.', 'missing-apostrophe')[0].replacements).toEqual(["Don't"])
+    expect(byRule('im not ready.', 'missing-apostrophe')[0].replacements).toEqual(["I'm"])
+  })
+
+  it('leaves acronyms, shouting, and containing words alone', () => {
+    expect(byRule('She sent an IM from the lobby.', 'missing-apostrophe')).toEqual([])
+    expect(byRule('The sign read DONT WALK.', 'missing-apostrophe')).toEqual([])
+    expect(byRule('A slim grim rim.', 'missing-apostrophe')).toEqual([])
+  })
+})
+
+describe('its versus it’s', () => {
+  it('flags its before a determiner or verb form as grammar', () => {
+    const issues = byRule('I think its been a long day.', 'its-contraction')
+    expect(issues).toHaveLength(1)
+    expect(issues[0].kind).toBe('grammar')
+    expect(issues[0].replacements).toEqual(["it's"])
+    expect(flaggedSpans('Its not the heat.', 'its-contraction')).toEqual(['Its'])
+    expect(byRule('Its not the heat.', 'its-contraction')[0].replacements).toEqual(["It's"])
+  })
+
+  it('flags its before a gerund as a softer style question', () => {
+    const issues = byRule('Maybe its raining there too.', 'its-contraction')
+    expect(issues).toHaveLength(1)
+    expect(issues[0].kind).toBe('style')
+  })
+
+  it('leaves the possessive alone', () => {
+    expect(byRule('The dog wagged its tail.', 'its-contraction')).toEqual([])
+    expect(byRule('We admired its opening scene and feared its sting.', 'its-contraction')).toEqual([])
+    expect(byRule('The charity kept its not-for-profit status.', 'its-contraction')).toEqual([])
+  })
+})
+
+describe('were versus we’re', () => {
+  it('flags sentence-opening Were before not or gonna', () => {
+    expect(flaggedSpans('Were not lost. Were gonna be fine.', 'were-contraction')).toEqual(['Were', 'Were'])
+    expect(byRule('Were not lost.', 'were-contraction')[0].replacements).toEqual(["We're"])
+    expect(flaggedSpans('“Were not done here,” she warned.', 'were-contraction')).toEqual(['Were'])
+  })
+
+  it('leaves questions, inversions, and the plain past tense alone', () => {
+    expect(byRule('Were you there when it happened?', 'were-contraction')).toEqual([])
+    expect(byRule('Were all the doors locked?', 'were-contraction')).toEqual([])
+    expect(byRule('They were not ready for the storm.', 'were-contraction')).toEqual([])
+  })
+})
+
+describe('dialogue tag punctuation', () => {
+  it('turns the period before a tag into a comma', () => {
+    const issues = byRule('“Leave the lantern.” Marcus said.', 'dialogue-tag-punctuation')
+    expect(issues).toHaveLength(1)
+    expect(issues[0].replacements).toEqual([',” Marcus said'])
+  })
+
+  it('lowercases a bare pronoun in the tag', () => {
+    expect(byRule('“Leave it.” He said.', 'dialogue-tag-punctuation')[0].replacements)
+      .toEqual([',” he said'])
+    expect(byRule('“Leave it!” He shouted.', 'dialogue-tag-punctuation')[0].replacements)
+      .toEqual(['!” he shouted'])
+  })
+
+  it('leaves a new sentence after the quote alone', () => {
+    expect(byRule('“Go home.” Marcus said nothing more that night.', 'dialogue-tag-punctuation')).toEqual([])
+    expect(byRule('“Go home.” He asked the ferryman for passage.', 'dialogue-tag-punctuation')).toEqual([])
+  })
+
+  it('leaves a correctly punctuated tag alone', () => {
+    expect(byRule('“Leave the lantern,” Marcus said.', 'dialogue-tag-punctuation')).toEqual([])
+    expect(byRule('“Where now?” he asked.', 'dialogue-tag-punctuation')).toEqual([])
+  })
+})
+
+describe('capitalization after a comma', () => {
+  it('flags an adverb that is never a proper noun', () => {
+    const issues = byRule('Relax, Just breathe through it.', 'comma-capitalization')
+    expect(issues).toHaveLength(1)
+    expect(issues[0].replacements).toEqual(['just'])
+  })
+
+  it('leaves names and ordinary commas alone', () => {
+    expect(byRule('Later, Marcus found the trail.', 'comma-capitalization')).toEqual([])
+    expect(byRule('Relax, just breathe through it.', 'comma-capitalization')).toEqual([])
+  })
+})
+
+describe('end-mark conflicts and ellipses', () => {
+  it('flags a period trailing a stronger mark', () => {
+    const issues = byRule('You are going to regret this!.', 'conflicting-end-marks')
+    expect(issues).toHaveLength(1)
+    expect(issues[0].replacements).toEqual(['!'])
+    expect(flaggedSpans('Really?.', 'conflicting-end-marks')).toEqual(['?.'])
+  })
+
+  it('leaves an ellipsis after a mark alone', () => {
+    expect(byRule('No!... not like this.', 'conflicting-end-marks')).toEqual([])
+  })
+
+  it('offers the ellipsis character for typed periods, as style', () => {
+    const issues = byRule('She waited... nothing happened.', 'ellipsis')
+    expect(issues).toHaveLength(1)
+    expect(issues[0].kind).toBe('style')
+    expect(issues[0].replacements).toEqual(['…'])
+    expect(byRule('She waited… nothing happened.', 'ellipsis')).toEqual([])
+  })
+})
+
 describe('pronoun capitalization', () => {
   it('flags a standalone lower-case i and offers I', () => {
     const issues = byRule('She said i could stay until morning.', 'pronoun-i')
