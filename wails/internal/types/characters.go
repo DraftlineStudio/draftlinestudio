@@ -12,6 +12,7 @@ type Character struct {
 	Notes       string `json:"notes"`
 	// Auto-detection fields
 	IsAutoDetected  bool              `json:"is_auto_detected,omitempty"`
+	SpellingAliases []string          `json:"spelling_aliases"`
 	Aliases         []string          `json:"aliases,omitempty"`          // Alternative names/nicknames
 	MentionCount    int               `json:"mention_count,omitempty"`    // Total mentions across all chapters
 	FirstChapter    int               `json:"first_chapter,omitempty"`    // Chapter index where first mentioned

@@ -30,7 +30,7 @@ import { useBookStore } from '../../store/bookStore'
 import { useStoryBibleStore } from '../../store/storyBibleStore'
 import { useEditorStore } from '../../store/editorStore'
 import { useAppStore } from '../../store/appStore'
-import { isConfirmedCharacter } from '../../utils/characterStatus'
+import { characterSpellingNames } from '../../utils/characterSpelling'
 
 // Mounts the docked player bar only while the plugin is enabled and the
 // player is open, without subscribing the whole editor to playback state.
@@ -174,9 +174,7 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
   const highlightedCharacterId = useStoryBibleStore(s => s.highlightedCharacterId)
   const characters = useBookStore(s => s.book?.story_bible?.characters)
 
-  const confirmedCharacterNames = useMemo(() => (characters ?? [])
-    .filter(isConfirmedCharacter)
-    .flatMap(character => [character.name, ...(character.aliases ?? [])]), [characters])
+  const confirmedCharacterNames = useMemo(() => characterSpellingNames(characters ?? []), [characters])
 
   useEffect(() => {
     setIgnoredWords(confirmedCharacterNames)

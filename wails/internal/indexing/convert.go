@@ -64,6 +64,7 @@ func ConvertEntitiesToCharacters(entities []entityresolution.Entity, mentions []
 			Role:            "minor", // Default role
 			IsAutoDetected:  true,
 			Aliases:         entity.Aliases,
+			SpellingAliases: spellingAliases(entity.Canonical, entity.Aliases),
 			MentionCount:    len(entity.MentionIDs),
 			FirstChapter:    firstChapter,
 			ChapterMentions: chapterMentions,

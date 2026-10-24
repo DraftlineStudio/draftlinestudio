@@ -43,6 +43,7 @@ export interface Character {
   // Auto-detection fields
   is_auto_detected?: boolean
   aliases?: string[]
+  spelling_aliases?: string[] | null
   mention_count?: number
   first_chapter?: number
   chapter_mentions?: Record<number, number>

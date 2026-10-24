@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02753] - 2026-10-24
+
+### Fixed
+- Suspected misspellings of detected character surnames no longer become spelling exceptions through aliases.
+- Older detected characters contribute their main name to spelling exceptions until aliases are checked by re-indexing.
+
 ## [1.0.02752] - 2026-10-24
 
 ### Fixed
