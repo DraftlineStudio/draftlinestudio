@@ -121,7 +121,7 @@ func TestAnalyzeBook_EndToEnd(t *testing.T) {
 	// Both characters appear together, so a relationship must exist and
 	// reference resolved entity IDs only.
 	if len(relData.Relationships) != 1 {
-		t.Fatalf("expected 1 relationship, got %d", len(relData.Relationships))
+		t.Fatalf("expected 1 relationship, got %d; entities=%+v mentions=%+v", len(relData.Relationships), entities, book.Analysis.EntityResolution.Mentions)
 	}
 	rel := relData.Relationships[0]
 	if !entityIDs[rel.Character1ID] || !entityIDs[rel.Character2ID] {

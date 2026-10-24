@@ -149,9 +149,9 @@ func scanChapterWithEvidence(text string, chapter int, linguistic linguisticEvid
 		if c.fpKilled {
 			continue
 		}
-		if len(c.tokens) >= 2 || c.honorific {
+		if len(c.tokens) >= 2 || c.honorific || c.mention.ActorEvidence {
 			for k, tok := range c.tokens {
-				if k == 0 && c.firstInitial && !c.honorific {
+				if k == 0 && c.firstInitial && !c.honorific && !c.mention.ActorEvidence {
 					continue
 				}
 				attested[tok] = true
@@ -510,7 +510,8 @@ func buildMention(text string, run []wordSpan, chapter, seq int, runInitial bool
 	if IsAddressIntersectionContext(text, spanStart, last.baseEnd) {
 		fpKilled = true
 	}
-	strongPerson := hasHonorific || last.possessive || (nlpPerson && len(nameWords) >= 2)
+	actor := !last.possessive && hasActorContext(text, last.baseEnd)
+	strongPerson := hasHonorific || actor || last.possessive || (nlpPerson && len(nameWords) >= 2)
 
 	commonCount := 0
 	tokens := make([]string, 0, len(nameWords))
@@ -538,6 +539,7 @@ func buildMention(text string, run []wordSpan, chapter, seq int, runInitial bool
 			SentenceID:           fmt.Sprintf("ch%d-s%d", chapter, run[0].sentence),
 			Chapter:              chapter,
 			CharOffset:           spanStart,
+			ActorEvidence:        actor,
 			PersonEvidence:       nlpPerson,
 			NonPersonEvidence:    nlpNonPerson,
 			StrongPersonEvidence: strongPerson,

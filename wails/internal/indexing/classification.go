@@ -1,6 +1,7 @@
 package indexing
 
 import (
+	"fmt"
 	"math"
 	"strings"
 
@@ -94,12 +95,33 @@ func ClassifyResolvedEntities(entities []entityresolution.Entity, mentions []ent
 	for i := range entities {
 		entity := &entities[i]
 		personEvidence, nonPersonEvidence, strongEvidence := 0, 0, 0
+		personContexts := map[string]bool{}
+		actorContexts := map[string]bool{}
+		supportedContexts := map[string]bool{}
+		seenMentions := map[string]bool{}
 		for _, id := range entity.MentionIDs {
-			mention := mentionByID[id]
+			mention, exists := mentionByID[id]
+			if !exists || seenMentions[id] {
+				continue
+			}
+			seenMentions[id] = true
+			context := ""
+			if mention.SentenceID != "" {
+				context = fmt.Sprintf("%d:%s", mention.Chapter, mention.SentenceID)
+			}
+			if context != "" && (mention.PersonEvidence || mention.ActorEvidence) {
+				supportedContexts[context] = true
+			}
+			if context != "" && mention.PersonEvidence {
+				personContexts[context] = true
+			}
+			if context != "" && mention.ActorEvidence {
+				actorContexts[context] = true
+			}
 			if mention.PersonEvidence {
 				personEvidence++
 			}
-			if mention.NonPersonEvidence {
+			if mention.NonPersonEvidence && !mention.ActorEvidence {
 				nonPersonEvidence++
 			}
 			if mention.StrongPersonEvidence {
@@ -108,7 +130,7 @@ func ClassifyResolvedEntities(entities []entityresolution.Entity, mentions []ent
 		}
 
 		kind := lexicalEntityKind(entity.Canonical)
-		if kind == "" && (len(entity.Titles) > 0 || personEvidence > nonPersonEvidence) {
+		if kind == "" && (len(entity.Titles) > 0 || len(actorContexts) > 0 || personEvidence > nonPersonEvidence) {
 			kind = "person"
 		}
 		if kind == "" {
@@ -122,6 +144,9 @@ func ClassifyResolvedEntities(entities []entityresolution.Entity, mentions []ent
 		if personEvidence > 0 {
 			score += 0.25
 		}
+		if len(actorContexts) > 0 {
+			score += 0.20
+		}
 		if strongEvidence > 0 {
 			score += 0.20
 		}
@@ -133,7 +158,8 @@ func ClassifyResolvedEntities(entities []entityresolution.Entity, mentions []ent
 		}
 
 		status := "review"
-		if kind == "person" && score >= 0.55 && (len(entity.MentionIDs) >= 2 || len(entity.Titles) > 0) {
+		corroborated := len(actorContexts) >= 2 || (len(personContexts) >= 2 && (len(actorContexts) > 0 || len(entity.Titles) > 0))
+		if kind == "person" && corroborated && nonPersonEvidence < len(supportedContexts) && score >= 0.55 {
 			status = "accepted"
 		}
 		lowerCanonical := strings.ToLower(strings.TrimSpace(entity.Canonical))

@@ -15,8 +15,8 @@ func TestClassifyResolvedEntitiesTriagesCandidates(t *testing.T) {
 		{ID: "org", Canonical: "FleetCom", MentionIDs: []string{"m6", "m7", "m8"}},
 	}
 	mentions := []entityresolution.Mention{
-		{ID: "m1", PersonEvidence: true, StrongPersonEvidence: true},
-		{ID: "m2", PersonEvidence: true},
+		{ID: "m1", SentenceID: "s1", PersonEvidence: true, StrongPersonEvidence: true},
+		{ID: "m2", SentenceID: "s2", PersonEvidence: true},
 		{ID: "m3"},
 		{ID: "m4"}, {ID: "m5"},
 		{ID: "m6"}, {ID: "m7"}, {ID: "m8"},

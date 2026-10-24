@@ -10,6 +10,7 @@ type Mention struct {
 	SentenceID           string `json:"sentence_id"` // ID of the containing sentence
 	Chapter              int    `json:"chapter"`     // Chapter index
 	CharOffset           int    `json:"char_offset"` // Character offset within chapter
+	ActorEvidence        bool   `json:"actor_evidence,omitempty"`
 	PersonEvidence       bool   `json:"person_evidence,omitempty"`
 	NonPersonEvidence    bool   `json:"non_person_evidence,omitempty"`
 	StrongPersonEvidence bool   `json:"strong_person_evidence,omitempty"`

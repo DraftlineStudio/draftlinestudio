@@ -2,6 +2,16 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02754] - 2026-10-24
+
+### Changed
+- Automatic character acceptance requires corroborating person evidence from separate sentences.
+- Candidates with non-person evidence outweighing person contexts stay in Review.
+
+### Fixed
+- Speaking and gesturing characters with invented names can be recognised at sentence starts.
+- Possessive words alone no longer qualify a candidate for automatic character acceptance.
+
 ## [1.0.02753] - 2026-10-24
 
 ### Fixed
