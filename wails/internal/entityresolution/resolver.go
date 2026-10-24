@@ -6,22 +6,7 @@ import (
 	"strings"
 )
 
-// Phase 2 of the character pipeline: entity resolution.
-//
-// Mentions resolve in document order against a registry of entities:
-//
-//  1. Exact full-name match (after honorific stripping) → existing entity.
-//  2. Subset/superset token match — a single-token mention matches an entity
-//     containing that component; a multi-token mention absorbs existing
-//     entities whose names are components of it (longest form becomes
-//     canonical, shorter forms become aliases). Recency disambiguates when
-//     several entities match.
-//  3. Nickname match (same surname, known nickname pair).
-//  4. Likely-typo match on the name head.
-//  5. Otherwise a new entity is created.
-//
-// SeparatedPairs (from manual splits) are always respected: a mention never
-// joins an entity it is separated from, and separated entities never merge.
+// Resolve name variants while keeping ambiguous references separate from established identities.
 
 // Resolver performs entity resolution on mentions.
 type Resolver struct {
@@ -56,6 +41,9 @@ type registry struct {
 	// separatedMentions holds every mention ID involved in any separation —
 	// the fast path skips pair scans entirely for uninvolved mentions.
 	separatedMentions map[string]bool
+	referenceAnchors  map[string][]*Mention
+	deferred          []*Mention
+	unresolved        []string
 	nextID            int
 }
 
@@ -96,6 +84,7 @@ func (r *Resolver) ResolveEntities(mentions []Mention) *ResolvedEntities {
 		separated:         r.buildSeparationIndex(),
 		separatedMentions: separatedMentions,
 		nextID:            1,
+		referenceAnchors:  buildReferenceAnchors(mentions),
 	}
 
 	for seq, idx := range order {
@@ -106,9 +95,19 @@ func (r *Resolver) ResolveEntities(mentions []Mention) *ResolvedEntities {
 		reg.resolve(m, seq)
 	}
 
+	for _, mention := range reg.deferred {
+		candidates := reg.referenceCandidates(mention, reg.match(mention))
+		if len(candidates) == 1 {
+			reg.assign(candidates[0], mention, len(order))
+		} else {
+			reg.unresolved = append(reg.unresolved, mention.ID)
+		}
+	}
+
 	return &ResolvedEntities{
-		Entities:       reg.toEntities(),
-		SeparatedPairs: r.SeparatedPairs,
+		UnresolvedMentionIDs: reg.unresolved,
+		Entities:             reg.toEntities(),
+		SeparatedPairs:       r.SeparatedPairs,
 	}
 }
 
@@ -134,6 +133,13 @@ func (r *Resolver) buildSeparationIndex() map[string]bool {
 // entities as required.
 func (reg *registry) resolve(m *Mention, seq int) {
 	candidates := reg.match(m)
+	if len(m.Tokens) == 1 {
+		candidates = reg.referenceCandidates(m, candidates)
+		if candidates == nil {
+			reg.deferred = append(reg.deferred, m)
+			return
+		}
+	}
 
 	if len(candidates) == 0 {
 		reg.create(m, seq)
@@ -191,9 +197,7 @@ func (reg *registry) canCombineTwoTokenName(m *Mention, candidates []*regEntity)
 	return len(wanted) == 0
 }
 
-// match returns candidate entities for a mention, best tier first and most
-// recently seen first within a tier. Separated and title-incompatible
-// entities are excluded (Dr. Chen never matches Staff Sgt. Chen).
+// match ranks name candidates while respecting manual splits and title conflicts.
 func (reg *registry) match(m *Mention) []*regEntity {
 	full := strings.ToLower(strings.Join(m.Tokens, " "))
 	mentionGroups := TitleGroups(m.Titles)

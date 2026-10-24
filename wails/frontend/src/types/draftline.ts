@@ -129,6 +129,7 @@ export interface MentionRecord {
   sentence_id: string // ID of containing sentence
   chapter: number     // Chapter index
   char_offset: number // Character offset in chapter
+  actor_evidence?: boolean
   person_evidence?: boolean
   non_person_evidence?: boolean
   strong_person_evidence?: boolean
@@ -165,6 +166,7 @@ export interface EntityDecision {
 }
 
 export interface EntityData {
+  unresolved_mention_ids?: string[]
   mentions?: MentionRecord[]
   entities?: EntityRecord[]
   separated_pairs?: SeparatedPairRecord[]

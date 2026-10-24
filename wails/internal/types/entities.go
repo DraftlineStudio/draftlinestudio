@@ -3,6 +3,7 @@ package types
 // EntityData stores entity resolution results and configuration.
 // This is separate from StoryBible to allow independent evolution.
 type EntityData struct {
+	UnresolvedMentionIDs []string `json:"unresolved_mention_ids,omitempty"`
 	// Mentions stores all detected name mentions in the text
 	Mentions []MentionRecord `json:"mentions,omitempty"`
 	// Entities stores resolved entities (clustered mentions)

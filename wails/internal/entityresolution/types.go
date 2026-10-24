@@ -44,7 +44,8 @@ type SeparatedPair struct {
 
 // ResolvedEntities is the complete output of entity resolution.
 type ResolvedEntities struct {
-	Entities       []Entity        `json:"entities"`
-	SeparatedPairs []SeparatedPair `json:"separated_pairs"`
-	MentionMap     map[string]int  `json:"-"` // mentionID -> entityIndex (computed, not stored)
+	UnresolvedMentionIDs []string        `json:"unresolved_mention_ids,omitempty"`
+	Entities             []Entity        `json:"entities"`
+	SeparatedPairs       []SeparatedPair `json:"separated_pairs"`
+	MentionMap           map[string]int  `json:"-"` // mentionID -> entityIndex (computed, not stored)
 }

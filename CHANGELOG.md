@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02755] - 2026-10-24
+
+### Fixed
+- Shared first names and surnames no longer attach to a character solely because that character appeared most recently.
+- Ambiguous name references require a unique sentence or chapter context before contributing to a character.
+
 ## [1.0.02754] - 2026-10-24
 
 ### Changed

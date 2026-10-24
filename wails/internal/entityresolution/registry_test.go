@@ -104,43 +104,6 @@ func TestResolveEntities_CanonicalPrefersFrequentSingular(t *testing.T) {
 	}
 }
 
-// An ambiguous single-token mention resolves to the most recently
-// mentioned matching entity.
-func TestResolveEntities_RecencyDisambiguation(t *testing.T) {
-	mentions := []Mention{
-		{ID: "m1", Text: "John Smith", SentenceID: "s1", Chapter: 0, CharOffset: 10},
-		{ID: "m2", Text: "John Brown", SentenceID: "s2", Chapter: 0, CharOffset: 100},
-		{ID: "m3", Text: "John", SentenceID: "s3", Chapter: 0, CharOffset: 200},
-	}
-
-	resolver := NewResolver()
-	result := resolver.ResolveEntities(mentions)
-
-	if len(result.Entities) != 2 {
-		t.Fatalf("expected 2 entities, got %d", len(result.Entities))
-	}
-
-	// m3 ("John") must resolve to John Brown (most recent).
-	var brown *Entity
-	for i := range result.Entities {
-		if result.Entities[i].Canonical == "John Brown" {
-			brown = &result.Entities[i]
-		}
-	}
-	if brown == nil {
-		t.Fatal("John Brown entity not found")
-	}
-	found := false
-	for _, id := range brown.MentionIDs {
-		if id == "m3" {
-			found = true
-		}
-	}
-	if !found {
-		t.Errorf("ambiguous 'John' should resolve to most recent entity John Brown; got mentions %v", brown.MentionIDs)
-	}
-}
-
 // Entity IDs must be deterministic across runs and unique within a run.
 func TestResolveEntities_DeterministicIDs(t *testing.T) {
 	mentions := []Mention{

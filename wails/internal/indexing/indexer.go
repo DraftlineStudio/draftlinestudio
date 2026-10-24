@@ -73,13 +73,14 @@ func IndexBookWithOptions(book *types.BookData, pool AnalysisPoolOptions) types.
 	ApplyEntityDecisions(entityRecords, decisions)
 
 	book.Analysis.EntityResolution = &types.EntityData{
-		Mentions:       ConvertMentionsToRecords(allMentions),
-		Entities:       entityRecords,
-		SeparatedPairs: ConvertSeparatedPairsToRecords(result.SeparatedPairs),
-		MergeRules:     mergeRules,
-		Decisions:      decisions,
-		LastResolved:   time.Now().Format(time.RFC3339),
-		Version:        1,
+		UnresolvedMentionIDs: result.UnresolvedMentionIDs,
+		Mentions:             ConvertMentionsToRecords(allMentions),
+		Entities:             entityRecords,
+		SeparatedPairs:       ConvertSeparatedPairsToRecords(result.SeparatedPairs),
+		MergeRules:           mergeRules,
+		Decisions:            decisions,
+		LastResolved:         time.Now().Format(time.RFC3339),
+		Version:              1,
 	}
 
 	// Rebuild StoryBible characters (manual ones preserved), then assign
