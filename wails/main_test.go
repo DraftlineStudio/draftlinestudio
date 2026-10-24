@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"runtime"
 	"testing"
 )
 
@@ -28,4 +29,43 @@ func TestMain(m *testing.M) {
 
 	_ = os.RemoveAll(dir)
 	os.Exit(code)
+}
+
+func TestPreferX11OnKDEWayland(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("linux-only decision")
+	}
+	env := func(vars map[string]string) func(string) string {
+		return func(key string) string { return vars[key] }
+	}
+
+	kdeWayland := map[string]string{
+		"XDG_SESSION_TYPE":    "wayland",
+		"XDG_CURRENT_DESKTOP": "KDE",
+		"DISPLAY":             ":1",
+	}
+	if !preferX11OnKDEWayland(env(kdeWayland)) {
+		t.Error("KDE Wayland with XWayland available should prefer X11")
+	}
+
+	cases := map[string]map[string]string{
+		"explicit backend wins": {
+			"XDG_SESSION_TYPE": "wayland", "XDG_CURRENT_DESKTOP": "KDE",
+			"DISPLAY": ":1", "GDK_BACKEND": "wayland",
+		},
+		"no XWayland, nothing to prefer": {
+			"XDG_SESSION_TYPE": "wayland", "XDG_CURRENT_DESKTOP": "KDE",
+		},
+		"GNOME negotiates decorations fine": {
+			"XDG_SESSION_TYPE": "wayland", "XDG_CURRENT_DESKTOP": "GNOME", "DISPLAY": ":1",
+		},
+		"X11 session needs no help": {
+			"XDG_SESSION_TYPE": "x11", "XDG_CURRENT_DESKTOP": "KDE", "DISPLAY": ":0",
+		},
+	}
+	for name, vars := range cases {
+		if preferX11OnKDEWayland(env(vars)) {
+			t.Errorf("%s: should not force the X11 backend", name)
+		}
+	}
 }

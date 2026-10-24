@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02750] - 2026-10-24
+
+### Fixed
+- On KDE Plasma with Wayland, the window no longer gets a second native title bar and frame around Draftline's own.
+
 ## [1.0.02749] - 2026-10-24
 
 ### Added

@@ -3,6 +3,8 @@ package main
 import (
 	"embed"
 	"os"
+	"runtime"
+	"strings"
 
 	"draftline/internal/instancelock"
 	"draftline/internal/platform"
@@ -17,8 +19,30 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+// KWin on Wayland draws its own title bar and frame around the frameless
+// GTK3 window: the decoration negotiation between GTK3 and KWin never
+// settles on "none", so the custom title bar gets a second, native one
+// around it. The X11 backend is immune — XWayland windows carry the
+// undecorated hint KWin honors — so prefer it on KDE Wayland sessions.
+// An explicit GDK_BACKEND always wins, and a session without XWayland
+// (no DISPLAY) is left alone rather than broken. GNOME and X11 sessions
+// never reach the Setenv.
+func preferX11OnKDEWayland(getenv func(string) string) bool {
+	if runtime.GOOS != "linux" || getenv("GDK_BACKEND") != "" || getenv("DISPLAY") == "" {
+		return false
+	}
+	if getenv("XDG_SESSION_TYPE") != "wayland" && getenv("WAYLAND_DISPLAY") == "" {
+		return false
+	}
+	return strings.Contains(strings.ToLower(getenv("XDG_CURRENT_DESKTOP")), "kde")
+}
+
 func main() {
 	app := NewApp()
+
+	if preferX11OnKDEWayland(os.Getenv) {
+		os.Setenv("GDK_BACKEND", "x11")
+	}
 
 	// File passed by the OS (file association / "Open with") at launch.
 	// Draftline is multi-instance; only the same BOOK is exclusive. If the
