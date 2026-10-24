@@ -56,7 +56,9 @@ export const useStoryBibleStore = create<StoryBibleStore>((set, get) => ({
   updateCharacter: (book, char) => {
     const bible: StoryBible = book.story_bible ?? { characters: [], plot_notes: '', timeline: '' }
     const updated = { ...book, story_bible: { ...bible, characters: bible.characters.map(c => c.id === char.id ? char : c) } }
-    return char.detection_status === 'accepted' ? applyCharacterDecision(updated, char, 'accepted') : updated
+    const previous = bible.characters.find(candidate => candidate.id === char.id)
+    const confirmed = char.detection_status === 'accepted' && previous?.detection_status !== 'accepted'
+    return confirmed ? applyCharacterDecision(updated, char, 'accepted') : updated
   },
 
   deleteCharacter: (book, id) => {

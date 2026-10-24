@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02752] - 2026-10-24
+
+### Fixed
+- Re-indexing rechecks automatically accepted characters while preserving writer confirmations and character notes.
+- Editing an automatically accepted character no longer counts as confirming it.
+
 ## [1.0.02751] - 2026-10-24
 
 ### Added

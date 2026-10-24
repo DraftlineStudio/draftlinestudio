@@ -87,7 +87,7 @@ describe('applyCharacterDecision (entity resolution)', () => {
 
   it('accepting an auto-detected character marks its entity and replaces stale decisions', () => {
     const char = makeCharacter({ is_auto_detected: true, aliases: ['M.'], detection_status: 'accepted' })
-    const updated = useStoryBibleStore.getState().updateCharacter(resolutionBook(char), char)
+    const updated = useStoryBibleStore.getState().updateCharacter(resolutionBook({ ...char, detection_status: 'review' }), char)
     const resolution = updated.analysis!.entity_resolution! as any
     expect(resolution.entities[0].detection_status).toBe('accepted')
     const decisionsFor = (name: string) =>
