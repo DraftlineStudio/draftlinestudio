@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02751] - 2026-10-24
+
+### Added
+- Straight quotes curl as you type, three periods become an ellipsis, and two hyphens become an em dash.
+
 ## [1.0.02750] - 2026-10-24
 
 ### Fixed

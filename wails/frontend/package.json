@@ -1,7 +1,7 @@
 {
   "name": "draftline",
   "private": true,
-  "version": "1.0.02750",
+  "version": "1.0.02751",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -22,6 +22,7 @@
     "@tiptap/extension-superscript": "^2.10.4",
     "@tiptap/extension-text-align": "^2.10.4",
     "@tiptap/extension-text-style": "^2.10.4",
+    "@tiptap/extension-typography": "^2.27.3",
     "@tiptap/extension-underline": "^2.10.4",
     "@tiptap/react": "^2.10.4",
     "@tiptap/starter-kit": "^2.10.4",

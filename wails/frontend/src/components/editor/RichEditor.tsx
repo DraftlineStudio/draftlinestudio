@@ -1,6 +1,7 @@
 import { useShallow } from 'zustand/react/shallow'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
+import Typography from '@tiptap/extension-typography'
 import Underline from '@tiptap/extension-underline'
 import TextStyle from '@tiptap/extension-text-style'
 import FontFamily from '@tiptap/extension-font-family'
@@ -97,6 +98,28 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ history: { depth: 100 } }),
+      // Literary typography as you type: straight quotes become curly, ...
+      // becomes an ellipsis, -- becomes an em dash. The symbol conversions
+      // ((c), 1/2, ->, !=, <<) are disabled — in prose they are surprises,
+      // not typography.
+      Typography.configure({
+        copyright: false,
+        trademark: false,
+        servicemark: false,
+        registeredTrademark: false,
+        oneHalf: false,
+        oneQuarter: false,
+        threeQuarters: false,
+        plusMinus: false,
+        notEqual: false,
+        laquo: false,
+        raquo: false,
+        multiplication: false,
+        superscriptTwo: false,
+        superscriptThree: false,
+        leftArrow: false,
+        rightArrow: false,
+      }),
       Underline,
       TextStyle,
       FontFamily.configure({ types: ['textStyle'] }),
