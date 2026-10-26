@@ -77,8 +77,8 @@ describe('missing apostrophes', () => {
   })
 
   it('preserves the typed capitalization in the fix', () => {
-    expect(byRule('Dont wait up.', 'missing-apostrophe')[0].replacements).toEqual(["Don't"])
-    expect(byRule('im not ready.', 'missing-apostrophe')[0].replacements).toEqual(["I'm"])
+    expect(byRule('Dont wait up.', 'missing-apostrophe')[0].replacements).toEqual(["Don’t"])
+    expect(byRule('im not ready.', 'missing-apostrophe')[0].replacements).toEqual(["I’m"])
   })
 
   it('leaves acronyms, shouting, and containing words alone', () => {
@@ -93,9 +93,9 @@ describe('its versus it’s', () => {
     const issues = byRule('I think its been a long day.', 'its-contraction')
     expect(issues).toHaveLength(1)
     expect(issues[0].kind).toBe('grammar')
-    expect(issues[0].replacements).toEqual(["it's"])
+    expect(issues[0].replacements).toEqual(["it’s"])
     expect(flaggedSpans('Its not the heat.', 'its-contraction')).toEqual(['Its'])
-    expect(byRule('Its not the heat.', 'its-contraction')[0].replacements).toEqual(["It's"])
+    expect(byRule('Its not the heat.', 'its-contraction')[0].replacements).toEqual(["It’s"])
   })
 
   it('flags its before a gerund as a softer style question', () => {
@@ -114,7 +114,7 @@ describe('its versus it’s', () => {
 describe('were versus we’re', () => {
   it('flags sentence-opening Were before not or gonna', () => {
     expect(flaggedSpans('Were not lost. Were gonna be fine.', 'were-contraction')).toEqual(['Were', 'Were'])
-    expect(byRule('Were not lost.', 'were-contraction')[0].replacements).toEqual(["We're"])
+    expect(byRule('Were not lost.', 'were-contraction')[0].replacements).toEqual(["We’re"])
     expect(flaggedSpans('“Were not done here,” she warned.', 'were-contraction')).toEqual(['Were'])
   })
 
@@ -160,6 +160,65 @@ describe('capitalization after a comma', () => {
   it('leaves names and ordinary commas alone', () => {
     expect(byRule('Later, Marcus found the trail.', 'comma-capitalization')).toEqual([])
     expect(byRule('Relax, just breathe through it.', 'comma-capitalization')).toEqual([])
+  })
+})
+
+describe('straight quotes', () => {
+  it('curls double quotes by direction', () => {
+    const issues = byRule('"Morning," she said. "Already?"', 'straight-quote')
+    expect(issues.map(issue => issue.replacements[0])).toEqual(['“', '”', '“', '”'])
+  })
+
+  it('treats a quote after an opening bracket or dash as opening', () => {
+    expect(byRule('He wrote ("loosely") in the margin.', 'straight-quote')
+      .map(issue => issue.replacements[0])).toEqual(['“', '”'])
+  })
+
+  it('curls apostrophes inside and after words', () => {
+    expect(byRule("It wasn't the dogs' fault.", 'straight-quote')
+      .map(issue => issue.replacements[0])).toEqual(['’', '’'])
+  })
+
+  it('knows elisions and decades from opening single quotes', () => {
+    expect(byRule("Back in '92 they called 'em heroes.", 'straight-quote')
+      .map(issue => issue.replacements[0])).toEqual(['’', '’'])
+    expect(byRule("She hummed 'some old tune' twice.", 'straight-quote')
+      .map(issue => issue.replacements[0])).toEqual(['‘', '’'])
+  })
+
+  it('leaves curly quotes alone', () => {
+    expect(byRule('“Morning,” she said. It wasn’t late.', 'straight-quote')).toEqual([])
+  })
+})
+
+describe('spacing', () => {
+  it('flags doubled spaces between words', () => {
+    const issues = byRule('The door  closed.', 'double-space')
+    expect(issues).toHaveLength(1)
+    expect(issues[0].replacements).toEqual([' '])
+  })
+
+  it('flags a space before punctuation and offers removal', () => {
+    const issues = byRule('Wait , what ?', 'space-before-punctuation')
+    expect(issues).toHaveLength(2)
+    expect(issues[0].replacements).toEqual([''])
+  })
+
+  it('leaves spaced ellipses and single spaces alone', () => {
+    expect(byRule('She waited . . . then knocked.', 'space-before-punctuation')).toEqual([])
+    expect(byRule('The door closed.', 'double-space')).toEqual([])
+  })
+})
+
+describe('double hyphens', () => {
+  it('offers an em dash for a typed double hyphen', () => {
+    const issues = byRule('He paused--then ran.', 'double-hyphen')
+    expect(issues).toHaveLength(1)
+    expect(issues[0].replacements).toEqual(['—'])
+  })
+
+  it('leaves longer rules and single hyphens alone', () => {
+    expect(byRule('A well-known divider: ----', 'double-hyphen')).toEqual([])
   })
 })
 

@@ -104,17 +104,17 @@ function addSentenceCapitalization(issues: GrammarIssue[], text: string): void {
 // dictionaries, so this rule is the only thing standing between them and a
 // clean page. "its" and sentence-opening "were" get their own rules below.
 const apostropheLessContractions: Record<string, string> = {
-  im: "I'm", ive: "I've",
-  youre: "you're", youd: "you'd", youll: "you'll", youve: "you've",
-  theyre: "they're", theyd: "they'd", theyll: "they'll", theyve: "they've",
-  weve: "we've", hes: "he's", shes: "she's",
-  dont: "don't", doesnt: "doesn't", didnt: "didn't",
-  isnt: "isn't", wasnt: "wasn't", werent: "weren't", arent: "aren't",
-  aint: "ain't", hasnt: "hasn't", havent: "haven't", hadnt: "hadn't",
-  couldnt: "couldn't", wouldnt: "wouldn't", shouldnt: "shouldn't",
-  mustnt: "mustn't", neednt: "needn't",
-  whos: "who's", whats: "what's", wheres: "where's",
-  theres: "there's", thats: "that's", heres: "here's",
+  im: "I’m", ive: "I’ve",
+  youre: "you’re", youd: "you’d", youll: "you’ll", youve: "you’ve",
+  theyre: "they’re", theyd: "they’d", theyll: "they’ll", theyve: "they’ve",
+  weve: "we’ve", hes: "he’s", shes: "she’s",
+  dont: "don’t", doesnt: "doesn’t", didnt: "didn’t",
+  isnt: "isn’t", wasnt: "wasn’t", werent: "weren’t", arent: "aren’t",
+  aint: "ain’t", hasnt: "hasn’t", havent: "haven’t", hadnt: "hadn’t",
+  couldnt: "couldn’t", wouldnt: "wouldn’t", shouldnt: "shouldn’t",
+  mustnt: "mustn’t", neednt: "needn’t",
+  whos: "who’s", whats: "what’s", wheres: "where’s",
+  theres: "there’s", thats: "that’s", heres: "here’s",
 }
 const apostropheLessPattern = new RegExp(
   `\\b(?:${Object.keys(apostropheLessContractions).join('|')})\\b`, 'gi')
@@ -166,7 +166,7 @@ function addItsIngConfusion(issues: GrammarIssue[], text: string): void {
       from: match.index,
       to,
       message: '“Its” is the possessive. For “it is,” write “it’s.”',
-      replacements: [preserveInitialCase("it's", match[0])],
+      replacements: [preserveInitialCase("it’s", match[0])],
     })
   }
 }
@@ -245,6 +245,82 @@ function addCommaCapitalization(issues: GrammarIssue[], text: string): void {
   }
 }
 
+// Words that open with an elided syllable, so a leading straight quote is an
+// apostrophe (’em), not an opening single quote (‘em).
+const leadingElisions = new Set([
+  'em', 'tis', 'twas', 'til', 'till', 'cause', 'bout', 'round', 'sup', 'n',
+  'cept', 'fore', 'neath', 'gainst',
+])
+
+/**
+ * Typed quotes convert to curly as you write (the Typography extension), but
+ * pasted and imported prose arrives with straight ones. Each straight mark
+ * gets the direction the context implies.
+ */
+function addStraightQuotes(issues: GrammarIssue[], text: string): void {
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+    if (ch !== '"' && ch !== "'") continue
+    const prev = i > 0 ? text[i - 1] : ''
+    const next = i + 1 < text.length ? text[i + 1] : ''
+
+    let fix: string
+    if (ch === '"') {
+      fix = !prev || /[\s([{—–-]/.test(prev) ? '“' : '”'
+    } else if (/[\p{Script=Latin}\d]/u.test(prev)) {
+      // Inside or after a word: an apostrophe or a closing quote — the same
+      // character either way (don’t, dogs’, ‘like that’).
+      fix = '’'
+    } else if (/\d/.test(next)) {
+      fix = '’' // ’90s
+    } else if (/\p{Script=Latin}/u.test(next)) {
+      const word = text.slice(i + 1).match(/^\p{Script=Latin}+/u)?.[0] ?? ''
+      fix = leadingElisions.has(word.toLocaleLowerCase()) ? '’' : '‘'
+    } else {
+      fix = '’'
+    }
+    issues.push({
+      rule: 'straight-quote',
+      kind: 'style',
+      from: i,
+      to: i + 1,
+      message: `Typeset prose uses curly quotes (${fix}).`,
+      replacements: [fix],
+    })
+  }
+}
+
+function addSpacingIssues(issues: GrammarIssue[], text: string): void {
+  // Runs of spaces between words. A space before closing punctuation is its
+  // own rule below, so it is excluded here rather than flagged twice.
+  const doubleSpace = /(?<=\S) {2,}(?=[^\s,;:!?])/g
+  let match: RegExpExecArray | null
+  while ((match = doubleSpace.exec(text)) !== null) {
+    issues.push({
+      rule: 'double-space',
+      kind: 'style',
+      from: match.index,
+      to: match.index + match[0].length,
+      message: 'Extra space.',
+      replacements: [' '],
+    })
+  }
+
+  // A space before a comma, colon, or end mark. Periods are left alone so a
+  // spaced ellipsis (. . .) stays legal.
+  const spaceBefore = /[ \t]+(?=[,;:!?])/g
+  while ((match = spaceBefore.exec(text)) !== null) {
+    issues.push({
+      rule: 'space-before-punctuation',
+      kind: 'style',
+      from: match.index,
+      to: match.index + match[0].length,
+      message: 'Punctuation sits against the word before it.',
+      replacements: [''],
+    })
+  }
+}
+
 /**
  * Fast, deterministic checks intended for continuous editor feedback. These
  * rules deliberately target high-confidence mistakes instead of trying to
@@ -269,17 +345,17 @@ export function analyzeGrammar(text: string): GrammarIssue[] {
     /\bits(?=\s+(?:a|an|the|been|not|gonna|gotta)\b(?!-))/gi,
     'its-contraction',
     '“Its” is the possessive. For “it is,” write “it’s.”',
-    "it's",
+    "it’s",
   )
   addMatches(
     issues,
     text,
-    // "Were not" or "Were gonna" opening a sentence is "We're" missing its
+    // "Were not" or "Were gonna" opening a sentence is "We’re" missing its
     // apostrophe; inside a sentence, bare "were" is an ordinary past tense.
     /(?<=^["“‘'\s]*|[.!?]["”’']?\s+|["“])Were(?=\s+(?:not|gonna)\b)/gu,
     'were-contraction',
     'This looks like “We’re” (we are).',
-    "We're",
+    "We’re",
   )
   addMatches(
     issues,
@@ -300,6 +376,19 @@ export function analyzeGrammar(text: string): GrammarIssue[] {
     '…',
     'style',
   )
+  addMatches(
+    issues,
+    text,
+    // Two typed hyphens standing for a dash. Three or more is a rule or
+    // divider and stays alone.
+    /(?<!-)--(?!-)/g,
+    'double-hyphen',
+    'Use an em dash (—).',
+    '—',
+    'style',
+  )
+  addStraightQuotes(issues, text)
+  addSpacingIssues(issues, text)
 
   addMatches(
     issues,

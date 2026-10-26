@@ -2,6 +2,15 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02756] - 2026-10-25
+
+### Added
+- Straight quotes in pasted or imported text are underlined with the curly quote offered, aware of opening and closing direction.
+- Doubled spaces, a space before punctuation, and a typed double hyphen are underlined with the fix offered.
+
+### Changed
+- Grammar fixes now insert curly apostrophes instead of straight ones.
+
 ## [1.0.02755] - 2026-10-24
 
 ### Fixed
