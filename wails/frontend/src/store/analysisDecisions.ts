@@ -10,6 +10,8 @@ export interface DecisionActions {
   setContinuityDecision: (signalID: string, status: 'reviewed' | 'dismissed' | null) => void
   setStyleDecision: (findingID: string, status: 'dismissed' | null) => void
   addStyleIgnoredWord: (word: string) => void
+  removeStyleIgnoredWord: (word: string) => void
+  clearStyleDecisions: () => void
 }
 
 export interface DecisionHost {
@@ -45,6 +47,30 @@ export function createDecisionActions(host: DecisionHost): DecisionActions {
           ...book.analysis,
           style: { ...book.analysis?.style, ignored_words: [...existing, trimmed] },
         },
+      })
+    },
+
+    removeStyleIgnoredWord: (word) => {
+      const book = host.read()
+      if (!book) return
+      const existing = book.analysis?.style?.ignored_words ?? []
+      const next = existing.filter(entry => entry.toLowerCase() !== word.toLowerCase())
+      if (next.length === existing.length) return
+      host.apply({
+        ...book,
+        analysis: {
+          ...book.analysis,
+          style: { ...book.analysis?.style, ignored_words: next },
+        },
+      })
+    },
+
+    clearStyleDecisions: () => {
+      const book = host.read()
+      if (!book || !(book.analysis?.style?.decisions ?? []).length) return
+      host.apply({
+        ...book,
+        analysis: { ...book.analysis, style: { ...book.analysis?.style, decisions: [] } },
       })
     },
 

@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02762] - 2026-10-25
+
+### Changed
+- The Proofread panel now lists every detection with filters and counts, expands each one in place with its context and fixes, and moves with the arrow keys.
+
+### Added
+- A Checks and Dictionary view inside the Proofread panel manages the three checks, your custom dictionary, and everything you have silenced.
+
 ## [1.0.02761] - 2026-10-25
 
 ### Added
