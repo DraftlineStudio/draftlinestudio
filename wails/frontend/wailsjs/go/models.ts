@@ -894,6 +894,7 @@ export namespace types {
 	    sentence_id: string;
 	    chapter: number;
 	    char_offset: number;
+	    actor_evidence?: boolean;
 	    person_evidence?: boolean;
 	    non_person_evidence?: boolean;
 	    strong_person_evidence?: boolean;
@@ -909,12 +910,14 @@ export namespace types {
 	        this.sentence_id = source["sentence_id"];
 	        this.chapter = source["chapter"];
 	        this.char_offset = source["char_offset"];
+	        this.actor_evidence = source["actor_evidence"];
 	        this.person_evidence = source["person_evidence"];
 	        this.non_person_evidence = source["non_person_evidence"];
 	        this.strong_person_evidence = source["strong_person_evidence"];
 	    }
 	}
 	export class EntityData {
+	    unresolved_mention_ids?: string[];
 	    mentions?: MentionRecord[];
 	    entities?: EntityRecord[];
 	    separated_pairs?: SeparatedPairRecord[];
@@ -929,6 +932,7 @@ export namespace types {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.unresolved_mention_ids = source["unresolved_mention_ids"];
 	        this.mentions = this.convertValues(source["mentions"], MentionRecord);
 	        this.entities = this.convertValues(source["entities"], EntityRecord);
 	        this.separated_pairs = this.convertValues(source["separated_pairs"], SeparatedPairRecord);
@@ -1900,6 +1904,7 @@ export namespace types {
 	    motivation: string;
 	    notes: string;
 	    is_auto_detected?: boolean;
+	    spelling_aliases: string[];
 	    aliases?: string[];
 	    mention_count?: number;
 	    first_chapter?: number;
@@ -1924,6 +1929,7 @@ export namespace types {
 	        this.motivation = source["motivation"];
 	        this.notes = source["notes"];
 	        this.is_auto_detected = source["is_auto_detected"];
+	        this.spelling_aliases = source["spelling_aliases"];
 	        this.aliases = source["aliases"];
 	        this.mention_count = source["mention_count"];
 	        this.first_chapter = source["first_chapter"];
