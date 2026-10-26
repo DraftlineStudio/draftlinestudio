@@ -97,6 +97,10 @@ type AnalysisData struct {
 	// never persisted, so it can never drift from the manuscript.
 	Continuity *ContinuityData `json:"continuity,omitempty"`
 
+	// Dialogue stores located, speaker-attributed quotation spans. It is
+	// rebuildable; nil until the dialogue analysis phase produces it.
+	Dialogue *DialogueData `json:"dialogue,omitempty"`
+
 	// Future analysis types can be added here:
 	// PlotAnalysis     *PlotAnalysisData    `json:"plot_analysis,omitempty"`
 	// ThemeAnalysis    *ThemeAnalysisData   `json:"theme_analysis,omitempty"`
