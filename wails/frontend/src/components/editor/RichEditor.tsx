@@ -108,6 +108,7 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
   const currentSection = useBookStore(s => s.currentSection)
   const currentIndex = useBookStore(s => s.currentIndex)
   const setStyleDecision = useBookStore(s => s.setStyleDecision)
+  const addStyleIgnoredWord = useBookStore(s => s.addStyleIgnoredWord)
   const chapterStyleFindings = useMemo(() => {
     if (!settings.style_check_enabled || !styleData?.findings?.length) return []
     // Findings index chapters across front matter, body, and back matter in
@@ -118,8 +119,10 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
           : -1
     if (globalIndex < 0) return []
     const dismissed = new Set((styleData.decisions ?? []).map(decision => decision.finding_id))
+    const ignoredWords = new Set((styleData.ignored_words ?? []).map(word => word.toLowerCase()))
     return styleData.findings.filter(finding =>
-      finding.chapter_index === globalIndex && !dismissed.has(finding.id))
+      finding.chapter_index === globalIndex && !dismissed.has(finding.id)
+      && !ignoredWords.has(finding.snippet.toLowerCase()))
   }, [styleData, currentSection, currentIndex, frontMatterCount, bodyCount, settings.style_check_enabled])
   const styleFindingsRef = useRef(chapterStyleFindings)
   styleFindingsRef.current = chapterStyleFindings
@@ -490,6 +493,13 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
       icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>,
       onClick: () => setStyleDecision(placed.finding.id, 'dismissed'),
     })
+    if (placed.finding.rule === 'echo-word') {
+      contextMenuItems.push({
+        label: `Never flag “${placed.finding.snippet}” in this book`,
+        icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><path d="m1 1 22 22"/></svg>,
+        onClick: () => addStyleIgnoredWord(placed.finding.snippet),
+      })
+    }
     contextMenuItems.push({ label: '', onClick: () => {}, separator: true })
   }
 

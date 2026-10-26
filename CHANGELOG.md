@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02760] - 2026-10-25
+
+### Changed
+- Echo suggestions now leave a chapter's recurring vocabulary alone, like a viewpoint word the narration uses throughout.
+
+### Added
+- Right-click an echo to never flag that word again anywhere in the book.
+
 ## [1.0.02759] - 2026-10-25
 
 ### Added

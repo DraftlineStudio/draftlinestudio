@@ -18,7 +18,7 @@ import (
 
 // Engine identifies this producer; bump the suffix when rules change so
 // every cached chapter recomputes.
-const Engine = "styleinspect-v1"
+const Engine = "styleinspect-v2"
 
 // maxFindings caps the persisted findings list, the evidence-cap precedent.
 const maxFindings = 20000
@@ -34,7 +34,13 @@ type chapterInput struct {
 // author's dismissals survive for findings that still exist.
 func Analyze(book *types.BookData, chapters []types.ChapterItem, shouldAnalyze func(types.ChapterItem) bool) *types.StyleData {
 	skipNames := rosterNames(book)
-	fingerprint := skipFingerprint(skipNames)
+	ignoredWords := map[string]bool{}
+	if book.Analysis.Style != nil {
+		for _, word := range book.Analysis.Style.IgnoredWords {
+			ignoredWords[strings.ToLower(strings.TrimSpace(word))] = true
+		}
+	}
+	fingerprint := skipFingerprint(skipNames) + "\x00" + skipFingerprint(ignoredWords)
 
 	dialogueByChapter := map[int][]types.DialogueSpan{}
 	dialogueHashes := map[int]string{}
@@ -76,12 +82,18 @@ func Analyze(book *types.BookData, chapters []types.ChapterItem, shouldAnalyze f
 			continue
 		}
 		input := chapterInput{index: index, text: text, dialogueSpans: dialogueByChapter[index]}
-		result.Findings = append(result.Findings, echoWordFindings(input, key, skipNames)...)
+		result.Findings = append(result.Findings, echoWordFindings(input, key, skipNames, ignoredWords)...)
 	}
 
 	if len(result.Findings) > maxFindings {
 		result.Findings = result.Findings[:maxFindings]
 		result.Truncated = true
+	}
+
+	// The author's word-level silences are kept verbatim: they are vocabulary
+	// choices, not positions in prose.
+	if book.Analysis.Style != nil {
+		result.IgnoredWords = append(result.IgnoredWords, book.Analysis.Style.IgnoredWords...)
 	}
 
 	// Keep only decisions whose findings still exist: IDs hash the prose, so

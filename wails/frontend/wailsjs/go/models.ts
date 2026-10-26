@@ -335,6 +335,7 @@ export namespace types {
 	export class StyleData {
 	    findings?: StyleFinding[];
 	    decisions?: StyleDecision[];
+	    ignored_words?: string[];
 	    chapter_hashes?: Record<number, string>;
 	    engine?: string;
 	    version?: number;
@@ -348,6 +349,7 @@ export namespace types {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.findings = this.convertValues(source["findings"], StyleFinding);
 	        this.decisions = this.convertValues(source["decisions"], StyleDecision);
+	        this.ignored_words = source["ignored_words"];
 	        this.chapter_hashes = source["chapter_hashes"];
 	        this.engine = source["engine"];
 	        this.version = source["version"];

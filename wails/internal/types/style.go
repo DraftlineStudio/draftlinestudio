@@ -42,6 +42,10 @@ type StyleData struct {
 	Findings  []StyleFinding  `json:"findings,omitempty"`
 	Decisions []StyleDecision `json:"decisions,omitempty"`
 
+	// IgnoredWords are the author's "never flag this word again" rulings for
+	// the echo rule, kept for the life of the book.
+	IgnoredWords []string `json:"ignored_words,omitempty"`
+
 	ChapterHashes map[int]string `json:"chapter_hashes,omitempty"`
 	Engine        string         `json:"engine,omitempty"`
 	Version       int            `json:"version,omitempty"`

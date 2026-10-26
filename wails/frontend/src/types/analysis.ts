@@ -459,6 +459,7 @@ export interface StyleDecision {
 export interface StyleData {
   findings?: StyleFinding[]
   decisions?: StyleDecision[]
+  ignored_words?: string[]
   chapter_hashes?: Record<number, string>
   engine?: string
   version?: number

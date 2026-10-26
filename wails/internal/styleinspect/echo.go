@@ -17,6 +17,18 @@ import (
 // echo.
 const echoWindowWords = 40
 
+// A word that recurs throughout a chapter is its standing vocabulary — a
+// viewpoint word like a camera in found-footage narration — not an echo.
+// The threshold scales with chapter length so a short scene keeps its
+// sensitivity.
+func topicalThreshold(totalWords int) int {
+	threshold := totalWords / 400
+	if threshold < 5 {
+		threshold = 5
+	}
+	return threshold
+}
+
 // Function words and auxiliaries that repeat in any prose without being
 // echoes. Words shorter than four letters never flag, so this list only
 // needs the longer ones.
@@ -89,12 +101,22 @@ func insideSpans(spans []types.DialogueSpan, start, end int) bool {
 	return false
 }
 
-func echoWordFindings(input chapterInput, chapterHash string, skipNames map[string]bool) []types.StyleFinding {
+func echoWordFindings(input chapterInput, chapterHash string, skipNames, ignoredWords map[string]bool) []types.StyleFinding {
 	var findings []types.StyleFinding
 	lastSeen := map[string]wordToken{}
 
-	for _, token := range tokenizeWords(input.text) {
+	tokens := tokenizeWords(input.text)
+	occurrences := map[string]int{}
+	for _, token := range tokens {
+		occurrences[token.key]++
+	}
+	threshold := topicalThreshold(len(tokens))
+
+	for _, token := range tokens {
 		if utf8.RuneCountInString(token.key) < 4 || echoStopwords[token.key] || skipNames[token.key] {
+			continue
+		}
+		if ignoredWords[token.key] || occurrences[token.key] >= threshold {
 			continue
 		}
 		if insideSpans(input.dialogueSpans, token.start, token.end) {

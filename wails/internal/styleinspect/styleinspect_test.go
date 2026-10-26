@@ -78,3 +78,33 @@ func TestAnalyzeCachesAndKeepsLiveDecisions(t *testing.T) {
 		t.Errorf("live decision kept, stale dropped — got %+v", second.Decisions)
 	}
 }
+
+func TestEchoWordSkipsChapterVocabulary(t *testing.T) {
+	// "beacon" appears throughout the chapter, the way a viewpoint word
+	// does: close repeats of it are the narration's vocabulary, not echoes.
+	paragraph := "<p>The beacon turned. Waves broke under the beacon while gulls circled it, " +
+		"and the beacon kept turning as the tide came in past the beacon stairs, " +
+		"salt drying on the beacon rail long before the beacon light steadied.</p>"
+	book := buildBook(paragraph)
+	data := Analyze(&book, book.Body, nil)
+	for _, finding := range data.Findings {
+		if finding.Snippet == "beacon" {
+			t.Fatalf("chapter vocabulary must not flag: %+v", finding)
+		}
+	}
+}
+
+func TestEchoWordHonorsIgnoredWords(t *testing.T) {
+	book := buildBook("<p>The lantern guttered beside the other lantern.</p>")
+	if data := Analyze(&book, book.Body, nil); len(data.Findings) != 1 {
+		t.Fatalf("expected the echo before ignoring, got %+v", data.Findings)
+	}
+	book.Analysis.Style = &types.StyleData{Engine: Engine, IgnoredWords: []string{"Lantern"}}
+	data := Analyze(&book, book.Body, nil)
+	if len(data.Findings) != 0 {
+		t.Errorf("ignored word still flagged: %+v", data.Findings)
+	}
+	if len(data.IgnoredWords) != 1 || data.IgnoredWords[0] != "Lantern" {
+		t.Errorf("ignored words must survive the rebuild: %+v", data.IgnoredWords)
+	}
+}

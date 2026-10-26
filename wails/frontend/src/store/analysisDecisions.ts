@@ -9,6 +9,7 @@ import type { BookData } from '../types/draftline'
 export interface DecisionActions {
   setContinuityDecision: (signalID: string, status: 'reviewed' | 'dismissed' | null) => void
   setStyleDecision: (findingID: string, status: 'dismissed' | null) => void
+  addStyleIgnoredWord: (word: string) => void
 }
 
 export interface DecisionHost {
@@ -29,6 +30,21 @@ export function createDecisionActions(host: DecisionHost): DecisionActions {
       host.apply({
         ...book,
         analysis: { ...book.analysis, continuity: { ...book.analysis?.continuity, decisions } },
+      })
+    },
+
+    addStyleIgnoredWord: (word) => {
+      const book = host.read()
+      const trimmed = word.trim()
+      if (!book || !trimmed) return
+      const existing = book.analysis?.style?.ignored_words ?? []
+      if (existing.some(entry => entry.toLowerCase() === trimmed.toLowerCase())) return
+      host.apply({
+        ...book,
+        analysis: {
+          ...book.analysis,
+          style: { ...book.analysis?.style, ignored_words: [...existing, trimmed] },
+        },
       })
     },
 
