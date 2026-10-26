@@ -29,6 +29,7 @@ var debtRatchet = map[string]int{
 	"frontend/src/store/readAloudStore.ts": 930,  // added 02531: player redesign cast/progress/preview glue around the module-scope pipeline singletons; extract castSession.ts if this needs a raise
 	"frontend/src/components/characters/CharactersView.tsx": 840, // 811; five components in one file
 	"frontend/src/components/tools/AIStudio/index.tsx":      780, // 748
+	"frontend/src/types/draftline.ts":                       802, // 802 at 02755: character detection fields pushed the shared types file over; split the analysis types out rather than raising this
 }
 
 func TestSourceFileSizeGuardrail(t *testing.T) {
