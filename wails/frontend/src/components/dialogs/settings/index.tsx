@@ -57,6 +57,7 @@ export default function AppSettingsDialog() {
   const [activityAutoSaveEnabled, setActivityAutoSaveEnabled] = useState(settings.activity_autosave_enabled)
   const [spellCheckEnabled, setSpellCheckEnabled] = useState(settings.spell_check_enabled)
   const [grammarCheckEnabled, setGrammarCheckEnabled] = useState(settings.grammar_check_enabled)
+  const [styleCheckEnabled, setStyleCheckEnabled] = useState(settings.style_check_enabled)
   const [spellLanguage, setSpellLanguage] = useState(settings.spell_language)
   const [castEnabled, setCastEnabled] = useState(settings.cast_enabled)
   const [analysisEnabled, setAnalysisEnabled] = useState(settings.analysis_enabled)
@@ -254,6 +255,7 @@ export default function AppSettingsDialog() {
       activity_autosave_enabled: activityAutoSaveEnabled,
       spell_check_enabled: spellCheckEnabled,
       grammar_check_enabled: grammarCheckEnabled,
+      style_check_enabled: styleCheckEnabled,
       spell_language: spellLanguage,
       cast_enabled: castEnabled,
       analysis_enabled: analysisEnabled,
@@ -280,6 +282,7 @@ export default function AppSettingsDialog() {
   const pluginEnabled = {
     spell_check_enabled: spellCheckEnabled,
     grammar_check_enabled: grammarCheckEnabled,
+    style_check_enabled: styleCheckEnabled,
     cast_enabled: castEnabled,
     analysis_enabled: analysisEnabled,
     ai_enabled: aiEnabled,
@@ -290,6 +293,7 @@ export default function AppSettingsDialog() {
     const setters: Record<FeatureSettingKey, (value: boolean) => void> = {
       spell_check_enabled: setSpellCheckEnabled,
       grammar_check_enabled: setGrammarCheckEnabled,
+      style_check_enabled: setStyleCheckEnabled,
       cast_enabled: setCastEnabled,
       analysis_enabled: setAnalysisEnabled,
       ai_enabled: setAiEnabled,

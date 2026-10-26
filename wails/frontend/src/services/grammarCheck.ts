@@ -11,10 +11,17 @@ export interface GrammarIssue {
 
 const changeListeners = new Set<() => void>()
 let enabled = true
+let styleEnabled = true
 
 export function setGrammarCheckEnabled(next: boolean): void {
   if (enabled === next) return
   enabled = next
+  changeListeners.forEach(listener => listener())
+}
+
+export function setStyleCheckEnabled(next: boolean): void {
+  if (styleEnabled === next) return
+  styleEnabled = next
   changeListeners.forEach(listener => listener())
 }
 
@@ -362,7 +369,7 @@ export function analyzeTypography(text: string): GrammarIssue[] {
  * judge an author's voice or sentence style.
  */
 export function analyzeGrammar(text: string): GrammarIssue[] {
-  if (!enabled || !text) return []
+  if ((!enabled && !styleEnabled) || !text) return []
 
   const issues: GrammarIssue[] = []
 
@@ -496,5 +503,7 @@ export function analyzeGrammar(text: string): GrammarIssue[] {
     'style',
   )
 
-  return issues.sort((left, right) => left.from - right.from || left.to - right.to)
+  return issues
+    .filter(issue => (issue.kind === 'style' ? styleEnabled : enabled))
+    .sort((left, right) => left.from - right.from || left.to - right.to)
 }

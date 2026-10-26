@@ -3,6 +3,7 @@ import type { AppSettings } from '../store/appStore'
 export type FeatureSettingKey =
   | 'spell_check_enabled'
   | 'grammar_check_enabled'
+  | 'style_check_enabled'
   | 'cast_enabled'
   | 'analysis_enabled'
   | 'ai_enabled'
@@ -35,6 +36,12 @@ export const FEATURE_REGISTRY: DraftlineFeature[] = [
     vendor: 'Draftline', version: '1.0', category: 'Writing', monogram: 'Gr', accent: '#4f83db', bundled: true,
     description: 'Fast, privacy-friendly checks for high-confidence grammar and usage issues.',
     capabilities: ['editor.diagnostics.grammar'], resourceProfile: 'tiny',
+  },
+  {
+    id: 'draftline.style', settingKey: 'style_check_enabled', name: 'Style Check',
+    vendor: 'Draftline', version: '1.0', category: 'Writing', monogram: 'St', accent: '#d39a45', bundled: true,
+    description: 'Typography and style suggestions: curly quotes, ellipses, spacing, and wording worth a second look.',
+    capabilities: ['editor.diagnostics.style'], resourceProfile: 'tiny',
   },
   {
     id: 'draftline.cast', settingKey: 'cast_enabled', name: 'Characters',

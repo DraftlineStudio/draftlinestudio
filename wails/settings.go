@@ -99,6 +99,7 @@ func (a *App) loadSettingsFromDisk() types.AppSettings {
 		CustomDictionary:        []string{},
 		SpellCheckEnabled:       true,
 		GrammarCheckEnabled:     true,
+		StyleCheckEnabled:       true,
 		SpellLanguage:           "en_US",
 		CastEnabled:             true,
 		StoryBibleEnabled:       true,

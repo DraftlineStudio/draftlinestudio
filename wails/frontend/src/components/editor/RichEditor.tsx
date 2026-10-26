@@ -25,7 +25,7 @@ import ReopenButton from './readaloud/ReopenButton'
 import { useReadAloudStore } from '../../store/readAloudStore'
 import ContextMenu, { ContextMenuItem } from '../ContextMenu'
 import { checkWord, getDictionaryRoot, getImmediateSuggestions, getSuggestions, isLoaded as isSpellCheckLoaded, normalizeCustomDictionary, setCustomWords, setIgnoredWords, setSpellCheckEnabled } from '../../services/spellCheck'
-import { analyzeGrammar, setGrammarCheckEnabled, type GrammarIssue } from '../../services/grammarCheck'
+import { analyzeGrammar, setGrammarCheckEnabled, setStyleCheckEnabled, type GrammarIssue } from '../../services/grammarCheck'
 import { fixChapterTypography } from '../../services/typographyFix'
 import { useBookStore } from '../../store/bookStore'
 import { useStoryBibleStore } from '../../store/storyBibleStore'
@@ -84,7 +84,8 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
     }
     setSpellCheckEnabled(settings.spell_check_enabled)
     setGrammarCheckEnabled(settings.grammar_check_enabled)
-  }, [settings.custom_dictionary, settings.spell_check_enabled, settings.grammar_check_enabled, saveSettings])
+    setStyleCheckEnabled(settings.style_check_enabled)
+  }, [settings.custom_dictionary, settings.spell_check_enabled, settings.grammar_check_enabled, settings.style_check_enabled, saveSettings])
 
   const handleUpdate = useCallback(
     ({ editor }: { editor: ReturnType<typeof useEditor> & { getHTML: () => string } }) => {
@@ -238,7 +239,7 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
         const nodeStart = $pos.start()
         const offsetInNode = from - nodeStart
 
-        if (settings.grammar_check_enabled) {
+        if (settings.grammar_check_enabled || settings.style_check_enabled) {
           const grammarIssue = analyzeGrammar(text).find(
             issue => offsetInNode >= issue.from && offsetInNode <= issue.to,
           )

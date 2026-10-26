@@ -27,6 +27,7 @@ export interface AppSettings {
   custom_dictionary: string[]
   spell_check_enabled: boolean
   grammar_check_enabled: boolean
+  style_check_enabled: boolean
   spell_language: SpellLanguage
   cast_enabled: boolean
   story_bible_enabled: boolean
@@ -145,6 +146,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   custom_dictionary: [],
   spell_check_enabled: true,
   grammar_check_enabled: true,
+  style_check_enabled: true,
   spell_language: 'en_US',
   cast_enabled: true,
   story_bible_enabled: true,

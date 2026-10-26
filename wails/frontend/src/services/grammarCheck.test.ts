@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { analyzeGrammar, analyzeTypography, setGrammarCheckEnabled, type GrammarIssue } from './grammarCheck'
+import { analyzeGrammar, analyzeTypography, setGrammarCheckEnabled, setStyleCheckEnabled, type GrammarIssue } from './grammarCheck'
 
 function byRule(text: string, rule: string): GrammarIssue[] {
   return analyzeGrammar(text).filter(issue => issue.rule === rule)
@@ -232,10 +232,37 @@ describe('analyzeTypography', () => {
   it('works while the live grammar check is off', () => {
     setGrammarCheckEnabled(false)
     try {
-      expect(analyzeGrammar('its been "quiet" here')).toEqual([])
+      expect(analyzeGrammar('its been "quiet" here').map(issue => issue.kind))
+        .toEqual(['style', 'style'])
       expect(analyzeTypography('"quiet"')).toHaveLength(2)
     } finally {
       setGrammarCheckEnabled(true)
+    }
+  })
+})
+
+describe('the style toggle', () => {
+  it('silences style findings while grammar findings survive, and back', () => {
+    const text = 'its been "quiet" here'
+    setStyleCheckEnabled(false)
+    try {
+      const kinds = analyzeGrammar(text).map(issue => issue.kind)
+      expect(kinds).toContain('grammar')
+      expect(kinds).not.toContain('style')
+    } finally {
+      setStyleCheckEnabled(true)
+    }
+    expect(analyzeGrammar(text).map(issue => issue.kind)).toContain('style')
+  })
+
+  it('returns nothing when both checks are off', () => {
+    setGrammarCheckEnabled(false)
+    setStyleCheckEnabled(false)
+    try {
+      expect(analyzeGrammar('its been "quiet" here')).toEqual([])
+    } finally {
+      setGrammarCheckEnabled(true)
+      setStyleCheckEnabled(true)
     }
   })
 })

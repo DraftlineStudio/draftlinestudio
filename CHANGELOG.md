@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02758] - 2026-10-25
+
+### Added
+- Style suggestions have their own on and off switch, separate from the grammar check.
+
 ## [1.0.02757] - 2026-10-25
 
 ### Added
