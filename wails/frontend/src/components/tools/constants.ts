@@ -40,6 +40,7 @@ export const STYLE_STOP_CENTERS = [12.5, 37.5, 62.5, 87.5]
 // Glyph section configuration for the sidebar
 export const SECTION_CONFIG: { id: Exclude<GlyphSection, null>; label: string; tooltip: string }[] = [
   { id: 'dashboard', label: 'Dashboard', tooltip: 'Writing Dashboard' },
+  { id: 'proofread', label: 'Proofread', tooltip: 'Spelling & Grammar' },
   { id: 'characters', label: 'Characters', tooltip: 'Characters' },
   { id: 'signals', label: 'Signals', tooltip: 'Signals' },
   { id: 'prose', label: 'Prose', tooltip: 'Prose' },

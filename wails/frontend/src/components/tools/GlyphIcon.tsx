@@ -13,6 +13,13 @@ export default function GlyphIcon({ section }: { section: Exclude<GlyphSection, 
         <rect x="3" y="16" width="7" height="5" rx="1" />
       </svg>
     ),
+    proofread: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 16 9 4l5 12" />
+        <path d="M5.8 12h6.4" />
+        <path d="m14 17 2.5 2.5L21 15" />
+      </svg>
+    ),
     characters: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="9" cy="7" r="4" />

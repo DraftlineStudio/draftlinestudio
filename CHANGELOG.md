@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02761] - 2026-10-25
+
+### Added
+- A Proofread panel in the sidebar walks the chapter detection by detection, with suggestions to apply, skip, or silence, and a one-click fix for all typography.
+
 ## [1.0.02760] - 2026-10-25
 
 ### Changed

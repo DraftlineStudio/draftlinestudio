@@ -2,6 +2,7 @@
 
 export type GlyphSection =
   | 'dashboard'
+  | 'proofread'
   | 'characters'
   | 'signals'
   | 'prose'

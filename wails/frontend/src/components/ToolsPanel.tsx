@@ -9,6 +9,7 @@ import type { GlyphSection } from './tools/types'
 import { SECTION_CONFIG } from './tools/constants'
 import GlyphIcon from './tools/GlyphIcon'
 import DashboardTab from './tools/Dashboard'
+import Proofread from './tools/Proofread'
 import AiStudioTab from './tools/AIStudio'
 import CharacterQuickRef from './tools/CharacterQuickRef'
 import SignalsPanel from './tools/Analysis/SignalsPanel'
@@ -21,6 +22,9 @@ import { OPEN_TOOLS_SECTION_EVENT, useReviewCount } from './tools/Analysis/share
 
 function isSectionEnabled(section: Exclude<GlyphSection, null>, settings: AppSettings): boolean {
   if (section === 'ai') return settings.ai_enabled
+  if (section === 'proofread') {
+    return settings.spell_check_enabled || settings.grammar_check_enabled || settings.style_check_enabled
+  }
   if (section === 'characters') return settings.cast_enabled
   if (section === 'signals' || section === 'prose' || section === 'pacing' || section === 'chapters' || section === 'review') {
     return settings.analysis_enabled
@@ -82,6 +86,9 @@ export default function ToolsPanel() {
     settings.ai_enabled,
     settings.cast_enabled,
     settings.analysis_enabled,
+    settings.spell_check_enabled,
+    settings.grammar_check_enabled,
+    settings.style_check_enabled,
   ])
 
   // Handle resize
@@ -160,6 +167,7 @@ export default function ToolsPanel() {
           </div>
           <div className="slide-panel-content">
             {activeSection === 'dashboard' && <DashboardTab />}
+            {activeSection === 'proofread' && <Proofread />}
             {activeSection === 'characters' && <CharacterQuickRef />}
             {activeSection === 'signals' && <SignalsPanel />}
             {activeSection === 'prose' && <ProsePanel />}
