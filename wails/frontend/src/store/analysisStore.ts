@@ -65,7 +65,7 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
       modules.characters = 'current'
       modules.plot = 'running'
     }
-    if (event.phase === 'story') {
+    if (event.phase === 'story' || event.phase === 'dialogue') {
       modules.characters = 'current'
       modules.plot = 'current'
       modules.prose = 'running'

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"draftline/internal/dialogue"
 	"draftline/internal/indexing"
 	"draftline/internal/types"
 
@@ -52,6 +53,11 @@ func (a *App) AnalyzeBook(bookData types.BookData) types.FullAnalysisResult {
 	bookData.Analysis.Relationships = relationships
 	bookData.Analysis.Evidence = indexing.AnalyzeEvidenceWithOptions(&bookData, a.emitAnalysisProgress, pool)
 	bookData.Analysis.Story = indexing.AnalyzeStory(&bookData, a.emitAnalysisProgress)
+	a.emitAnalysisProgress(types.StoryAnalysisProgress{
+		Phase: "dialogue", Message: "Attributing dialogue to the cast",
+		Current: chapterCount, Total: chapterCount, Percent: 92,
+	})
+	bookData.Analysis.Dialogue = dialogue.Analyze(&bookData, indexing.AllChapters(&bookData), indexing.ShouldAnalyzeChapter)
 	if bookData.Analysis.Version < 6 {
 		bookData.Analysis.Version = 6
 	}
