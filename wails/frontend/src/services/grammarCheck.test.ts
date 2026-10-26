@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { analyzeGrammar, type GrammarIssue } from './grammarCheck'
+import { analyzeGrammar, analyzeTypography, setGrammarCheckEnabled, type GrammarIssue } from './grammarCheck'
 
 function byRule(text: string, rule: string): GrammarIssue[] {
   return analyzeGrammar(text).filter(issue => issue.rule === rule)
@@ -219,6 +219,24 @@ describe('double hyphens', () => {
 
   it('leaves longer rules and single hyphens alone', () => {
     expect(byRule('A well-known divider: ----', 'double-hyphen')).toEqual([])
+  })
+})
+
+describe('analyzeTypography', () => {
+  it('returns only typography fixes, in order', () => {
+    const issues = analyzeTypography('He paused--then "stopped" and waited...')
+    expect(issues.map(issue => issue.rule))
+      .toEqual(['double-hyphen', 'straight-quote', 'straight-quote', 'ellipsis'])
+  })
+
+  it('works while the live grammar check is off', () => {
+    setGrammarCheckEnabled(false)
+    try {
+      expect(analyzeGrammar('its been "quiet" here')).toEqual([])
+      expect(analyzeTypography('"quiet"')).toHaveLength(2)
+    } finally {
+      setGrammarCheckEnabled(true)
+    }
   })
 })
 

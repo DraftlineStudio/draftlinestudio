@@ -321,6 +321,41 @@ function addSpacingIssues(issues: GrammarIssue[], text: string): void {
   }
 }
 
+function addTypography(issues: GrammarIssue[], text: string): void {
+  addMatches(
+    issues,
+    text,
+    /\.{3,}/g,
+    'ellipsis',
+    'Use an ellipsis character (…).',
+    '…',
+    'style',
+  )
+  addMatches(
+    issues,
+    text,
+    // Two typed hyphens standing for a dash. Three or more is a rule or
+    // divider and stays alone.
+    /(?<!-)--(?!-)/g,
+    'double-hyphen',
+    'Use an em dash (—).',
+    '—',
+    'style',
+  )
+  addStraightQuotes(issues, text)
+}
+
+/**
+ * The typography rules alone, independent of the grammar-check toggle: the
+ * "Fix typography" command works even when live checking is off.
+ */
+export function analyzeTypography(text: string): GrammarIssue[] {
+  if (!text) return []
+  const issues: GrammarIssue[] = []
+  addTypography(issues, text)
+  return issues.sort((left, right) => left.from - right.from || left.to - right.to)
+}
+
 /**
  * Fast, deterministic checks intended for continuous editor feedback. These
  * rules deliberately target high-confidence mistakes instead of trying to
@@ -367,27 +402,7 @@ export function analyzeGrammar(text: string): GrammarIssue[] {
     'One end mark is enough.',
     match => match[1],
   )
-  addMatches(
-    issues,
-    text,
-    /\.{3,}/g,
-    'ellipsis',
-    'Use an ellipsis character (…).',
-    '…',
-    'style',
-  )
-  addMatches(
-    issues,
-    text,
-    // Two typed hyphens standing for a dash. Three or more is a rule or
-    // divider and stays alone.
-    /(?<!-)--(?!-)/g,
-    'double-hyphen',
-    'Use an em dash (—).',
-    '—',
-    'style',
-  )
-  addStraightQuotes(issues, text)
+  addTypography(issues, text)
   addSpacingIssues(issues, text)
 
   addMatches(

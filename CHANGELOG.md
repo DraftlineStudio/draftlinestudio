@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02757] - 2026-10-25
+
+### Added
+- Fix typography in this chapter, in the editor right-click menu, curls every straight quote and converts typed ellipses and double hyphens in one undoable step.
+
 ## [1.0.02756] - 2026-10-25
 
 ### Added

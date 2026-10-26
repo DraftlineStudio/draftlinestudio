@@ -26,6 +26,7 @@ import { useReadAloudStore } from '../../store/readAloudStore'
 import ContextMenu, { ContextMenuItem } from '../ContextMenu'
 import { checkWord, getDictionaryRoot, getImmediateSuggestions, getSuggestions, isLoaded as isSpellCheckLoaded, normalizeCustomDictionary, setCustomWords, setIgnoredWords, setSpellCheckEnabled } from '../../services/spellCheck'
 import { analyzeGrammar, setGrammarCheckEnabled, type GrammarIssue } from '../../services/grammarCheck'
+import { fixChapterTypography } from '../../services/typographyFix'
 import { useBookStore } from '../../store/bookStore'
 import { useStoryBibleStore } from '../../store/storyBibleStore'
 import { useEditorStore } from '../../store/editorStore'
@@ -455,6 +456,13 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
       label: 'Paste',
       icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>,
       onClick: handlePaste,
+    },
+    { label: '', onClick: () => {}, separator: true },
+    {
+      label: 'Fix typography in this chapter',
+      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 7c-2 0-3 1.5-3 3s1 3 3 3c0 2-1 3-3 4"/><path d="M18 7c-2 0-3 1.5-3 3s1 3 3 3c0 2-1 3-3 4"/></svg>,
+      onClick: () => { if (editor) fixChapterTypography(editor) },
+      disabled: !editor,
     },
   )
 
