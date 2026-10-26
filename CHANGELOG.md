@@ -2,6 +2,12 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02759] - 2026-10-25
+
+### Added
+- Story analysis now reads for style: a word echoed within a few lines of narration gets a dotted underline, with the repeat distance in the tooltip.
+- Echo suggestions skip dialogue and character names, and a right-click dismisses one for good.
+
 ## [1.0.02758] - 2026-10-25
 
 ### Added

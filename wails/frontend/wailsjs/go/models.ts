@@ -284,6 +284,94 @@ export namespace types {
 	        this.error = source["error"];
 	    }
 	}
+	export class StyleDecision {
+	    finding_id: string;
+	    status: string;
+	    decided_at?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new StyleDecision(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.finding_id = source["finding_id"];
+	        this.status = source["status"];
+	        this.decided_at = source["decided_at"];
+	    }
+	}
+	export class StyleFinding {
+	    id: string;
+	    rule: string;
+	    severity: string;
+	    chapter_index: number;
+	    start_offset: number;
+	    end_offset: number;
+	    message: string;
+	    snippet: string;
+	    prefix?: string;
+	    suffix?: string;
+	    replacements?: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new StyleFinding(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.rule = source["rule"];
+	        this.severity = source["severity"];
+	        this.chapter_index = source["chapter_index"];
+	        this.start_offset = source["start_offset"];
+	        this.end_offset = source["end_offset"];
+	        this.message = source["message"];
+	        this.snippet = source["snippet"];
+	        this.prefix = source["prefix"];
+	        this.suffix = source["suffix"];
+	        this.replacements = source["replacements"];
+	    }
+	}
+	export class StyleData {
+	    findings?: StyleFinding[];
+	    decisions?: StyleDecision[];
+	    chapter_hashes?: Record<number, string>;
+	    engine?: string;
+	    version?: number;
+	    truncated?: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new StyleData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.findings = this.convertValues(source["findings"], StyleFinding);
+	        this.decisions = this.convertValues(source["decisions"], StyleDecision);
+	        this.chapter_hashes = source["chapter_hashes"];
+	        this.engine = source["engine"];
+	        this.version = source["version"];
+	        this.truncated = source["truncated"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class DialogueSpan {
 	    id: string;
 	    chapter_index: number;
@@ -1031,6 +1119,7 @@ export namespace types {
 	    evidence?: EvidenceData;
 	    continuity?: ContinuityData;
 	    dialogue?: DialogueData;
+	    style?: StyleData;
 	    version?: number;
 	
 	    static createFrom(source: any = {}) {
@@ -1045,6 +1134,7 @@ export namespace types {
 	        this.evidence = this.convertValues(source["evidence"], EvidenceData);
 	        this.continuity = this.convertValues(source["continuity"], ContinuityData);
 	        this.dialogue = this.convertValues(source["dialogue"], DialogueData);
+	        this.style = this.convertValues(source["style"], StyleData);
 	        this.version = source["version"];
 	    }
 	
@@ -3791,6 +3881,9 @@ export namespace types {
 		    return a;
 		}
 	}
+	
+	
+	
 	
 	export class WrapResult {
 	    success: boolean;

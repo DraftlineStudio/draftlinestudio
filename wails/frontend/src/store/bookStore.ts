@@ -13,6 +13,7 @@ import { useAppStore } from './appStore'
 import { useEditorStore, type DiffTarget, type EditorInstance, type EditorSelection } from './editorStore'
 import { useStoryBibleStore } from './storyBibleStore'
 import { createEditionActions, type EditionActions } from './editions'
+import { createDecisionActions, type DecisionActions } from './analysisDecisions'
 import { createChapterActions, getSectionArray, newChapterID, type ChapterActions } from './chapters'
 import { createCharacterIndexActions, type CharacterIndexActions } from './characterIndex'
 import { createSavePipeline, type SaveOutcome } from './bookSave'
@@ -116,7 +117,7 @@ interface DialogState {
   handoverReport: HandoverReport | null
 }
 
-interface BookStore extends EditionActions, ChapterActions, CharacterIndexActions {
+interface BookStore extends EditionActions, ChapterActions, CharacterIndexActions, DecisionActions {
   // Core state
   book: BookData | null
   currentSection: Section
@@ -159,7 +160,7 @@ interface BookStore extends EditionActions, ChapterActions, CharacterIndexAction
   // Direct book update (for analysis results, etc.)
   updateBook: (book: BookData) => void
   updateEvidenceRecord: (recordID: string, changes: Partial<EvidenceRecord>) => void
-  setContinuityDecision: (signalID: string, status: 'reviewed' | 'dismissed' | null) => void
+  // Continuity and style decision actions come from analysisDecisions.ts.
 
   // Navigation
   setCurrentChapter: (section: Section, index: number) => void
@@ -487,23 +488,13 @@ export const useBookStore = create<BookStore>((set, get) => ({
   // Continuity questions are rebuilt from the manuscript every time, so only
   // the author's decision is stored. Passing null clears a decision, which
   // returns the question to the outstanding queue.
-  setContinuityDecision: (signalID, status) => {
-    const { book } = get()
-    if (!book) return
-    const existing = book.analysis?.continuity?.decisions ?? []
-    const without = existing.filter(decision => decision.signal_id !== signalID)
-    const decisions = status
-      ? [...without, { signal_id: signalID, status, decided_at: new Date().toISOString() }]
-      : without
-    set({
-      book: {
-        ...book,
-        analysis: { ...book.analysis, continuity: { ...book.analysis?.continuity, decisions } },
-      },
-      isDirty: true,
-    })
-    scheduleAutoSave()
-  },
+  ...createDecisionActions({
+    read: () => get().book,
+    apply: (book) => {
+      set({ book, isDirty: true })
+      scheduleAutoSave()
+    },
+  }),
 
   // Navigation
   setCurrentChapter: (section, index) => {

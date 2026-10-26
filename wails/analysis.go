@@ -5,6 +5,7 @@ import (
 
 	"draftline/internal/dialogue"
 	"draftline/internal/indexing"
+	"draftline/internal/styleinspect"
 	"draftline/internal/types"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -58,6 +59,11 @@ func (a *App) AnalyzeBook(bookData types.BookData) types.FullAnalysisResult {
 		Current: chapterCount, Total: chapterCount, Percent: 92,
 	})
 	bookData.Analysis.Dialogue = dialogue.Analyze(&bookData, indexing.AllChapters(&bookData), indexing.ShouldAnalyzeChapter)
+	a.emitAnalysisProgress(types.StoryAnalysisProgress{
+		Phase: "style", Message: "Reading for style",
+		Current: chapterCount, Total: chapterCount, Percent: 96,
+	})
+	bookData.Analysis.Style = styleinspect.Analyze(&bookData, indexing.AllChapters(&bookData), indexing.ShouldAnalyzeChapter)
 	if bookData.Analysis.Version < 6 {
 		bookData.Analysis.Version = 6
 	}

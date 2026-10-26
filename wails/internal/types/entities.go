@@ -101,6 +101,9 @@ type AnalysisData struct {
 	// rebuildable; nil until the dialogue analysis phase produces it.
 	Dialogue *DialogueData `json:"dialogue,omitempty"`
 
+	// Style stores located style findings and the author's dismissals.
+	Style *StyleData `json:"style,omitempty"`
+
 	// Future analysis types can be added here:
 	// PlotAnalysis     *PlotAnalysisData    `json:"plot_analysis,omitempty"`
 	// ThemeAnalysis    *ThemeAnalysisData   `json:"theme_analysis,omitempty"`

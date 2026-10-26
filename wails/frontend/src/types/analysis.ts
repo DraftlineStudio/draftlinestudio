@@ -183,6 +183,8 @@ export interface AnalysisData {
   story?: StoryAnalysisData
   evidence?: EvidenceData
   continuity?: ContinuityData
+  dialogue?: DialogueData
+  style?: StyleData
   // Future analysis types:
   // plot_analysis?: PlotAnalysisData
   // theme_analysis?: ThemeAnalysisData
@@ -408,4 +410,57 @@ export interface StoryAnalysisData {
   chapters: ChapterAnalysis[]
   observations?: StoryAnalysisObservation[]
   version: number
+}
+
+// Dialogue layer: located, speaker-attributed quotation spans (byte offsets
+// into the chapter's analysis plaintext).
+export interface DialogueSpan {
+  id: string
+  chapter_index: number
+  start_offset: number
+  end_offset: number
+  speaker_entity_id?: string
+  speaker_name?: string
+  kind: string            // 'dialogue' | 'mixed'
+  attribution: string     // tag | adjacent-tag | pretag | continuation | nearby | alternation | none
+  confidence: number
+}
+
+export interface DialogueData {
+  spans?: DialogueSpan[]
+  chapter_hashes?: Record<number, string>
+  engine?: string
+  version?: number
+}
+
+// Style layer: located style findings plus the author's dismissals. The
+// editor places each underline by searching for prefix+snippet+suffix, so a
+// finding the text has outgrown simply stops rendering.
+export interface StyleFinding {
+  id: string
+  rule: string
+  severity: string        // 'suggestion' | 'hint'
+  chapter_index: number
+  start_offset: number
+  end_offset: number
+  message: string
+  snippet: string
+  prefix?: string
+  suffix?: string
+  replacements?: string[]
+}
+
+export interface StyleDecision {
+  finding_id: string
+  status: string          // 'dismissed'
+  decided_at?: string
+}
+
+export interface StyleData {
+  findings?: StyleFinding[]
+  decisions?: StyleDecision[]
+  chapter_hashes?: Record<number, string>
+  engine?: string
+  version?: number
+  truncated?: boolean
 }

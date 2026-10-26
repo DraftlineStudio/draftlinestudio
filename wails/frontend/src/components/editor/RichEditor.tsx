@@ -27,6 +27,7 @@ import ContextMenu, { ContextMenuItem } from '../ContextMenu'
 import { checkWord, getDictionaryRoot, getImmediateSuggestions, getSuggestions, isLoaded as isSpellCheckLoaded, normalizeCustomDictionary, setCustomWords, setIgnoredWords, setSpellCheckEnabled } from '../../services/spellCheck'
 import { analyzeGrammar, setGrammarCheckEnabled, setStyleCheckEnabled, type GrammarIssue } from '../../services/grammarCheck'
 import { fixChapterTypography } from '../../services/typographyFix'
+import { StyleFindings, StyleFindingsPluginKey, placeStyleFindings, type PlacedStyleFinding } from '../../extensions/StyleFindings'
 import { useBookStore } from '../../store/bookStore'
 import { useStoryBibleStore } from '../../store/storyBibleStore'
 import { useEditorStore } from '../../store/editorStore'
@@ -51,6 +52,7 @@ interface ContextMenuState {
   suggestions?: string[]
   suggestionsLoading?: boolean
   grammarIssue?: GrammarIssue & { absoluteFrom: number; absoluteTo: number }
+  styleFinding?: PlacedStyleFinding
 }
 
 interface Props {
@@ -97,6 +99,31 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
   // Get character names for highlighting (reads from store on each check)
   const getHighlightedCharacterNames = useBookStore(s => s.getHighlightedCharacterNames)
 
+  // The analysis pipeline's style findings for the open chapter, minus the
+  // ones the author has dismissed. The extension reads them through a ref so
+  // the editor does not rebuild when analysis refreshes.
+  const styleData = useBookStore(s => s.book?.analysis?.style)
+  const frontMatterCount = useBookStore(s => s.book?.front_matter?.length ?? 0)
+  const bodyCount = useBookStore(s => s.book?.body?.length ?? 0)
+  const currentSection = useBookStore(s => s.currentSection)
+  const currentIndex = useBookStore(s => s.currentIndex)
+  const setStyleDecision = useBookStore(s => s.setStyleDecision)
+  const chapterStyleFindings = useMemo(() => {
+    if (!settings.style_check_enabled || !styleData?.findings?.length) return []
+    // Findings index chapters across front matter, body, and back matter in
+    // that order, the same walk the analysis pipeline makes.
+    const globalIndex = currentSection === 'front_matter' ? currentIndex
+      : currentSection === 'body' ? frontMatterCount + currentIndex
+        : currentSection === 'back_matter' ? frontMatterCount + bodyCount + currentIndex
+          : -1
+    if (globalIndex < 0) return []
+    const dismissed = new Set((styleData.decisions ?? []).map(decision => decision.finding_id))
+    return styleData.findings.filter(finding =>
+      finding.chapter_index === globalIndex && !dismissed.has(finding.id))
+  }, [styleData, currentSection, currentIndex, frontMatterCount, bodyCount, settings.style_check_enabled])
+  const styleFindingsRef = useRef(chapterStyleFindings)
+  styleFindingsRef.current = chapterStyleFindings
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ history: { depth: 100 } }),
@@ -133,6 +160,7 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
       CharacterCount,
       SpellCheck,
       GrammarCheck,
+      StyleFindings.configure({ getFindings: () => styleFindingsRef.current }),
       ChapterSearch,
       RangeSpotlight,
       CharacterHighlight.configure({
@@ -252,6 +280,12 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
           }
         }
 
+        if (styleFindingsRef.current.length) {
+          const placed = placeStyleFindings(editor.state.doc, styleFindingsRef.current)
+          const hit = placed.find(candidate => from >= candidate.from && from <= candidate.to)
+          if (hit) menuState.styleFinding = hit
+        }
+
         if (settings.spell_check_enabled && isSpellCheckLoaded()) {
           let wordStart = offsetInNode
           let wordEnd = offsetInNode
@@ -299,6 +333,11 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
       }, 0)
     }
   }
+
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return
+    editor.view.dispatch(editor.state.tr.setMeta(StyleFindingsPluginKey, true))
+  }, [editor, chapterStyleFindings])
 
   // Context menu actions
   async function handleCut() {
@@ -435,6 +474,21 @@ export default function RichEditor({ content, onUpdate, chapterLabel, chapterNam
         icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m5 12 4 4L19 6"/></svg>,
         onClick: () => handleGrammarSuggestion(issue, replacement),
       })
+    })
+    contextMenuItems.push({ label: '', onClick: () => {}, separator: true })
+  }
+
+  if (contextMenu?.styleFinding) {
+    const placed = contextMenu.styleFinding
+    contextMenuItems.push({
+      label: placed.finding.message,
+      onClick: () => {},
+      disabled: true,
+    })
+    contextMenuItems.push({
+      label: 'Dismiss this suggestion',
+      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>,
+      onClick: () => setStyleDecision(placed.finding.id, 'dismissed'),
     })
     contextMenuItems.push({ label: '', onClick: () => {}, separator: true })
   }
