@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02763] - 2026-10-27
+
+### Added
+- Story analysis now hints at regional vocabulary in narration, like a bubbler or a davenport, naming the region and offering broader alternatives. Dialogue is never touched.
+
 ## [1.0.02762] - 2026-10-25
 
 ### Changed

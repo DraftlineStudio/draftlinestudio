@@ -18,7 +18,7 @@ import (
 
 // Engine identifies this producer; bump the suffix when rules change so
 // every cached chapter recomputes.
-const Engine = "styleinspect-v2"
+const Engine = "styleinspect-v3"
 
 // maxFindings caps the persisted findings list, the evidence-cap precedent.
 const maxFindings = 20000
@@ -83,6 +83,7 @@ func Analyze(book *types.BookData, chapters []types.ChapterItem, shouldAnalyze f
 		}
 		input := chapterInput{index: index, text: text, dialogueSpans: dialogueByChapter[index]}
 		result.Findings = append(result.Findings, echoWordFindings(input, key, skipNames, ignoredWords)...)
+		result.Findings = append(result.Findings, regionalFindings(input, key, ignoredWords)...)
 	}
 
 	if len(result.Findings) > maxFindings {

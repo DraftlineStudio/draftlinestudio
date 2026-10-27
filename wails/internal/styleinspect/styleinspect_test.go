@@ -108,3 +108,66 @@ func TestEchoWordHonorsIgnoredWords(t *testing.T) {
 		t.Errorf("ignored words must survive the rebuild: %+v", data.IgnoredWords)
 	}
 }
+
+func TestRegionalWordSuggestsAlternative(t *testing.T) {
+	book := buildBook("<p>She waited by the bubbler until the bell rang, then dragged the davenport closer to the window.</p>")
+	data := Analyze(&book, book.Body, nil)
+	rules := map[string]int{}
+	for _, finding := range data.Findings {
+		rules[finding.Rule]++
+	}
+	if rules["regional-word"] != 2 {
+		t.Fatalf("expected two regional findings, got %+v", data.Findings)
+	}
+	for _, finding := range data.Findings {
+		if finding.Rule != "regional-word" {
+			continue
+		}
+		if finding.Severity != "hint" || len(finding.Replacements) == 0 {
+			t.Errorf("regional finding incomplete: %+v", finding)
+		}
+	}
+}
+
+func TestRegionalWordMatchesMultiWordForms(t *testing.T) {
+	book := buildBook("<p>They pulled onto the frontage road and parked outside the package store.</p>")
+	data := Analyze(&book, book.Body, nil)
+	snippets := []string{}
+	for _, finding := range data.Findings {
+		if finding.Rule == "regional-word" {
+			snippets = append(snippets, finding.Snippet)
+		}
+	}
+	if len(snippets) != 2 {
+		t.Fatalf("expected two multi-word matches, got %v", snippets)
+	}
+}
+
+func TestRegionalWordRespectsDialogueAndAmbiguity(t *testing.T) {
+	content := "<p>“Meet me at the bubbler,” Mara said. The buggy sat empty by the door.</p>"
+	book := buildBook(content, types.Character{ID: "c1", Name: "Mara"})
+	book.Analysis.Dialogue = dialogue.Analyze(&book, book.Body, nil)
+	data := Analyze(&book, book.Body, nil)
+	for _, finding := range data.Findings {
+		if finding.Rule != "regional-word" {
+			continue
+		}
+		if finding.Snippet == "bubbler" {
+			t.Errorf("dialogue must stay untouched: %+v", finding)
+		}
+		if finding.Snippet == "buggy" {
+			t.Errorf("ambiguous entries must stay quiet: %+v", finding)
+		}
+	}
+}
+
+func TestRegionalWordHonorsIgnoredWords(t *testing.T) {
+	book := buildBook("<p>She waited by the bubbler.</p>")
+	book.Analysis.Style = &types.StyleData{Engine: Engine, IgnoredWords: []string{"bubbler"}}
+	data := Analyze(&book, book.Body, nil)
+	for _, finding := range data.Findings {
+		if finding.Rule == "regional-word" {
+			t.Errorf("ignored word still flagged: %+v", finding)
+		}
+	}
+}

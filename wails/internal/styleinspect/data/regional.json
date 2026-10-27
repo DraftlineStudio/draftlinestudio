@@ -1,0 +1,138 @@
+{
+  "_license": "Hand-written seed entries (common knowledge). Entries generated from Wiktionary (CC BY-SA / GFDL, via wiktextract/kaikki.org) join this file through tools/regional-dictionary and carry \"source\": \"wiktionary\".",
+  "version": 1,
+  "entries": [
+    {
+      "id": "regional.bubbler",
+      "forms": ["bubbler", "bubblers"],
+      "category": "regional_vocabulary",
+      "regions": ["Wisconsin and New England"],
+      "meaning": "a drinking fountain",
+      "alternatives": ["drinking fountain", "water fountain"],
+      "ambiguity": "low",
+      "dialogue_policy": "preserve",
+      "narration_policy": "suggest"
+    },
+    {
+      "id": "regional.davenport",
+      "forms": ["davenport", "davenports"],
+      "category": "regional_vocabulary",
+      "regions": ["older Northern US usage"],
+      "meaning": "a couch or sofa",
+      "alternatives": ["couch", "sofa"],
+      "ambiguity": "low",
+      "dialogue_policy": "preserve",
+      "narration_policy": "suggest"
+    },
+    {
+      "id": "regional.hotdish",
+      "forms": ["hotdish", "hotdishes"],
+      "category": "regional_vocabulary",
+      "regions": ["the Upper Midwest"],
+      "meaning": "a baked casserole",
+      "alternatives": ["casserole"],
+      "ambiguity": "low",
+      "dialogue_policy": "preserve",
+      "narration_policy": "suggest"
+    },
+    {
+      "id": "regional.hoagie",
+      "forms": ["hoagie", "hoagies"],
+      "category": "regional_vocabulary",
+      "regions": ["the Philadelphia region"],
+      "meaning": "a sub sandwich",
+      "alternatives": ["sub", "sandwich"],
+      "ambiguity": "low",
+      "dialogue_policy": "preserve",
+      "narration_policy": "suggest"
+    },
+    {
+      "id": "regional.yinz",
+      "forms": ["yinz"],
+      "category": "regional_vocabulary",
+      "regions": ["Pittsburgh"],
+      "meaning": "you all",
+      "alternatives": ["you all"],
+      "ambiguity": "low",
+      "dialogue_policy": "preserve",
+      "narration_policy": "suggest"
+    },
+    {
+      "id": "regional.lagniappe",
+      "forms": ["lagniappe", "lagniappes"],
+      "category": "regional_vocabulary",
+      "regions": ["Louisiana"],
+      "meaning": "a small something extra",
+      "alternatives": ["a little extra", "bonus"],
+      "ambiguity": "low",
+      "dialogue_policy": "preserve",
+      "narration_policy": "suggest"
+    },
+    {
+      "id": "regional.cattywampus",
+      "forms": ["cattywampus", "catawampus"],
+      "category": "regional_vocabulary",
+      "regions": ["the South and Appalachia"],
+      "meaning": "crooked or askew",
+      "alternatives": ["askew", "crooked"],
+      "ambiguity": "low",
+      "dialogue_policy": "preserve",
+      "narration_policy": "suggest"
+    },
+    {
+      "id": "regional.whoopensocker",
+      "forms": ["whoopensocker"],
+      "category": "regional_vocabulary",
+      "regions": ["Wisconsin"],
+      "meaning": "something extraordinary of its kind",
+      "alternatives": ["something extraordinary"],
+      "ambiguity": "low",
+      "dialogue_policy": "preserve",
+      "narration_policy": "suggest"
+    },
+    {
+      "id": "regional.package-store",
+      "forms": ["package store", "package stores"],
+      "category": "regional_vocabulary",
+      "regions": ["New England"],
+      "meaning": "a liquor store",
+      "alternatives": ["liquor store"],
+      "ambiguity": "low",
+      "dialogue_policy": "preserve",
+      "narration_policy": "suggest"
+    },
+    {
+      "id": "regional.frontage-road",
+      "forms": ["frontage road", "frontage roads"],
+      "category": "regional_vocabulary",
+      "regions": ["regional road usage"],
+      "meaning": "a service road beside a highway",
+      "alternatives": ["service road"],
+      "ambiguity": "low",
+      "dialogue_policy": "preserve",
+      "narration_policy": "suggest"
+    },
+    {
+      "id": "regional.jimmies",
+      "forms": ["jimmies"],
+      "category": "regional_vocabulary",
+      "regions": ["the Northeast"],
+      "meaning": "sprinkles, on ice cream",
+      "alternatives": ["sprinkles"],
+      "ambiguity": "high",
+      "dialogue_policy": "preserve",
+      "narration_policy": "suggest"
+    },
+    {
+      "id": "regional.buggy",
+      "forms": ["buggy", "buggies"],
+      "category": "regional_vocabulary",
+      "regions": ["the South"],
+      "meaning": "a shopping cart",
+      "alternatives": ["shopping cart", "cart"],
+      "ambiguity": "high",
+      "dialogue_policy": "preserve",
+      "narration_policy": "suggest"
+    }
+  ]
+}
