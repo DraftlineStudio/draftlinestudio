@@ -2,6 +2,7 @@
 // future help surface all point at the same places.
 
 export const REPO_URL = 'https://github.com/DraftlineStudio/draftlinestudio'
+export const WEBSITE_URL = 'https://draftline.ink'
 
 // The help site, written for writers. Deliberately not the repository README,
 // which is written for whoever is building Draftline rather than using it --

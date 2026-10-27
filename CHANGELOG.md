@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02764] - 2026-10-27
+
+### Added
+- Added an About section to Settings with the version, project links, and open-source credits.
+
 ## [1.0.02763] - 2026-10-27
 
 ### Added

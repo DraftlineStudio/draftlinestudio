@@ -4,7 +4,7 @@ import type { types } from '../../../../wailsjs/go/models'
 import type { AIProviderMode, AITaskRoutes } from '../../../services/aiRouting'
 import type { SpellLanguage } from '../../../services/spellCheck'
 
-export type SettingsSection = 'author' | 'application' | 'plugins' | 'ai' | 'readaloud' | 'plugin'
+export type SettingsSection = 'author' | 'application' | 'plugins' | 'ai' | 'readaloud' | 'about' | 'plugin'
 
 export type AIMode = AIProviderMode
 export type AIProvider = 'claude' | 'openai' | ''
@@ -83,6 +83,10 @@ export interface AIStudioSectionProps {
   onCheckCx: () => void
   onSetupCx: () => void
   onOpenCxAuth: () => void
+}
+
+export interface AboutSectionProps {
+  appVersion: string
 }
 
 export interface ReadAloudSectionProps {

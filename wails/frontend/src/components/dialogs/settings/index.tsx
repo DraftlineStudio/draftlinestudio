@@ -12,6 +12,7 @@ import AuthorSection from './AuthorSection'
 import AIStudioSection from './AIStudioSection'
 import PluginsSection from './PluginsSection'
 import ReadAloudSection from './ReadAloudSection'
+import AboutSection from './AboutSection'
 import type { FeatureSettingKey } from '../../../features/registry'
 import { usePluginStore, isPluginEnabled } from '../../../store/pluginStore'
 import { PluginSettingsSection } from '../../plugins/PluginMounts'
@@ -21,7 +22,7 @@ export default function AppSettingsDialog() {
 
   // Callers can deep-link a section (e.g. the Read Aloud rail icon when the
   // voice model needs setup).
-  const validSections: SettingsSection[] = ['author', 'application', 'plugins', 'ai', 'readaloud']
+  const validSections: SettingsSection[] = ['author', 'application', 'plugins', 'ai', 'readaloud', 'about']
   const [section, setSection] = useState<SettingsSection>(
     validSections.includes(settingsInitialSection as SettingsSection)
       ? settingsInitialSection as SettingsSection
@@ -351,6 +352,12 @@ export default function AppSettingsDialog() {
                 Read Aloud
               </button>
             )}
+            <button className={`settings-nav-item${section === 'about' ? ' active' : ''}`} onClick={() => setSection('about')}>
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+                <circle cx="7" cy="7" r="5.5"/><line x1="7" y1="6.2" x2="7" y2="10"/><circle cx="7" cy="4.2" r="0.3" fill="currentColor"/>
+              </svg>
+              About
+            </button>
             {pluginNavItems.map(item => (
               <button
                 key={item.pluginId + ' ' + item.sectionId}
@@ -421,6 +428,10 @@ export default function AppSettingsDialog() {
                 speed={readAloudSpeed} setSpeed={setReadAloudSpeed}
                 threads={readAloudThreads} setThreads={setReadAloudThreads}
               />
+            )}
+
+            {section === 'about' && (
+              <AboutSection appVersion={appVersion} />
             )}
 
             {section === 'plugin' && pluginSection && (
