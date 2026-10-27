@@ -15,8 +15,6 @@ export function cellAlpha(v: number): number {
   return v <= 0 ? 0 : v <= 2 ? 0.3 : v <= 4 ? 0.55 : v <= 6 ? 0.78 : 0.95
 }
 
-// Maps a combined-chapter index (front_matter + body + back_matter) back to a
-// navigable (section, index) pair.
 export function chapterLocation(book: BookData, index: number): { section: Section; index: number } {
   const front = book.front_matter?.length || 0
   const body = book.body?.length || 0
@@ -25,8 +23,6 @@ export function chapterLocation(book: BookData, index: number): { section: Secti
   return { section: 'back_matter', index: index - front - body }
 }
 
-// One-shot handoff: the sidebar's "Open in Characters" pre-selects a
-// character in the codex without a store round-trip. Consumed on view mount.
 let pendingFocusId: string | null = null
 
 export function requestCharacterFocus(id: string) {

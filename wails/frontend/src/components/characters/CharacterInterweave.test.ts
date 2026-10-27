@@ -7,8 +7,6 @@ describe('contiguousRuns', () => {
   })
 
   it('splits on a gap so an absence stays visible', () => {
-    // The old rail drew one line from first to last chapter, which made a
-    // character who vanishes for six chapters look continuously present.
     expect(contiguousRuns([0, 1, 8, 9, 10])).toEqual([[0, 1], [8, 10]])
   })
 

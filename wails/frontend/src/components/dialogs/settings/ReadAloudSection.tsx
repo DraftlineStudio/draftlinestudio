@@ -1,8 +1,3 @@
-// Read Aloud Settings Section - voice model setup, voice, performance.
-// Only rendered while the plugin is enabled (the nav entry is gated).
-// Mirrors the AI Studio setup-card pattern: a prerequisite card with status
-// badge and guided download, then the configuration fields.
-
 import { useEffect, useState } from 'react'
 import type { ReadAloudSectionProps } from './types'
 import { READ_ALOUD_VOICES } from '../../../services/readaloud/voices'

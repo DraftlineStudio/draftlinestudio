@@ -43,16 +43,6 @@ type Hover =
   | null
 
 
-/**
- * The Character Center's large-format weave: a manuscript-order view of
- * character presence, interactions, and source-backed story beats.
- *
- * Presence is drawn as real segments so absences are visible rather than
- * smoothed over, source-backed story beats sit at their true position inside a
- * chapter (shared placement rule with the Story Graph), and each confirmed
- * relationship crossing is offset within its chapter so two pairs meeting in
- * the same chapter stay distinguishable.
- */
 export default function CharacterInterweave({ book, characters, relationships, selectedId, onSelect, onOpenChapter }: Props) {
   const [timeline, setTimeline] = useState<StoryTimelineResult | null>(null)
   const [zoom, setZoom] = useState(1)
@@ -108,11 +98,6 @@ export default function CharacterInterweave({ book, characters, relationships, s
     )
   }, [timeline, position, showBeats, chapterWidth, chapterCount, characters])
 
-  /**
-   * One crossing per (pair, chapter). Multiple crossings in the same chapter
-   * are spread across the column instead of stacking on its centre, which is
-   * what made a busy chapter unreadable.
-   */
   const crossings = useMemo(() => {
     if (!showCrossings) return []
     const byChapter = new Map<number, { rel: RelationshipRecord; chapter: number }[]>()
@@ -358,11 +343,6 @@ export function spread(index: number, total: number): number {
   return 0.15 + (index / (total - 1)) * 0.7
 }
 
-/**
- * Horizontal position of one crossing inside its chapter column. A single
- * crossing sits centred; several are spread across the middle of the column so
- * two pairs meeting in the same chapter never draw on top of each other.
- */
 export function crossingFraction(index: number, total: number): number {
   if (total <= 1) return 0.5
   return 0.2 + (index / (total - 1)) * 0.6
@@ -398,11 +378,6 @@ export function typeColor(type: string): string {
   return BEAT_TYPE_COLORS[type] ?? '#868C96'
 }
 
-/**
- * Fractional placement of a beat inside a chapter from its paragraph index.
- * The logarithmic curve keeps both early and late beats distinguishable in
- * chapters whose paragraph counts vary widely.
- */
 export function positionOfParagraph(paragraph: number): number {
   if (!Number.isFinite(paragraph) || paragraph <= 0) return 0.18
   const eased = Math.log10(1 + Math.min(paragraph, 400)) / Math.log10(401)

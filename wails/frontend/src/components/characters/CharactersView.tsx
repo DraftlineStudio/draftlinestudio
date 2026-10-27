@@ -1,8 +1,3 @@
-// CharactersView — the character codex: a swimlane chapter-presence grid
-// (one row per character, one column per chapter) with a detail pane on the
-// right. Scales to hundreds of characters.
-// All detection is local pattern-matching — no AI, nothing leaves the machine.
-
 import { useShallow } from 'zustand/react/shallow'
 import { useMemo, useState, useEffect } from 'react'
 import { useBookStore } from '../../store/bookStore'
@@ -17,10 +12,6 @@ import CharacterInterweave from './CharacterInterweave'
 import { allChapters, chapterName, cellAlpha, chapterLocation, takeCharacterFocus } from './shared'
 import { htmlToText } from '../../utils/textUtils'
 
-// Best-effort context around a mention: locate the mention text near its
-// recorded offset in the stripped chapter text and slice to word boundaries.
-// Offsets come from the Go-side text stripper, so treat them as a hint, not
-// an exact position; fall back to the bare mention text when unlocatable.
 function mentionExcerpt(book: BookData, m: MentionRecord): string {
   const html = allChapters(book)[m.chapter]?.content
   if (!html || !m.text) return m.text || ''
