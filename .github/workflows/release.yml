@@ -5,7 +5,7 @@
 #            Draftline-<version>-windows-amd64-portable.zip  (plain exe)
 #   macOS    Draftline-<version>-macos-universal.dmg          (Intel + Apple Silicon)
 #   Linux    Draftline-<version>-linux-x86_64.deb           (Debian/Ubuntu and derivatives)
-#            Draftline-<version>-linux-x86_64.rpm           (Fedora/RHEL/openSUSE and derivatives)
+#            Draftline-<version>-linux-x86_64.rpm           (Fedora/openSUSE and derivatives; RHEL lacks WebKitGTK 4.1)
 #            Draftline-<version>-linux-x86_64.AppImage
 #            SHA256SUMS.txt
 #

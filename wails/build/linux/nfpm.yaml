@@ -40,8 +40,11 @@ scripts:
   postinstall: wails/build/linux/postinstall.sh
   postremove: wails/build/linux/postremove.sh
 
-# The WebKitGTK 4.1 runtime the binary is built against, under each family's
-# package name. Everything else Draftline needs is part of a desktop install.
+# The WebKitGTK 4.1 runtime the binary is built against. The deb names the
+# Debian/Ubuntu packages; the rpm names the library sonames, which every RPM
+# distribution (Fedora, RHEL, openSUSE) resolves to its own package, so one
+# rpm installs on all of them. Everything else Draftline needs is part of a
+# desktop install.
 overrides:
   deb:
     depends:
@@ -49,5 +52,5 @@ overrides:
       - libgtk-3-0
   rpm:
     depends:
-      - webkit2gtk4.1
-      - gtk3
+      - libwebkit2gtk-4.1.so.0()(64bit)
+      - libgtk-3.so.0()(64bit)

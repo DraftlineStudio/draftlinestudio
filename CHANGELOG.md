@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02765] - 2026-10-27
+
+### Fixed
+- Fixed the update failing to install on openSUSE.
+
 ## [1.0.02764] - 2026-10-27
 
 ### Added
