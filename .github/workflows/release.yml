@@ -288,7 +288,22 @@ jobs:
           mv Draftline.app dmg-root/
           ln -s /Applications dmg-root/Applications
           dmg="dist/Draftline-${LABEL}-macos-universal.dmg"
-          hdiutil create -volname "Draftline" -srcfolder dmg-root -ov -format UDZO "$dmg"
+          # hdiutil's automatic sizing undershoots on the macos-26 runners'
+          # APFS default and dies with "No space left on device" despite a
+          # near-empty disk, so the staging image gets an explicit filesystem
+          # and size; the retry covers the runners' intermittent mount flake.
+          size_mb=$(( $(du -sm dmg-root | cut -f1) + 64 ))
+          created=0
+          for attempt in 1 2 3; do
+            if hdiutil create -volname "Draftline" -srcfolder dmg-root -ov \
+                 -fs HFS+ -size "${size_mb}m" -format UDZO "$dmg"; then
+              created=1
+              break
+            fi
+            echo "hdiutil create failed (attempt $attempt of 3); retrying in 10s"
+            sleep 10
+          done
+          [ "$created" -eq 1 ]
           if [ -n "${SIGNING_IDENTITY:-}" ]; then
             codesign --force --timestamp --sign "$SIGNING_IDENTITY" "$dmg"
           fi
