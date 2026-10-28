@@ -95,6 +95,14 @@
     --status-issue: #f59e0b;
     --status-complete: #4ade80;
     --status-badge-text: #1A1B1E;
+
+    /* Diff review colors — themeable for future colorblind palettes */
+    --diff-del: #E06C75;
+    --diff-del-bg: rgba(224, 108, 117, 0.15);
+    --diff-ins: #98C379;
+    --diff-ins-bg: rgba(152, 195, 121, 0.25);
+    --diff-keep: #61AFEF;
+    --diff-keep-bg: rgba(97, 175, 239, 0.2);
 }
 
 /* ===== DESIGN TOKENS — Light ===== */
@@ -160,6 +168,14 @@
     --status-issue: #B26A00;
     --status-complete: #2E7D32;
     --status-badge-text: #FFFFFF;
+
+    /* Diff review colors — darker for light-surface legibility */
+    --diff-del: #C24853;
+    --diff-del-bg: rgba(194, 72, 83, 0.14);
+    --diff-ins: #2E7D32;
+    --diff-ins-bg: rgba(46, 125, 50, 0.14);
+    --diff-keep: #1A6FB5;
+    --diff-keep-bg: rgba(26, 111, 181, 0.14);
 }
 
 /* ===== THEME TRANSITION (auto theme mode) ===== */
@@ -7015,15 +7031,15 @@ html, body, #root {
 }
 
 .diff-ctrl-btn.active-accept {
-    background: rgba(152, 195, 121, 0.18);
-    border-color: #98C379;
-    color: #98C379;
+    background: var(--diff-ins-bg);
+    border-color: var(--diff-ins);
+    color: var(--diff-ins);
 }
 
 .diff-ctrl-btn.active-reject {
-    background: rgba(224, 108, 117, 0.14);
-    border-color: #E06C75;
-    color: #E06C75;
+    background: var(--diff-del-bg);
+    border-color: var(--diff-del);
+    color: var(--diff-del);
 }
 
 /* Inline diff paragraphs — inherit editor font/spacing */
@@ -7032,11 +7048,17 @@ html, body, #root {
     line-height: 1.8;
 }
 
+/* Diff text renders at the editor's own font and size */
+.diff-panel .editor-page-body {
+    font-family: var(--editor-font, 'Merriweather'), 'Georgia', serif;
+    font-size: var(--editor-font-size, 14px);
+}
+
 /* Insertions - green (AI wants to add this text) */
 .diff-inline-ins {
     text-decoration: none;
-    background: rgba(152, 195, 121, 0.25);
-    color: #98C379;
+    background: var(--diff-ins-bg);
+    color: var(--diff-ins);
     border-radius: 2px;
     cursor: pointer;
 }
@@ -7044,24 +7066,36 @@ html, body, #root {
 /* Deletions - red strikethrough (AI wants to remove this text) */
 .diff-inline-del {
     text-decoration: line-through;
-    background: rgba(224, 108, 117, 0.15);
-    color: #E06C75;
+    background: var(--diff-del-bg);
+    color: var(--diff-del);
     border-radius: 2px;
     cursor: pointer;
 }
 
-/* Kept original text (user rejected AI change - show as normal) */
-.diff-kept {
+/* The option the writer chose — blue so it reads as settled, still clickable */
+.diff-chosen {
+    text-decoration: none;
+    background: var(--diff-keep-bg);
+    color: var(--diff-keep);
+    border-radius: 2px;
     cursor: pointer;
 }
 
-/* Focused change — accent outline so you know which change is active */
+/* The option the writer passed on — crossed out but still clickable to reconsider */
+.diff-dismissed {
+    text-decoration: line-through;
+    color: var(--text-muted);
+    opacity: 0.65;
+    border-radius: 2px;
+    cursor: pointer;
+}
+
+/* Focused change — accent bar under the text, so punctuation is never boxed in */
 .diff-inline-ins.focused,
 .diff-inline-del.focused,
-.diff-kept.focused {
-    outline: 2px solid var(--accent);
-    outline-offset: 1px;
-    border-radius: 2px;
+.diff-chosen.focused,
+.diff-dismissed.focused {
+    box-shadow: 0 2px 0 0 var(--accent);
 }
 
 /* ===== CONTEXT MENU ===== */

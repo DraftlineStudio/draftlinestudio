@@ -2,6 +2,17 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02767] - 2026-10-27
+
+### Changed
+- Declining an AI edit now crosses it out and shows your kept original in blue.
+- Accepting an AI edit now shows the new text in blue and crosses out the original.
+- Declined and accepted edits stay clickable so you can change your mind before applying.
+
+### Fixed
+- Fixed the selected-text AI review window ignoring your editor font size.
+- Fixed the focused change outline hiding punctuation by marking the change with an underline instead.
+
 ## [1.0.02765] - 2026-10-27
 
 ### Fixed

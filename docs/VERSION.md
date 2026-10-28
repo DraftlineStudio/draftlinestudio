@@ -2,7 +2,7 @@
 
 The project version (`MAJOR.MINOR.BUILD`, e.g. `0.15.02374`) is not generated from a single source — it is hand-maintained in the locations below. **When bumping the version, update every one of them.** (See `CHANGELOG.md` for the versioning scheme: BUILD increments by 1 per change; one fix = one number.)
 
-Current version as of this writing: **1.0.02766**
+Current version as of this writing: **1.0.02767**
 
 (1.0.02748 and 1.0.02766 are tooling-only bumps: each time the macOS release
 job failed — first needing a disk-space fix, then an hdiutil sizing fix on

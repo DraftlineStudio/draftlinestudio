@@ -171,17 +171,19 @@ function DiffPanel({ label, name, selectionReview = false }: { label: string; na
                   const isDecided = change.decided
 
                   if (chunk.type === 'delete') {
-                    // Deletion: show strikethrough (red) if accepted or undecided, plain text if explicitly rejected
-                    return (isAccepted || !isDecided)
-                      ? <del key={chunkIdx} data-change={changeIdx} className={`diff-inline-del${focusCls}`} onClick={handleClick}>{chunk.text}</del>
-                      : <span key={chunkIdx} data-change={changeIdx} className={`diff-kept${focusCls}`} onClick={handleClick}>{chunk.text}</span>
+                    // Original text: red while undecided, crossed out once the change is accepted, blue when it is kept
+                    if (!isDecided) return <del key={chunkIdx} data-change={changeIdx} className={`diff-inline-del${focusCls}`} onClick={handleClick}>{chunk.text}</del>
+                    return isAccepted
+                      ? <del key={chunkIdx} data-change={changeIdx} className={`diff-dismissed${focusCls}`} onClick={handleClick}>{chunk.text}</del>
+                      : <span key={chunkIdx} data-change={changeIdx} className={`diff-chosen${focusCls}`} onClick={handleClick}>{chunk.text}</span>
                   }
 
                   if (chunk.type === 'insert') {
-                    // Insertion: show green if accepted or undecided, hide if explicitly rejected
-                    return (isAccepted || !isDecided)
-                      ? <ins key={chunkIdx} data-change={changeIdx} className={`diff-inline-ins${focusCls}`} onClick={handleClick}>{chunk.text}</ins>
-                      : null
+                    // Proposed text: green while undecided, blue once accepted, crossed out when declined
+                    if (!isDecided) return <ins key={chunkIdx} data-change={changeIdx} className={`diff-inline-ins${focusCls}`} onClick={handleClick}>{chunk.text}</ins>
+                    return isAccepted
+                      ? <ins key={chunkIdx} data-change={changeIdx} className={`diff-chosen${focusCls}`} onClick={handleClick}>{chunk.text}</ins>
+                      : <del key={chunkIdx} data-change={changeIdx} className={`diff-dismissed${focusCls}`} onClick={handleClick}>{chunk.text}</del>
                   }
 
                   return null
