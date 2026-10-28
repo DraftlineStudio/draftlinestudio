@@ -59,7 +59,11 @@ repository during a release.
 - **macOS** (`macos-latest`): `wails build -platform darwin/universal`
   produces the `.app` from `build/darwin/Info.plist` and an `.icns` generated
   from `build/appicon.png`. The bundle is code-signed, wrapped in a DMG with
-  `hdiutil`, and notarized when credentials exist.
+  `hdiutil`, and notarized when credentials exist. This job is best-effort:
+  the publish job attaches the Windows and Linux assets even when it fails,
+  so a release may ship without a DMG. The in-app updater serves each
+  platform the newest release that has its asset, so Macs are offered the
+  previous release until the next DMG builds.
 - **Linux** (`ubuntu-22.04`, deliberately the oldest supported release so
   the binary links against its glibc and WebKitGTK; a build from 24.04
   installs on 22.04 but will not start): `wails build -platform linux/amd64

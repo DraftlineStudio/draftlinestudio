@@ -325,10 +325,17 @@ jobs:
 
   publish:
     name: Attach to release
-    if: github.event_name == 'release'
+    # macOS is best-effort: its runner images have broken two releases, so a
+    # failed DMG no longer discards the working Windows and Linux packages.
+    # The in-app updater already serves each platform the newest release that
+    # has its asset, so Macs stay on the previous release until a DMG ships.
+    if: github.event_name == 'release' && !cancelled() && needs.windows.result == 'success' && needs.linux.result == 'success'
     needs: [version, windows, linux, macos]
     runs-on: ubuntu-latest
     steps:
+      - name: Note a missing macOS package
+        if: needs.macos.result != 'success'
+        run: echo "::warning::The macOS job failed, so this release ships without a DMG. Macs are offered the previous release until the next one builds."
       - uses: actions/download-artifact@v8
         with:
           path: dist
