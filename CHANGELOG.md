@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02771] - 2026-10-27
+
+### Changed
+- Text now renders with kerning and ligatures throughout the app for a cleaner, crisper page.
+
 ## [1.0.02770] - 2026-10-27
 
 ### Changed

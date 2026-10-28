@@ -582,6 +582,7 @@ html, body, #root {
     font-size: 13px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
 }
 
 /* ===== APP SHELL ===== */
@@ -1643,6 +1644,8 @@ html, body, #root {
     min-height: 480px;
     font-family: var(--editor-font, 'Merriweather'), 'Georgia', serif;
     font-size: var(--editor-font-size, 14px);
+    text-rendering: optimizeLegibility;
+    font-kerning: normal;
     line-height: 1.85;
     color: var(--text-primary);
     caret-color: var(--text-primary);
