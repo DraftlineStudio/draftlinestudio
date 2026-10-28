@@ -103,6 +103,12 @@
     --diff-ins-bg: rgba(152, 195, 121, 0.25);
     --diff-keep: #61AFEF;
     --diff-keep-bg: rgba(97, 175, 239, 0.2);
+
+    /* Proofread marks: spelling red, grammar blue, style gold — the editor
+       underlines and the Proofread panel share these */
+    --check-spelling: #E05252;
+    --check-grammar: #4F83DB;
+    --check-style: #D39A45;
 }
 
 /* ===== DESIGN TOKENS — Light ===== */
@@ -176,6 +182,11 @@
     --diff-ins-bg: rgba(46, 125, 50, 0.14);
     --diff-keep: #1A6FB5;
     --diff-keep-bg: rgba(26, 111, 181, 0.14);
+
+    /* Proofread marks — same hues as dark; underlines carry their own weight */
+    --check-spelling: #E05252;
+    --check-grammar: #4F83DB;
+    --check-style: #D39A45;
 }
 
 /* ===== COLORBLIND PALETTES =====
@@ -191,6 +202,9 @@
     --diff-ins-bg: rgba(86, 180, 233, 0.2);
     --diff-keep: #CC79A7;
     --diff-keep-bg: rgba(204, 121, 167, 0.2);
+    --check-spelling: #D55E00;
+    --check-grammar: #56B4E9;
+    --check-style: #F0E442;
 }
 
 :root[data-theme='light'] body[data-colorblind='protan'] {
@@ -200,6 +214,9 @@
     --diff-ins-bg: rgba(31, 111, 163, 0.14);
     --diff-keep: #A04E7C;
     --diff-keep-bg: rgba(160, 78, 124, 0.13);
+    --check-spelling: #A34700;
+    --check-grammar: #1F6FA3;
+    --check-style: #8A6D00;
 }
 
 /* Green-weak (deuteranopia): vermillion deletions against sky blue insertions. */
@@ -210,6 +227,9 @@
     --diff-ins-bg: rgba(86, 180, 233, 0.2);
     --diff-keep: #CC79A7;
     --diff-keep-bg: rgba(204, 121, 167, 0.2);
+    --check-spelling: #D55E00;
+    --check-grammar: #56B4E9;
+    --check-style: #F0E442;
 }
 
 :root[data-theme='light'] body[data-colorblind='deutan'] {
@@ -219,6 +239,9 @@
     --diff-ins-bg: rgba(31, 111, 163, 0.14);
     --diff-keep: #A04E7C;
     --diff-keep-bg: rgba(160, 78, 124, 0.13);
+    --check-spelling: #A34700;
+    --check-grammar: #1F6FA3;
+    --check-style: #8A6D00;
 }
 
 /* Blue-weak (tritanopia): blue reads as green, so the kept-text blue moves to
@@ -230,6 +253,9 @@
     --diff-ins-bg: rgba(0, 184, 148, 0.18);
     --diff-keep: #CC79A7;
     --diff-keep-bg: rgba(204, 121, 167, 0.2);
+    --check-spelling: #E05252;
+    --check-grammar: #56B4E9;
+    --check-style: #F0E442;
 }
 
 :root[data-theme='light'] body[data-colorblind='tritan'] {
@@ -239,6 +265,9 @@
     --diff-ins-bg: rgba(0, 118, 90, 0.14);
     --diff-keep: #A04E7C;
     --diff-keep-bg: rgba(160, 78, 124, 0.13);
+    --check-spelling: #C24853;
+    --check-grammar: #1F6FA3;
+    --check-style: #8A6D00;
 }
 
 /* ===== THEME TRANSITION (auto theme mode) ===== */
@@ -1632,7 +1661,7 @@ html, body, #root {
 .ProseMirror .spelling-error {
     text-decoration-line: underline;
     text-decoration-style: wavy;
-    text-decoration-color: #e05252;
+    text-decoration-color: var(--check-spelling);
     text-decoration-thickness: 1.5px;
     text-underline-offset: 3px;
     text-decoration-skip-ink: none;
@@ -1641,7 +1670,7 @@ html, body, #root {
 .ProseMirror .grammar-error {
     text-decoration-line: underline;
     text-decoration-style: wavy;
-    text-decoration-color: #4f83db;
+    text-decoration-color: var(--check-grammar);
     text-decoration-thickness: 1.5px;
     text-underline-offset: 3px;
     text-decoration-skip-ink: none;
@@ -1650,7 +1679,7 @@ html, body, #root {
 .ProseMirror .style-error {
     text-decoration-line: underline;
     text-decoration-style: dotted;
-    text-decoration-color: #d39a45;
+    text-decoration-color: var(--check-style);
     text-decoration-thickness: 1.5px;
     text-underline-offset: 3px;
     text-decoration-skip-ink: none;
@@ -8908,9 +8937,9 @@ html, body, #root {
 
 /* Kind accents: one variable drives the dot, the open border, the kind
    label, and the context mark. */
-.pf-kind-spelling { --pf-kind: var(--status-error); }
-.pf-kind-grammar { --pf-kind: var(--status-warning); }
-.pf-kind-style { --pf-kind: var(--app-accent-text); }
+.pf-kind-spelling { --pf-kind: var(--check-spelling); }
+.pf-kind-grammar { --pf-kind: var(--check-grammar); }
+.pf-kind-style { --pf-kind: var(--check-style); }
 
 .pf-chips {
     padding: 10px 14px 0;

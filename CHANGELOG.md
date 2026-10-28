@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02769] - 2026-10-27
+
+### Fixed
+- Fixed the Proofread panel showing grammar findings with a yellow dot and style findings with a blue dot, the reverse of their underline colors.
+
+### Changed
+- The colorblind palettes now also recolor the spelling, grammar, and style underlines and their Proofread panel markers.
+
 ## [1.0.02768] - 2026-10-27
 
 ### Added

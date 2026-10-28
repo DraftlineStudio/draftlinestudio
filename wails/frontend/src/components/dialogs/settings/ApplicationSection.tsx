@@ -240,7 +240,7 @@ export default function ApplicationSection({
           <option value="tritan">Blue-weak (tritanopia)</option>
         </select>
         <div className="settings-hint">
-          Swaps color-coded highlights, like the red and green in AI edit review, for a palette that stays readable with your color vision. Pick the option for the colors you have trouble telling apart.
+          Swaps color-coded highlights, like the red and green in AI edit review and the spelling, grammar, and style marks, for a palette that stays readable with your color vision. Pick the option for the colors you have trouble telling apart.
         </div>
       </div>
 
