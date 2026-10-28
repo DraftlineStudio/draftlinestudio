@@ -24,6 +24,9 @@ type AppSettings struct {
 	// legible with that color vision deficiency: "" (off) | "protan" |
 	// "deutan" | "tritan".
 	ColorblindMode string `json:"colorblind_mode"`
+	// HighContrast brightens text against slightly deepened surfaces in both
+	// themes for writers who need stronger figure-ground separation.
+	HighContrast bool `json:"high_contrast"`
 	AutoThemeUseManual      bool     `json:"auto_theme_use_manual"`
 	AutoThemeDawn           string   `json:"auto_theme_dawn"` // "HH:MM" format
 	AutoThemeDusk           string   `json:"auto_theme_dusk"` // "HH:MM" format

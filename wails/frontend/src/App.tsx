@@ -203,6 +203,12 @@ export default function App() {
     else document.body.removeAttribute('data-colorblind')
   }, [settings.colorblind_mode])
 
+  // High contrast rides on <body> the same way
+  useEffect(() => {
+    if (settings.high_contrast) document.body.setAttribute('data-contrast', 'high')
+    else document.body.removeAttribute('data-contrast')
+  }, [settings.high_contrast])
+
   // Drive accent color from the open book's title — or, on the welcome
   // screen, from the last-opened book so the titlebar strip and Studio Glow
   // set the scene (falls back to the brand accent with no recents).

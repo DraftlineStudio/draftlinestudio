@@ -13,6 +13,7 @@ export default function ApplicationSection({
   saveDir, setSaveDir,
   themeMode, setThemeMode,
   colorblindMode, setColorblindMode,
+  highContrast, setHighContrast,
   autoThemeUseManual, setAutoThemeUseManual,
   autoThemeDawn, setAutoThemeDawn,
   autoThemeDusk, setAutoThemeDusk,
@@ -241,6 +242,16 @@ export default function ApplicationSection({
         </select>
         <div className="settings-hint">
           Swaps color-coded highlights, like the red and green in AI edit review and the spelling, grammar, and style marks, for a palette that stays readable with your color vision. Pick the option for the colors you have trouble telling apart.
+        </div>
+      </div>
+      <div className="dialog-field">
+        <label className="settings-toggle">
+          <input type="checkbox" checked={highContrast} onChange={e => setHighContrast(e.target.checked)} />
+          <span className="settings-toggle-track"><span className="settings-toggle-thumb" /></span>
+          <span className="settings-toggle-label">High contrast</span>
+        </label>
+        <div className="settings-hint">
+          Brightens text toward white on a slightly deeper page in the dark theme, and deepens text against whiter panels in the light theme, for easier reading.
         </div>
       </div>
 

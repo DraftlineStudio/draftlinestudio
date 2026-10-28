@@ -30,6 +30,8 @@ export interface ApplicationSectionProps {
   setThemeMode: (v: ThemeMode) => void
   colorblindMode: ColorblindMode
   setColorblindMode: (v: ColorblindMode) => void
+  highContrast: boolean
+  setHighContrast: (v: boolean) => void
   autoThemeUseManual: boolean
   setAutoThemeUseManual: (v: boolean) => void
   autoThemeDawn: string

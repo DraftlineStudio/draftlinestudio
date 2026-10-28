@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02772] - 2026-10-28
+
+### Added
+- Added a High contrast setting that brightens text and deepens the page in the dark theme, and darkens text against whiter panels in the light theme.
+
 ## [1.0.02771] - 2026-10-27
 
 ### Changed

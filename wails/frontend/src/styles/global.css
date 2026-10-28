@@ -189,6 +189,36 @@
     --check-style: #D39A45;
 }
 
+/* ===== HIGH CONTRAST =====
+   Applied from <body data-contrast="high">: text moves toward the theme's
+   pole (white on dark, black on light) while the surfaces underneath shift
+   the other way, widening figure-ground separation without redrawing the UI. */
+:root[data-theme='dark'] body[data-contrast='high'] {
+    --bg-editor: #1B1C1F;
+    --bg-page: #2B2D31;
+    --text-primary: #F4F6F9;
+    --text-secondary: #A9B1BD;
+    --text-muted: #798089;
+    --text-faint: #4A4E54;
+    --text-chapter: #E6E9EE;
+    --text-section: #8A90A2;
+    --icon-color: #C9CDD5;
+}
+
+:root[data-theme='light'] body[data-contrast='high'] {
+    --bg-chrome: #E9EBF0;
+    --bg-editor: #F2F4F8;
+    --bg-panel: #F8F8FA;
+    --bg-toolbar: #F8F9FB;
+    --text-primary: #0C0E12;
+    --text-secondary: #525862;
+    --text-muted: #7D838C;
+    --text-faint: #B9BDC4;
+    --text-chapter: #1D2127;
+    --text-section: #666D79;
+    --icon-color: #59606C;
+}
+
 /* ===== COLORBLIND PALETTES =====
    Okabe–Ito-derived overrides applied from <body data-colorblind="...">,
    swapping only the tokens whose meaning is carried by hue. */

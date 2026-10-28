@@ -21,6 +21,7 @@ export interface AppSettings {
   dark_mode: boolean
   theme_mode: 'light' | 'dark' | 'auto'
   colorblind_mode: '' | 'protan' | 'deutan' | 'tritan'
+  high_contrast: boolean
   auto_theme_use_manual: boolean
   auto_theme_dawn: string
   auto_theme_dusk: string
@@ -141,6 +142,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   dark_mode: true,
   theme_mode: 'dark',
   colorblind_mode: '',
+  high_contrast: false,
   auto_theme_use_manual: true,
   auto_theme_dawn: '06:30',
   auto_theme_dusk: '19:00',
@@ -227,6 +229,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         ai_task_routes: (raw as unknown as Partial<AppSettings>).ai_task_routes ?? {},
         theme_mode: (raw.theme_mode as AppSettings['theme_mode']) || (raw.dark_mode ? 'dark' : 'light'),
         colorblind_mode: (['protan', 'deutan', 'tritan'] as const).find(m => m === raw.colorblind_mode) ?? '',
+        high_contrast: raw.high_contrast === true,
         editor_font_size: (raw.editor_font_size as AppSettings['editor_font_size']) || 'normal',
         characters_lane_view: raw.characters_lane_view === 'heat' || raw.characters_lane_view === 'weave'
           ? raw.characters_lane_view

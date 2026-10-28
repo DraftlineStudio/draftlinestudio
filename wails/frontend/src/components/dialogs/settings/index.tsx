@@ -53,6 +53,7 @@ export default function AppSettingsDialog() {
   const [dark]                     = useState(settings.dark_mode)
   const [themeMode, setThemeMode] = useState<ThemeMode>(settings.theme_mode)
   const [colorblindMode, setColorblindMode] = useState<ColorblindMode>(settings.colorblind_mode)
+  const [highContrast, setHighContrast] = useState(settings.high_contrast)
   const [autoThemeUseManual, setAutoThemeUseManual] = useState(settings.auto_theme_use_manual)
   const [autoThemeDawn, setAutoThemeDawn] = useState(settings.auto_theme_dawn)
   const [autoThemeDusk, setAutoThemeDusk] = useState(settings.auto_theme_dusk)
@@ -252,6 +253,7 @@ export default function AppSettingsDialog() {
       dark_mode: newDarkMode,
       theme_mode: themeMode,
       colorblind_mode: colorblindMode,
+      high_contrast: highContrast,
       auto_theme_use_manual: autoThemeUseManual,
       auto_theme_dawn: autoThemeDawn,
       auto_theme_dusk: autoThemeDusk,
@@ -388,6 +390,7 @@ export default function AppSettingsDialog() {
                 saveDir={saveDir} setSaveDir={setSaveDir}
                 themeMode={themeMode} setThemeMode={setThemeMode}
                 colorblindMode={colorblindMode} setColorblindMode={setColorblindMode}
+                highContrast={highContrast} setHighContrast={setHighContrast}
                 autoThemeUseManual={autoThemeUseManual} setAutoThemeUseManual={setAutoThemeUseManual}
                 autoThemeDawn={autoThemeDawn} setAutoThemeDawn={setAutoThemeDawn}
                 autoThemeDusk={autoThemeDusk} setAutoThemeDusk={setAutoThemeDusk}
