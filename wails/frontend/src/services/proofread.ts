@@ -22,6 +22,9 @@ export interface Detection {
   // Text around the detection inside its paragraph, for the card.
   before: string
   after: string
+  // Unique list key: the position-independent detectionKey, with an ordinal
+  // appended when identical contexts repeat in the chapter.
+  key: string
   // Set for findings that came from the analysis pipeline (echoes), which
   // carry their own dismissal actions.
   finding?: StyleFinding
@@ -77,6 +80,7 @@ export function collectDetections(editor: Editor, backendFindings: StyleFinding[
         text: text.slice(issue.from, issue.to),
         message: issue.message,
         replacements: issue.replacements,
+        key: '',
         before: slice(issue.from - contextChars, issue.from),
         after: slice(issue.to, issue.to + contextChars),
       })
@@ -105,6 +109,7 @@ export function collectDetections(editor: Editor, backendFindings: StyleFinding[
             text: match[0],
             message: `“${match[0]}” is not in the dictionary.`,
             replacements: [],
+            key: '',
             before: slice(inBlock - contextChars, inBlock),
             after: slice(inBlock + match[0].length, inBlock + match[0].length + contextChars),
           })
@@ -127,20 +132,35 @@ export function collectDetections(editor: Editor, backendFindings: StyleFinding[
       text: placed.finding.snippet,
       message: placed.finding.message,
       replacements: placed.finding.replacements ?? [],
+      key: '',
       before: text.slice(Math.max(0, inBlock - contextChars), inBlock),
       after: text.slice(inBlock + placed.finding.snippet.length, inBlock + placed.finding.snippet.length + contextChars),
       finding: placed.finding,
     })
   }
 
-  return detections.sort((left, right) => left.from - right.from || left.to - right.to)
+  detections.sort((left, right) => left.from - right.from || left.to - right.to)
+  // Repeated contexts ("word" "word") produce identical detectionKeys; an
+  // ordinal keeps every list key unique and stable in document order.
+  const seen = new Map<string, number>()
+  for (const detection of detections) {
+    const base = detectionKey(detection)
+    const ordinal = seen.get(base) ?? 0
+    seen.set(base, ordinal + 1)
+    detection.key = ordinal === 0 ? base : `${base}#${ordinal}`
+  }
+  return detections
+}
+
+/** The rules the one-click typography fix resolves. */
+export function isTypographyRule(rule: string): boolean {
+  return rule === 'straight-quote' || rule === 'ellipsis' || rule === 'double-hyphen'
 }
 
 /** How many of the chapter's detections the one-click typography fix would
  * resolve. */
 export function typographyFixableCount(detections: Detection[]): number {
-  return detections.filter(detection =>
-    detection.rule === 'straight-quote' || detection.rule === 'ellipsis' || detection.rule === 'double-hyphen').length
+  return detections.filter(detection => isTypographyRule(detection.rule)).length
 }
 
 /** Applies one replacement and returns where the walk should resume. */

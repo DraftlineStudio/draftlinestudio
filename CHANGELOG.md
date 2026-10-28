@@ -2,6 +2,14 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02770] - 2026-10-27
+
+### Changed
+- The Proofread panel now gathers straight quotes, typed ellipses, and double hyphens into one Inconsistent punctuation entry with a single fix that typesets them all, instead of listing every mark.
+
+### Fixed
+- Fixed Proofread entries lingering after a chapter-wide typography fix and refusing to be dismissed when identical snippets repeated.
+
 ## [1.0.02769] - 2026-10-27
 
 ### Fixed

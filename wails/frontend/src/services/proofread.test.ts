@@ -2,20 +2,36 @@ import { describe, expect, it } from 'vitest'
 import { getSchema } from '@tiptap/core'
 import type { Editor } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
+import { EditorState, type Transaction } from '@tiptap/pm/state'
 import type { StyleFinding } from '../types/draftline'
-import { collectDetections, detectionKey, globalChapterIndex, typographyFixableCount } from './proofread'
+import { fixChapterTypography } from './typographyFix'
+import { collectDetections, detectionKey, globalChapterIndex, isTypographyRule, typographyFixableCount } from './proofread'
 
 const schema = getSchema([StarterKit])
 
-function editorOf(...paragraphs: string[]): Editor {
-  const doc = schema.nodeFromJSON({
+function docOf(...paragraphs: string[]) {
+  return schema.nodeFromJSON({
     type: 'doc',
     content: paragraphs.map(text => ({
       type: 'paragraph',
       content: text ? [{ type: 'text', text }] : [],
     })),
   })
-  return { state: { doc } } as unknown as Editor
+}
+
+function editorOf(...paragraphs: string[]): Editor {
+  return { state: { doc: docOf(...paragraphs) } } as unknown as Editor
+}
+
+/** An editor whose dispatch applies, for exercising the typography sweep. */
+function liveEditorOf(...paragraphs: string[]): Editor {
+  let state = EditorState.create({ doc: docOf(...paragraphs) })
+  return {
+    get state() { return state },
+    view: {
+      dispatch(tr: Transaction) { state = state.apply(tr) },
+    },
+  } as unknown as Editor
 }
 
 describe('collectDetections', () => {
@@ -70,5 +86,26 @@ describe('detection keys and chapter indexing', () => {
     expect(globalChapterIndex('body', 3, 2, 5)).toBe(5)
     expect(globalChapterIndex('back_matter', 0, 2, 5)).toBe(7)
     expect(globalChapterIndex('copyright', 0, 2, 5)).toBe(-1)
+  })
+
+  it('assigns a unique list key to every detection, even repeated contexts', () => {
+    const detections = collectDetections(editorOf('"word" "word" "word" "word"'), [])
+    const keys = detections.map(detection => detection.key)
+    expect(new Set(keys).size).toBe(keys.length)
+  })
+})
+
+describe('fixChapterTypography', () => {
+  it('clears every typography detection it reports fixing', () => {
+    const editor = liveEditorOf(
+      '"Run," she said. "Its late..."',
+      "He paused--then 'stopped' and waited...",
+      'A page of dialogue: ' + '"word" '.repeat(50),
+    )
+    const before = collectDetections(editor, []).filter(detection => isTypographyRule(detection.rule))
+    expect(before.length).toBeGreaterThan(100)
+    expect(fixChapterTypography(editor)).toBe(before.length)
+    const after = collectDetections(editor, []).filter(detection => isTypographyRule(detection.rule))
+    expect(after).toEqual([])
   })
 })

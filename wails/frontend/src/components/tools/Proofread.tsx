@@ -15,7 +15,7 @@ import { clearSpotlight, updateSpotlight } from '../../extensions/RangeSpotlight
 import { fixChapterTypography } from '../../services/typographyFix'
 import { getDictionaryRoot, getSuggestions, normalizeCustomDictionary } from '../../services/spellCheck'
 import {
-  applyDetection, collectDetections, detectionKey, globalChapterIndex,
+  applyDetection, collectDetections, globalChapterIndex, isTypographyRule,
   styleFindingsFor, typographyFixableCount, type Detection,
 } from '../../services/proofread'
 
@@ -82,11 +82,14 @@ export default function Proofread() {
       return
     }
     setDetections(collectDetections(editor, backendFindings)
-      .filter(detection => !skippedRef.current.has(detectionKey(detection))))
+      .filter(detection => !skippedRef.current.has(detection.key)))
     const text = editor.state.doc.textBetween(0, editor.state.doc.content.size, ' ')
     setWordCount(text.split(/\s+/).filter(Boolean).length)
   }, [backendFindings])
 
+  // The editorRef dependency rebinds the listener when the editor instance
+  // appears or is remounted, so the walk never goes deaf to edits.
+  const editorInstance = useEditorStore(s => s.editorRef)
   useEffect(() => {
     refresh()
     const editor = liveEditor()
@@ -101,13 +104,16 @@ export default function Proofread() {
       if (timer) clearTimeout(timer)
       editor.off('update', onUpdate)
     }
-  }, [refresh, currentSection, currentIndex])
+  }, [refresh, currentSection, currentIndex, editorInstance])
 
+  // Typography detections never list one by one — they collapse into the
+  // summary row below, so the walk holds the issues worth reading.
   const visible = useMemo(
-    () => detections.filter(detection => filter === 'all' || detection.kind === filter),
+    () => detections.filter(detection => !isTypographyRule(detection.rule)
+      && (filter === 'all' || detection.kind === filter)),
     [detections, filter])
   const selectedIndex = useMemo(
-    () => (selectedKey === null ? -1 : visible.findIndex(detection => detectionKey(detection) === selectedKey)),
+    () => (selectedKey === null ? -1 : visible.findIndex(detection => detection.key === selectedKey)),
     [visible, selectedKey])
   const selected = selectedIndex >= 0 ? visible[selectedIndex] : undefined
 
@@ -141,14 +147,14 @@ export default function Proofread() {
 
   const selectAt = useCallback((index: number) => {
     const target = visible[index]
-    setSelectedKey(target ? detectionKey(target) : null)
+    setSelectedKey(target ? target.key : null)
   }, [visible])
 
   const removeSelected = useCallback(() => {
     if (!selected) return
-    skippedRef.current.add(detectionKey(selected))
+    skippedRef.current.add(selected.key)
     setSkippedCount(skippedRef.current.size)
-    setDetections(list => list.filter(detection => detectionKey(detection) !== detectionKey(selected)))
+    setDetections(list => list.filter(detection => detection.key !== selected.key))
     selectAt(Math.min(selectedIndex, visible.length - 2))
   }, [selected, selectedIndex, visible, selectAt])
 
@@ -157,9 +163,16 @@ export default function Proofread() {
     if (!editor || !selected) return
     applyDetection(editor, selected, replacement)
     const next = visible[selectedIndex + 1]
-    setSelectedKey(next ? detectionKey(next) : null)
+    setSelectedKey(next ? next.key : null)
     refresh()
   }, [selected, selectedIndex, visible, refresh])
+
+  const fixTypography = useCallback(() => {
+    const editor = liveEditor()
+    if (!editor) return
+    fixChapterTypography(editor)
+    refresh()
+  }, [refresh])
 
   // ↑/↓ move, Enter applies the first suggestion, Esc ignores — while focus
   // is not in the editor or an input.
@@ -191,9 +204,27 @@ export default function Proofread() {
 
   if (!book) return <div className="tool-empty-state">Open a book to proofread.</div>
 
-  const counts: Record<Filter, number> = { all: detections.length, spelling: 0, grammar: 0, style: 0 }
-  for (const detection of detections) counts[detection.kind]++
+  const counts: Record<Filter, number> = { all: 0, spelling: 0, grammar: 0, style: 0 }
+  for (const detection of detections) {
+    if (isTypographyRule(detection.rule)) continue
+    counts.all++
+    counts[detection.kind]++
+  }
   const typographyCount = typographyFixableCount(detections)
+  const typographyParts: string[] = []
+  {
+    const byRule: Record<string, number> = {}
+    for (const detection of detections) {
+      if (isTypographyRule(detection.rule)) byRule[detection.rule] = (byRule[detection.rule] ?? 0) + 1
+    }
+    const quotes = byRule['straight-quote'] ?? 0
+    const ellipses = byRule['ellipsis'] ?? 0
+    const hyphens = byRule['double-hyphen'] ?? 0
+    if (quotes) typographyParts.push(`${quotes} straight quote${quotes === 1 ? '' : 's'}`)
+    if (ellipses) typographyParts.push(`${ellipses} typed ellips${ellipses === 1 ? 'is' : 'es'}`)
+    if (hyphens) typographyParts.push(`${hyphens} double hyphen${hyphens === 1 ? '' : 's'}`)
+  }
+  const showTypographyRow = typographyCount > 0 && (filter === 'all' || filter === 'style')
   const chapter = getSectionArray(book, currentSection)[currentIndex]
   const chapterLabel = chapter?.title || `Chapter ${currentIndex + 1}`
   const dictionary = settings.custom_dictionary
@@ -333,7 +364,7 @@ export default function Proofread() {
         <span>{selectedIndex >= 0 ? `${selectedIndex + 1} of ${visible.length}` : 'Checks run as you type'}</span>
       </div>
 
-      {visible.length === 0 ? (
+      {visible.length === 0 && !showTypographyRow ? (
         <div className="pf-empty">
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--status-success)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M8 12.5l2.5 2.5L16 9.5" /></svg>
           <div className="pf-empty-title">{chapterLabel} is clean</div>
@@ -345,8 +376,27 @@ export default function Proofread() {
         </div>
       ) : (
         <div className="pf-list">
+          {showTypographyRow && (
+            <div className="pf-row pf-typo-row pf-kind-style">
+              <span className="pf-dot" />
+              <div className="pf-row-body">
+                <div className="pf-row-head">
+                  <span className="pf-row-text">Inconsistent punctuation</span>
+                  <span className="pf-row-kind">Typography</span>
+                </div>
+                <div className="pf-row-msg">
+                  {typographyParts.join(', ')} across the chapter. One click typesets them all: curly quotes and apostrophes, real ellipses, em dashes.
+                </div>
+                <div className="pf-suggestions">
+                  <button className="dialog-btn sm primary" onClick={fixTypography}>
+                    Fix all {typographyCount}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {visible.map((detection, index) => {
-            const key = detectionKey(detection)
+            const key = detection.key
             const kindClass = `pf-kind-${detection.kind}`
             if (index === selectedIndex) {
               const options = (detection.kind === 'spelling' ? suggestions : detection.replacements)
@@ -440,30 +490,11 @@ export default function Proofread() {
         </div>
       )}
 
-      {typographyCount > 0 ? (
-        <div className="pf-footer">
-          <span className="pf-footer-note">
-            <span className="pf-footer-strong">{typographyCount}</span> typography fix{typographyCount === 1 ? '' : 'es'} <span className="pf-footer-muted">· quotes, dashes</span>
-          </span>
-          <button
-            className="dialog-btn sm"
-            onClick={() => {
-              const editor = liveEditor()
-              if (!editor) return
-              fixChapterTypography(editor)
-              refresh()
-            }}
-          >
-            Fix All
-          </button>
-        </div>
-      ) : (
-        <div className="pf-footer-hints">
-          <span className="pf-hint"><kbd className="pf-kbd">↑</kbd><kbd className="pf-kbd">↓</kbd> move</span>
-          <span className="pf-hint"><kbd className="pf-kbd">Enter</kbd> apply first</span>
-          <span className="pf-hint"><kbd className="pf-kbd">Esc</kbd> ignore</span>
-        </div>
-      )}
+      <div className="pf-footer-hints">
+        <span className="pf-hint"><kbd className="pf-kbd">↑</kbd><kbd className="pf-kbd">↓</kbd> move</span>
+        <span className="pf-hint"><kbd className="pf-kbd">Enter</kbd> apply first</span>
+        <span className="pf-hint"><kbd className="pf-kbd">Esc</kbd> ignore</span>
+      </div>
     </div>
   )
 }

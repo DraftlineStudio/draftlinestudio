@@ -9016,6 +9016,11 @@ html, body, #root {
 
 .pf-row:hover { background: var(--bg-hover); }
 
+/* The typography summary row acts through its button, not by opening. */
+.pf-row.pf-typo-row { cursor: default; }
+.pf-row.pf-typo-row:hover { background: transparent; }
+.pf-typo-row .pf-suggestions { margin-top: 8px; }
+
 .pf-dot {
     width: 6px;
     height: 6px;
