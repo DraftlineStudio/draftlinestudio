@@ -1165,6 +1165,7 @@ export namespace types {
 	    default_save_dir: string;
 	    dark_mode: boolean;
 	    theme_mode: string;
+	    colorblind_mode: string;
 	    auto_theme_use_manual: boolean;
 	    auto_theme_dawn: string;
 	    auto_theme_dusk: string;
@@ -1218,6 +1219,7 @@ export namespace types {
 	        this.default_save_dir = source["default_save_dir"];
 	        this.dark_mode = source["dark_mode"];
 	        this.theme_mode = source["theme_mode"];
+	        this.colorblind_mode = source["colorblind_mode"];
 	        this.auto_theme_use_manual = source["auto_theme_use_manual"];
 	        this.auto_theme_dawn = source["auto_theme_dawn"];
 	        this.auto_theme_dusk = source["auto_theme_dusk"];

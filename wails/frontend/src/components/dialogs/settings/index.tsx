@@ -6,7 +6,7 @@ import { useAppStore } from '../../../store/appStore'
 import { CheckClaudeCode, SetupClaudeCode, OpenClaudeAuth, CheckCodexCLI, SetupCodexCLI, OpenCodexAuth, GetAppVersion, SetAPIKey, ClearAPIKey } from '../../../../wailsjs/go/main/App'
 import { EventsOn } from '../../../../wailsjs/runtime/runtime'
 import type { types } from '../../../../wailsjs/go/models'
-import type { SettingsSection, AIMode, AIProvider, ThemeMode, EditorFontSize, AnalysisCPUProfile, ClaudeCodeSetupStep } from './types'
+import type { SettingsSection, AIMode, AIProvider, ThemeMode, ColorblindMode, EditorFontSize, AnalysisCPUProfile, ClaudeCodeSetupStep } from './types'
 import ApplicationSection from './ApplicationSection'
 import AuthorSection from './AuthorSection'
 import AIStudioSection from './AIStudioSection'
@@ -52,6 +52,7 @@ export default function AppSettingsDialog() {
   const [saveDir, setSaveDir]     = useState(settings.default_save_dir)
   const [dark]                     = useState(settings.dark_mode)
   const [themeMode, setThemeMode] = useState<ThemeMode>(settings.theme_mode)
+  const [colorblindMode, setColorblindMode] = useState<ColorblindMode>(settings.colorblind_mode)
   const [autoThemeUseManual, setAutoThemeUseManual] = useState(settings.auto_theme_use_manual)
   const [autoThemeDawn, setAutoThemeDawn] = useState(settings.auto_theme_dawn)
   const [autoThemeDusk, setAutoThemeDusk] = useState(settings.auto_theme_dusk)
@@ -250,6 +251,7 @@ export default function AppSettingsDialog() {
       default_save_dir: saveDir.trim(),
       dark_mode: newDarkMode,
       theme_mode: themeMode,
+      colorblind_mode: colorblindMode,
       auto_theme_use_manual: autoThemeUseManual,
       auto_theme_dawn: autoThemeDawn,
       auto_theme_dusk: autoThemeDusk,
@@ -385,6 +387,7 @@ export default function AppSettingsDialog() {
               <ApplicationSection
                 saveDir={saveDir} setSaveDir={setSaveDir}
                 themeMode={themeMode} setThemeMode={setThemeMode}
+                colorblindMode={colorblindMode} setColorblindMode={setColorblindMode}
                 autoThemeUseManual={autoThemeUseManual} setAutoThemeUseManual={setAutoThemeUseManual}
                 autoThemeDawn={autoThemeDawn} setAutoThemeDawn={setAutoThemeDawn}
                 autoThemeDusk={autoThemeDusk} setAutoThemeDusk={setAutoThemeDusk}

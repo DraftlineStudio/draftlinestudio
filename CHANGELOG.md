@@ -2,6 +2,11 @@
 
 All notable changes to Draftline are listed here, newest first.
 
+## [1.0.02768] - 2026-10-27
+
+### Added
+- Added a Color Vision setting with palettes for red-weak, green-weak, and blue-weak color vision, recoloring the AI edit review highlights.
+
 ## [1.0.02767] - 2026-10-27
 
 ### Changed

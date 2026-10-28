@@ -178,6 +178,69 @@
     --diff-keep-bg: rgba(26, 111, 181, 0.14);
 }
 
+/* ===== COLORBLIND PALETTES =====
+   Okabe–Ito-derived overrides applied from <body data-colorblind="...">,
+   swapping only the tokens whose meaning is carried by hue. */
+
+/* Red-weak (protanopia): deep reds go dark, so deletions move to a bright
+   orange against sky blue insertions. */
+:root[data-theme='dark'] body[data-colorblind='protan'] {
+    --diff-del: #E69F00;
+    --diff-del-bg: rgba(230, 159, 0, 0.18);
+    --diff-ins: #56B4E9;
+    --diff-ins-bg: rgba(86, 180, 233, 0.2);
+    --diff-keep: #CC79A7;
+    --diff-keep-bg: rgba(204, 121, 167, 0.2);
+}
+
+:root[data-theme='light'] body[data-colorblind='protan'] {
+    --diff-del: #9A6A00;
+    --diff-del-bg: rgba(154, 106, 0, 0.14);
+    --diff-ins: #1F6FA3;
+    --diff-ins-bg: rgba(31, 111, 163, 0.14);
+    --diff-keep: #A04E7C;
+    --diff-keep-bg: rgba(160, 78, 124, 0.13);
+}
+
+/* Green-weak (deuteranopia): vermillion deletions against sky blue insertions. */
+:root[data-theme='dark'] body[data-colorblind='deutan'] {
+    --diff-del: #D55E00;
+    --diff-del-bg: rgba(213, 94, 0, 0.18);
+    --diff-ins: #56B4E9;
+    --diff-ins-bg: rgba(86, 180, 233, 0.2);
+    --diff-keep: #CC79A7;
+    --diff-keep-bg: rgba(204, 121, 167, 0.2);
+}
+
+:root[data-theme='light'] body[data-colorblind='deutan'] {
+    --diff-del: #A34700;
+    --diff-del-bg: rgba(163, 71, 0, 0.14);
+    --diff-ins: #1F6FA3;
+    --diff-ins-bg: rgba(31, 111, 163, 0.14);
+    --diff-keep: #A04E7C;
+    --diff-keep-bg: rgba(160, 78, 124, 0.13);
+}
+
+/* Blue-weak (tritanopia): blue reads as green, so the kept-text blue moves to
+   reddish purple and insertions to a bluish green against vermillion. */
+:root[data-theme='dark'] body[data-colorblind='tritan'] {
+    --diff-del: #D55E00;
+    --diff-del-bg: rgba(213, 94, 0, 0.18);
+    --diff-ins: #00B894;
+    --diff-ins-bg: rgba(0, 184, 148, 0.18);
+    --diff-keep: #CC79A7;
+    --diff-keep-bg: rgba(204, 121, 167, 0.2);
+}
+
+:root[data-theme='light'] body[data-colorblind='tritan'] {
+    --diff-del: #A34700;
+    --diff-del-bg: rgba(163, 71, 0, 0.14);
+    --diff-ins: #00765A;
+    --diff-ins-bg: rgba(0, 118, 90, 0.14);
+    --diff-keep: #A04E7C;
+    --diff-keep-bg: rgba(160, 78, 124, 0.13);
+}
+
 /* ===== THEME TRANSITION (auto theme mode) ===== */
 :root.theme-transitioning,
 :root.theme-transitioning *,

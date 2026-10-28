@@ -12,6 +12,7 @@ import { BOOK_FONTS } from './constants'
 export default function ApplicationSection({
   saveDir, setSaveDir,
   themeMode, setThemeMode,
+  colorblindMode, setColorblindMode,
   autoThemeUseManual, setAutoThemeUseManual,
   autoThemeDawn, setAutoThemeDawn,
   autoThemeDusk, setAutoThemeDusk,
@@ -225,6 +226,23 @@ export default function ApplicationSection({
           )}
         </div>
       )}
+
+      <div className="dialog-field">
+        <label className="dialog-label">Color Vision</label>
+        <select
+          className="dialog-select"
+          value={colorblindMode}
+          onChange={event => setColorblindMode(event.target.value as typeof colorblindMode)}
+        >
+          <option value="">Standard colors</option>
+          <option value="protan">Red-weak (protanopia)</option>
+          <option value="deutan">Green-weak (deuteranopia)</option>
+          <option value="tritan">Blue-weak (tritanopia)</option>
+        </select>
+        <div className="settings-hint">
+          Swaps color-coded highlights, like the red and green in AI edit review, for a palette that stays readable with your color vision. Pick the option for the colors you have trouble telling apart.
+        </div>
+      </div>
 
       <div className="settings-section-label">Editor Display</div>
       <div className="dialog-field">

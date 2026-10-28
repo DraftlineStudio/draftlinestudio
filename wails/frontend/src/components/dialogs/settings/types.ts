@@ -9,6 +9,7 @@ export type SettingsSection = 'author' | 'application' | 'plugins' | 'ai' | 'rea
 export type AIMode = AIProviderMode
 export type AIProvider = 'claude' | 'openai' | ''
 export type ThemeMode = 'light' | 'dark' | 'auto'
+export type ColorblindMode = '' | 'protan' | 'deutan' | 'tritan'
 export type EditorFontSize = 'small' | 'normal' | 'large'
 export type AnalysisCPUProfile = 'adaptive' | 'gentle' | 'balanced' | 'fast'
 
@@ -27,6 +28,8 @@ export interface ApplicationSectionProps {
   setSaveDir: (v: string) => void
   themeMode: ThemeMode
   setThemeMode: (v: ThemeMode) => void
+  colorblindMode: ColorblindMode
+  setColorblindMode: (v: ColorblindMode) => void
   autoThemeUseManual: boolean
   setAutoThemeUseManual: (v: boolean) => void
   autoThemeDawn: string

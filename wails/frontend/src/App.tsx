@@ -197,6 +197,12 @@ export default function App() {
     prevThemeRef.current = computedTheme
   }, [computedTheme])
 
+  // Colorblind palette rides on <body> so it can override theme tokens
+  useEffect(() => {
+    if (settings.colorblind_mode) document.body.setAttribute('data-colorblind', settings.colorblind_mode)
+    else document.body.removeAttribute('data-colorblind')
+  }, [settings.colorblind_mode])
+
   // Drive accent color from the open book's title — or, on the welcome
   // screen, from the last-opened book so the titlebar strip and Studio Glow
   // set the scene (falls back to the brand accent with no recents).

@@ -20,6 +20,10 @@ type AppSettings struct {
 	DefaultSaveDir          string   `json:"default_save_dir"`
 	DarkMode                bool     `json:"dark_mode"`
 	ThemeMode               string   `json:"theme_mode"` // "light" | "dark" | "auto"
+	// ColorblindMode swaps color-coded UI (the AI diff review) to a palette
+	// legible with that color vision deficiency: "" (off) | "protan" |
+	// "deutan" | "tritan".
+	ColorblindMode string `json:"colorblind_mode"`
 	AutoThemeUseManual      bool     `json:"auto_theme_use_manual"`
 	AutoThemeDawn           string   `json:"auto_theme_dawn"` // "HH:MM" format
 	AutoThemeDusk           string   `json:"auto_theme_dusk"` // "HH:MM" format
