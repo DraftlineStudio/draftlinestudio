@@ -335,7 +335,14 @@ jobs:
     steps:
       - name: Note a missing macOS package
         if: needs.macos.result != 'success'
-        run: echo "::warning::The macOS job failed, so this release ships without a DMG. Macs are offered the previous release until the next one builds."
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "::warning::The macOS job failed, so this release ships without a DMG. Macs are offered the previous release until the next one builds."
+          tag="${{ github.event.release.tag_name }}"
+          note="> **No macOS download in this release.** The Mac build failed on GitHub's hosted macOS runner; Draftline on a Mac keeps offering the previous release and picks up the next one automatically. Details: https://docs.draftline.ink/getting-started/mac-updates"
+          body="$(gh release view "$tag" --repo "${{ github.repository }}" --json body --jq .body)"
+          printf '%s\n\n%s\n' "$body" "$note" | gh release edit "$tag" --repo "${{ github.repository }}" --notes-file -
       - uses: actions/download-artifact@v8
         with:
           path: dist
